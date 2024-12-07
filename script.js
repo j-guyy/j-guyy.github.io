@@ -1,45 +1,25 @@
+// Array of image filenames
+const natureImages = [
+    'img4.jpg', 'img5.jpg'
+];
+
+function getRandomImage() {
+    return natureImages[Math.floor(Math.random() * natureImages.length)];
+}
+
 function generateRandom() {
     // Generate random number
     const randomNum = Math.floor(Math.random() * 100) + 1;
-    const randomNumberElement = document.getElementById('randomNumber');
-    if (randomNumberElement) {
-        randomNumberElement.textContent = 'Random Number: ' + randomNum;
-    }
+    document.getElementById('randomNumber').textContent = 'Random Number: ' + randomNum;
 
-    // Fetch random image from Unsplash
-    fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature', {
-        headers: {
-            'Authorization': 'Client-ID xJtD_jKrs_cL4Bn64vDMihQnK3MvcFmYvqpVNEeAJ7I'
-        }
-    })
-        .then(response => response.json())
-        .then(data => {
-            document.body.style.backgroundImage = `url(${data.urls.regular})`;
-        })
-        .catch(error => console.error('Error:', error));
+    // Set random background image
+    document.body.style.backgroundImage = `url(${getRandomImage()})`;
 }
 
-// Generate a random number and background when the page loads
-if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
-    generateRandom();
-}
+// Set initial background image when the page loads
+document.addEventListener('DOMContentLoaded', function () {
+    document.body.style.backgroundImage = `url(${getRandomImage()})`;
+});
 
-
-// Parallax effect for About page
-function checkScroll() {
-    const sections = document.querySelectorAll('.info');
-    sections.forEach(section => {
-        const sectionTop = section.getBoundingClientRect().top;
-        const sectionBottom = section.getBoundingClientRect().bottom;
-        if (sectionTop < window.innerHeight && sectionBottom > 0) {
-            section.classList.add('active');
-        } else {
-            section.classList.remove('active');
-        }
-    });
-}
-
-if (document.querySelector('.about-page')) {
-    window.addEventListener('scroll', checkScroll);
-    checkScroll(); // Check on page load
-}
+// Attach event listener to the generate button
+document.getElementById('generateButton').addEventListener('click', generateRandom);
