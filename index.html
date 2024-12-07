@@ -1,9 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World with Random Number</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #randomNumber {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
 
 <body>
     <h1>Hello World</h1>
-    <p>I'm hosted with GitHub Pages.</p>
+    <div id="randomNumber">Random Number: </div>
+    <button onclick="generateRandomNumber()">Generate Random Number</button>
+
+    <script>
+        function generateRandomNumber() {
+            const randomNum = Math.floor(Math.random() * 100) + 1;
+            document.getElementById('randomNumber').textContent = 'Random Number: ' + randomNum;
+        }
+
+        // Generate a random number when the page loads
+        generateRandomNumber();
+    </script>
 </body>
 
 </html>
