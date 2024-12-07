@@ -2,16 +2,14 @@ body,
 html {
     margin: 0;
     padding: 0;
-    font-family: 'Arial', sans-serif;
+    font-family: Arial, sans-serif;
     height: 100%;
 }
 
 body {
     background-size: cover;
     background-position: center;
-    transition: background-image 1s ease-in-out;
-    display: flex;
-    flex-direction: column;
+    transition: background-image 0.5s ease-in-out;
 }
 
 nav {
@@ -46,35 +44,33 @@ nav ul li a.active {
     border-bottom: 2px solid #4CAF50;
 }
 
-/* Home page specific styles */
-.home-page .container {
-    flex-grow: 1;
+.container {
     display: flex;
     justify-content: center;
     align-items: center;
+    height: 100vh;
 }
 
-.home-page .content {
+.content {
     background-color: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 30px;
     border-radius: 10px;
     text-align: center;
-    max-width: 80%;
     backdrop-filter: blur(10px);
 }
 
-.home-page h1 {
+h1 {
     margin: 0 0 20px 0;
     font-size: 2.5em;
 }
 
-.home-page #randomNumber {
-    font-size: 2em;
+#randomNumber {
+    font-size: 24px;
     margin: 20px 0;
 }
 
-.home-page button {
+button {
     padding: 12px 24px;
     font-size: 1em;
     cursor: pointer;
@@ -85,7 +81,7 @@ nav ul li a.active {
     transition: background-color 0.3s ease;
 }
 
-.home-page button:hover {
+button:hover {
     background-color: #45a049;
 }
 

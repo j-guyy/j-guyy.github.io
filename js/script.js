@@ -1,24 +1,28 @@
-// Array of image filenames
-const natureImages = [
-    'img4.jpg', 'img5.jpg'
-];
+// We don't need the natureImages array anymore since we're using a fixed range
 
-function getRandomImage() {
-    return '/images/' + natureImages[Math.floor(Math.random() * natureImages.length)];
+function getRandomNumber() {
+    // Generate a random number between 4 and 34 (inclusive)
+    return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
+}
+
+function getImagePath(number) {
+    // Generate the image path based on the number
+    return `css/images/img${number}.jpg`;
 }
 
 function generateRandom() {
     // Generate random number
-    const randomNum = Math.floor(Math.random() * 100) + 1;
+    const randomNum = getRandomNumber();
     document.getElementById('randomNumber').textContent = 'Random Number: ' + randomNum;
 
     // Set random background image
-    document.body.style.backgroundImage = `url(${getRandomImage()})`;
+    const imagePath = getImagePath(randomNum);
+    document.body.style.backgroundImage = `url(${imagePath})`;
 }
 
-// Set initial background image when the page loads
+// Set initial background image and random number when the page loads
 document.addEventListener('DOMContentLoaded', function () {
-    document.body.style.backgroundImage = `url(${getRandomImage()})`;
+    generateRandom(); // This will set an initial random number and background
 });
 
 // Attach event listener to the generate button
