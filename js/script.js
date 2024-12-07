@@ -28,12 +28,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const body = document.body;
     const imageCache = {};
 
+    // Set initial background to black
+    body.style.backgroundColor = 'black';
+    body.style.transition = 'background-image 0.5s ease-in-out';
+
     function getRandomNumber() {
         return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
     }
 
     function getImagePath(number) {
-        return `images/img${number}.jpg`;
+        return `/images/img${number}.jpg`;
     }
 
     function preloadImage(src) {
@@ -54,6 +58,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setBackground(imagePath) {
         body.style.backgroundImage = `url(${imagePath})`;
+        body.style.backgroundSize = 'cover';
+        body.style.backgroundPosition = 'center';
     }
 
     async function generateRandom() {
@@ -70,8 +76,8 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.position = 'fixed';
         loadingIndicator.style.top = '10px';
         loadingIndicator.style.left = '10px';
-        loadingIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        loadingIndicator.style.color = 'white';
+        loadingIndicator.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+        loadingIndicator.style.color = 'black';
         loadingIndicator.style.padding = '10px';
         loadingIndicator.style.borderRadius = '5px';
         body.appendChild(loadingIndicator);
