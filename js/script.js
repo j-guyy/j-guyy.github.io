@@ -4,7 +4,7 @@ const natureImages = [
 ];
 
 function getRandomImage() {
-    return natureImages[Math.floor(Math.random() * natureImages.length)];
+    return '/images/' + natureImages[Math.floor(Math.random() * natureImages.length)];
 }
 
 function generateRandom() {
