@@ -150,35 +150,42 @@ button:hover {
 
 .info {
     display: flex;
-    padding: 50px 10%;
+    background-color: rgba(45, 45, 45, 0.9);
+    margin: 40px 5%;
+    /* Reduced side margins to allow for larger content */
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     align-items: center;
-    background-color: rgba(255, 255, 255, 0.1);
-    margin: 20px 0;
+    /* This will vertically center the content */
+    color: white;
 }
 
 .info.reverse {
     flex-direction: row-reverse;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(60, 60, 60, 0.9);
 }
 
 .info .text {
     flex: 1;
-    padding: 0 20px;
+    padding: 0 40px;
 }
 
 .info .image {
-    flex: 1;
-    height: 300px;
+    flex: 1.5;
+    height: 400px;
     background-size: cover;
     background-position: center;
     border-radius: 10px;
     transition: all 0.3s ease-in-out;
-}
-
-/* Parallax effect */
-.info .image {
     transform: scale(0.8);
     opacity: 0.8;
+}
+
+/* Add a hover effect to make images pop */
+.info .image:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
 }
 
 .info.active .image {
@@ -200,4 +207,32 @@ button:hover {
 .fade-in-section.is-visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .info {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .info.reverse {
+        flex-direction: column;
+    }
+
+    .info .text,
+    .info .image {
+        flex: none;
+        width: 100%;
+    }
+
+    .info .text {
+        padding: 20px 0;
+    }
+
+    .info .image {
+        height: 300px;
+        /* Slightly smaller for mobile screens */
+        margin-bottom: 20px;
+    }
 }
