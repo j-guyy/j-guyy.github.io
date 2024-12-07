@@ -90,28 +90,35 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.borderRadius = '5px';
         body.appendChild(loadingIndicator);
 
+        const initialBatch = 10; // Number of images to load initially
         const imagePromises = [];
-        for (let i = 4; i <= 34; i++) {
+
+        // Load initial batch
+        for (let i = 4; i <= 4 + initialBatch; i++) {
             const imagePath = getImagePath(i);
             imagePromises.push(preloadImage(imagePath));
         }
 
         try {
             await Promise.all(imagePromises);
-            console.log('All images preloaded successfully');
+            console.log('Initial batch of images preloaded successfully');
+            generateRandom(); // Generate initial background after preloading initial batch
+            showContent(); // Show the content box after loading initial batch
+
+            // Load the rest of the images in the background
+            for (let i = 4 + initialBatch + 1; i <= 34; i++) {
+                const imagePath = getImagePath(i);
+                preloadImage(imagePath).then(() => {
+                    console.log(`Additional image ${i} loaded`);
+                });
+            }
         } catch (error) {
             console.error('Error preloading images:', error);
         } finally {
             loadingIndicator.remove();
-            generateRandom(); // Generate initial background after preloading
-            showContent(); // Show the content box after loading
         }
     }
 
-    if (generateButton && randomNumberDisplay) {
-        generateButton.addEventListener('click', generateRandom);
-        preloadAllImages(); // Start preloading images immediately
-    }
 
     // About page functionality
     const faders = document.querySelectorAll('.fade-in-section');
