@@ -23,3 +23,23 @@ function generateRandom() {
 if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
     generateRandom();
 }
+
+
+// Parallax effect for About page
+function checkScroll() {
+    const sections = document.querySelectorAll('.info');
+    sections.forEach(section => {
+        const sectionTop = section.getBoundingClientRect().top;
+        const sectionBottom = section.getBoundingClientRect().bottom;
+        if (sectionTop < window.innerHeight && sectionBottom > 0) {
+            section.classList.add('active');
+        } else {
+            section.classList.remove('active');
+        }
+    });
+}
+
+if (document.querySelector('.about-page')) {
+    window.addEventListener('scroll', checkScroll);
+    checkScroll(); // Check on page load
+}
