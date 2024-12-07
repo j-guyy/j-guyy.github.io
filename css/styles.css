@@ -11,9 +11,13 @@ body {
     padding: 0;
     min-height: 100vh;
     position: relative;
+    background-color: black;
     background-size: cover;
     background-position: center;
     transition: background-image 0.5s ease-in-out;
+    color: white;
+    display: flex;
+    flex-direction: column;
 }
 
 .background-image {
@@ -75,6 +79,7 @@ nav ul li a.active {
     align-items: center;
     position: relative;
     z-index: 1;
+    padding: 20px;
 }
 
 .content {
@@ -84,6 +89,11 @@ nav ul li a.active {
     border-radius: 10px;
     text-align: center;
     backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+    max-width: 400px;
+    width: 100%;
 }
 
 h1 {

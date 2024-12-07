@@ -25,12 +25,15 @@ document.addEventListener('DOMContentLoaded', function () {
     // Home page functionality
     const generateButton = document.getElementById('generateButton');
     const randomNumberDisplay = document.getElementById('randomNumber');
+    const contentBox = document.querySelector('.content');
     const body = document.body;
     const imageCache = {};
 
-    // Set initial background to black
+    // Set initial background to black and hide content
     body.style.backgroundColor = 'black';
     body.style.transition = 'background-image 0.5s ease-in-out';
+    contentBox.style.opacity = '0';
+    contentBox.style.transform = 'scale(0.9)';
 
     function getRandomNumber() {
         return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
@@ -60,6 +63,11 @@ document.addEventListener('DOMContentLoaded', function () {
         body.style.backgroundImage = `url(${imagePath})`;
         body.style.backgroundSize = 'cover';
         body.style.backgroundPosition = 'center';
+    }
+
+    function showContent() {
+        contentBox.style.opacity = '1';
+        contentBox.style.transform = 'scale(1)';
     }
 
     async function generateRandom() {
@@ -96,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             loadingIndicator.remove();
             generateRandom(); // Generate initial background after preloading
+            showContent(); // Show the content box after loading
         }
     }
 
