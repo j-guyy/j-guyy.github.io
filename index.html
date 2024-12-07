@@ -4,82 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World with Random Number and Background</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-size: cover;
-            background-position: center;
-            transition: background-image 1s ease-in-out;
-        }
-
-        .content {
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        #randomNumber {
-            font-size: 24px;
-            margin: 20px 0;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <title>Home - Random Number Generator</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <nav>
+        <ul>
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="about.html">About Me</a></li>
+        </ul>
+    </nav>
     <div class="content">
         <h1>Justin's Website</h1>
         <div id="randomNumber">Random Number: </div>
         <button onclick="generateRandom()">Generate Random Number and Background</button>
     </div>
-
-    <script>
-        function generateRandom() {
-            // Generate random number
-            const randomNum = Math.floor(Math.random() * 100) + 1;
-            document.getElementById('randomNumber').textContent = 'Random Number: ' + randomNum;
-
-            // Fetch random image from Unsplash
-            fetch('https://api.unsplash.com/photos/random?orientation=landscape&query=nature', {
-                headers: {
-                    'Authorization': 'Client-ID xJtD_jKrs_cL4Bn64vDMihQnK3MvcFmYvqpVNEeAJ7I'
-                }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    document.body.style.backgroundImage = `url(${data.urls.regular})`;
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        // Generate a random number and background when the page loads
-        generateRandom();
-    </script>
+    <script src="script.js"></script>
 </body>
 
 </html>
