@@ -44,11 +44,20 @@ nav ul li a.active {
     border-bottom: 2px solid #4CAF50;
 }
 
+.home-page {
+    background-size: cover;
+    background-position: center;
+    transition: background-image 0.5s ease-in-out;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .container {
+    flex-grow: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
 }
 
 .content {
@@ -68,6 +77,21 @@ h1 {
 #randomNumber {
     font-size: 24px;
     margin: 20px 0;
+}
+
+#generateButton {
+    padding: 12px 24px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+#generateButton:hover {
+    background-color: #45a049;
 }
 
 button {
@@ -160,4 +184,20 @@ button:hover {
 .info.active .image {
     transform: scale(1);
     opacity: 1;
+}
+
+.fade-in-section {
+    opacity: 1;
+    /* Start visible */
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-section.fade-out {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-in-section.is-visible {
+    opacity: 1;
+    transform: translateY(0);
 }

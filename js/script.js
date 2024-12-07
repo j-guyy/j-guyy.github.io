@@ -7,7 +7,7 @@ function getRandomNumber() {
 
 function getImagePath(number) {
     // Generate the image path based on the number
-    return `css/images/img${number}.jpg`;
+    return `images/img${number}.jpg`;
 }
 
 function generateRandom() {
@@ -22,8 +22,60 @@ function generateRandom() {
 
 // Set initial background image and random number when the page loads
 document.addEventListener('DOMContentLoaded', function () {
-    generateRandom(); // This will set an initial random number and background
+    // Home page functionality
+    const generateButton = document.getElementById('generateButton');
+    const randomNumberDisplay = document.getElementById('randomNumber');
+
+    if (generateButton && randomNumberDisplay) {
+        function getRandomNumber() {
+            return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
+        }
+
+        function getImagePath(number) {
+            return `/images/img${number}.jpg`;
+        }
+
+        function generateRandom() {
+            const randomNum = getRandomNumber();
+            randomNumberDisplay.textContent = 'Random Number: ' + randomNum;
+
+            const imagePath = getImagePath(randomNum);
+            document.body.style.backgroundImage = `url(${imagePath})`;
+        }
+
+        generateButton.addEventListener('click', generateRandom);
+        generateRandom(); // Generate initial number and background
+    }
+
+    // About page functionality
+    const faders = document.querySelectorAll('.fade-in-section');
+
+    if (faders.length > 0) {
+        faders.forEach(fader => {
+            fader.classList.add('fade-out');
+        });
+
+        const appearOptions = {
+            threshold: 0.1,
+            rootMargin: "0px 0px -100px 0px"
+        };
+
+        const appearOnScroll = new IntersectionObserver(function (entries, appearOnScroll) {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) {
+                    entry.target.classList.add('fade-out');
+                    entry.target.classList.remove('is-visible');
+                } else {
+                    entry.target.classList.remove('fade-out');
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, appearOptions);
+
+        faders.forEach(fader => {
+            appearOnScroll.observe(fader);
+        });
+    }
 });
 
-// Attach event listener to the generate button
-document.getElementById('generateButton').addEventListener('click', generateRandom);
+
