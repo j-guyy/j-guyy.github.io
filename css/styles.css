@@ -111,10 +111,39 @@ button:hover,
 
 /* About page styles */
 .about-page {
-    background-color: #1a1a1a;
+    position: relative;
+    overflow-x: hidden;
+    background-color: transparent;
+}
+
+.parallax-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 150vh;
+    /* Increased to allow for parallax movement */
+    background-image: url('/images/background-portrait.jpg');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    z-index: -1;
+    will-change: transform;
+}
+
+.parallax-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: -1;
 }
 
 .about-content {
+    position: relative;
+    z-index: 1;
     padding-top: 60px;
 }
 
@@ -123,22 +152,9 @@ button:hover,
     display: flex;
     justify-content: center;
     align-items: center;
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
     color: var(--text-color);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     position: relative;
-}
-
-.hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
 }
 
 .hero h1 {
@@ -149,7 +165,7 @@ button:hover,
 
 .info {
     display: flex;
-    background-color: rgba(45, 45, 45, 0.9);
+    background-color: rgba(45, 45, 45, 0.8);
     margin: 40px 5%;
     padding: 40px;
     border-radius: 10px;
@@ -159,7 +175,7 @@ button:hover,
 
 .info.reverse {
     flex-direction: row-reverse;
-    background-color: rgba(60, 60, 60, 0.9);
+    background-color: rgba(60, 60, 60, 0.8);
 }
 
 .info .text {
@@ -175,7 +191,7 @@ button:hover,
     border-radius: 10px;
     transition: all 0.3s ease-in-out;
     transform: scale(0.8);
-    opacity: 0.8;
+    opacity: 1;
 }
 
 .info .image:hover {

@@ -104,36 +104,64 @@ document.addEventListener('DOMContentLoaded', function () {
         generateButton.addEventListener('click', generateRandom);
     }
 
-    // Start preloading images
-    preloadAllImages();
+    // Start preloading images for the home page
+    if (document.querySelector('.home-page')) {
+        preloadAllImages();
+    }
 
     // About page functionality
-    const faders = document.querySelectorAll('.fade-in-section');
+    if (document.querySelector('.about-page')) {
+        const faders = document.querySelectorAll('.fade-in-section');
 
-    if (faders.length > 0) {
-        faders.forEach(fader => {
-            fader.classList.add('fade-out');
-        });
-
-        const appearOptions = {
-            threshold: 0.1,
-            rootMargin: "0px 0px -100px 0px"
-        };
-
-        const appearOnScroll = new IntersectionObserver(function (entries, appearOnScroll) {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) {
-                    entry.target.classList.add('fade-out');
-                    entry.target.classList.remove('is-visible');
-                } else {
-                    entry.target.classList.remove('fade-out');
-                    entry.target.classList.add('is-visible');
-                }
+        if (faders.length > 0) {
+            faders.forEach(fader => {
+                fader.classList.add('fade-out');
             });
-        }, appearOptions);
 
-        faders.forEach(fader => {
-            appearOnScroll.observe(fader);
-        });
+            const appearOptions = {
+                threshold: 0.1,
+                rootMargin: "0px 0px -100px 0px"
+            };
+
+            const appearOnScroll = new IntersectionObserver(function (entries, appearOnScroll) {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) {
+                        entry.target.classList.add('fade-out');
+                        entry.target.classList.remove('is-visible');
+                    } else {
+                        entry.target.classList.remove('fade-out');
+                        entry.target.classList.add('is-visible');
+                    }
+                });
+            }, appearOptions);
+
+            faders.forEach(fader => {
+                appearOnScroll.observe(fader);
+            });
+        }
+
+        // Parallax effect
+        if (document.querySelector('.about-page')) {
+            const parallax = document.querySelector('.parallax-background');
+            const overlay = document.querySelector('.parallax-overlay');
+            const totalHeight = document.body.scrollHeight - window.innerHeight;
+
+            function updateParallax() {
+                const scrolled = window.pageYOffset;
+                const scrollProgress = scrolled / totalHeight;
+                const moveDistance = parallax.offsetHeight - window.innerHeight;
+
+                parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
+            }
+
+            window.addEventListener('scroll', updateParallax);
+            window.addEventListener('resize', function () {
+                totalHeight = document.body.scrollHeight - window.innerHeight;
+                updateParallax();
+            });
+
+            // Initial call to set the correct position
+            updateParallax();
+        }
     }
 });
