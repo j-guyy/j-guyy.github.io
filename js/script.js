@@ -1,28 +1,4 @@
-// We don't need the natureImages array anymore since we're using a fixed range
-
-function getRandomNumber() {
-    // Generate a random number between 4 and 34 (inclusive)
-    return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
-}
-
-function getImagePath(number) {
-    // Generate the image path based on the number
-    return `images/img${number}.jpg`;
-}
-
-function generateRandom() {
-    // Generate random number
-    const randomNum = getRandomNumber();
-    document.getElementById('randomNumber').textContent = 'Random Number: ' + randomNum;
-
-    // Set random background image
-    const imagePath = getImagePath(randomNum);
-    document.body.style.backgroundImage = `url(${imagePath})`;
-}
-
-// Set initial background image and random number when the page loads
 document.addEventListener('DOMContentLoaded', function () {
-    // Home page functionality
     const generateButton = document.getElementById('generateButton');
     const randomNumberDisplay = document.getElementById('randomNumber');
     const contentBox = document.querySelector('.content');
@@ -32,15 +8,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Set initial background to black and hide content
     body.style.backgroundColor = 'black';
     body.style.transition = 'background-image 0.5s ease-in-out';
-    contentBox.style.opacity = '0';
-    contentBox.style.transform = 'scale(0.9)';
+    if (contentBox) {
+        contentBox.style.opacity = '0';
+        contentBox.style.transform = 'scale(0.9)';
+    }
 
     function getRandomNumber() {
         return Math.floor(Math.random() * (34 - 4 + 1)) + 4;
     }
 
     function getImagePath(number) {
-        return `/images/img${number}.jpg`;
+        return `images/img${number}.jpg`;
     }
 
     function preloadImage(src) {
@@ -66,13 +44,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showContent() {
-        contentBox.style.opacity = '1';
-        contentBox.style.transform = 'scale(1)';
+        if (contentBox) {
+            contentBox.style.opacity = '1';
+            contentBox.style.transform = 'scale(1)';
+        }
     }
 
-    async function generateRandom() {
+    function generateRandom() {
         const randomNum = getRandomNumber();
-        randomNumberDisplay.textContent = 'Random Number: ' + randomNum;
+        if (randomNumberDisplay) {
+            randomNumberDisplay.textContent = 'Random Number: ' + randomNum;
+        }
 
         const imagePath = getImagePath(randomNum);
         setBackground(imagePath);
@@ -90,10 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
         loadingIndicator.style.borderRadius = '5px';
         body.appendChild(loadingIndicator);
 
-        const initialBatch = 10; // Number of images to load initially
+        const initialBatch = 10;
         const imagePromises = [];
 
-        // Load initial batch
         for (let i = 4; i <= 4 + initialBatch; i++) {
             const imagePath = getImagePath(i);
             imagePromises.push(preloadImage(imagePath));
@@ -102,10 +83,9 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await Promise.all(imagePromises);
             console.log('Initial batch of images preloaded successfully');
-            generateRandom(); // Generate initial background after preloading initial batch
-            showContent(); // Show the content box after loading initial batch
+            generateRandom();
+            showContent();
 
-            // Load the rest of the images in the background
             for (let i = 4 + initialBatch + 1; i <= 34; i++) {
                 const imagePath = getImagePath(i);
                 preloadImage(imagePath).then(() => {
@@ -119,6 +99,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Set up event listener for generate button
+    if (generateButton) {
+        generateButton.addEventListener('click', generateRandom);
+    }
+
+    // Start preloading images
+    preloadAllImages();
 
     // About page functionality
     const faders = document.querySelectorAll('.fade-in-section');
@@ -150,5 +137,3 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
-
-

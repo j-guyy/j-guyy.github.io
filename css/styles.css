@@ -1,3 +1,11 @@
+:root {
+    --primary-color: #4CAF50;
+    --primary-hover-color: #45a049;
+    --text-color: white;
+    --bg-color: black;
+    --bg-transparent: rgba(0, 0, 0, 0.7);
+}
+
 body,
 html {
     margin: 0;
@@ -7,32 +15,19 @@ html {
 }
 
 body {
-    margin: 0;
-    padding: 0;
     min-height: 100vh;
     position: relative;
-    background-color: black;
+    background-color: var(--bg-color);
     background-size: cover;
     background-position: center;
     transition: background-image 0.5s ease-in-out;
-    color: white;
+    color: var(--text-color);
     display: flex;
     flex-direction: column;
 }
 
-.background-image {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    background-size: cover;
-    background-position: center;
-}
-
 nav {
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: var(--bg-transparent);
     padding: 15px 0;
 }
 
@@ -49,27 +44,18 @@ nav ul li {
 }
 
 nav ul li a {
-    color: white;
+    color: var(--text-color);
     text-decoration: none;
     padding: 5px 10px;
     transition: color 0.3s ease;
 }
 
 nav ul li a:hover {
-    color: #4CAF50;
+    color: var(--primary-color);
 }
 
 nav ul li a.active {
-    border-bottom: 2px solid #4CAF50;
-}
-
-.home-page {
-    background-size: cover;
-    background-position: center;
-    transition: background-image 0.5s ease-in-out;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    border-bottom: 2px solid var(--primary-color);
 }
 
 .container {
@@ -83,8 +69,8 @@ nav ul li a.active {
 }
 
 .content {
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
+    background-color: var(--bg-transparent);
+    color: var(--text-color);
     padding: 30px;
     border-radius: 10px;
     text-align: center;
@@ -106,40 +92,26 @@ h1 {
     margin: 20px 0;
 }
 
+button,
 #generateButton {
     padding: 12px 24px;
     font-size: 1em;
     cursor: pointer;
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--primary-color);
+    color: var(--text-color);
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s ease;
 }
 
+button:hover,
 #generateButton:hover {
-    background-color: #45a049;
-}
-
-button {
-    padding: 12px 24px;
-    font-size: 1em;
-    cursor: pointer;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-}
-
-button:hover {
-    background-color: #45a049;
+    background-color: var(--primary-hover-color);
 }
 
 /* About page styles */
 .about-page {
     background-color: #1a1a1a;
-    color: white;
 }
 
 .about-content {
@@ -154,7 +126,7 @@ button:hover {
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    color: white;
+    color: var(--text-color);
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     position: relative;
 }
@@ -179,13 +151,10 @@ button:hover {
     display: flex;
     background-color: rgba(45, 45, 45, 0.9);
     margin: 40px 5%;
-    /* Reduced side margins to allow for larger content */
     padding: 40px;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     align-items: center;
-    /* This will vertically center the content */
-    color: white;
 }
 
 .info.reverse {
@@ -209,7 +178,6 @@ button:hover {
     opacity: 0.8;
 }
 
-/* Add a hover effect to make images pop */
 .info .image:hover {
     transform: scale(1.05);
     box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
@@ -222,7 +190,6 @@ button:hover {
 
 .fade-in-section {
     opacity: 1;
-    /* Start visible */
     transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
 
@@ -238,13 +205,11 @@ button:hover {
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
-    .info {
-        flex-direction: column;
-        padding: 20px;
-    }
 
+    .info,
     .info.reverse {
         flex-direction: column;
+        padding: 20px;
     }
 
     .info .text,
@@ -259,7 +224,6 @@ button:hover {
 
     .info .image {
         height: 300px;
-        /* Slightly smaller for mobile screens */
         margin-bottom: 20px;
     }
 }
