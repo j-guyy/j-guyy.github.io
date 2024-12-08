@@ -164,4 +164,8 @@ document.addEventListener('DOMContentLoaded', function () {
             updateParallax();
         }
     }
+    if (document.querySelector('.travels-page')) {
+        // Any specific JavaScript for the Travels page can go here
+        console.log('Travels page loaded');
+    }
 });

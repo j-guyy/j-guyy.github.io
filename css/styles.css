@@ -243,3 +243,62 @@ button:hover,
         margin-bottom: 20px;
     }
 }
+
+/* Travels Page */
+
+.travels-page .container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.travels-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: var(--bg-transparent);
+    width: 100%;
+}
+
+.travels-page h1 {
+    color: var(--text-color);
+    margin: 0;
+}
+
+.us-travels,
+.world-travels {
+    width: 100%;
+    max-width: 1200px;
+    /* Adjust this value as needed */
+    margin: 0 auto 40px;
+    padding: 0 20px;
+}
+
+.us-travels h2,
+.world-travels h2 {
+    color: var(--text-color);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.map-container {
+    width: 100%;
+}
+
+.map-container iframe {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 600px;
+}
+
+/* For smaller screens, adjust the map height */
+@media (max-width: 768px) {
+    .map-container iframe {
+        height: 400px;
+    }
+}
