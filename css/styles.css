@@ -29,6 +29,7 @@ body {
 nav {
     background-color: var(--bg-transparent);
     padding: 15px 0;
+    width: 100%;
 }
 
 nav ul {
@@ -67,6 +68,8 @@ nav ul li a.active {
     z-index: 1;
     padding: 20px;
 }
+
+/* Home Page */
 
 .content {
     background-color: var(--bg-transparent);
@@ -246,13 +249,20 @@ button:hover,
 
 /* Travels Page */
 
-.travels-page .container {
-    width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
+.travels-page {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
+    align-items: center;
+}
+
+.travels-page .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .travels-header {
@@ -271,10 +281,8 @@ button:hover,
 .us-travels,
 .world-travels {
     width: 100%;
-    max-width: 1200px;
-    /* Adjust this value as needed */
-    margin: 0 auto 40px;
-    padding: 0 20px;
+    margin: 0 0 40px;
+    padding: 0;
 }
 
 .us-travels h2,
