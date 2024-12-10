@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map - My Travels</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        #us-map {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .state {
+            fill: #ccc;
+            stroke: #fff;
+            stroke-width: 1px;
+        }
+
+        .city-dot {
+            stroke: #fff;
+            stroke-width: 1px;
+        }
+
+        .visited {
+            fill: #4CAF50;
+            cursor: pointer;
+        }
+
+        .not-visited {
+            fill: #f44336;
+        }
+    </style>
+</head>
+
+<body class="map-page">
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About Me</a></li>
+            <li><a href="travels.html">Travels</a></li>
+            <li><a href="interactive-map.html" class="active">Interactive Map</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <h1>Interactive Travel Map</h1>
+        <p>Green dots represent cities I've visited. Click them to learn more. Red dots are cities I hope to visit
+            someday!</p>
+        <div id="us-map"></div>
+    </div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <script src="js/interactive-map.js"></script>
+</body>
+
+</html>
