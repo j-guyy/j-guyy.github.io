@@ -19,6 +19,13 @@ function createCitiesMap() {
 
     const path = d3.geoPath().projection(projection);
 
+    // Create a tooltip div
+    const tooltip = d3.select("#us-map").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("pointer-events", "none");
+
     // Load US map data
     d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
         .then(function (us) {
@@ -29,112 +36,6 @@ function createCitiesMap() {
                 .attr("class", "state")
                 .attr("d", path);
 
-            // Define your visited and not visited cities
-            const cities = [
-                { name: "New York City", state: "NY", coords: [-74.006, 40.7128], visited: true },
-                { name: "Los Angeles", state: "CA", coords: [-118.2437, 34.0522], visited: true },
-                { name: "Chicago", state: "IL", coords: [-87.6298, 41.8781], visited: true },
-                { name: "Dallas", state: "TX", coords: [-96.7970, 32.7767], visited: true },
-                { name: "Houston", state: "TX", coords: [-95.3698, 29.7604], visited: true },
-                { name: "Atlanta", state: "GA", coords: [-84.3880, 33.7490], visited: true },
-                { name: "Washington DC", state: "DC", coords: [-77.0369, 38.9072], visited: true },
-                { name: "Philadelphia", state: "PA", coords: [-75.1652, 39.9526], visited: true },
-                { name: "Miami", state: "FL", coords: [-80.1918, 25.7617], visited: true },
-                { name: "Phoenix", state: "AZ", coords: [-112.0740, 33.4484], visited: true },
-                { name: "Boston", state: "MA", coords: [-71.0589, 42.3601], visited: true },
-                { name: "Riverside", state: "CA", coords: [-117.3961, 33.9806], visited: true },
-                { name: "San Francisco", state: "CA", coords: [-122.4194, 37.7749], visited: true },
-                { name: "Detroit", state: "MI", coords: [-83.0458, 42.3314], visited: true },
-                { name: "Seattle", state: "WA", coords: [-122.3321, 47.6062], visited: true },
-                { name: "Tampa", state: "FL", coords: [-82.4572, 27.9506], visited: true },
-                { name: "San Diego", state: "CA", coords: [-117.1611, 32.7157], visited: true },
-                { name: "Denver", state: "CO", coords: [-104.9903, 39.7392], visited: true },
-                { name: "Baltimore", state: "MD", coords: [-76.6122, 39.2904], visited: true },
-                { name: "Orlando", state: "FL", coords: [-81.3792, 28.5383], visited: true },
-                { name: "Charlotte", state: "NC", coords: [-80.8431, 35.2271], visited: true },
-                { name: "San Antonio", state: "TX", coords: [-98.4936, 29.4241], visited: true },
-                { name: "Portland", state: "OR", coords: [-122.6784, 45.5152], visited: true },
-                { name: "Austin", state: "TX", coords: [-97.7431, 30.2672], visited: true },
-                { name: "Pittsburgh", state: "PA", coords: [-79.9959, 40.4406], visited: true },
-                { name: "Las Vegas", state: "NV", coords: [-115.1398, 36.1699], visited: true },
-                { name: "Cincinnati", state: "OH", coords: [-84.5120, 39.1031], visited: true },
-                { name: "Columbus", state: "OH", coords: [-82.9988, 39.9612], visited: true },
-                { name: "Cleveland", state: "OH", coords: [-81.6944, 41.4993], visited: true },
-                { name: "Nashville", state: "TN", coords: [-86.7816, 36.1627], visited: true },
-                { name: "San Jose", state: "CA", coords: [-121.8863, 37.3382], visited: true },
-                { name: "Virginia Beach", state: "VA", coords: [-75.9780, 36.8529], visited: true },
-                { name: "Raleigh", state: "NC", coords: [-78.6382, 35.7796], visited: true },
-                { name: "Oklahoma City", state: "OK", coords: [-97.5164, 35.4676], visited: true },
-                { name: "Richmond", state: "VA", coords: [-77.4360, 37.5407], visited: true },
-                { name: "Salt Lake City", state: "UT", coords: [-111.8910, 40.7608], visited: true },
-                { name: "Buffalo", state: "NY", coords: [-78.8784, 42.8864], visited: true },
-                { name: "Tucson", state: "AZ", coords: [-110.9265, 32.2226], visited: true },
-                { name: "Rochester", state: "NY", coords: [-77.6109, 43.1566], visited: true },
-                { name: "Tulsa", state: "OK", coords: [-95.9928, 36.1540], visited: true },
-                { name: "Greenville", state: "SC", coords: [-82.3940, 34.8526], visited: true },
-                { name: "New Orleans", state: "LA", coords: [-90.0715, 29.9511], visited: true },
-                { name: "Knoxville", state: "TN", coords: [-83.9207, 35.9606], visited: true },
-                { name: "Albuquerque", state: "NM", coords: [-106.6504, 35.0844], visited: true },
-                { name: "Sarasota", state: "FL", coords: [-82.5308, 27.3364], visited: true },
-                { name: "Albany", state: "NY", coords: [-73.7562, 42.6526], visited: true },
-                { name: "Baton Rouge", state: "LA", coords: [-91.1403, 30.4515], visited: true },
-                { name: "Allentown", state: "PA", coords: [-75.4902, 40.6084], visited: true },
-                { name: "El Paso", state: "TX", coords: [-106.4850, 31.7619], visited: true },
-                { name: "Columbia", state: "SC", coords: [-81.0348, 34.0007], visited: true },
-                { name: "Oxnard", state: "CA", coords: [-119.1792, 34.1975], visited: true },
-                { name: "Boise", state: "ID", coords: [-116.2023, 43.6150], visited: true },
-                { name: "Dayton", state: "OH", coords: [-84.1916, 39.7589], visited: true },
-                { name: "Greensboro", state: "NC", coords: [-79.7920, 36.0726], visited: true },
-                { name: "Colorado Springs", state: "CO", coords: [-104.8214, 38.8339], visited: true },
-                { name: "Little Rock", state: "AR", coords: [-92.2896, 34.7465], visited: true },
-                { name: "Provo", state: "UT", coords: [-111.6585, 40.2338], visited: true },
-                { name: "Poughkeepsie", state: "NY", coords: [-73.9215, 41.7066], visited: true },
-                { name: "Akron", state: "OH", coords: [-81.5190, 41.0814], visited: true },
-                { name: "Winston-Salem", state: "NC", coords: [-80.2442, 36.0999], visited: true },
-                { name: "Ogden", state: "UT", coords: [-111.9738, 41.2230], visited: true },
-                { name: "Syracuse", state: "NY", coords: [-76.1474, 43.0481], visited: true },
-                { name: "Durham", state: "NC", coords: [-78.8986, 35.9940], visited: true },
-                { name: "Harrisburg", state: "PA", coords: [-76.8867, 40.2732], visited: true },
-                { name: "Toledo", state: "OH", coords: [-83.5379, 41.6528], visited: true },
-
-                { name: "Minneapolis", state: "MN", coords: [-93.2650, 44.9778], visited: false },
-                { name: "St. Louis", state: "MO", coords: [-90.1994, 38.6270], visited: false },
-                { name: "Sacramento", state: "CA", coords: [-121.4944, 38.5816], visited: false },
-                { name: "Kansas City", state: "MO", coords: [-94.5786, 39.0997], visited: false },
-                { name: "Jacksonville", state: "FL", coords: [-81.6557, 30.3322], visited: false },
-                { name: "Providence", state: "RI", coords: [-71.4128, 41.8240], visited: false },
-                { name: "Milwaukee", state: "WI", coords: [-87.9065, 43.0389], visited: false },
-                { name: "Indianapolis", state: "IN", coords: [-86.1581, 39.7684], visited: false },
-                { name: "Louisville", state: "KY", coords: [-85.7585, 38.2527], visited: false },
-                { name: "Memphis", state: "TN", coords: [-90.0490, 35.1495], visited: false },
-                { name: "Birmingham", state: "AL", coords: [-86.8025, 33.5186], visited: false },
-                { name: "Fresno", state: "CA", coords: [-119.7871, 36.7378], visited: false },
-                { name: "Grand Rapids", state: "MI", coords: [-85.6681, 42.9634], visited: false },
-                { name: "Hartford", state: "CT", coords: [-72.6823, 41.7658], visited: false },
-                { name: "Honolulu", state: "HI", coords: [-157.8583, 21.3069], visited: false },
-                { name: "Omaha", state: "NE", coords: [-95.9345, 41.2565], visited: false },
-                { name: "Bridgeport", state: "CT", coords: [-73.1952, 41.1865], visited: false },
-                { name: "Bakersfield", state: "CA", coords: [-119.0187, 35.3733], visited: false },
-                { name: "McAllen", state: "TX", coords: [-98.2300, 26.2034], visited: false },
-                { name: "Worcester", state: "MA", coords: [-71.8023, 42.2626], visited: false },
-                { name: "Charleston", state: "SC", coords: [-79.9311, 32.7765], visited: false },
-                { name: "Cape Coral", state: "FL", coords: [-81.9495, 26.5629], visited: false },
-                { name: "Lakeland", state: "FL", coords: [-81.9498, 28.0395], visited: false },
-                { name: "Stockton", state: "CA", coords: [-121.2908, 37.9577], visited: false },
-                { name: "Des Moines", state: "IA", coords: [-93.6091, 41.5868], visited: false },
-                { name: "Deltona", state: "FL", coords: [-81.2636, 28.9005], visited: false },
-                { name: "Madison", state: "WI", coords: [-89.4012, 43.0731], visited: false },
-                { name: "Wichita", state: "KS", coords: [-97.3375, 37.6872], visited: false },
-                { name: "Palm Bay", state: "FL", coords: [-80.5887, 28.0345], visited: false },
-                { name: "Augusta", state: "GA", coords: [-82.0107, 33.4735], visited: false },
-                { name: "Jackson", state: "MS", coords: [-90.1848, 32.2988], visited: false },
-                { name: "Spokane", state: "WA", coords: [-117.4260, 47.6588], visited: false },
-                { name: "Fayetteville", state: "AR", coords: [-94.1574, 36.0626], visited: false },
-                { name: "Chattanooga", state: "TN", coords: [-85.3097, 35.0456], visited: false },
-                { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: false }
-            ];
-
-
             svg.selectAll(".city-dot")
                 .data(cities)
                 .enter().append("circle")
@@ -142,6 +43,21 @@ function createCitiesMap() {
                 .attr("cx", d => projection(d.coords)[0])
                 .attr("cy", d => projection(d.coords)[1])
                 .attr("r", 5)
+                .on("mouseover", function (event, d) {
+                    d3.select(this).attr("r", 8);
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function () {
+                    d3.select(this).attr("r", 5);
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                })
                 .on("click", function (event, d) {
                     if (d.visited) {
                         window.open(`https://en.wikipedia.org/wiki/${d.name},_${d.state}`, '_blank');
@@ -169,6 +85,13 @@ function createHighPointsMap() {
 
     const path = d3.geoPath().projection(projection);
 
+    // Create a tooltip div
+    const tooltip = d3.select("#high-points-map").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute")
+        .style("pointer-events", "none");
+
     // Load US map data
     d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
         .then(function (us) {
@@ -188,16 +111,26 @@ function createHighPointsMap() {
                 .attr("r", 5)
                 .on("mouseover", function (event, d) {
                     d3.select(this).attr("r", 8);
-                    svg.append("text")
-                        .attr("class", "tooltip")
-                        .attr("x", projection(d.coords)[0] + 10)
-                        .attr("y", projection(d.coords)[1] - 10)
-                        .text(`${d.state}: ${d.name} (${d.elevation} ft)`);
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html(`<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
                 })
                 .on("mouseout", function () {
                     d3.select(this).attr("r", 5);
-                    svg.selectAll(".tooltip").remove();
-                });
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                })
+                .on("click", function (event, d) {
+                    if (d.visited) {
+                        const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
+                        window.open(wikiUrl, '_blank');
+                    }
+                })
+                .style("cursor", d => d.visited ? "pointer" : "default");
         })
         .catch(function (error) {
             console.error("Error loading or parsing data:", error);
@@ -205,19 +138,153 @@ function createHighPointsMap() {
         });
 }
 
+
 function displayHighPointsList() {
     const highPointsContainer = document.getElementById('high-points-container');
-    highPoints.forEach(point => {
-        const pointElement = document.createElement('div');
-        pointElement.className = `high-point ${point.visited ? 'visited' : ''}`;
-        pointElement.innerHTML = `
-            <strong>${point.state}</strong>: ${point.name}<br>
-            Elevation: ${point.elevation} ft<br>
-            ${point.visited ? '✅ Visited' : '⏳ Not visited'}
+
+    // Sort high points by elevation (highest to lowest)
+    const sortedHighPoints = highPoints.sort((a, b) => b.elevation - a.elevation);
+
+    // Create the table
+    const table = document.createElement('table');
+    table.className = 'high-points-table';
+
+    // Create table header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th>Status</th>
+            <th>Rank</th>
+            <th>Peak Name</th>
+            <th>State</th>
+            <th>Elevation (ft)</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+
+    // Create table body
+    const tbody = document.createElement('tbody');
+    sortedHighPoints.forEach((point, index) => {
+        const row = document.createElement('tr');
+        row.className = point.visited ? 'visited' : 'not-visited';
+        row.innerHTML = `
+            <td>${point.visited ? '✅' : '⬜'}</td>
+            <td>${index + 1}</td>
+            <td>${point.name}</td>
+            <td>${point.state}</td>
+            <td>${point.elevation.toLocaleString()}</td>
         `;
-        highPointsContainer.appendChild(pointElement);
+        tbody.appendChild(row);
     });
+    table.appendChild(tbody);
+
+    highPointsContainer.appendChild(table);
 }
+
+// Define your visited and not visited cities
+const cities = [
+    { name: "New York City", state: "NY", coords: [-74.006, 40.7128], visited: true },
+    { name: "Los Angeles", state: "CA", coords: [-118.2437, 34.0522], visited: true },
+    { name: "Chicago", state: "IL", coords: [-87.6298, 41.8781], visited: true },
+    { name: "Dallas", state: "TX", coords: [-96.7970, 32.7767], visited: true },
+    { name: "Houston", state: "TX", coords: [-95.3698, 29.7604], visited: true },
+    { name: "Atlanta", state: "GA", coords: [-84.3880, 33.7490], visited: true },
+    { name: "Washington DC", state: "DC", coords: [-77.0369, 38.9072], visited: true },
+    { name: "Philadelphia", state: "PA", coords: [-75.1652, 39.9526], visited: true },
+    { name: "Miami", state: "FL", coords: [-80.1918, 25.7617], visited: true },
+    { name: "Phoenix", state: "AZ", coords: [-112.0740, 33.4484], visited: true },
+    { name: "Boston", state: "MA", coords: [-71.0589, 42.3601], visited: true },
+    { name: "Riverside", state: "CA", coords: [-117.3961, 33.9806], visited: true },
+    { name: "San Francisco", state: "CA", coords: [-122.4194, 37.7749], visited: true },
+    { name: "Detroit", state: "MI", coords: [-83.0458, 42.3314], visited: true },
+    { name: "Seattle", state: "WA", coords: [-122.3321, 47.6062], visited: true },
+    { name: "Tampa", state: "FL", coords: [-82.4572, 27.9506], visited: true },
+    { name: "San Diego", state: "CA", coords: [-117.1611, 32.7157], visited: true },
+    { name: "Denver", state: "CO", coords: [-104.9903, 39.7392], visited: true },
+    { name: "Baltimore", state: "MD", coords: [-76.6122, 39.2904], visited: true },
+    { name: "Orlando", state: "FL", coords: [-81.3792, 28.5383], visited: true },
+    { name: "Charlotte", state: "NC", coords: [-80.8431, 35.2271], visited: true },
+    { name: "San Antonio", state: "TX", coords: [-98.4936, 29.4241], visited: true },
+    { name: "Portland", state: "OR", coords: [-122.6784, 45.5152], visited: true },
+    { name: "Austin", state: "TX", coords: [-97.7431, 30.2672], visited: true },
+    { name: "Pittsburgh", state: "PA", coords: [-79.9959, 40.4406], visited: true },
+    { name: "Las Vegas", state: "NV", coords: [-115.1398, 36.1699], visited: true },
+    { name: "Cincinnati", state: "OH", coords: [-84.5120, 39.1031], visited: true },
+    { name: "Columbus", state: "OH", coords: [-82.9988, 39.9612], visited: true },
+    { name: "Cleveland", state: "OH", coords: [-81.6944, 41.4993], visited: true },
+    { name: "Nashville", state: "TN", coords: [-86.7816, 36.1627], visited: true },
+    { name: "San Jose", state: "CA", coords: [-121.8863, 37.3382], visited: true },
+    { name: "Virginia Beach", state: "VA", coords: [-75.9780, 36.8529], visited: true },
+    { name: "Raleigh", state: "NC", coords: [-78.6382, 35.7796], visited: true },
+    { name: "Oklahoma City", state: "OK", coords: [-97.5164, 35.4676], visited: true },
+    { name: "Richmond", state: "VA", coords: [-77.4360, 37.5407], visited: true },
+    { name: "Salt Lake City", state: "UT", coords: [-111.8910, 40.7608], visited: true },
+    { name: "Buffalo", state: "NY", coords: [-78.8784, 42.8864], visited: true },
+    { name: "Tucson", state: "AZ", coords: [-110.9265, 32.2226], visited: true },
+    { name: "Rochester", state: "NY", coords: [-77.6109, 43.1566], visited: true },
+    { name: "Tulsa", state: "OK", coords: [-95.9928, 36.1540], visited: true },
+    { name: "Greenville", state: "SC", coords: [-82.3940, 34.8526], visited: true },
+    { name: "New Orleans", state: "LA", coords: [-90.0715, 29.9511], visited: true },
+    { name: "Knoxville", state: "TN", coords: [-83.9207, 35.9606], visited: true },
+    { name: "Albuquerque", state: "NM", coords: [-106.6504, 35.0844], visited: true },
+    { name: "Sarasota", state: "FL", coords: [-82.5308, 27.3364], visited: true },
+    { name: "Albany", state: "NY", coords: [-73.7562, 42.6526], visited: true },
+    { name: "Baton Rouge", state: "LA", coords: [-91.1403, 30.4515], visited: true },
+    { name: "Allentown", state: "PA", coords: [-75.4902, 40.6084], visited: true },
+    { name: "El Paso", state: "TX", coords: [-106.4850, 31.7619], visited: true },
+    { name: "Columbia", state: "SC", coords: [-81.0348, 34.0007], visited: true },
+    { name: "Oxnard", state: "CA", coords: [-119.1792, 34.1975], visited: true },
+    { name: "Boise", state: "ID", coords: [-116.2023, 43.6150], visited: true },
+    { name: "Dayton", state: "OH", coords: [-84.1916, 39.7589], visited: true },
+    { name: "Greensboro", state: "NC", coords: [-79.7920, 36.0726], visited: true },
+    { name: "Colorado Springs", state: "CO", coords: [-104.8214, 38.8339], visited: true },
+    { name: "Little Rock", state: "AR", coords: [-92.2896, 34.7465], visited: true },
+    { name: "Provo", state: "UT", coords: [-111.6585, 40.2338], visited: true },
+    { name: "Poughkeepsie", state: "NY", coords: [-73.9215, 41.7066], visited: true },
+    { name: "Akron", state: "OH", coords: [-81.5190, 41.0814], visited: true },
+    { name: "Winston-Salem", state: "NC", coords: [-80.2442, 36.0999], visited: true },
+    { name: "Ogden", state: "UT", coords: [-111.9738, 41.2230], visited: true },
+    { name: "Syracuse", state: "NY", coords: [-76.1474, 43.0481], visited: true },
+    { name: "Durham", state: "NC", coords: [-78.8986, 35.9940], visited: true },
+    { name: "Harrisburg", state: "PA", coords: [-76.8867, 40.2732], visited: true },
+    { name: "Toledo", state: "OH", coords: [-83.5379, 41.6528], visited: true },
+
+    { name: "Minneapolis", state: "MN", coords: [-93.2650, 44.9778], visited: false },
+    { name: "St. Louis", state: "MO", coords: [-90.1994, 38.6270], visited: false },
+    { name: "Sacramento", state: "CA", coords: [-121.4944, 38.5816], visited: false },
+    { name: "Kansas City", state: "MO", coords: [-94.5786, 39.0997], visited: false },
+    { name: "Jacksonville", state: "FL", coords: [-81.6557, 30.3322], visited: false },
+    { name: "Providence", state: "RI", coords: [-71.4128, 41.8240], visited: false },
+    { name: "Milwaukee", state: "WI", coords: [-87.9065, 43.0389], visited: false },
+    { name: "Indianapolis", state: "IN", coords: [-86.1581, 39.7684], visited: false },
+    { name: "Louisville", state: "KY", coords: [-85.7585, 38.2527], visited: false },
+    { name: "Memphis", state: "TN", coords: [-90.0490, 35.1495], visited: false },
+    { name: "Birmingham", state: "AL", coords: [-86.8025, 33.5186], visited: false },
+    { name: "Fresno", state: "CA", coords: [-119.7871, 36.7378], visited: false },
+    { name: "Grand Rapids", state: "MI", coords: [-85.6681, 42.9634], visited: false },
+    { name: "Hartford", state: "CT", coords: [-72.6823, 41.7658], visited: false },
+    { name: "Honolulu", state: "HI", coords: [-157.8583, 21.3069], visited: false },
+    { name: "Omaha", state: "NE", coords: [-95.9345, 41.2565], visited: false },
+    { name: "Bridgeport", state: "CT", coords: [-73.1952, 41.1865], visited: false },
+    { name: "Bakersfield", state: "CA", coords: [-119.0187, 35.3733], visited: false },
+    { name: "McAllen", state: "TX", coords: [-98.2300, 26.2034], visited: false },
+    { name: "Worcester", state: "MA", coords: [-71.8023, 42.2626], visited: false },
+    { name: "Charleston", state: "SC", coords: [-79.9311, 32.7765], visited: false },
+    { name: "Cape Coral", state: "FL", coords: [-81.9495, 26.5629], visited: false },
+    { name: "Lakeland", state: "FL", coords: [-81.9498, 28.0395], visited: false },
+    { name: "Stockton", state: "CA", coords: [-121.2908, 37.9577], visited: false },
+    { name: "Des Moines", state: "IA", coords: [-93.6091, 41.5868], visited: false },
+    { name: "Deltona", state: "FL", coords: [-81.2636, 28.9005], visited: false },
+    { name: "Madison", state: "WI", coords: [-89.4012, 43.0731], visited: false },
+    { name: "Wichita", state: "KS", coords: [-97.3375, 37.6872], visited: false },
+    { name: "Palm Bay", state: "FL", coords: [-80.5887, 28.0345], visited: false },
+    { name: "Augusta", state: "GA", coords: [-82.0107, 33.4735], visited: false },
+    { name: "Jackson", state: "MS", coords: [-90.1848, 32.2988], visited: false },
+    { name: "Spokane", state: "WA", coords: [-117.4260, 47.6588], visited: false },
+    { name: "Fayetteville", state: "AR", coords: [-94.1574, 36.0626], visited: false },
+    { name: "Chattanooga", state: "TN", coords: [-85.3097, 35.0456], visited: false },
+    { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: false }
+];
 
 const highPoints = [
     { state: "AK", name: "Denali", elevation: 20310, visited: false, coords: [-151.0063, 63.0695] },

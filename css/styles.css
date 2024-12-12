@@ -461,6 +461,55 @@ button:hover,
 }
 
 .tooltip {
-    font-size: 12px;
+    position: absolute;
+    text-align: center;
+    padding: 8px;
+    font: 12px sans-serif;
+    background: white;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+    color: black;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.tooltip strong {
     font-weight: bold;
+}
+
+.high-points-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.high-points-table th,
+.high-points-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.high-points-table th {
+    background-color: rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+}
+
+.high-points-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.high-points-table tr.visited {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.high-points-table tr.visited:hover {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+.high-points-table td:first-child,
+.high-points-table td:nth-child(2) {
+    text-align: center;
 }
