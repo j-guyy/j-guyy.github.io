@@ -6,35 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Map - My Travels</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        #us-map {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .state {
-            fill: #ccc;
-            stroke: #fff;
-            stroke-width: 1px;
-        }
-
-        .city-dot {
-            stroke: #fff;
-            stroke-width: 1px;
-        }
-
-        .visited {
-            fill: #4CAF50;
-            cursor: pointer;
-        }
-
-        .not-visited {
-            fill: #f44336;
-        }
-    </style>
 </head>
 
 <body class="map-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
     <nav>
         <ul>
             <li><a href="index.html">Home</a></li>
@@ -43,12 +20,35 @@
             <li><a href="interactive-map.html" class="active">Interactive Map</a></li>
         </ul>
     </nav>
-    <div class="container">
-        <h1>Interactive Travel Map</h1>
-        <p>Green dots represent cities I've visited. Click them to learn more. Red dots are cities I hope to visit
-            someday!</p>
-        <div id="us-map"></div>
+
+    <div class="map-content">
+        <div class="map-hero">
+            <h1>Interactive Travel Map</h1>
+        </div>
+
+        <div class="map-section">
+            <h2>My Travel Experiences</h2>
+            <p class="map-description">Green dots represent cities I've visited. Click them to learn more. Red dots are
+                cities I hope to visit someday!</p>
+            <div class="map-container">
+                <div id="us-map"></div>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <h2>US State High Points</h2>
+            <p class="map-description">Tracking my progress on visiting the highest point in each US state.</p>
+            <div id="high-points-container"></div>
+        </div>
+
+        <div class="map-section">
+            <h2>US State High Points</h2>
+            <p class="map-description">Highest points in each US state. Green dots are visited, red dots are yet to be
+                conquered!</p>
+            <div id="high-points-map"></div>
+        </div>
     </div>
+
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     <script src="js/interactive-map.js"></script>
