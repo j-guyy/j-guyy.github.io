@@ -90,7 +90,7 @@ function handleMouseOver(element, event, d, tooltip, type) {
 
     let tooltipContent = type === 'metro'
         ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`
-        : `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Visited' : 'Not visited'}`;
+        : `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not summited'}`;
 
     tooltip.html(tooltipContent)
         .style("left", (event.pageX + 10) + "px")
