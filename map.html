@@ -17,7 +17,7 @@
             <li><a href="index.html">Home</a></li>
             <li><a href="about.html">About Me</a></li>
             <li><a href="travels.html">Travels</a></li>
-            <li><a href="interactive-map.html" class="active">Interactive Map</a></li>
+            <li><a href="map.html" class="active">Interactive Map</a></li>
         </ul>
     </nav>
 
@@ -27,11 +27,12 @@
         </div>
 
         <div class="map-section">
-            <h2>100 Largest US Metros</h2>
-            <p class="map-description">Green dots represent metros I've visited. Click them to learn more. Red dots are
-                not yet visited.</p>
+            <h2>US Metros and State High Points</h2>
+            <p class="map-description">Green symbols represent visited locations, red symbols represent not yet visited.
+                Circles
+                are metros, triangles are state high points. Click for more information.</p>
             <div class="map-container">
-                <div id="us-map"></div>
+                <div id="combined-map"></div>
             </div>
         </div>
 
@@ -41,17 +42,11 @@
             <div id="high-points-container"></div>
         </div>
 
-        <div class="map-section">
-            <h2>US State High Points</h2>
-            <p class="map-description">Highest points in each US state. Green dots have been summited, red dots have
-                not.</p>
-            <div id="high-points-map"></div>
-        </div>
     </div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-    <script src="js/interactive-map.js"></script>
+    <script src="js/map.js"></script>
 </body>
 
 </html>

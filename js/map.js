@@ -1,14 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
-    createCitiesMap();
-    createHighPointsMap();
+    createCombinedMap();
     displayHighPointsList();
 });
 
-function createCitiesMap() {
+function createCombinedMap() {
     const width = 960;
     const height = 600;
 
-    const svg = d3.select("#us-map")
+    const svg = d3.select("#combined-map")
         .append("svg")
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
@@ -20,7 +19,7 @@ function createCitiesMap() {
     const path = d3.geoPath().projection(projection);
 
     // Create a tooltip div
-    const tooltip = d3.select("#us-map").append("div")
+    const tooltip = d3.select("#combined-map").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0)
         .style("position", "absolute")
@@ -36,6 +35,7 @@ function createCitiesMap() {
                 .attr("class", "state")
                 .attr("d", path);
 
+            // Add metros (circles)
             svg.selectAll(".city-dot")
                 .data(cities)
                 .enter().append("circle")
@@ -44,98 +44,67 @@ function createCitiesMap() {
                 .attr("cy", d => projection(d.coords)[1])
                 .attr("r", 5)
                 .on("mouseover", function (event, d) {
-                    d3.select(this).attr("r", 8);
-                    tooltip.transition()
-                        .duration(200)
-                        .style("opacity", .9);
-                    tooltip.html(`<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 28) + "px");
+                    handleMouseOver(this, event, d, tooltip, 'metro');
                 })
                 .on("mouseout", function () {
-                    d3.select(this).attr("r", 5);
-                    tooltip.transition()
-                        .duration(500)
-                        .style("opacity", 0);
+                    handleMouseOut(this, tooltip);
                 })
                 .on("click", function (event, d) {
-                    if (d.visited) {
-                        window.open(`https://en.wikipedia.org/wiki/${d.name},_${d.state}`, '_blank');
-                    }
+                    handleClick(d, 'metro');
+                });
+
+            // Add high points (triangles)
+            svg.selectAll(".high-point-triangle")
+                .data(highPoints)
+                .enter().append("path")
+                .attr("class", d => `high-point-triangle ${d.visited ? 'visited' : 'not-visited'}`)
+                .attr("d", d3.symbol().type(d3.symbolTriangle).size(100))
+                .attr("transform", d => `translate(${projection(d.coords)})`)
+                .on("mouseover", function (event, d) {
+                    handleMouseOver(this, event, d, tooltip, 'highpoint');
+                })
+                .on("mouseout", function () {
+                    handleMouseOut(this, tooltip);
+                })
+                .on("click", function (event, d) {
+                    handleClick(d, 'highpoint');
                 });
         })
         .catch(function (error) {
             console.error("Error loading or parsing data:", error);
-            document.getElementById("us-map").innerHTML = "Error loading map. Please try again later.";
+            document.getElementById("combined-map").innerHTML = "Error loading map. Please try again later.";
         });
 }
 
-function createHighPointsMap() {
-    const width = 960;
-    const height = 600;
+function handleMouseOver(element, event, d, tooltip, type) {
+    d3.select(element).attr("r", 8);
+    tooltip.transition()
+        .duration(200)
+        .style("opacity", .9);
 
-    const svg = d3.select("#high-points-map")
-        .append("svg")
-        .attr("viewBox", `0 0 ${width} ${height}`)
-        .attr("preserveAspectRatio", "xMidYMid meet");
+    let tooltipContent = type === 'metro'
+        ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`
+        : `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Visited' : 'Not visited'}`;
 
-    const projection = d3.geoAlbersUsa()
-        .translate([width / 2, height / 2])
-        .scale(1200);
+    tooltip.html(tooltipContent)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+}
 
-    const path = d3.geoPath().projection(projection);
+function handleMouseOut(element, tooltip) {
+    d3.select(element).attr("r", 5);
+    tooltip.transition()
+        .duration(500)
+        .style("opacity", 0);
+}
 
-    // Create a tooltip div
-    const tooltip = d3.select("#high-points-map").append("div")
-        .attr("class", "tooltip")
-        .style("opacity", 0)
-        .style("position", "absolute")
-        .style("pointer-events", "none");
-
-    // Load US map data
-    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
-        .then(function (us) {
-            svg.append("g")
-                .selectAll("path")
-                .data(topojson.feature(us, us.objects.states).features)
-                .enter().append("path")
-                .attr("class", "state")
-                .attr("d", path);
-
-            svg.selectAll(".high-point-dot")
-                .data(highPoints)
-                .enter().append("circle")
-                .attr("class", d => `high-point-dot ${d.visited ? 'visited' : 'not-visited'}`)
-                .attr("cx", d => projection(d.coords)[0])
-                .attr("cy", d => projection(d.coords)[1])
-                .attr("r", 5)
-                .on("mouseover", function (event, d) {
-                    d3.select(this).attr("r", 8);
-                    tooltip.transition()
-                        .duration(200)
-                        .style("opacity", .9);
-                    tooltip.html(`<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft`)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 28) + "px");
-                })
-                .on("mouseout", function () {
-                    d3.select(this).attr("r", 5);
-                    tooltip.transition()
-                        .duration(500)
-                        .style("opacity", 0);
-                })
-                .on("click", function (event, d) {
-                    if (d.visited) {
-                        const wikiUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
-                        window.open(wikiUrl, '_blank');
-                    }
-                })
-                .style("cursor", d => d.visited ? "pointer" : "default");
-        })
-        .catch(function (error) {
-            console.error("Error loading or parsing data:", error);
-            document.getElementById("high-points-map").innerHTML = "Error loading map. Please try again later.";
-        });
+function handleClick(d, type) {
+    if (d.visited) {
+        let url = type === 'metro'
+            ? `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)},_${d.state}`
+            : `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
+        window.open(url, '_blank');
+    }
 }
 
 
