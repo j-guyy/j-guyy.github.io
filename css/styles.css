@@ -350,7 +350,7 @@ button:hover,
 
 .map-section {
     width: 90%;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 40px auto;
     padding: 30px;
     background-color: rgba(45, 45, 45, 0.8);
@@ -516,8 +516,9 @@ button:hover,
 
 #combined-map {
     width: 100%;
-    height: 600px;
-    max-width: 1000px;
+    height: 80vh;
+    max-height: 800px;
+    /* This prevents it from becoming too tall on very large screens */
     margin: 0 auto;
 }
 
@@ -532,4 +533,100 @@ button:hover,
 
 .high-point-triangle.not-visited {
     fill: #f44336;
+}
+
+.map-legend-container {
+    display: flex;
+    align-items: stretch;
+    /* This will make child elements stretch to full height */
+    gap: 20px;
+    height: 80vh;
+    /* Match the map height */
+    max-height: 800px;
+    /* Match the map max-height */
+}
+
+.map-container {
+    flex: 1;
+    height: 100%;
+    /* Take full height of the container */
+}
+
+#map-legend {
+    flex: 0 0 auto;
+    align-self: center;
+    /* This will center the legend vertically */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#map-legend svg {
+    font-family: Arial, sans-serif;
+    width: 150px;
+    /* Adjust this value to make the legend smaller */
+    height: 100px;
+    /* Adjust this value to make the legend smaller */
+}
+
+.legend-item text {
+    fill: #333;
+    font-size: 10px;
+    /* Smaller font size */
+}
+
+@media (min-width: 1200px) {
+    .map-section {
+        padding: 40px;
+    }
+
+    #combined-map {
+        height: 85vh;
+        max-height: 1000px;
+    }
+
+    .map-legend-container {
+        height: 85vh;
+        max-height: 1000px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .map-section {
+        padding: 50px;
+    }
+
+    #combined-map {
+        height: 90vh;
+        max-height: 1200px;
+    }
+
+    .map-legend-container {
+        height: 90vh;
+        max-height: 1200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .map-section {
+        padding: 20px;
+    }
+
+    #combined-map {
+        height: 60vh;
+    }
+
+    .map-legend-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    #map-legend {
+        width: 100%;
+        margin-top: 20px;
+    }
 }

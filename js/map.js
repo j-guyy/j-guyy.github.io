@@ -47,7 +47,7 @@ function createCombinedMap() {
                     handleMouseOver(this, event, d, tooltip, 'metro');
                 })
                 .on("mouseout", function () {
-                    handleMouseOut(this, tooltip);
+                    handleMouseOut(this, tooltip, 'metro');
                 })
                 .on("click", function (event, d) {
                     handleClick(d, 'metro');
@@ -64,11 +64,12 @@ function createCombinedMap() {
                     handleMouseOver(this, event, d, tooltip, 'highpoint');
                 })
                 .on("mouseout", function () {
-                    handleMouseOut(this, tooltip);
+                    handleMouseOut(this, tooltip, 'highpoint');
                 })
                 .on("click", function (event, d) {
                     handleClick(d, 'highpoint');
                 });
+            createLegend();
         })
         .catch(function (error) {
             console.error("Error loading or parsing data:", error);
@@ -77,7 +78,12 @@ function createCombinedMap() {
 }
 
 function handleMouseOver(element, event, d, tooltip, type) {
-    d3.select(element).attr("r", 8);
+    if (type === 'metro') {
+        d3.select(element).attr("r", 8);
+    } else if (type === 'highpoint') {
+        d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(200));
+    }
+
     tooltip.transition()
         .duration(200)
         .style("opacity", .9);
@@ -91,8 +97,13 @@ function handleMouseOver(element, event, d, tooltip, type) {
         .style("top", (event.pageY - 28) + "px");
 }
 
-function handleMouseOut(element, tooltip) {
-    d3.select(element).attr("r", 5);
+function handleMouseOut(element, tooltip, type) {
+    if (type === 'metro') {
+        d3.select(element).attr("r", 5);
+    } else if (type === 'highpoint') {
+        d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(100));
+    }
+
     tooltip.transition()
         .duration(500)
         .style("opacity", 0);
@@ -100,9 +111,31 @@ function handleMouseOut(element, tooltip) {
 
 function handleClick(d, type) {
     if (d.visited) {
-        let url = type === 'metro'
-            ? `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)},_${d.state}`
-            : `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
+        let url;
+        if (type === 'metro') {
+            url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)},_${d.state}`;
+        } else if (type === 'highpoint') {
+            const customUrls = {
+                "UT": "https://en.wikipedia.org/wiki/Kings_Peak_(Utah)",
+                "NM": "https://en.wikipedia.org/wiki/Wheeler_Peak_(New_Mexico)",
+                "NV": "https://en.wikipedia.org/wiki/Boundary_Peak_(Nevada)",
+                "MT": "https://en.wikipedia.org/wiki/Granite_Peak_(Montana)",
+                "NH": "https://en.wikipedia.org/wiki/Mount_Washington_(New_Hampshire)",
+                "OK": "https://en.wikipedia.org/wiki/Black_Mesa_(Oklahoma)",
+                "KY": "https://en.wikipedia.org/wiki/Black_Mountain_(Kentucky)",
+                "PA": "https://en.wikipedia.org/wiki/Mount_Davis_(Pennsylvania)",
+                "MN": "https://en.wikipedia.org/wiki/Eagle_Mountain_(Minnesota)",
+                "NJ": "https://en.wikipedia.org/wiki/High_Point_(New_Jersey)",
+                "OH": "https://en.wikipedia.org/wiki/Campbell_Hill_(Ohio)",
+            };
+
+            if (customUrls[d.state]) {
+                url = customUrls[d.state];
+            } else {
+                // Fallback for any highpoints not in the custom list
+                url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
+            }
+        }
         window.open(url, '_blank');
     }
 }
@@ -148,6 +181,50 @@ function displayHighPointsList() {
     table.appendChild(tbody);
 
     highPointsContainer.appendChild(table);
+}
+
+function createLegend() {
+    const legend = d3.select("#map-legend")
+        .append("svg")
+        .attr("width", 180)
+        .attr("height", 100);
+
+    const legendData = [
+        { shape: "circle", color: "#4CAF50", label: "Metro - Visited" },
+        { shape: "circle", color: "#f44336", label: "Metro - Not Visited" },
+        { shape: "triangle", color: "#4CAF50", label: "High Point - Summited" },
+        { shape: "triangle", color: "#f44336", label: "High Point - Not Summited" }
+    ];
+
+    const legendItems = legend.selectAll(".legend-item")
+        .data(legendData)
+        .enter().append("g")
+        .attr("class", "legend-item")
+        .attr("transform", (d, i) => `translate(5, ${i * 25 + 5})`);
+
+    legendItems.each(function (d) {
+        const g = d3.select(this);
+
+        if (d.shape === "circle") {
+            g.append("circle")
+                .attr("cx", 8)
+                .attr("cy", 8)
+                .attr("r", 5)
+                .style("fill", d.color);
+        } else if (d.shape === "triangle") {
+            g.append("path")
+                .attr("d", d3.symbol().type(d3.symbolTriangle).size(50))
+                .attr("transform", "translate(8, 8)")
+                .style("fill", d.color);
+        }
+
+        g.append("text")
+            .attr("x", 20)
+            .attr("y", 12)
+            .text(d.label)
+            .style("font-size", "10px")
+            .attr("alignment-baseline", "middle");
+    });
 }
 
 // Define your visited and not visited cities
