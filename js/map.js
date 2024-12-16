@@ -719,5 +719,7 @@ const nationalParks = [
     { name: "Wrangell-St. Elias", state: "AK", coords: [-142.9857, 61.7104], visited: false },
     { name: "Yellowstone", state: "WY", coords: [-110.5885, 44.4280], visited: true },
     { name: "Yosemite", state: "CA", coords: [-119.5383, 37.8651], visited: false },
-    { name: "Zion", state: "UT", coords: [-113.0263, 37.2982], visited: false }
+    { name: "Zion", state: "UT", coords: [-113.0263, 37.2982], visited: false },
+    { name: "American Samoa", state: "AS", coords: [-90, 27], visited: false },
+    { name: "Virgin Islands", state: "VI", coords: [-88, 26.9], visited: false },
 ];

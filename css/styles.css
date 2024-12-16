@@ -680,6 +680,12 @@ button:hover,
     fill: #f44336;
 }
 
+.national-park-square.special {
+    stroke: #fff;
+    stroke-width: 2px;
+    opacity: 0.7;
+}
+
 .map-controls {
     display: flex;
     justify-content: center;
