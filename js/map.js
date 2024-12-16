@@ -192,24 +192,51 @@ function displayTravelSummary() {
     const tableSelector = document.getElementById('table-selector');
 
     // Calculate summary statistics
+    const stateCount = Object.values(visitedStates).filter(visited => visited).length;
+    const statePercentage = ((stateCount / 50) * 100).toFixed(0);
     const metroCount = cities.filter(city => city.visited).length;
+    const metroPercentage = ((metroCount / cities.length) * 100).toFixed(0);
     const highPointCount = highPoints.filter(point => point.visited).length;
+    const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
     const parkCount = nationalParks.filter(park => park.visited).length;
+    const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
 
     // Display summary statistics
     summaryContainer.innerHTML = `
-        <div class="summary-stats">
-            <div class="summary-stat">
-                <span class="stat-number">${metroCount}</span>
-                <span class="stat-label">out of ${cities.length} metros visited</span>
+        <div class="summary-stats-container">
+            <div class="summary-stat states-summary">
+                <div class="stat-number-container">
+                    <span class="stat-number">${stateCount}</span>
+                    <span class="stat-total">/50</span>
+                    <span class="stat-percentage">(${statePercentage}%)</span>
+                </div>
+                <span class="stat-label">States Visited</span>
             </div>
-            <div class="summary-stat">
-                <span class="stat-number">${highPointCount}</span>
-                <span class="stat-label">out of 50 high points summited</span>
-            </div>
-            <div class="summary-stat">
-                <span class="stat-number">${parkCount}</span>
-                <span class="stat-label">out of ${nationalParks.length} national parks visited</span>
+            <div class="other-stats">
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${metroCount}</span>
+                        <span class="stat-total">/${cities.length}</span>
+                        <span class="stat-percentage">(${metroPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">Largest Metros Visited</span>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${highPointCount}</span>
+                        <span class="stat-total">/50</span>
+                        <span class="stat-percentage">(${highPointPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">High Points Summited</span>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${parkCount}</span>
+                        <span class="stat-total">/${nationalParks.length}</span>
+                        <span class="stat-percentage">(${parkPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">National Parks Visited</span>
+                </div>
             </div>
         </div>
     `;
@@ -723,3 +750,11 @@ const nationalParks = [
     { name: "American Samoa", state: "AS", coords: [-90, 27], visited: false },
     { name: "Virgin Islands", state: "VI", coords: [-88, 26.9], visited: false },
 ];
+
+const visitedStates = {
+    "AL": true, "AK": false, "AZ": true, "AR": true, "CA": true, "CO": true, "CT": true, "DE": true, "FL": true, "GA": true,
+    "HI": false, "ID": true, "IL": true, "IN": true, "IA": false, "KS": false, "KY": true, "LA": true, "ME": true, "MD": true,
+    "MA": true, "MI": true, "MN": false, "MS": true, "MO": false, "MT": true, "NE": true, "NV": true, "NH": true, "NJ": true,
+    "NM": true, "NY": true, "NC": true, "ND": true, "OH": true, "OK": true, "OR": true, "PA": true, "RI": false, "SC": true,
+    "SD": true, "TN": true, "TX": true, "UT": true, "VT": true, "VA": true, "WA": true, "WV": true, "WI": false, "WY": true
+};

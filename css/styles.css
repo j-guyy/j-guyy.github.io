@@ -125,7 +125,6 @@ button:hover,
     left: 0;
     width: 100%;
     height: 150vh;
-    /* Increased to allow for parallax movement */
     background-image: url('/images/background-portrait.jpg');
     background-size: cover;
     background-position: center top;
@@ -222,31 +221,6 @@ button:hover,
     transform: translateY(0);
 }
 
-/* Responsive design for smaller screens */
-@media (max-width: 768px) {
-
-    .info,
-    .info.reverse {
-        flex-direction: column;
-        padding: 20px;
-    }
-
-    .info .text,
-    .info .image {
-        flex: none;
-        width: 100%;
-    }
-
-    .info .text {
-        padding: 20px 0;
-    }
-
-    .info .image {
-        height: 300px;
-        margin-bottom: 20px;
-    }
-}
-
 /* Travels Page */
 
 .travels-page {
@@ -306,19 +280,6 @@ button:hover,
     height: 600px;
 }
 
-/* For smaller screens, adjust the map height */
-@media (max-width: 768px) {
-    .map-container iframe {
-        height: 400px;
-    }
-
-    .travel-section {
-        width: 95%;
-        padding: 20px;
-    }
-}
-
-
 /* Interactive Map Page */
 .map-page {
     position: relative;
@@ -368,10 +329,6 @@ button:hover,
 .map-description {
     color: var(--text-color);
     margin-bottom: 20px;
-}
-
-.map-container {
-    width: 100%;
 }
 
 #us-map {
@@ -424,22 +381,6 @@ button:hover,
     background-color: rgba(76, 175, 80, 0.3);
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .map-section {
-        width: 95%;
-        padding: 20px;
-    }
-
-    #us-map {
-        height: 400px;
-    }
-
-    .high-point {
-        width: calc(50% - 20px);
-    }
-}
-
 #high-points-map {
     width: 100%;
     height: 600px;
@@ -478,29 +419,86 @@ button:hover,
     font-weight: bold;
 }
 
-.summary-stats {
+.summary-stats-container {
     display: flex;
-    justify-content: space-around;
-    margin-bottom: 30px;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 40px;
 }
 
-.summary-stat {
+.states-summary {
+    font-size: 1.5em;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
     text-align: center;
 }
 
+.other-stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.stat-number-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+}
+
 .stat-number {
-    font-size: 48px;
+    font-size: 3em;
     font-weight: bold;
     color: var(--primary-color);
-    display: block;
+}
+
+.stat-total {
+    font-size: 1.5em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 5px;
+}
+
+.stat-percentage {
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 10px;
 }
 
 .stat-label {
-    font-size: 16px;
-    color: var(--text-color);
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Adjust sizes for the states summary */
+.states-summary .stat-number {
+    font-size: 4em;
+}
+
+.states-summary .stat-total {
+    font-size: 2em;
+}
+
+.states-summary .stat-percentage {
+    font-size: 1.2em;
+}
+
+.percentage {
+    font-size: 0.5em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 5px;
 }
 
 .table-controls {
+    margin-top: 40px;
     margin-bottom: 20px;
     text-align: center;
 }
@@ -554,7 +552,6 @@ button:hover,
     width: 100%;
     height: 80vh;
     max-height: 800px;
-    /* This prevents it from becoming too tall on very large screens */
     margin: 0 auto;
 }
 
@@ -574,24 +571,19 @@ button:hover,
 .map-legend-container {
     display: flex;
     align-items: center;
-    /* This will make child elements stretch to full height */
     gap: 20px;
     height: 80vh;
-    /* Match the map height */
     max-height: 800px;
-    /* Match the map max-height */
 }
 
 .map-container {
     flex: 1;
     height: 100%;
-    /* Take full height of the container */
 }
 
 #map-legend {
     flex: 0 0 auto;
     align-self: center;
-    /* This will center the legend vertically */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -604,15 +596,125 @@ button:hover,
 #map-legend svg {
     font-family: Arial, sans-serif;
     width: 150px;
-    /* Adjust this value to make the legend smaller */
     height: 160px;
-    /* Adjust this value to make the legend smaller */
 }
 
 .legend-item text {
     fill: #333;
     font-size: 10px;
-    /* Smaller font size */
+}
+
+.national-park-square {
+    stroke: #fff;
+    stroke-width: 1px;
+}
+
+.national-park-square.visited {
+    fill: #4CAF50;
+}
+
+.national-park-square.not-visited {
+    fill: #f44336;
+}
+
+.map-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.map-controls button {
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.map-controls button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.map-controls button.inactive {
+    background-color: #888;
+    opacity: 0.7;
+}
+
+.map-controls button.inactive:hover {
+    background-color: #999;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+
+    .info,
+    .info.reverse {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .info .text,
+    .info .image {
+        flex: none;
+        width: 100%;
+    }
+
+    .info .text {
+        padding: 20px 0;
+    }
+
+    .info .image {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+
+    .map-container iframe {
+        height: 400px;
+    }
+
+    .travel-section {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .map-section {
+        width: 95%;
+        padding: 20px;
+    }
+
+    #us-map {
+        height: 400px;
+    }
+
+    .high-point {
+        width: calc(50% - 20px);
+    }
+
+    #combined-map {
+        height: 60vh;
+    }
+
+    .map-legend-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    #map-legend {
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .other-stats {
+        flex-direction: column;
+    }
+
+    .summary-stat {
+        margin-bottom: 20px;
+    }
 }
 
 @media (min-width: 1200px) {
@@ -645,74 +747,4 @@ button:hover,
         height: 90vh;
         max-height: 1200px;
     }
-}
-
-@media (max-width: 768px) {
-    .map-section {
-        padding: 20px;
-    }
-
-    #combined-map {
-        height: 60vh;
-    }
-
-    .map-legend-container {
-        flex-direction: column;
-        height: auto;
-    }
-
-    #map-legend {
-        width: 100%;
-        margin-top: 20px;
-    }
-}
-
-.national-park-square {
-    stroke: #fff;
-    stroke-width: 1px;
-}
-
-.national-park-square.visited {
-    fill: #4CAF50;
-}
-
-.national-park-square.not-visited {
-    fill: #f44336;
-}
-
-.national-park-square.special {
-    stroke: #fff;
-    stroke-width: 2px;
-    opacity: 0.7;
-}
-
-.map-controls {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.map-controls button {
-    padding: 10px 20px;
-    font-size: 1em;
-    cursor: pointer;
-    background-color: var(--primary-color);
-    color: var(--text-color);
-    border: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease, opacity 0.3s ease;
-}
-
-.map-controls button:hover {
-    background-color: var(--primary-hover-color);
-}
-
-.map-controls button.inactive {
-    background-color: #888;
-    opacity: 0.7;
-}
-
-.map-controls button.inactive:hover {
-    background-color: #999;
 }
