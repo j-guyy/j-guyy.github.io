@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     createCombinedMap();
     displayHighPointsList();
+    setupToggleButtons();
 });
 
 function createCombinedMap() {
@@ -69,6 +70,26 @@ function createCombinedMap() {
                 .on("click", function (event, d) {
                     handleClick(d, 'highpoint');
                 });
+
+            // Add national parks (squares)
+            svg.selectAll(".national-park-square")
+                .data(nationalParks)
+                .enter().append("rect")
+                .attr("class", d => `national-park-square ${d.visited ? 'visited' : 'not-visited'}`)
+                .attr("x", d => projection(d.coords)[0] - 5)
+                .attr("y", d => projection(d.coords)[1] - 5)
+                .attr("width", 10)
+                .attr("height", 10)
+                .on("mouseover", function (event, d) {
+                    handleMouseOver(this, event, d, tooltip, 'park');
+                })
+                .on("mouseout", function () {
+                    handleMouseOut(this, tooltip, 'park');
+                })
+                .on("click", function (event, d) {
+                    handleClick(d, 'park');
+                });
+
             createLegend();
         })
         .catch(function (error) {
@@ -82,6 +103,16 @@ function handleMouseOver(element, event, d, tooltip, type) {
         d3.select(element).attr("r", 8);
     } else if (type === 'highpoint') {
         d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(200));
+    } else if (type === 'park') {
+        d3.select(element)
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("x", function () {
+                return parseFloat(d3.select(this).attr("x")) - 2.5;
+            })
+            .attr("y", function () {
+                return parseFloat(d3.select(this).attr("y")) - 2.5;
+            });
     }
 
     tooltip.transition()
@@ -90,7 +121,9 @@ function handleMouseOver(element, event, d, tooltip, type) {
 
     let tooltipContent = type === 'metro'
         ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`
-        : `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not summited'}`;
+        : type === 'highpoint'
+            ? `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not summited'}`
+            : `<strong>${d.name} NP</strong><br/>${d.state}<br/>${d.visited ? 'Visited' : 'Not visited'}`;
 
     tooltip.html(tooltipContent)
         .style("left", (event.pageX + 10) + "px")
@@ -102,6 +135,16 @@ function handleMouseOut(element, tooltip, type) {
         d3.select(element).attr("r", 5);
     } else if (type === 'highpoint') {
         d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(100));
+    } else if (type === 'park') {
+        d3.select(element)
+            .attr("width", 10)
+            .attr("height", 10)
+            .attr("x", function () {
+                return parseFloat(d3.select(this).attr("x")) + 2.5;
+            })
+            .attr("y", function () {
+                return parseFloat(d3.select(this).attr("y")) + 2.5;
+            });
     }
 
     tooltip.transition()
@@ -135,6 +178,8 @@ function handleClick(d, type) {
                 // Fallback for any highpoints not in the custom list
                 url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
             }
+        } else if (type === 'park') {
+            url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}_National_Park`;
         }
         window.open(url, '_blank');
     }
@@ -187,19 +232,22 @@ function createLegend() {
     const legend = d3.select("#map-legend")
         .append("svg")
         .attr("width", 180)
-        .attr("height", 100);
+        .attr("height", 200);
 
     const legendData = [
-        { shape: "circle", color: "#4CAF50", label: "Metro - Visited" },
-        { shape: "circle", color: "#f44336", label: "Metro - Not Visited" },
-        { shape: "triangle", color: "#4CAF50", label: "High Point - Summited" },
-        { shape: "triangle", color: "#f44336", label: "High Point - Not Summited" }
+        { shape: "circle", color: "#4CAF50", label: "Metro - Visited", category: "Metro" },
+        { shape: "circle", color: "#f44336", label: "Metro - Not Visited", category: "Metro" },
+        { shape: "triangle", color: "#4CAF50", label: "High Point - Summited", category: "High Point" },
+        { shape: "triangle", color: "#f44336", label: "High Point - Not Summited", category: "High Point" },
+        { shape: "square", color: "#4CAF50", label: "National Park - Visited", category: "National Park" },
+        { shape: "square", color: "#f44336", label: "National Park - Not Visited", category: "National Park" }
     ];
 
     const legendItems = legend.selectAll(".legend-item")
         .data(legendData)
         .enter().append("g")
         .attr("class", "legend-item")
+        .attr("data-category", d => d.category)
         .attr("transform", (d, i) => `translate(5, ${i * 25 + 5})`);
 
     legendItems.each(function (d) {
@@ -216,6 +264,13 @@ function createLegend() {
                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(50))
                 .attr("transform", "translate(8, 8)")
                 .style("fill", d.color);
+        } else if (d.shape === "square") {
+            g.append("rect")
+                .attr("x", 3)
+                .attr("y", 3)
+                .attr("width", 10)
+                .attr("height", 10)
+                .style("fill", d.color);
         }
 
         g.append("text")
@@ -225,6 +280,53 @@ function createLegend() {
             .style("font-size", "10px")
             .attr("alignment-baseline", "middle");
     });
+}
+
+function setupToggleButtons() {
+    document.getElementById('toggle-metros').addEventListener('click', () => toggleCategory('city-dot', 'toggle-metros', 'Metros'));
+    document.getElementById('toggle-highpoints').addEventListener('click', () => toggleCategory('high-point-triangle', 'toggle-highpoints', 'High Points'));
+    document.getElementById('toggle-parks').addEventListener('click', () => toggleCategory('national-park-square', 'toggle-parks', 'National Parks'));
+}
+
+function toggleCategory(className, buttonId, categoryName) {
+    const elements = document.querySelectorAll(`.${className}`);
+    const button = document.getElementById(buttonId);
+    const isVisible = window.getComputedStyle(elements[0]).display !== 'none';
+
+    elements.forEach(element => {
+        element.style.display = isVisible ? 'none' : '';
+    });
+
+    updateLegend(className, !isVisible);
+    updateButtonState(button, !isVisible, categoryName);
+}
+
+function updateLegend(className, isVisible) {
+    let category = '';
+
+    if (className.includes('city-dot')) {
+        category = 'Metro';
+    } else if (className.includes('high-point-triangle')) {
+        category = 'High Point';
+    } else if (className.includes('national-park-square')) {
+        category = 'National Park';
+    }
+
+    const legendItems = document.querySelectorAll(`#map-legend .legend-item[data-category="${category}"]`);
+    legendItems.forEach(item => {
+        item.style.display = isVisible ? '' : 'none';
+    });
+}
+
+
+function updateButtonState(button, isVisible, categoryName) {
+    if (isVisible) {
+        button.classList.remove('inactive');
+        button.textContent = `Hide ${categoryName}`;
+    } else {
+        button.classList.add('inactive');
+        button.textContent = `Show ${categoryName}`;
+    }
 }
 
 // Define your visited and not visited cities
@@ -383,4 +485,68 @@ const highPoints = [
     { state: "LA", name: "Driskill Mountain", elevation: 535, visited: false, coords: [-92.8972, 32.4251] },
     { state: "DE", name: "Ebright Azimuth", elevation: 448, visited: true, coords: [-75.5220, 39.8362] },
     { state: "FL", name: "Britton Hill", elevation: 345, visited: false, coords: [-86.2814, 30.9833] }
+];
+
+const nationalParks = [
+    { name: "Acadia", state: "ME", coords: [-68.2733, 44.3386], visited: true },
+    { name: "Arches", state: "UT", coords: [-109.5863, 38.7331], visited: true },
+    { name: "Badlands", state: "SD", coords: [-102.3397, 43.8554], visited: true },
+    { name: "Big Bend", state: "TX", coords: [-103.2420, 29.2498], visited: true },
+    { name: "Biscayne", state: "FL", coords: [-80.2100, 25.4824], visited: false },
+    { name: "Black Canyon of the Gunnison", state: "CO", coords: [-107.7242, 38.5754], visited: false },
+    { name: "Bryce Canyon", state: "UT", coords: [-112.1871, 37.5930], visited: false },
+    { name: "Canyonlands", state: "UT", coords: [-109.8783, 38.2000], visited: true },
+    { name: "Capitol Reef", state: "UT", coords: [-111.2615, 38.0877], visited: false },
+    { name: "Carlsbad Caverns", state: "NM", coords: [-104.5571, 32.1478], visited: false },
+    { name: "Channel Islands", state: "CA", coords: [-119.7214, 34.0069], visited: false },
+    { name: "Congaree", state: "SC", coords: [-80.7821, 33.7948], visited: true },
+    { name: "Crater Lake", state: "OR", coords: [-122.1685, 42.9446], visited: false },
+    { name: "Cuyahoga Valley", state: "OH", coords: [-81.5712, 41.2808], visited: true },
+    { name: "Death Valley", state: "CA", coords: [-116.8162, 36.5054], visited: false },
+    { name: "Denali", state: "AK", coords: [-151.1926, 63.3333], visited: false },
+    { name: "Dry Tortugas", state: "FL", coords: [-82.8732, 24.6285], visited: false },
+    { name: "Everglades", state: "FL", coords: [-80.9000, 25.2866], visited: false },
+    { name: "Gates of the Arctic", state: "AK", coords: [-153.3045, 67.7805], visited: false },
+    { name: "Gateway Arch", state: "MO", coords: [-90.1847, 38.6247], visited: false },
+    { name: "Glacier", state: "MT", coords: [-113.7870, 48.7596], visited: false },
+    { name: "Glacier Bay", state: "AK", coords: [-136.8407, 58.6658], visited: false },
+    { name: "Grand Canyon", state: "AZ", coords: [-112.1401, 36.0544], visited: false },
+    { name: "Grand Teton", state: "WY", coords: [-110.6818, 43.7904], visited: true },
+    { name: "Great Basin", state: "NV", coords: [-114.2631, 38.9831], visited: false },
+    { name: "Great Sand Dunes", state: "CO", coords: [-105.5943, 37.7916], visited: true },
+    { name: "Great Smoky Mountains", state: "TN", coords: [-83.5369, 35.6131], visited: true },
+    { name: "Guadalupe Mountains", state: "TX", coords: [-104.8614, 31.9231], visited: true },
+    { name: "Haleakalā", state: "HI", coords: [-156.1711, 20.7204], visited: false },
+    { name: "Hawaii Volcanoes", state: "HI", coords: [-155.2864, 19.4194], visited: false },
+    { name: "Hot Springs", state: "AR", coords: [-93.0552, 34.5217], visited: false },
+    { name: "Indiana Dunes", state: "IN", coords: [-87.0972, 41.6533], visited: true },
+    { name: "Isle Royale", state: "MI", coords: [-88.5558, 48.0000], visited: false },
+    { name: "Joshua Tree", state: "CA", coords: [-115.9010, 33.8734], visited: true },
+    { name: "Katmai", state: "AK", coords: [-155.0122, 58.6126], visited: false },
+    { name: "Kenai Fjords", state: "AK", coords: [-149.6513, 59.9226], visited: false },
+    { name: "Kings Canyon", state: "CA", coords: [-118.5551, 36.8879], visited: false },
+    { name: "Kobuk Valley", state: "AK", coords: [-159.2837, 67.3556], visited: false },
+    { name: "Lake Clark", state: "AK", coords: [-153.4177, 60.9672], visited: false },
+    { name: "Lassen Volcanic", state: "CA", coords: [-121.4076, 40.4977], visited: false },
+    { name: "Mammoth Cave", state: "KY", coords: [-86.1000, 37.1862], visited: true },
+    { name: "Mesa Verde", state: "CO", coords: [-108.4618, 37.2309], visited: true },
+    { name: "Mount Rainier", state: "WA", coords: [-121.7269, 46.8800], visited: true },
+    { name: "New River Gorge", state: "WV", coords: [-81.0543, 38.0658], visited: true },
+    { name: "North Cascades", state: "WA", coords: [-121.2069, 48.7718], visited: true },
+    { name: "Olympic", state: "WA", coords: [-123.4979, 47.8021], visited: true },
+    { name: "Petrified Forest", state: "AZ", coords: [-109.7920, 35.0657], visited: true },
+    { name: "Pinnacles", state: "CA", coords: [-121.1825, 36.4906], visited: false },
+    { name: "Redwood", state: "CA", coords: [-124.0046, 41.2132], visited: true },
+    { name: "Rocky Mountain", state: "CO", coords: [-105.6836, 40.3428], visited: true },
+    { name: "Saguaro", state: "AZ", coords: [-110.5885, 32.2967], visited: true },
+    { name: "Sequoia", state: "CA", coords: [-118.5657, 36.4864], visited: false },
+    { name: "Shenandoah", state: "VA", coords: [-78.4679, 38.4755], visited: true },
+    { name: "Theodore Roosevelt", state: "ND", coords: [-103.4300, 46.9790], visited: false },
+    { name: "Voyageurs", state: "MN", coords: [-92.8383, 48.4839], visited: false },
+    { name: "White Sands", state: "NM", coords: [-106.3257, 32.7872], visited: true },
+    { name: "Wind Cave", state: "SD", coords: [-103.4213, 43.5724], visited: false },
+    { name: "Wrangell-St. Elias", state: "AK", coords: [-142.9857, 61.7104], visited: false },
+    { name: "Yellowstone", state: "WY", coords: [-110.5885, 44.4280], visited: true },
+    { name: "Yosemite", state: "CA", coords: [-119.5383, 37.8651], visited: false },
+    { name: "Zion", state: "UT", coords: [-113.0263, 37.2982], visited: false }
 ];

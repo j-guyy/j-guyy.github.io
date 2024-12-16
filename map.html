@@ -23,27 +23,31 @@
 
     <div class="map-content">
         <div class="map-hero">
-            <h1>Interactive Travel Maps</h1>
+            <h1>Interactive Travel Map</h1>
         </div>
 
         <div class="map-section">
-            <h2>US Metros and State High Points</h2>
-            <p class="map-description">Green symbols represent visited locations, red symbols represent not yet visited.
-                Circles
-                are metros, triangles are state high points. Click for more information.</p>
+            <h2>Justin's US Travel Map</h2>
+            <p class="map-description">Map of my current progress on all metros, high points, and national parks</p>
             <div class="map-legend-container">
                 <div class="map-container">
                     <div id="combined-map"></div>
                 </div>
                 <div id="map-legend"></div>
             </div>
+            <div class="map-controls">
+                <button id="toggle-metros">Hide Metros</button>
+                <button id="toggle-highpoints">Hide High Points</button>
+                <button id="toggle-parks">Hide National Parks</button>
+            </div>
         </div>
+    </div>
 
-        <div class="map-section">
-            <h2>US State High Points Checklist</h2>
-            <p class="map-description">My progress in summiting the highest mountain in each of the 50 states.</p>
-            <div id="high-points-container"></div>
-        </div>
+    <div class="map-section">
+        <h2>US State High Points Checklist</h2>
+        <p class="map-description">My progress in summiting the highest mountain in each of the 50 states.</p>
+        <div id="high-points-container"></div>
+    </div>
 
     </div>
 

@@ -537,7 +537,7 @@ button:hover,
 
 .map-legend-container {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     /* This will make child elements stretch to full height */
     gap: 20px;
     height: 80vh;
@@ -569,7 +569,7 @@ button:hover,
     font-family: Arial, sans-serif;
     width: 150px;
     /* Adjust this value to make the legend smaller */
-    height: 100px;
+    height: 160px;
     /* Adjust this value to make the legend smaller */
 }
 
@@ -629,4 +629,48 @@ button:hover,
         width: 100%;
         margin-top: 20px;
     }
+}
+
+.national-park-square {
+    stroke: #fff;
+    stroke-width: 1px;
+}
+
+.national-park-square.visited {
+    fill: #4CAF50;
+}
+
+.national-park-square.not-visited {
+    fill: #f44336;
+}
+
+.map-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.map-controls button {
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.map-controls button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.map-controls button.inactive {
+    background-color: #888;
+    opacity: 0.7;
+}
+
+.map-controls button.inactive:hover {
+    background-color: #999;
 }
