@@ -423,58 +423,72 @@ button:hover,
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 40px;
     margin-bottom: 40px;
+    width: 100%;
 }
 
-.states-summary {
-    font-size: 1.5em;
+.states-summary,
+.summary-stat {
     background-color: rgba(255, 255, 255, 0.1);
     padding: 20px;
     border-radius: 10px;
     text-align: center;
 }
 
+.states-summary {
+    font-size: 1.5em;
+    width: 100%;
+}
+
 .other-stats {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     gap: 20px;
-    flex-wrap: wrap;
+    width: 100%;
 }
 
 .summary-stat {
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
+    flex: 1;
+    min-width: 0;
+    /* Allow flexbox to shrink items below their content size */
 }
 
 .stat-number-container {
     display: flex;
     align-items: baseline;
     justify-content: center;
+    flex-wrap: wrap;
+    /* Allow wrapping for very small screens */
 }
 
 .stat-number {
-    font-size: 3em;
+    font-size: 2.5em;
+    /* Slightly reduced for better fit */
     font-weight: bold;
     color: var(--primary-color);
 }
 
 .stat-total {
-    font-size: 1.5em;
+    font-size: 1.25em;
+    /* Slightly reduced for better fit */
     color: rgba(255, 255, 255, 0.7);
     margin-left: 5px;
 }
 
 .stat-percentage {
-    font-size: 1em;
+    font-size: 0.9em;
+    /* Slightly reduced for better fit */
     color: rgba(255, 255, 255, 0.7);
-    margin-left: 10px;
+    margin-left: 5px;
 }
 
 .stat-label {
-    font-size: 0.9em;
+    font-size: 0.8em;
+    /* Slightly reduced for better fit */
     margin-top: 5px;
 }
 
