@@ -4,72 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>High Points Explorer</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>Colorado 14ers Map</title>
+    <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdn.knightlab.com/libs/timeline3/latest/css/timeline.css">
-    <style>
-        .leaflet-container {
-            height: 500px;
-            width: 100%;
-            max-width: 1000px;
-            margin: 20px auto;
-        }
-
-        .leaflet-content {
-            background-color: var(--bg-transparent);
-            color: var(--text-color);
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            max-width: 1000px;
-            width: 100%;
-        }
-
-        .map-controls {
-            margin-top: 20px;
-        }
-
-        .map-controls button {
-            margin: 0 10px;
-        }
-
-        #timeline-embed {
-            width: 100%;
-            height: 600px;
-            margin: 20px auto;
-        }
-    </style>
 </head>
 
-<body>
+<body class="map-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
     <nav>
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="about.html">About</a></li>
+            <li><a href="about.html">About Me</a></li>
             <li><a href="travels.html">Travels</a></li>
             <li><a href="map.html">Interactive Map</a></li>
-            <li><a href="leaflet.html" class="active">High Points Explorer</a></li>
+            <li><a href="leaflet.html" class="active">Side Quests</a></li>
         </ul>
     </nav>
 
-    <div class="container">
-        <div class="leaflet-content">
-            <h1>Country High Points Explored</h1>
-            <div id="highPointsMap" class="leaflet-container"></div>
-            <div class="map-controls">
-                <button id="centerMap">Center Map</button>
-                <button id="toggleVisited">Toggle Visited/Unvisited</button>
-            </div>
+    <div class="map-content">
+        <div class="map-hero">
+            <h1>Side Quest Progress</h1>
+        </div>
 
-            <h2>High Points Timeline</h2>
-            <div id="timeline-embed"></div>
+        <div class="map-section">
+            <h2>Colorado 14ers</h2>
+            <div id="colorado-map" class="map-container"></div>
+        </div>
+
+        <div class="map-section">
+            <h2>Adirondack 46ers</h2>
+            <div id="adirondack-map" class="map-container"></div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js"></script>
     <script src="js/leaflet.js"></script>
 </body>
 
