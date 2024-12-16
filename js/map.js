@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     createCombinedMap();
-    displayHighPointsList();
+    displayTravelSummary();
     setupToggleButtons();
 });
 
@@ -186,46 +186,111 @@ function handleClick(d, type) {
 }
 
 
-function displayHighPointsList() {
-    const highPointsContainer = document.getElementById('high-points-container');
+function displayTravelSummary() {
+    const summaryContainer = document.getElementById('travel-summary');
+    const tableContainer = document.getElementById('travel-table-container');
+    const tableSelector = document.getElementById('table-selector');
 
-    // Sort high points by elevation (highest to lowest)
-    const sortedHighPoints = highPoints.sort((a, b) => b.elevation - a.elevation);
+    // Calculate summary statistics
+    const metroCount = cities.filter(city => city.visited).length;
+    const highPointCount = highPoints.filter(point => point.visited).length;
+    const parkCount = nationalParks.filter(park => park.visited).length;
 
-    // Create the table
+    // Display summary statistics
+    summaryContainer.innerHTML = `
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="stat-number">${metroCount}</span>
+                <span class="stat-label">out of ${cities.length} metros visited</span>
+            </div>
+            <div class="summary-stat">
+                <span class="stat-number">${highPointCount}</span>
+                <span class="stat-label">out of 50 high points summited</span>
+            </div>
+            <div class="summary-stat">
+                <span class="stat-number">${parkCount}</span>
+                <span class="stat-label">out of ${nationalParks.length} national parks visited</span>
+            </div>
+        </div>
+    `;
+
+    // Set up event listener for table selector
+    tableSelector.addEventListener('change', function () {
+        updateTable(this.value);
+    });
+
+    // Initial table display
+    updateTable('highpoints');
+}
+
+function updateTable(tableType) {
+    const tableContainer = document.getElementById('travel-table-container');
+    tableContainer.innerHTML = ''; // Clear previous table
+
     const table = document.createElement('table');
-    table.className = 'high-points-table';
+    table.className = 'travel-table';
+
+    let tableData, tableHeaders;
+
+    if (tableType === 'highpoints') {
+        tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
+        tableData = highPoints.sort((a, b) => b.elevation - a.elevation);
+    } else if (tableType === 'metros') {
+        tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
+        tableData = cities.map(city => {
+            const metroData = metroStats.find(m => m.shortName === city.name);
+            return {
+                ...city,
+                rank: metroData ? metroData.rank : 'N/A',
+                population: metroData ? metroData.population : 'N/A',
+                fullName: metroData ? metroData.name : city.name
+            };
+        }).sort((a, b) => (a.rank === 'N/A' ? Infinity : a.rank) - (b.rank === 'N/A' ? Infinity : b.rank));
+    } else if (tableType === 'parks') {
+        tableHeaders = ['National Park', 'State', 'Status'];
+        tableData = nationalParks.sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     // Create table header
     const thead = document.createElement('thead');
-    thead.innerHTML = `
-        <tr>
-            <th>Status</th>
-            <th>Rank</th>
-            <th>Peak Name</th>
-            <th>State</th>
-            <th>Elevation (ft)</th>
-        </tr>
-    `;
+    thead.innerHTML = `<tr>${tableHeaders.map(header => `<th>${header}</th>`).join('')}</tr>`;
     table.appendChild(thead);
 
     // Create table body
     const tbody = document.createElement('tbody');
-    sortedHighPoints.forEach((point, index) => {
+    tableData.forEach((item, index) => {
         const row = document.createElement('tr');
-        row.className = point.visited ? 'visited' : 'not-visited';
-        row.innerHTML = `
-            <td>${point.visited ? '✅' : '⬜'}</td>
-            <td>${index + 1}</td>
-            <td>${point.name}</td>
-            <td>${point.state}</td>
-            <td>${point.elevation.toLocaleString()}</td>
-        `;
+        row.className = item.visited ? 'visited' : 'not-visited';
+
+        if (tableType === 'highpoints') {
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${item.name}</td>
+                <td>${item.state}</td>
+                <td>${item.elevation.toLocaleString()}</td>
+                <td>${item.visited ? '✅' : '⬜'}</td>
+            `;
+        } else if (tableType === 'metros') {
+            row.innerHTML = `
+                <td>${item.rank}</td>
+                <td>${item.fullName}</td>
+                <td>${item.state}</td>
+                <td>${item.population}</td>
+                <td>${item.visited ? '✅' : '⬜'}</td>
+            `;
+        } else if (tableType === 'parks') {
+            row.innerHTML = `
+                <td>${item.name}</td>
+                <td>${item.state}</td>
+                <td>${item.visited ? '✅' : '⬜'}</td>
+            `;
+        }
+
         tbody.appendChild(row);
     });
-    table.appendChild(tbody);
 
-    highPointsContainer.appendChild(table);
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
 }
 
 function createLegend() {
@@ -433,6 +498,112 @@ const cities = [
     { name: "Chattanooga", state: "TN", coords: [-85.3097, 35.0456], visited: false },
     { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: false }
 ];
+
+const metroStats = [
+    { rank: 1, name: "New York–Newark–Jersey City", state: "NY-NJ", population: "19,500,000", shortName: "New York City" },
+    { rank: 2, name: "Los Angeles–Long Beach–Anaheim", state: "CA", population: "12,799,100", shortName: "Los Angeles" },
+    { rank: 3, name: "Chicago–Naperville–Elgin", state: "IL-IN", population: "9,262,825", shortName: "Chicago" },
+    { rank: 4, name: "Dallas–Fort Worth–Arlington", state: "TX", population: "8,100,000", shortName: "Dallas" },
+    { rank: 5, name: "Houston–Pasadena–The Woodlands", state: "TX", population: "7,500,000", shortName: "Houston" },
+    { rank: 6, name: "Atlanta–Sandy Springs–Roswell", state: "GA", population: "6,307,261", shortName: "Atlanta" },
+    { rank: 7, name: "Washington–Arlington–Alexandria", state: "DC-VA-MD-WV", population: "6,304,975", shortName: "Washington DC" },
+    { rank: 8, name: "Philadelphia–Camden–Wilmington", state: "PA-NJ-DE-MD", population: "6,246,160", shortName: "Philadelphia" },
+    { rank: 9, name: "Miami–Fort Lauderdale–West Palm Beach", state: "FL", population: "6,183,199", shortName: "Miami" },
+    { rank: 10, name: "Phoenix–Mesa–Chandler", state: "AZ", population: "5,070,110", shortName: "Phoenix" },
+    { rank: 11, name: "Boston–Cambridge–Newton", state: "MA-NH", population: "4,919,179", shortName: "Boston" },
+    { rank: 12, name: "Riverside–San Bernardino–Ontario", state: "CA", population: "4,688,053", shortName: "Riverside" },
+    { rank: 13, name: "San Francisco–Oakland–Fremont", state: "CA", population: "4,566,961", shortName: "San Francisco" },
+    { rank: 14, name: "Detroit–Warren–Dearborn", state: "MI", population: "4,340,000", shortName: "Detroit" },
+    { rank: 15, name: "Seattle–Tacoma–Bellevue", state: "WA", population: "4,044,837", shortName: "Seattle" },
+    { rank: 16, name: "Minneapolis–St. Paul–Bloomington", state: "MN-WI", population: "3,710,000", shortName: "Minneapolis" },
+    { rank: 17, name: "Tampa–St. Petersburg–Clearwater", state: "FL", population: "3,342,963", shortName: "Tampa" },
+    { rank: 18, name: "San Diego–Chula Vista–Carlsbad", state: "CA", population: "3,269,973", shortName: "San Diego" },
+    { rank: 19, name: "Denver–Aurora–Centennial", state: "CO", population: "3,005,131", shortName: "Denver" },
+    { rank: 20, name: "Baltimore–Columbia–Towson", state: "MD", population: "2,834,316", shortName: "Baltimore" },
+    { rank: 21, name: "Orlando–Kissimmee–Sanford", state: "FL", population: "2,817,933", shortName: "Orlando" },
+    { rank: 22, name: "Charlotte–Concord–Gastonia", state: "NC-SC", population: "2,805,115", shortName: "Charlotte" },
+    { rank: 23, name: "St. Louis", state: "MO-IL", population: "2,796,999", shortName: "St. Louis" },
+    { rank: 24, name: "San Antonio–New Braunfels", state: "TX", population: "2,703,999", shortName: "San Antonio" },
+    { rank: 25, name: "Portland–Vancouver–Hillsboro", state: "OR-WA", population: "2,508,050", shortName: "Portland" },
+    { rank: 26, name: "Austin–Round Rock–San Marcos", state: "TX", population: "2,473,275", shortName: "Austin" },
+    { rank: 27, name: "Pittsburgh", state: "PA", population: "2,422,725", shortName: "Pittsburgh" },
+    { rank: 28, name: "Sacramento–Roseville–Folsom", state: "CA", population: "2,420,608", shortName: "Sacramento" },
+    { rank: 29, name: "Las Vegas–Henderson–North Las Vegas", state: "NV", population: "2,336,573", shortName: "Las Vegas" },
+    { rank: 30, name: "Cincinnati", state: "OH-KY-IN", population: "2,271,479", shortName: "Cincinnati" },
+    { rank: 31, name: "Kansas City", state: "MO-KS", population: "2,220,000", shortName: "Kansas City" },
+    { rank: 32, name: "Columbus", state: "OH", population: "2,180,271", shortName: "Columbus" },
+    { rank: 33, name: "Cleveland", state: "OH", population: "2,158,932", shortName: "Cleveland" },
+    { rank: 34, name: "Indianapolis–Carmel–Greenwood", state: "IN", population: "2,138,468", shortName: "Indianapolis" },
+    { rank: 35, name: "Nashville-Davidson–Murfreesboro–Franklin", state: "TN", population: "2,102,573", shortName: "Nashville" },
+    { rank: 36, name: "San Jose–Sunnyvale–Santa Clara", state: "CA", population: "1,945,000", shortName: "San Jose" },
+    { rank: 37, name: "Virginia Beach–Chesapeake–Norfolk", state: "VA-NC", population: "1,787,169", shortName: "Virginia Beach" },
+    { rank: 38, name: "Jacksonville", state: "FL", population: "1,713,240", shortName: "Jacksonville" },
+    { rank: 39, name: "Providence–Warwick", state: "RI-MA", population: "1,677,803", shortName: "Providence" },
+    { rank: 40, name: "Milwaukee–Waukesha", state: "WI", population: "1,560,424", shortName: "Milwaukee" },
+    { rank: 41, name: "Raleigh–Cary", state: "NC", population: "1,509,231", shortName: "Raleigh" },
+    { rank: 42, name: "Oklahoma City", state: "OK", population: "1,477,926", shortName: "Oklahoma City" },
+    { rank: 43, name: "Louisville/Jefferson County", state: "KY-IN", population: "1,365,557", shortName: "Louisville" },
+    { rank: 44, name: "Richmond", state: "VA", population: "1,349,732", shortName: "Richmond" },
+    { rank: 45, name: "Memphis", state: "TN-MS-AR", population: "1,335,674", shortName: "Memphis" },
+    { rank: 46, name: "Salt Lake City–Murray", state: "UT", population: "1,267,864", shortName: "Salt Lake City" },
+    { rank: 47, name: "Birmingham", state: "AL", population: "1,184,290", shortName: "Birmingham" },
+    { rank: 48, name: "Fresno", state: "CA", population: "1,180,020", shortName: "Fresno" },
+    { rank: 49, name: "Grand Rapids–Wyoming–Kentwood", state: "MI", population: "1,162,950", shortName: "Grand Rapids" },
+    { rank: 50, name: "Buffalo–Cheektowaga", state: "NY", population: "1,155,604", shortName: "Buffalo" },
+    { rank: 51, name: "Hartford–West Hartford–East Hartford", state: "CT", population: "1,151,543", shortName: "Hartford" },
+    { rank: 52, name: "Tucson", state: "AZ", population: "1,063,162", shortName: "Tucson" },
+    { rank: 53, name: "Rochester", state: "NY", population: "1,052,087", shortName: "Rochester" },
+    { rank: 54, name: "Tulsa", state: "OK", population: "1,044,757", shortName: "Tulsa" },
+    { rank: 55, name: "Urban Honolulu", state: "HI", population: "989,408", shortName: "Honolulu" },
+    { rank: 56, name: "Omaha", state: "NE-IA", population: "983,969", shortName: "Omaha" },
+    { rank: 57, name: "Greenville–Anderson–Greer", state: "SC", population: "975,480", shortName: "Greenville" },
+    { rank: 58, name: "New Orleans–Metairie", state: "LA", population: "962,165", shortName: "New Orleans" },
+    { rank: 59, name: "Bridgeport–Stamford–Danbury", state: "CT", population: "951,558", shortName: "Bridgeport" },
+    { rank: 60, name: "Knoxville", state: "TN", population: "946,264", shortName: "Knoxville" },
+    { rank: 61, name: "Albuquerque", state: "NM", population: "922,296", shortName: "Albuquerque" },
+    { rank: 62, name: "Bakersfield–Delano", state: "CA", population: "914,000", shortName: "Bakersfield" },
+    { rank: 63, name: "North Port–Bradenton–Sarasota", state: "FL", population: "910,000", shortName: "Sarasota" },
+    { rank: 64, name: "Albany–Schenectady–Troy", state: "NY", population: "904,682", shortName: "Albany" },
+    { rank: 65, name: "McAllen–Edinburg–Mission", state: "TX", population: "898,000", shortName: "McAllen" },
+    { rank: 66, name: "Baton Rouge", state: "LA", population: "873,000", shortName: "Baton Rouge" },
+    { rank: 67, name: "Allentown–Bethlehem–Easton", state: "PA-NJ", population: "873,555", shortName: "Allentown" },
+    { rank: 68, name: "El Paso", state: "TX", population: "873,331", shortName: "El Paso" },
+    { rank: 69, name: "Worcester", state: "MA", population: "866,866", shortName: "Worcester" },
+    { rank: 70, name: "Columbia", state: "SC", population: "858,000", shortName: "Columbia" },
+    { rank: 71, name: "Charleston–North Charleston", state: "SC", population: "850,000", shortName: "Charleston" },
+    { rank: 72, name: "Cape Coral–Fort Myers", state: "FL", population: "834,573", shortName: "Cape Coral" },
+    { rank: 73, name: "Oxnard–Thousand Oaks–Ventura", state: "CA", population: "829,590", shortName: "Oxnard" },
+    { rank: 74, name: "Boise City", state: "ID", population: "824,657", shortName: "Boise" },
+    { rank: 75, name: "Lakeland–Winter Haven", state: "FL", population: "818,330", shortName: "Lakeland" },
+    { rank: 76, name: "Dayton–Kettering–Beavercreek", state: "OH", population: "814,363", shortName: "Dayton" },
+    { rank: 77, name: "Stockton–Lodi", state: "CA", population: "800,000", shortName: "Stockton" },
+    { rank: 78, name: "Greensboro–High Point", state: "NC", population: "789,842", shortName: "Greensboro" },
+    { rank: 79, name: "Colorado Springs", state: "CO", population: "768,832", shortName: "Colorado Springs" },
+    { rank: 80, name: "Little Rock–North Little Rock–Conway", state: "AR", population: "764,000", shortName: "Little Rock" },
+    { rank: 81, name: "Des Moines–West Des Moines", state: "IA", population: "737,164", shortName: "Des Moines" },
+    { rank: 82, name: "Provo–Orem–Lehi", state: "UT", population: "732,000", shortName: "Provo" },
+    { rank: 83, name: "Deltona–Daytona Beach–Ormond Beach", state: "FL", population: "721,000", shortName: "Deltona" },
+    { rank: 84, name: "Kiryas Joel–Poughkeepsie–Newburgh", state: "NY", population: "704,620", shortName: "Poughkeepsie" },
+    { rank: 85, name: "Akron", state: "OH", population: "698,398", shortName: "Akron" },
+    { rank: 86, name: "Winston-Salem", state: "NC", population: "695,630", shortName: "Winston-Salem" },
+    { rank: 87, name: "Madison", state: "WI", population: "694,345", shortName: "Madison" },
+    { rank: 88, name: "Ogden", state: "UT", population: "658,133", shortName: "Ogden" },
+    { rank: 89, name: "Syracuse", state: "NY", population: "652,956", shortName: "Syracuse" },
+    { rank: 90, name: "Wichita", state: "KS", population: "652,939", shortName: "Wichita" },
+    { rank: 91, name: "Palm Bay–Melbourne–Titusville", state: "FL", population: "643,979", shortName: "Palm Bay" },
+    { rank: 92, name: "Augusta-Richmond County", state: "GA-SC", population: "629,429", shortName: "Augusta" },
+    { rank: 93, name: "Jackson", state: "MS", population: "610,257", shortName: "Jackson" },
+    { rank: 94, name: "Durham–Chapel Hill", state: "NC", population: "608,879", shortName: "Durham" },
+    { rank: 95, name: "Harrisburg–Carlisle", state: "PA", population: "606,055", shortName: "Harrisburg" },
+    { rank: 96, name: "Spokane–Spokane Valley", state: "WA", population: "600,292", shortName: "Spokane" },
+    { rank: 97, name: "Toledo", state: "OH", population: "600,000", shortName: "Toledo" },
+    { rank: 98, name: "Fayetteville–Springdale–Rogers", state: "AR", population: "590,337", shortName: "Fayetteville" },
+    { rank: 99, name: "Chattanooga", state: "TN-GA", population: "580,000", shortName: "Chattanooga" },
+    { rank: 100, name: "Scranton–Wilkes-Barre", state: "PA", population: "569,413", shortName: "Scranton" }
+];
+
+
+
 
 const highPoints = [
     { state: "AK", name: "Denali", elevation: 20310, visited: false, coords: [-151.0063, 63.0695] },

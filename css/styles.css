@@ -478,40 +478,76 @@ button:hover,
     font-weight: bold;
 }
 
-.high-points-table {
+.summary-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+}
+
+.summary-stat {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.table-controls {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#table-selector {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    cursor: pointer;
+}
+
+#table-selector:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.travel-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.high-points-table th,
-.high-points-table td {
+.travel-table th,
+.travel-table td {
     padding: 10px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.high-points-table th {
+.travel-table th {
     background-color: rgba(0, 0, 0, 0.3);
     font-weight: bold;
 }
 
-.high-points-table tr:hover {
+.travel-table tr:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-.high-points-table tr.visited {
+.travel-table tr.visited {
     background-color: rgba(76, 175, 80, 0.1);
 }
 
-.high-points-table tr.visited:hover {
+.travel-table tr.visited:hover {
     background-color: rgba(76, 175, 80, 0.2);
-}
-
-.high-points-table td:first-child,
-.high-points-table td:nth-child(2) {
-    text-align: center;
 }
 
 #combined-map {
