@@ -338,8 +338,15 @@ button:hover,
     margin: 0 auto;
 }
 
+#combined-map .state.not-visited {
+    fill: #d8d8d8;
+}
+
+#combined-map .state.visited {
+    fill: #aec5ae;
+}
+
 .state {
-    fill: #ccc;
     stroke: #fff;
     stroke-width: 1px;
 }

@@ -33,7 +33,10 @@ function createCombinedMap() {
                 .selectAll("path")
                 .data(topojson.feature(us, us.objects.states).features)
                 .enter().append("path")
-                .attr("class", "state")
+                .attr("class", d => {
+                    const stateName = d.properties.name;
+                    return `state ${visitedStates[stateName] ? 'visited' : 'not-visited'}`;
+                })
                 .attr("d", path);
 
             // Add metros (circles)
@@ -752,9 +755,14 @@ const nationalParks = [
 ];
 
 const visitedStates = {
-    "AL": true, "AK": false, "AZ": true, "AR": true, "CA": true, "CO": true, "CT": true, "DE": true, "FL": true, "GA": true,
-    "HI": false, "ID": true, "IL": true, "IN": true, "IA": false, "KS": false, "KY": true, "LA": true, "ME": true, "MD": true,
-    "MA": true, "MI": true, "MN": false, "MS": true, "MO": false, "MT": true, "NE": true, "NV": true, "NH": true, "NJ": true,
-    "NM": true, "NY": true, "NC": true, "ND": true, "OH": true, "OK": true, "OR": true, "PA": true, "RI": false, "SC": true,
-    "SD": true, "TN": true, "TX": true, "UT": true, "VT": true, "VA": true, "WA": true, "WV": true, "WI": false, "WY": true
+    "Alabama": true, "Alaska": false, "Arizona": true, "Arkansas": true, "California": true,
+    "Colorado": true, "Connecticut": true, "Delaware": true, "Florida": true, "Georgia": true,
+    "Hawaii": false, "Idaho": true, "Illinois": true, "Indiana": true, "Iowa": false,
+    "Kansas": false, "Kentucky": true, "Louisiana": true, "Maine": true, "Maryland": true,
+    "Massachusetts": true, "Michigan": true, "Minnesota": false, "Mississippi": true, "Missouri": false,
+    "Montana": true, "Nebraska": true, "Nevada": true, "New Hampshire": true, "New Jersey": true,
+    "New Mexico": true, "New York": true, "North Carolina": true, "North Dakota": true, "Ohio": true,
+    "Oklahoma": true, "Oregon": true, "Pennsylvania": true, "Rhode Island": false, "South Carolina": true,
+    "South Dakota": true, "Tennessee": true, "Texas": true, "Utah": true, "Vermont": true,
+    "Virginia": true, "Washington": true, "West Virginia": true, "Wisconsin": false, "Wyoming": true
 };
