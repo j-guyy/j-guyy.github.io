@@ -81,6 +81,19 @@
     fill: #f44336;
 }
 
+.city-dot.top-100 {
+    r: 5px;
+}
+
+.city-dot.top-200 {
+    r: 3px;
+}
+
+.city-dot:hover {
+    r: 7.5px;
+    /* 1.5 times the size of top-100 dots */
+}
+
 .tooltip {
     position: absolute;
     text-align: center;
