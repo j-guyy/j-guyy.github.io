@@ -526,7 +526,7 @@ const cities = [
     { name: "Spokane", state: "WA", coords: [-117.4260, 47.6588], visited: false },
     { name: "Fayetteville", state: "AR", coords: [-94.1574, 36.0626], visited: false },
     { name: "Chattanooga", state: "TN", coords: [-85.3097, 35.0456], visited: false },
-    { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: false }
+    { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: true }
 ];
 
 const metroStats = [
@@ -675,7 +675,7 @@ const highPoints = [
     { state: "MN", name: "Eagle Mountain", elevation: 2301, visited: false, coords: [-90.5598, 47.8974] },
     { state: "MI", name: "Mount Arvon", elevation: 1979, visited: false, coords: [-88.1553, 46.7564] },
     { state: "WI", name: "Timms Hill", elevation: 1951, visited: false, coords: [-90.1953, 45.4519] },
-    { state: "NJ", name: "High Point", elevation: 1803, visited: false, coords: [-74.6615, 41.3208] },
+    { state: "NJ", name: "High Point", elevation: 1803, visited: true, coords: [-74.6615, 41.3208] },
     { state: "MO", name: "Taum Sauk Mountain", elevation: 1772, visited: false, coords: [-90.7279, 37.5719] },
     { state: "IA", name: "Hawkeye Point", elevation: 1670, visited: false, coords: [-95.7083, 43.4602] },
     { state: "OH", name: "Campbell Hill", elevation: 1550, visited: true, coords: [-83.7201, 40.3698] },
