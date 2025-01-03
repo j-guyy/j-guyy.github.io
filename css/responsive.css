@@ -1,0 +1,173 @@
+/* Responsive design */
+
+/* Small screens and mobile devices */
+@media (max-width: 768px) {
+
+    /* Navigation adjustments */
+    nav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    nav ul li {
+        margin: 5px 10px;
+    }
+
+    /* General adjustments */
+    h1 {
+        font-size: 2em;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    /* About page adjustments */
+    .info,
+    .info.reverse {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .info .text,
+    .info .image {
+        flex: none;
+        width: 100%;
+    }
+
+    .info .text {
+        padding: 20px 0;
+    }
+
+    .info .image {
+        height: 300px;
+        margin-bottom: 20px;
+    }
+
+    /* Map and travel adjustments */
+    .map-container iframe,
+    #us-map,
+    #high-points-map,
+    #combined-map {
+        height: 400px;
+    }
+
+    .travel-section,
+    .map-section {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .high-point {
+        width: calc(50% - 20px);
+    }
+
+    #combined-map {
+        height: 60vh;
+    }
+
+    .map-legend-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    #map-legend {
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .other-stats {
+        flex-direction: column;
+    }
+
+    .summary-stat {
+        margin-bottom: 20px;
+    }
+
+    /* 3D Map viewer adjustments */
+    .threeDmap-hero h1 {
+        font-size: 3em;
+    }
+
+    .model-container {
+        height: 300px;
+    }
+}
+
+/* Medium screens */
+@media (min-width: 769px) and (max-width: 1199px) {
+    .high-point {
+        width: calc(33.33% - 20px);
+    }
+
+    #combined-map {
+        height: 70vh;
+    }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+    .map-section {
+        padding: 40px;
+    }
+
+    #combined-map {
+        height: 85vh;
+        max-height: 1000px;
+    }
+
+    .map-legend-container {
+        height: 85vh;
+        max-height: 1000px;
+    }
+}
+
+/* Extra large screens */
+@media (min-width: 1600px) {
+    .map-section {
+        padding: 50px;
+    }
+
+    #combined-map {
+        height: 90vh;
+        max-height: 1200px;
+    }
+
+    .map-legend-container {
+        height: 90vh;
+        max-height: 1200px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none;
+    }
+
+    body {
+        font-size: 12pt;
+        line-height: 1.5;
+        color: #000;
+        background: #fff;
+    }
+
+    a {
+        color: #000;
+        text-decoration: underline;
+    }
+
+    h1,
+    h2,
+    h3 {
+        page-break-after: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+    }
+
+    @page {
+        margin: 2cm;
+    }
+}

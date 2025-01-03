@@ -1,0 +1,47 @@
+:root {
+    --primary-color: #4CAF50;
+    --primary-hover-color: #45a049;
+    --text-color: white;
+    --bg-color: black;
+    --bg-transparent: rgba(0, 0, 0, 0.7);
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    position: relative;
+    background-color: var(--bg-color);
+    background-size: cover;
+    background-position: center;
+    transition: background-image 0.5s ease-in-out;
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+}
+
+h1 {
+    margin: 0 0 20px 0;
+    font-size: 2.5em;
+}
+
+button {
+    padding: 12px 24px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--primary-hover-color);
+}

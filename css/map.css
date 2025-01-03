@@ -1,0 +1,278 @@
+.map-page {
+    position: relative;
+    overflow-x: hidden;
+    background-color: transparent;
+}
+
+.map-content {
+    position: relative;
+    z-index: 1;
+    padding-top: 60px;
+}
+
+.map-hero {
+    height: 60vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.map-hero h1 {
+    font-size: 4em;
+    position: relative;
+    z-index: 1;
+}
+
+.map-section {
+    width: 90%;
+    max-width: 1600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: rgba(45, 45, 45, 0.8);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.map-section h2 {
+    color: var(--text-color);
+    margin: 0 0 20px 0;
+    font-size: 2.5em;
+}
+
+.map-description {
+    color: var(--text-color);
+    margin-bottom: 20px;
+}
+
+#combined-map {
+    width: 100%;
+    height: 80vh;
+    max-height: 800px;
+    margin: 0 auto;
+}
+
+#combined-map .state.not-visited {
+    fill: #d8d8d8;
+}
+
+#combined-map .state.visited {
+    fill: #aec5ae;
+}
+
+.state,
+.city-dot,
+.high-point-dot,
+.high-point-triangle,
+.national-park-square {
+    stroke: #fff;
+    stroke-width: 1px;
+}
+
+.visited {
+    fill: #4CAF50;
+    cursor: pointer;
+}
+
+.not-visited {
+    fill: #f44336;
+}
+
+.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: 8px;
+    font: 12px sans-serif;
+    background: white;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+    color: black;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.map-legend-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 80vh;
+    max-height: 800px;
+}
+
+.map-container {
+    flex: 1;
+    height: 100%;
+}
+
+#map-legend {
+    flex: 0 0 auto;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#map-legend svg {
+    font-family: Arial, sans-serif;
+    width: 150px;
+    height: 160px;
+}
+
+.legend-item text {
+    fill: #333;
+    font-size: 10px;
+}
+
+.map-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.map-controls button {
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.map-controls button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.map-controls button.inactive {
+    background-color: #888;
+    opacity: 0.7;
+}
+
+.map-controls button.inactive:hover {
+    background-color: #999;
+}
+
+/* Summary Stats */
+.summary-stats-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    margin-bottom: 40px;
+    width: 100%;
+}
+
+.states-summary,
+.summary-stat {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.states-summary {
+    font-size: 1.5em;
+    width: 100%;
+}
+
+.other-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-number-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.stat-total,
+.stat-percentage {
+    font-size: 1.25em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 5px;
+}
+
+.stat-label {
+    font-size: 0.8em;
+    margin-top: 5px;
+}
+
+/* Travel Table */
+.table-controls {
+    margin-top: 40px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#table-selector {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: none;
+    cursor: pointer;
+}
+
+#table-selector:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.travel-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.travel-table th,
+.travel-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.travel-table th {
+    background-color: rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+}
+
+.travel-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.travel-table tr.visited {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.travel-table tr.visited:hover {
+    background-color: rgba(76, 175, 80, 0.2);
+}
