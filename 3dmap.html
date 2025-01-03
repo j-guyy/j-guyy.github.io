@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Viewer - My Travels</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        model-viewer {
+            width: 100%;
+            height: 400px;
+            --poster-color: transparent;
+            background-color: transparent;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body class="model-viewer-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About Me</a></li>
+            <li><a href="travels.html">Travels</a></li>
+            <li><a href="map.html">Interactive Map</a></li>
+            <li><a href="3dmap.html" class="active">3D Map Viewer</a></li>
+        </ul>
+    </nav>
+
+    <div class="model-viewer-content">
+        <div class="model-viewer-hero">
+            <h1>Webpage Hero</h1>
+        </div>
+
+        <div class="model-viewer-section">
+            <h2>Model Title</h2>
+            <p class="model-description">Model Description</p>
+            <div class="model-container">
+                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
+                    alt="A 3D model of an astronaut" camera-controls environment-image="neutral" shadow-intensity="1"
+                    exposure="1" background-color="transparent">
+                </model-viewer>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
