@@ -820,7 +820,7 @@ const additionalMetros = [
     { name: "Columbus", state: "GA", coords: [-84.9877, 32.4610], visited: false },
     { name: "Roanoke", state: "VA", coords: [-79.9414, 37.2710], visited: true },
     { name: "Kennewick", state: "WA", coords: [-119.1307, 46.2087], visited: true },
-    { name: "Kingsport", state: "TN", coords: [-82.5618, 36.5484], visited: false },
+    { name: "Kingsport", state: "TN", coords: [-82.5618, 36.5484], visited: true },
     { name: "Hagerstown", state: "MD", coords: [-77.7199, 39.6418], visited: true },
     { name: "Waco", state: "TX", coords: [-97.1467, 31.5493], visited: false },
     { name: "Fort Walton Beach", state: "FL", coords: [-86.6187, 30.4058], visited: false },
