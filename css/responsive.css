@@ -83,11 +83,24 @@
         box-sizing: border-box;
     }
 
-    /*
-    .map-hero h1 {
-        font-size: 2em;
+    .map-hero,
+    .hero,
+    .travels-hero {
+        height: auto;
+        /* Allow height to adjust based on content */
+        min-height: 40vh;
+        /* Set a minimum height */
     }
-    */
+
+    .map-hero h1,
+    .hero h1,
+    .travels-hero h1,
+    .threeDmap-hero h1 {
+        font-size: 2em;
+        /* Reduce font size for smaller screens */
+        padding: 10px;
+        /* Add some padding around the text */
+    }
 
     .travel-section,
     .map-section {
@@ -119,11 +132,6 @@
 
     .summary-stat {
         margin-bottom: 20px;
-    }
-
-    /* 3D Map viewer adjustments */
-    .threeDmap-hero h1 {
-        font-size: 3em;
     }
 
     .model-container {
