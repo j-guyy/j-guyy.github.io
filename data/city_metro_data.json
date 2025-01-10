@@ -1,0 +1,1302 @@
+[
+  {
+    "name": "New York City",
+    "metro_name": "New York-Newark-Jersey City",
+    "rank": 1,
+    "state": "NY",
+    "metro_state": "NY-NJ",
+    "coords": [
+      -74.006,
+      40.7128
+    ],
+    "population": "19,500,000",
+    "visited": true
+  },
+  {
+    "name": "Los Angeles",
+    "metro_name": "Los Angeles-Long Beach-Anaheim",
+    "rank": 2,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -118.2437,
+      34.0522
+    ],
+    "population": "12,799,100",
+    "visited": true
+  },
+  {
+    "name": "Chicago",
+    "metro_name": "Chicago-Naperville-Elgin",
+    "rank": 3,
+    "state": "IL",
+    "metro_state": "IL-IN",
+    "coords": [
+      -87.6298,
+      41.8781
+    ],
+    "population": "9,262,825",
+    "visited": true
+  },
+  {
+    "name": "Dallas",
+    "metro_name": "Dallas-Fort Worth-Arlington",
+    "rank": 4,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -96.797,
+      32.7767
+    ],
+    "population": "8,100,000",
+    "visited": true
+  },
+  {
+    "name": "Houston",
+    "metro_name": "Houston-Pasadena-The Woodlands",
+    "rank": 5,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -95.3698,
+      29.7604
+    ],
+    "population": "7,500,000",
+    "visited": true
+  },
+  {
+    "name": "Atlanta",
+    "metro_name": "Atlanta-Sandy Springs-Roswell",
+    "rank": 6,
+    "state": "GA",
+    "metro_state": "GA",
+    "coords": [
+      -84.388,
+      33.749
+    ],
+    "population": "6,307,261",
+    "visited": true
+  },
+  {
+    "name": "Washington DC",
+    "metro_name": "Washington-Arlington-Alexandria",
+    "rank": 7,
+    "state": "DC",
+    "metro_state": "DC-VA-MD-WV",
+    "coords": [
+      -77.0369,
+      38.9072
+    ],
+    "population": "6,304,975",
+    "visited": true
+  },
+  {
+    "name": "Philadelphia",
+    "metro_name": "Philadelphia-Camden-Wilmington",
+    "rank": 8,
+    "state": "PA",
+    "metro_state": "PA-NJ-DE-MD",
+    "coords": [
+      -75.1652,
+      39.9526
+    ],
+    "population": "6,246,160",
+    "visited": true
+  },
+  {
+    "name": "Miami",
+    "metro_name": "Miami-Fort Lauderdale-West Palm Beach",
+    "rank": 9,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -80.1918,
+      25.7617
+    ],
+    "population": "6,183,199",
+    "visited": true
+  },
+  {
+    "name": "Phoenix",
+    "metro_name": "Phoenix-Mesa-Chandler",
+    "rank": 10,
+    "state": "AZ",
+    "metro_state": "AZ",
+    "coords": [
+      -112.074,
+      33.4484
+    ],
+    "population": "5,070,110",
+    "visited": true
+  },
+  {
+    "name": "Boston",
+    "metro_name": "Boston-Cambridge-Newton",
+    "rank": 11,
+    "state": "MA",
+    "metro_state": "MA-NH",
+    "coords": [
+      -71.0589,
+      42.3601
+    ],
+    "population": "4,919,179",
+    "visited": true
+  },
+  {
+    "name": "Riverside",
+    "metro_name": "Riverside-San Bernardino-Ontario",
+    "rank": 12,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -117.3961,
+      33.9806
+    ],
+    "population": "4,688,053",
+    "visited": true
+  },
+  {
+    "name": "San Francisco",
+    "metro_name": "San Francisco-Oakland-Fremont",
+    "rank": 13,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -122.4194,
+      37.7749
+    ],
+    "population": "4,566,961",
+    "visited": true
+  },
+  {
+    "name": "Detroit",
+    "metro_name": "Detroit-Warren-Dearborn",
+    "rank": 14,
+    "state": "MI",
+    "metro_state": "MI",
+    "coords": [
+      -83.0458,
+      42.3314
+    ],
+    "population": "4,340,000",
+    "visited": true
+  },
+  {
+    "name": "Seattle",
+    "metro_name": "Seattle-Tacoma-Bellevue",
+    "rank": 15,
+    "state": "WA",
+    "metro_state": "WA",
+    "coords": [
+      -122.3321,
+      47.6062
+    ],
+    "population": "4,044,837",
+    "visited": true
+  },
+  {
+    "name": "Minneapolis",
+    "metro_name": "Minneapolis-St. Paul-Bloomington",
+    "rank": 16,
+    "state": "MN",
+    "metro_state": "MN-WI",
+    "coords": [
+      -93.265,
+      44.9778
+    ],
+    "population": "3,710,000",
+    "visited": false
+  },
+  {
+    "name": "Tampa",
+    "metro_name": "Tampa-St. Petersburg-Clearwater",
+    "rank": 17,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -82.4572,
+      27.9506
+    ],
+    "population": "3,342,963",
+    "visited": true
+  },
+  {
+    "name": "San Diego",
+    "metro_name": "San Diego-Chula Vista-Carlsbad",
+    "rank": 18,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -117.1611,
+      32.7157
+    ],
+    "population": "3,269,973",
+    "visited": true
+  },
+  {
+    "name": "Denver",
+    "metro_name": "Denver-Aurora-Centennial",
+    "rank": 19,
+    "state": "CO",
+    "metro_state": "CO",
+    "coords": [
+      -104.9903,
+      39.7392
+    ],
+    "population": "3,005,131",
+    "visited": true
+  },
+  {
+    "name": "Baltimore",
+    "metro_name": "Baltimore-Columbia-Towson",
+    "rank": 20,
+    "state": "MD",
+    "metro_state": "MD",
+    "coords": [
+      -76.6122,
+      39.2904
+    ],
+    "population": "2,834,316",
+    "visited": true
+  },
+  {
+    "name": "Orlando",
+    "metro_name": "Orlando-Kissimmee-Sanford",
+    "rank": 21,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -81.3792,
+      28.5383
+    ],
+    "population": "2,817,933",
+    "visited": true
+  },
+  {
+    "name": "Charlotte",
+    "metro_name": "Charlotte-Concord-Gastonia",
+    "rank": 22,
+    "state": "NC",
+    "metro_state": "NC-SC",
+    "coords": [
+      -80.8431,
+      35.2271
+    ],
+    "population": "2,805,115",
+    "visited": true
+  },
+  {
+    "name": "St. Louis",
+    "metro_name": "St. Louis",
+    "rank": 23,
+    "state": "MO",
+    "metro_state": "MO-IL",
+    "coords": [
+      -90.1994,
+      38.627
+    ],
+    "population": "2,796,999",
+    "visited": false
+  },
+  {
+    "name": "San Antonio",
+    "metro_name": "San Antonio-New Braunfels",
+    "rank": 24,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -98.4936,
+      29.4241
+    ],
+    "population": "2,703,999",
+    "visited": true
+  },
+  {
+    "name": "Portland",
+    "metro_name": "Portland-Vancouver-Hillsboro",
+    "rank": 25,
+    "state": "OR",
+    "metro_state": "OR-WA",
+    "coords": [
+      -122.6784,
+      45.5152
+    ],
+    "population": "2,508,050",
+    "visited": true
+  },
+  {
+    "name": "Austin",
+    "metro_name": "Austin-Round Rock-San Marcos",
+    "rank": 26,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -97.7431,
+      30.2672
+    ],
+    "population": "2,473,275",
+    "visited": true
+  },
+  {
+    "name": "Pittsburgh",
+    "metro_name": "Pittsburgh",
+    "rank": 27,
+    "state": "PA",
+    "metro_state": "PA",
+    "coords": [
+      -79.9959,
+      40.4406
+    ],
+    "population": "2,422,725",
+    "visited": true
+  },
+  {
+    "name": "Sacramento",
+    "metro_name": "Sacramento-Roseville-Folsom",
+    "rank": 28,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -121.4944,
+      38.5816
+    ],
+    "population": "2,420,608",
+    "visited": false
+  },
+  {
+    "name": "Las Vegas",
+    "metro_name": "Las Vegas-Henderson-North Las Vegas",
+    "rank": 29,
+    "state": "NV",
+    "metro_state": "NV",
+    "coords": [
+      -115.1398,
+      36.1699
+    ],
+    "population": "2,336,573",
+    "visited": true
+  },
+  {
+    "name": "Cincinnati",
+    "metro_name": "Cincinnati",
+    "rank": 30,
+    "state": "OH",
+    "metro_state": "OH-KY-IN",
+    "coords": [
+      -84.512,
+      39.1031
+    ],
+    "population": "2,271,479",
+    "visited": true
+  },
+  {
+    "name": "Kansas City",
+    "metro_name": "Kansas City",
+    "rank": 31,
+    "state": "MO",
+    "metro_state": "MO-KS",
+    "coords": [
+      -94.5786,
+      39.0997
+    ],
+    "population": "2,220,000",
+    "visited": false
+  },
+  {
+    "name": "Columbus",
+    "metro_name": "Columbus",
+    "rank": 32,
+    "state": "OH",
+    "metro_state": "OH",
+    "coords": [
+      -82.9988,
+      39.9612
+    ],
+    "population": "2,180,271",
+    "visited": true
+  },
+  {
+    "name": "Cleveland",
+    "metro_name": "Cleveland",
+    "rank": 33,
+    "state": "OH",
+    "metro_state": "OH",
+    "coords": [
+      -81.6944,
+      41.4993
+    ],
+    "population": "2,158,932",
+    "visited": true
+  },
+  {
+    "name": "Indianapolis",
+    "metro_name": "Indianapolis-Carmel-Greenwood",
+    "rank": 34,
+    "state": "IN",
+    "metro_state": "IN",
+    "coords": [
+      -86.1581,
+      39.7684
+    ],
+    "population": "2,138,468",
+    "visited": false
+  },
+  {
+    "name": "Nashville",
+    "metro_name": "Nashville-Davidson-Murfreesboro-Franklin",
+    "rank": 35,
+    "state": "TN",
+    "metro_state": "TN",
+    "coords": [
+      -86.7816,
+      36.1627
+    ],
+    "population": "2,102,573",
+    "visited": true
+  },
+  {
+    "name": "San Jose",
+    "metro_name": "San Jose-Sunnyvale-Santa Clara",
+    "rank": 36,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -121.8863,
+      37.3382
+    ],
+    "population": "1,945,000",
+    "visited": true
+  },
+  {
+    "name": "Virginia Beach",
+    "metro_name": "Virginia Beach-Chesapeake-Norfolk",
+    "rank": 37,
+    "state": "VA",
+    "metro_state": "VA-NC",
+    "coords": [
+      -75.978,
+      36.8529
+    ],
+    "population": "1,787,169",
+    "visited": true
+  },
+  {
+    "name": "Jacksonville",
+    "metro_name": "Jacksonville",
+    "rank": 38,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -81.6557,
+      30.3322
+    ],
+    "population": "1,713,240",
+    "visited": false
+  },
+  {
+    "name": "Providence",
+    "metro_name": "Providence-Warwick",
+    "rank": 39,
+    "state": "RI",
+    "metro_state": "RI-MA",
+    "coords": [
+      -71.4128,
+      41.824
+    ],
+    "population": "1,677,803",
+    "visited": false
+  },
+  {
+    "name": "Milwaukee",
+    "metro_name": "Milwaukee-Waukesha",
+    "rank": 40,
+    "state": "WI",
+    "metro_state": "WI",
+    "coords": [
+      -87.9065,
+      43.0389
+    ],
+    "population": "1,560,424",
+    "visited": false
+  },
+  {
+    "name": "Raleigh",
+    "metro_name": "Raleigh-Cary",
+    "rank": 41,
+    "state": "NC",
+    "metro_state": "NC",
+    "coords": [
+      -78.6382,
+      35.7796
+    ],
+    "population": "1,509,231",
+    "visited": true
+  },
+  {
+    "name": "Oklahoma City",
+    "metro_name": "Oklahoma City",
+    "rank": 42,
+    "state": "OK",
+    "metro_state": "OK",
+    "coords": [
+      -97.5164,
+      35.4676
+    ],
+    "population": "1,477,926",
+    "visited": true
+  },
+  {
+    "name": "Louisville",
+    "metro_name": "Louisville/Jefferson County",
+    "rank": 43,
+    "state": "KY",
+    "metro_state": "KY-IN",
+    "coords": [
+      -85.7585,
+      38.2527
+    ],
+    "population": "1,365,557",
+    "visited": false
+  },
+  {
+    "name": "Richmond",
+    "metro_name": "Richmond",
+    "rank": 44,
+    "state": "VA",
+    "metro_state": "VA",
+    "coords": [
+      -77.436,
+      37.5407
+    ],
+    "population": "1,349,732",
+    "visited": true
+  },
+  {
+    "name": "Memphis",
+    "metro_name": "Memphis",
+    "rank": 45,
+    "state": "TN",
+    "metro_state": "TN-MS-AR",
+    "coords": [
+      -90.049,
+      35.1495
+    ],
+    "population": "1,335,674",
+    "visited": false
+  },
+  {
+    "name": "Salt Lake City",
+    "metro_name": "Salt Lake City-Murray",
+    "rank": 46,
+    "state": "UT",
+    "metro_state": "UT",
+    "coords": [
+      -111.891,
+      40.7608
+    ],
+    "population": "1,267,864",
+    "visited": true
+  },
+  {
+    "name": "Birmingham",
+    "metro_name": "Birmingham",
+    "rank": 47,
+    "state": "AL",
+    "metro_state": "AL",
+    "coords": [
+      -86.8025,
+      33.5186
+    ],
+    "population": "1,184,290",
+    "visited": false
+  },
+  {
+    "name": "Fresno",
+    "metro_name": "Fresno",
+    "rank": 48,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -119.7871,
+      36.7378
+    ],
+    "population": "1,180,020",
+    "visited": false
+  },
+  {
+    "name": "Grand Rapids",
+    "metro_name": "Grand Rapids-Wyoming-Kentwood",
+    "rank": 49,
+    "state": "MI",
+    "metro_state": "MI",
+    "coords": [
+      -85.6681,
+      42.9634
+    ],
+    "population": "1,162,950",
+    "visited": false
+  },
+  {
+    "name": "Buffalo",
+    "metro_name": "Buffalo-Cheektowaga",
+    "rank": 50,
+    "state": "NY",
+    "metro_state": "NY",
+    "coords": [
+      -78.8784,
+      42.8864
+    ],
+    "population": "1,155,604",
+    "visited": true
+  },
+  {
+    "name": "Hartford",
+    "metro_name": "Hartford-West Hartford-East Hartford",
+    "rank": 51,
+    "state": "CT",
+    "metro_state": "CT",
+    "coords": [
+      -72.6823,
+      41.7658
+    ],
+    "population": "1,151,543",
+    "visited": true
+  },
+  {
+    "name": "Tucson",
+    "metro_name": "Tucson",
+    "rank": 52,
+    "state": "AZ",
+    "metro_state": "AZ",
+    "coords": [
+      -110.9265,
+      32.2226
+    ],
+    "population": "1,063,162",
+    "visited": true
+  },
+  {
+    "name": "Rochester",
+    "metro_name": "Rochester",
+    "rank": 53,
+    "state": "NY",
+    "metro_state": "NY",
+    "coords": [
+      -77.6109,
+      43.1566
+    ],
+    "population": "1,052,087",
+    "visited": true
+  },
+  {
+    "name": "Tulsa",
+    "metro_name": "Tulsa",
+    "rank": 54,
+    "state": "OK",
+    "metro_state": "OK",
+    "coords": [
+      -95.9928,
+      36.154
+    ],
+    "population": "1,044,757",
+    "visited": true
+  },
+  {
+    "name": "Honolulu",
+    "metro_name": "Urban Honolulu",
+    "rank": 55,
+    "state": "HI",
+    "metro_state": "HI",
+    "coords": [
+      -157.8583,
+      21.3069
+    ],
+    "population": "989,408",
+    "visited": false
+  },
+  {
+    "name": "Omaha",
+    "metro_name": "Omaha",
+    "rank": 56,
+    "state": "NE",
+    "metro_state": "NE-IA",
+    "coords": [
+      -95.9345,
+      41.2565
+    ],
+    "population": "983,969",
+    "visited": false
+  },
+  {
+    "name": "Greenville",
+    "metro_name": "Greenville-Anderson-Greer",
+    "rank": 57,
+    "state": "SC",
+    "metro_state": "SC",
+    "coords": [
+      -82.394,
+      34.8526
+    ],
+    "population": "975,480",
+    "visited": true
+  },
+  {
+    "name": "New Orleans",
+    "metro_name": "New Orleans-Metairie",
+    "rank": 58,
+    "state": "LA",
+    "metro_state": "LA",
+    "coords": [
+      -90.0715,
+      29.9511
+    ],
+    "population": "962,165",
+    "visited": true
+  },
+  {
+    "name": "Bridgeport",
+    "metro_name": "Bridgeport-Stamford-Danbury",
+    "rank": 59,
+    "state": "CT",
+    "metro_state": "CT",
+    "coords": [
+      -73.1952,
+      41.1865
+    ],
+    "population": "951,558",
+    "visited": true
+  },
+  {
+    "name": "Knoxville",
+    "metro_name": "Knoxville",
+    "rank": 60,
+    "state": "TN",
+    "metro_state": "TN",
+    "coords": [
+      -83.9207,
+      35.9606
+    ],
+    "population": "946,264",
+    "visited": true
+  },
+  {
+    "name": "Albuquerque",
+    "metro_name": "Albuquerque",
+    "rank": 61,
+    "state": "NM",
+    "metro_state": "NM",
+    "coords": [
+      -106.6504,
+      35.0844
+    ],
+    "population": "922,296",
+    "visited": true
+  },
+  {
+    "name": "Bakersfield",
+    "metro_name": "Bakersfield-Delano",
+    "rank": 62,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -119.0187,
+      35.3733
+    ],
+    "population": "914,000",
+    "visited": false
+  },
+  {
+    "name": "Sarasota",
+    "metro_name": "North Port-Bradenton-Sarasota",
+    "rank": 63,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -82.5308,
+      27.3364
+    ],
+    "population": "910,000",
+    "visited": true
+  },
+  {
+    "name": "Albany",
+    "metro_name": "Albany-Schenectady-Troy",
+    "rank": 64,
+    "state": "NY",
+    "metro_state": "NY",
+    "coords": [
+      -73.7562,
+      42.6526
+    ],
+    "population": "904,682",
+    "visited": true
+  },
+  {
+    "name": "McAllen",
+    "metro_name": "McAllen-Edinburg-Mission",
+    "rank": 65,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -98.23,
+      26.2034
+    ],
+    "population": "898,000",
+    "visited": false
+  },
+  {
+    "name": "Baton Rouge",
+    "metro_name": "Baton Rouge",
+    "rank": 66,
+    "state": "LA",
+    "metro_state": "LA",
+    "coords": [
+      -91.1403,
+      30.4515
+    ],
+    "population": "873,000",
+    "visited": true
+  },
+  {
+    "name": "Allentown",
+    "metro_name": "Allentown-Bethlehem-Easton",
+    "rank": 67,
+    "state": "PA",
+    "metro_state": "PA-NJ",
+    "coords": [
+      -75.4902,
+      40.6084
+    ],
+    "population": "873,555",
+    "visited": true
+  },
+  {
+    "name": "El Paso",
+    "metro_name": "El Paso",
+    "rank": 68,
+    "state": "TX",
+    "metro_state": "TX",
+    "coords": [
+      -106.485,
+      31.7619
+    ],
+    "population": "873,331",
+    "visited": true
+  },
+  {
+    "name": "Worcester",
+    "metro_name": "Worcester",
+    "rank": 69,
+    "state": "MA",
+    "metro_state": "MA",
+    "coords": [
+      -71.8023,
+      42.2626
+    ],
+    "population": "866,866",
+    "visited": false
+  },
+  {
+    "name": "Columbia",
+    "metro_name": "Columbia",
+    "rank": 70,
+    "state": "SC",
+    "metro_state": "SC",
+    "coords": [
+      -81.0348,
+      34.0007
+    ],
+    "population": "858,000",
+    "visited": true
+  },
+  {
+    "name": "Charleston",
+    "metro_name": "Charleston-North Charleston",
+    "rank": 71,
+    "state": "SC",
+    "metro_state": "SC",
+    "coords": [
+      -79.9311,
+      32.7765
+    ],
+    "population": "850,000",
+    "visited": false
+  },
+  {
+    "name": "Cape Coral",
+    "metro_name": "Cape Coral-Fort Myers",
+    "rank": 72,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -81.9495,
+      26.5629
+    ],
+    "population": "834,573",
+    "visited": false
+  },
+  {
+    "name": "Oxnard",
+    "metro_name": "Oxnard-Thousand Oaks-Ventura",
+    "rank": 73,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -119.1792,
+      34.1975
+    ],
+    "population": "829,590",
+    "visited": true
+  },
+  {
+    "name": "Boise",
+    "metro_name": "Boise City",
+    "rank": 74,
+    "state": "ID",
+    "metro_state": "ID",
+    "coords": [
+      -116.2023,
+      43.615
+    ],
+    "population": "824,657",
+    "visited": true
+  },
+  {
+    "name": "Lakeland",
+    "metro_name": "Lakeland-Winter Haven",
+    "rank": 75,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -81.9498,
+      28.0395
+    ],
+    "population": "818,330",
+    "visited": false
+  },
+  {
+    "name": "Dayton",
+    "metro_name": "Dayton-Kettering-Beavercreek",
+    "rank": 76,
+    "state": "OH",
+    "metro_state": "OH",
+    "coords": [
+      -84.1916,
+      39.7589
+    ],
+    "population": "814,363",
+    "visited": true
+  },
+  {
+    "name": "Stockton",
+    "metro_name": "Stockton-Lodi",
+    "rank": 77,
+    "state": "CA",
+    "metro_state": "CA",
+    "coords": [
+      -121.2908,
+      37.9577
+    ],
+    "population": "800,000",
+    "visited": false
+  },
+  {
+    "name": "Greensboro",
+    "metro_name": "Greensboro-High Point",
+    "rank": 78,
+    "state": "NC",
+    "metro_state": "NC",
+    "coords": [
+      -79.792,
+      36.0726
+    ],
+    "population": "789,842",
+    "visited": true
+  },
+  {
+    "name": "Colorado Springs",
+    "metro_name": "Colorado Springs",
+    "rank": 79,
+    "state": "CO",
+    "metro_state": "CO",
+    "coords": [
+      -104.8214,
+      38.8339
+    ],
+    "population": "768,832",
+    "visited": true
+  },
+  {
+    "name": "Little Rock",
+    "metro_name": "Little Rock-North Little Rock-Conway",
+    "rank": 80,
+    "state": "AR",
+    "metro_state": "AR",
+    "coords": [
+      -92.2896,
+      34.7465
+    ],
+    "population": "764,000",
+    "visited": true
+  },
+  {
+    "name": "Des Moines",
+    "metro_name": "Des Moines-West Des Moines",
+    "rank": 81,
+    "state": "IA",
+    "metro_state": "IA",
+    "coords": [
+      -93.6091,
+      41.5868
+    ],
+    "population": "737,164",
+    "visited": false
+  },
+  {
+    "name": "Provo",
+    "metro_name": "Provo-Orem-Lehi",
+    "rank": 82,
+    "state": "UT",
+    "metro_state": "UT",
+    "coords": [
+      -111.6585,
+      40.2338
+    ],
+    "population": "732,000",
+    "visited": true
+  },
+  {
+    "name": "Deltona",
+    "metro_name": "Deltona-Daytona Beach-Ormond Beach",
+    "rank": 83,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -81.2636,
+      28.9005
+    ],
+    "population": "721,000",
+    "visited": false
+  },
+  {
+    "name": "Poughkeepsie",
+    "metro_name": "Kiryas Joel-Poughkeepsie-Newburgh",
+    "rank": 84,
+    "state": "NY",
+    "metro_state": "NY",
+    "coords": [
+      -73.9215,
+      41.7066
+    ],
+    "population": "704,620",
+    "visited": true
+  },
+  {
+    "name": "Akron",
+    "metro_name": "Akron",
+    "rank": 85,
+    "state": "OH",
+    "metro_state": "OH",
+    "coords": [
+      -81.519,
+      41.0814
+    ],
+    "population": "698,398",
+    "visited": true
+  },
+  {
+    "name": "Winston-Salem",
+    "metro_name": "Winston-Salem",
+    "rank": 86,
+    "state": "NC",
+    "metro_state": "NC",
+    "coords": [
+      -80.2442,
+      36.0999
+    ],
+    "population": "695,630",
+    "visited": true
+  },
+  {
+    "name": "Madison",
+    "metro_name": "Madison",
+    "rank": 87,
+    "state": "WI",
+    "metro_state": "WI",
+    "coords": [
+      -89.4012,
+      43.0731
+    ],
+    "population": "694,345",
+    "visited": false
+  },
+  {
+    "name": "Ogden",
+    "metro_name": "Ogden",
+    "rank": 88,
+    "state": "UT",
+    "metro_state": "UT",
+    "coords": [
+      -111.9738,
+      41.223
+    ],
+    "population": "658,133",
+    "visited": true
+  },
+  {
+    "name": "Syracuse",
+    "metro_name": "Syracuse",
+    "rank": 89,
+    "state": "NY",
+    "metro_state": "NY",
+    "coords": [
+      -76.1474,
+      43.0481
+    ],
+    "population": "652,956",
+    "visited": true
+  },
+  {
+    "name": "Wichita",
+    "metro_name": "Wichita",
+    "rank": 90,
+    "state": "KS",
+    "metro_state": "KS",
+    "coords": [
+      -97.3375,
+      37.6872
+    ],
+    "population": "652,939",
+    "visited": false
+  },
+  {
+    "name": "Palm Bay",
+    "metro_name": "Palm Bay-Melbourne-Titusville",
+    "rank": 91,
+    "state": "FL",
+    "metro_state": "FL",
+    "coords": [
+      -80.5887,
+      28.0345
+    ],
+    "population": "643,979",
+    "visited": false
+  },
+  {
+    "name": "Augusta",
+    "metro_name": "Augusta-Richmond County",
+    "rank": 92,
+    "state": "GA",
+    "metro_state": "GA-SC",
+    "coords": [
+      -82.0107,
+      33.4735
+    ],
+    "population": "629,429",
+    "visited": false
+  },
+  {
+    "name": "Jackson",
+    "metro_name": "Jackson",
+    "rank": 93,
+    "state": "MS",
+    "metro_state": "MS",
+    "coords": [
+      -90.1848,
+      32.2988
+    ],
+    "population": "610,257",
+    "visited": false
+  },
+  {
+    "name": "Durham",
+    "metro_name": "Durham-Chapel Hill",
+    "rank": 94,
+    "state": "NC",
+    "metro_state": "NC",
+    "coords": [
+      -78.8986,
+      35.994
+    ],
+    "population": "608,879",
+    "visited": true
+  },
+  {
+    "name": "Harrisburg",
+    "metro_name": "Harrisburg-Carlisle",
+    "rank": 95,
+    "state": "PA",
+    "metro_state": "PA",
+    "coords": [
+      -76.8867,
+      40.2732
+    ],
+    "population": "606,055",
+    "visited": true
+  },
+  {
+    "name": "Spokane",
+    "metro_name": "Spokane-Spokane Valley",
+    "rank": 96,
+    "state": "WA",
+    "metro_state": "WA",
+    "coords": [
+      -117.426,
+      47.6588
+    ],
+    "population": "600,292",
+    "visited": false
+  },
+  {
+    "name": "Toledo",
+    "metro_name": "Toledo",
+    "rank": 97,
+    "state": "OH",
+    "metro_state": "OH",
+    "coords": [
+      -83.5379,
+      41.6528
+    ],
+    "population": "600,000",
+    "visited": true
+  },
+  {
+    "name": "Fayetteville",
+    "metro_name": "Fayetteville-Springdale-Rogers",
+    "rank": 98,
+    "state": "AR",
+    "metro_state": "AR",
+    "coords": [
+      -94.1574,
+      36.0626
+    ],
+    "population": "590,337",
+    "visited": false
+  },
+  {
+    "name": "Chattanooga",
+    "metro_name": "Chattanooga",
+    "rank": 99,
+    "state": "TN",
+    "metro_state": "TN-GA",
+    "coords": [
+      -85.3097,
+      35.0456
+    ],
+    "population": "580,000",
+    "visited": false
+  },
+  {
+    "name": "Scranton",
+    "metro_name": "Scranton-Wilkes-Barre",
+    "rank": 100,
+    "state": "PA",
+    "metro_state": "PA",
+    "coords": [
+      -75.6624,
+      41.409
+    ],
+    "population": "569,413",
+    "visited": true
+  }
+]

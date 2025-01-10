@@ -1,7 +1,15 @@
+let metros;
+
 document.addEventListener('DOMContentLoaded', function () {
-    createCombinedMap();
-    displayTravelSummary();
-    setupToggleButtons();
+    fetch('/data/city_metro_data.json')
+        .then(response => response.json())
+        .then(data => {
+            metros = data;
+            createCombinedMap();
+            displayTravelSummary();
+            setupToggleButtons();
+        })
+        .catch(error => console.error('Error loading the JSON file:', error));
 });
 
 function createCombinedMap() {
@@ -40,14 +48,14 @@ function createCombinedMap() {
                 .attr("d", path);
 
             // Add metros (circles)
-            const allMetros = [...cities, ...additionalMetros];
+            const allMetros = [...metros, ...additionalMetros];
             svg.selectAll(".city-dot")
                 .data(allMetros)
                 .enter().append("circle")
-                .attr("class", d => `city-dot ${d.visited ? 'visited' : 'not-visited'} ${cities.includes(d) ? 'top-100' : 'top-200'}`)
+                .attr("class", d => `city-dot ${d.visited ? 'visited' : 'not-visited'} ${d.rank <= 100 ? 'top-100' : 'top-200'}`)
                 .attr("cx", d => projection(d.coords)[0])
                 .attr("cy", d => projection(d.coords)[1])
-                .style("display", d => cities.includes(d) ? null : 'none') // Hide additional metros by default
+                .style("display", d => d.rank <= 100 ? null : 'none') // Hide additional metros by default
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'metro');
                 })
@@ -123,10 +131,10 @@ function handleMouseOver(element, event, d, tooltip, type) {
         .style("opacity", .9);
 
     let tooltipContent = type === 'metro'
-        ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not visited'}`
+        ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not Visited'}`
         : type === 'highpoint'
-            ? `<strong>${d.state}: ${d.name}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not summited'}`
-            : `<strong>${d.name} NP</strong><br/>${d.state}<br/>${d.visited ? 'Visited' : 'Not visited'}`;
+            ? `<strong>${d.name}, ${d.state}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not Summited'}`
+            : `<strong>${d.name} NP</strong><br/>${d.state}<br/>${d.visited ? 'Visited' : 'Not Visited'}`;
 
     tooltip.html(tooltipContent)
         .style("left", (event.pageX + 10) + "px")
@@ -196,8 +204,8 @@ function displayTravelSummary() {
     // Calculate summary statistics
     const stateCount = Object.values(visitedStates).filter(visited => visited).length;
     const statePercentage = ((stateCount / 50) * 100).toFixed(0);
-    const metroCount = cities.filter(city => city.visited).length;
-    const metroPercentage = ((metroCount / cities.length) * 100).toFixed(0);
+    const metroCount = metros.filter(city => city.visited).length;
+    const metroPercentage = ((metroCount / metros.length) * 100).toFixed(0);
     const highPointCount = highPoints.filter(point => point.visited).length;
     const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
     const parkCount = nationalParks.filter(park => park.visited).length;
@@ -218,7 +226,7 @@ function displayTravelSummary() {
                 <div class="summary-stat">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>
-                        <span class="stat-total">/${cities.length}</span>
+                        <span class="stat-total">/${metros.length}</span>
                         <span class="stat-percentage">(${metroPercentage}%)</span>
                     </div>
                     <span class="stat-label">Largest Metros Visited</span>
@@ -266,15 +274,7 @@ function updateTable(tableType) {
         tableData = highPoints.sort((a, b) => b.elevation - a.elevation);
     } else if (tableType === 'metros') {
         tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
-        tableData = cities.map(city => {
-            const metroData = metroStats.find(m => m.shortName === city.name);
-            return {
-                ...city,
-                rank: metroData ? metroData.rank : 'N/A',
-                population: metroData ? metroData.population : 'N/A',
-                fullName: metroData ? metroData.name : city.name
-            };
-        }).sort((a, b) => (a.rank === 'N/A' ? Infinity : a.rank) - (b.rank === 'N/A' ? Infinity : b.rank));
+        tableData = metros.sort((a, b) => a.rank - b.rank);
     } else if (tableType === 'parks') {
         tableHeaders = ['National Park', 'State', 'Status'];
         tableData = nationalParks.sort((a, b) => a.name.localeCompare(b.name));
@@ -302,7 +302,7 @@ function updateTable(tableType) {
         } else if (tableType === 'metros') {
             row.innerHTML = `
                 <td>${item.rank}</td>
-                <td>${item.fullName}</td>
+                <td>${item.metro_name}</td>
                 <td>${item.state}</td>
                 <td>${item.population}</td>
                 <td>${item.visited ? '✅' : '⬜'}</td>
@@ -409,216 +409,6 @@ function updateButtonState(button, isVisible, categoryName) {
         button.textContent = `Show ${categoryName}`;
     }
 }
-
-// Define your visited and not visited cities
-const cities = [
-    { name: "New York City", state: "NY", coords: [-74.006, 40.7128], visited: true },
-    { name: "Los Angeles", state: "CA", coords: [-118.2437, 34.0522], visited: true },
-    { name: "Chicago", state: "IL", coords: [-87.6298, 41.8781], visited: true },
-    { name: "Dallas", state: "TX", coords: [-96.7970, 32.7767], visited: true },
-    { name: "Houston", state: "TX", coords: [-95.3698, 29.7604], visited: true },
-    { name: "Atlanta", state: "GA", coords: [-84.3880, 33.7490], visited: true },
-    { name: "Washington DC", state: "DC", coords: [-77.0369, 38.9072], visited: true },
-    { name: "Philadelphia", state: "PA", coords: [-75.1652, 39.9526], visited: true },
-    { name: "Miami", state: "FL", coords: [-80.1918, 25.7617], visited: true },
-    { name: "Phoenix", state: "AZ", coords: [-112.0740, 33.4484], visited: true },
-    { name: "Boston", state: "MA", coords: [-71.0589, 42.3601], visited: true },
-    { name: "Riverside", state: "CA", coords: [-117.3961, 33.9806], visited: true },
-    { name: "San Francisco", state: "CA", coords: [-122.4194, 37.7749], visited: true },
-    { name: "Detroit", state: "MI", coords: [-83.0458, 42.3314], visited: true },
-    { name: "Seattle", state: "WA", coords: [-122.3321, 47.6062], visited: true },
-    { name: "Tampa", state: "FL", coords: [-82.4572, 27.9506], visited: true },
-    { name: "San Diego", state: "CA", coords: [-117.1611, 32.7157], visited: true },
-    { name: "Denver", state: "CO", coords: [-104.9903, 39.7392], visited: true },
-    { name: "Baltimore", state: "MD", coords: [-76.6122, 39.2904], visited: true },
-    { name: "Orlando", state: "FL", coords: [-81.3792, 28.5383], visited: true },
-    { name: "Charlotte", state: "NC", coords: [-80.8431, 35.2271], visited: true },
-    { name: "San Antonio", state: "TX", coords: [-98.4936, 29.4241], visited: true },
-    { name: "Portland", state: "OR", coords: [-122.6784, 45.5152], visited: true },
-    { name: "Austin", state: "TX", coords: [-97.7431, 30.2672], visited: true },
-    { name: "Pittsburgh", state: "PA", coords: [-79.9959, 40.4406], visited: true },
-    { name: "Las Vegas", state: "NV", coords: [-115.1398, 36.1699], visited: true },
-    { name: "Cincinnati", state: "OH", coords: [-84.5120, 39.1031], visited: true },
-    { name: "Columbus", state: "OH", coords: [-82.9988, 39.9612], visited: true },
-    { name: "Cleveland", state: "OH", coords: [-81.6944, 41.4993], visited: true },
-    { name: "Nashville", state: "TN", coords: [-86.7816, 36.1627], visited: true },
-    { name: "San Jose", state: "CA", coords: [-121.8863, 37.3382], visited: true },
-    { name: "Virginia Beach", state: "VA", coords: [-75.9780, 36.8529], visited: true },
-    { name: "Raleigh", state: "NC", coords: [-78.6382, 35.7796], visited: true },
-    { name: "Oklahoma City", state: "OK", coords: [-97.5164, 35.4676], visited: true },
-    { name: "Richmond", state: "VA", coords: [-77.4360, 37.5407], visited: true },
-    { name: "Salt Lake City", state: "UT", coords: [-111.8910, 40.7608], visited: true },
-    { name: "Buffalo", state: "NY", coords: [-78.8784, 42.8864], visited: true },
-    { name: "Tucson", state: "AZ", coords: [-110.9265, 32.2226], visited: true },
-    { name: "Rochester", state: "NY", coords: [-77.6109, 43.1566], visited: true },
-    { name: "Tulsa", state: "OK", coords: [-95.9928, 36.1540], visited: true },
-    { name: "Greenville", state: "SC", coords: [-82.3940, 34.8526], visited: true },
-    { name: "New Orleans", state: "LA", coords: [-90.0715, 29.9511], visited: true },
-    { name: "Knoxville", state: "TN", coords: [-83.9207, 35.9606], visited: true },
-    { name: "Albuquerque", state: "NM", coords: [-106.6504, 35.0844], visited: true },
-    { name: "Sarasota", state: "FL", coords: [-82.5308, 27.3364], visited: true },
-    { name: "Albany", state: "NY", coords: [-73.7562, 42.6526], visited: true },
-    { name: "Baton Rouge", state: "LA", coords: [-91.1403, 30.4515], visited: true },
-    { name: "Allentown", state: "PA", coords: [-75.4902, 40.6084], visited: true },
-    { name: "El Paso", state: "TX", coords: [-106.4850, 31.7619], visited: true },
-    { name: "Columbia", state: "SC", coords: [-81.0348, 34.0007], visited: true },
-    { name: "Oxnard", state: "CA", coords: [-119.1792, 34.1975], visited: true },
-    { name: "Boise", state: "ID", coords: [-116.2023, 43.6150], visited: true },
-    { name: "Dayton", state: "OH", coords: [-84.1916, 39.7589], visited: true },
-    { name: "Greensboro", state: "NC", coords: [-79.7920, 36.0726], visited: true },
-    { name: "Colorado Springs", state: "CO", coords: [-104.8214, 38.8339], visited: true },
-    { name: "Little Rock", state: "AR", coords: [-92.2896, 34.7465], visited: true },
-    { name: "Provo", state: "UT", coords: [-111.6585, 40.2338], visited: true },
-    { name: "Poughkeepsie", state: "NY", coords: [-73.9215, 41.7066], visited: true },
-    { name: "Akron", state: "OH", coords: [-81.5190, 41.0814], visited: true },
-    { name: "Winston-Salem", state: "NC", coords: [-80.2442, 36.0999], visited: true },
-    { name: "Ogden", state: "UT", coords: [-111.9738, 41.2230], visited: true },
-    { name: "Syracuse", state: "NY", coords: [-76.1474, 43.0481], visited: true },
-    { name: "Durham", state: "NC", coords: [-78.8986, 35.9940], visited: true },
-    { name: "Harrisburg", state: "PA", coords: [-76.8867, 40.2732], visited: true },
-    { name: "Toledo", state: "OH", coords: [-83.5379, 41.6528], visited: true },
-
-    { name: "Minneapolis", state: "MN", coords: [-93.2650, 44.9778], visited: false },
-    { name: "St. Louis", state: "MO", coords: [-90.1994, 38.6270], visited: false },
-    { name: "Sacramento", state: "CA", coords: [-121.4944, 38.5816], visited: false },
-    { name: "Kansas City", state: "MO", coords: [-94.5786, 39.0997], visited: false },
-    { name: "Jacksonville", state: "FL", coords: [-81.6557, 30.3322], visited: false },
-    { name: "Providence", state: "RI", coords: [-71.4128, 41.8240], visited: false },
-    { name: "Milwaukee", state: "WI", coords: [-87.9065, 43.0389], visited: false },
-    { name: "Indianapolis", state: "IN", coords: [-86.1581, 39.7684], visited: false },
-    { name: "Louisville", state: "KY", coords: [-85.7585, 38.2527], visited: false },
-    { name: "Memphis", state: "TN", coords: [-90.0490, 35.1495], visited: false },
-    { name: "Birmingham", state: "AL", coords: [-86.8025, 33.5186], visited: false },
-    { name: "Fresno", state: "CA", coords: [-119.7871, 36.7378], visited: false },
-    { name: "Grand Rapids", state: "MI", coords: [-85.6681, 42.9634], visited: false },
-    { name: "Hartford", state: "CT", coords: [-72.6823, 41.7658], visited: true },
-    { name: "Honolulu", state: "HI", coords: [-157.8583, 21.3069], visited: false },
-    { name: "Omaha", state: "NE", coords: [-95.9345, 41.2565], visited: false },
-    { name: "Bridgeport", state: "CT", coords: [-73.1952, 41.1865], visited: true },
-    { name: "Bakersfield", state: "CA", coords: [-119.0187, 35.3733], visited: false },
-    { name: "McAllen", state: "TX", coords: [-98.2300, 26.2034], visited: false },
-    { name: "Worcester", state: "MA", coords: [-71.8023, 42.2626], visited: false },
-    { name: "Charleston", state: "SC", coords: [-79.9311, 32.7765], visited: false },
-    { name: "Cape Coral", state: "FL", coords: [-81.9495, 26.5629], visited: false },
-    { name: "Lakeland", state: "FL", coords: [-81.9498, 28.0395], visited: false },
-    { name: "Stockton", state: "CA", coords: [-121.2908, 37.9577], visited: false },
-    { name: "Des Moines", state: "IA", coords: [-93.6091, 41.5868], visited: false },
-    { name: "Deltona", state: "FL", coords: [-81.2636, 28.9005], visited: false },
-    { name: "Madison", state: "WI", coords: [-89.4012, 43.0731], visited: false },
-    { name: "Wichita", state: "KS", coords: [-97.3375, 37.6872], visited: false },
-    { name: "Palm Bay", state: "FL", coords: [-80.5887, 28.0345], visited: false },
-    { name: "Augusta", state: "GA", coords: [-82.0107, 33.4735], visited: false },
-    { name: "Jackson", state: "MS", coords: [-90.1848, 32.2988], visited: false },
-    { name: "Spokane", state: "WA", coords: [-117.4260, 47.6588], visited: false },
-    { name: "Fayetteville", state: "AR", coords: [-94.1574, 36.0626], visited: false },
-    { name: "Chattanooga", state: "TN", coords: [-85.3097, 35.0456], visited: false },
-    { name: "Scranton", state: "PA", coords: [-75.6624, 41.4090], visited: true }
-];
-
-const metroStats = [
-    { rank: 1, name: "New York–Newark–Jersey City", state: "NY-NJ", population: "19,500,000", shortName: "New York City" },
-    { rank: 2, name: "Los Angeles–Long Beach–Anaheim", state: "CA", population: "12,799,100", shortName: "Los Angeles" },
-    { rank: 3, name: "Chicago–Naperville–Elgin", state: "IL-IN", population: "9,262,825", shortName: "Chicago" },
-    { rank: 4, name: "Dallas–Fort Worth–Arlington", state: "TX", population: "8,100,000", shortName: "Dallas" },
-    { rank: 5, name: "Houston–Pasadena–The Woodlands", state: "TX", population: "7,500,000", shortName: "Houston" },
-    { rank: 6, name: "Atlanta–Sandy Springs–Roswell", state: "GA", population: "6,307,261", shortName: "Atlanta" },
-    { rank: 7, name: "Washington–Arlington–Alexandria", state: "DC-VA-MD-WV", population: "6,304,975", shortName: "Washington DC" },
-    { rank: 8, name: "Philadelphia–Camden–Wilmington", state: "PA-NJ-DE-MD", population: "6,246,160", shortName: "Philadelphia" },
-    { rank: 9, name: "Miami–Fort Lauderdale–West Palm Beach", state: "FL", population: "6,183,199", shortName: "Miami" },
-    { rank: 10, name: "Phoenix–Mesa–Chandler", state: "AZ", population: "5,070,110", shortName: "Phoenix" },
-    { rank: 11, name: "Boston–Cambridge–Newton", state: "MA-NH", population: "4,919,179", shortName: "Boston" },
-    { rank: 12, name: "Riverside–San Bernardino–Ontario", state: "CA", population: "4,688,053", shortName: "Riverside" },
-    { rank: 13, name: "San Francisco–Oakland–Fremont", state: "CA", population: "4,566,961", shortName: "San Francisco" },
-    { rank: 14, name: "Detroit–Warren–Dearborn", state: "MI", population: "4,340,000", shortName: "Detroit" },
-    { rank: 15, name: "Seattle–Tacoma–Bellevue", state: "WA", population: "4,044,837", shortName: "Seattle" },
-    { rank: 16, name: "Minneapolis–St. Paul–Bloomington", state: "MN-WI", population: "3,710,000", shortName: "Minneapolis" },
-    { rank: 17, name: "Tampa–St. Petersburg–Clearwater", state: "FL", population: "3,342,963", shortName: "Tampa" },
-    { rank: 18, name: "San Diego–Chula Vista–Carlsbad", state: "CA", population: "3,269,973", shortName: "San Diego" },
-    { rank: 19, name: "Denver–Aurora–Centennial", state: "CO", population: "3,005,131", shortName: "Denver" },
-    { rank: 20, name: "Baltimore–Columbia–Towson", state: "MD", population: "2,834,316", shortName: "Baltimore" },
-    { rank: 21, name: "Orlando–Kissimmee–Sanford", state: "FL", population: "2,817,933", shortName: "Orlando" },
-    { rank: 22, name: "Charlotte–Concord–Gastonia", state: "NC-SC", population: "2,805,115", shortName: "Charlotte" },
-    { rank: 23, name: "St. Louis", state: "MO-IL", population: "2,796,999", shortName: "St. Louis" },
-    { rank: 24, name: "San Antonio–New Braunfels", state: "TX", population: "2,703,999", shortName: "San Antonio" },
-    { rank: 25, name: "Portland–Vancouver–Hillsboro", state: "OR-WA", population: "2,508,050", shortName: "Portland" },
-    { rank: 26, name: "Austin–Round Rock–San Marcos", state: "TX", population: "2,473,275", shortName: "Austin" },
-    { rank: 27, name: "Pittsburgh", state: "PA", population: "2,422,725", shortName: "Pittsburgh" },
-    { rank: 28, name: "Sacramento–Roseville–Folsom", state: "CA", population: "2,420,608", shortName: "Sacramento" },
-    { rank: 29, name: "Las Vegas–Henderson–North Las Vegas", state: "NV", population: "2,336,573", shortName: "Las Vegas" },
-    { rank: 30, name: "Cincinnati", state: "OH-KY-IN", population: "2,271,479", shortName: "Cincinnati" },
-    { rank: 31, name: "Kansas City", state: "MO-KS", population: "2,220,000", shortName: "Kansas City" },
-    { rank: 32, name: "Columbus", state: "OH", population: "2,180,271", shortName: "Columbus" },
-    { rank: 33, name: "Cleveland", state: "OH", population: "2,158,932", shortName: "Cleveland" },
-    { rank: 34, name: "Indianapolis–Carmel–Greenwood", state: "IN", population: "2,138,468", shortName: "Indianapolis" },
-    { rank: 35, name: "Nashville-Davidson–Murfreesboro–Franklin", state: "TN", population: "2,102,573", shortName: "Nashville" },
-    { rank: 36, name: "San Jose–Sunnyvale–Santa Clara", state: "CA", population: "1,945,000", shortName: "San Jose" },
-    { rank: 37, name: "Virginia Beach–Chesapeake–Norfolk", state: "VA-NC", population: "1,787,169", shortName: "Virginia Beach" },
-    { rank: 38, name: "Jacksonville", state: "FL", population: "1,713,240", shortName: "Jacksonville" },
-    { rank: 39, name: "Providence–Warwick", state: "RI-MA", population: "1,677,803", shortName: "Providence" },
-    { rank: 40, name: "Milwaukee–Waukesha", state: "WI", population: "1,560,424", shortName: "Milwaukee" },
-    { rank: 41, name: "Raleigh–Cary", state: "NC", population: "1,509,231", shortName: "Raleigh" },
-    { rank: 42, name: "Oklahoma City", state: "OK", population: "1,477,926", shortName: "Oklahoma City" },
-    { rank: 43, name: "Louisville/Jefferson County", state: "KY-IN", population: "1,365,557", shortName: "Louisville" },
-    { rank: 44, name: "Richmond", state: "VA", population: "1,349,732", shortName: "Richmond" },
-    { rank: 45, name: "Memphis", state: "TN-MS-AR", population: "1,335,674", shortName: "Memphis" },
-    { rank: 46, name: "Salt Lake City–Murray", state: "UT", population: "1,267,864", shortName: "Salt Lake City" },
-    { rank: 47, name: "Birmingham", state: "AL", population: "1,184,290", shortName: "Birmingham" },
-    { rank: 48, name: "Fresno", state: "CA", population: "1,180,020", shortName: "Fresno" },
-    { rank: 49, name: "Grand Rapids–Wyoming–Kentwood", state: "MI", population: "1,162,950", shortName: "Grand Rapids" },
-    { rank: 50, name: "Buffalo–Cheektowaga", state: "NY", population: "1,155,604", shortName: "Buffalo" },
-    { rank: 51, name: "Hartford–West Hartford–East Hartford", state: "CT", population: "1,151,543", shortName: "Hartford" },
-    { rank: 52, name: "Tucson", state: "AZ", population: "1,063,162", shortName: "Tucson" },
-    { rank: 53, name: "Rochester", state: "NY", population: "1,052,087", shortName: "Rochester" },
-    { rank: 54, name: "Tulsa", state: "OK", population: "1,044,757", shortName: "Tulsa" },
-    { rank: 55, name: "Urban Honolulu", state: "HI", population: "989,408", shortName: "Honolulu" },
-    { rank: 56, name: "Omaha", state: "NE-IA", population: "983,969", shortName: "Omaha" },
-    { rank: 57, name: "Greenville–Anderson–Greer", state: "SC", population: "975,480", shortName: "Greenville" },
-    { rank: 58, name: "New Orleans–Metairie", state: "LA", population: "962,165", shortName: "New Orleans" },
-    { rank: 59, name: "Bridgeport–Stamford–Danbury", state: "CT", population: "951,558", shortName: "Bridgeport" },
-    { rank: 60, name: "Knoxville", state: "TN", population: "946,264", shortName: "Knoxville" },
-    { rank: 61, name: "Albuquerque", state: "NM", population: "922,296", shortName: "Albuquerque" },
-    { rank: 62, name: "Bakersfield–Delano", state: "CA", population: "914,000", shortName: "Bakersfield" },
-    { rank: 63, name: "North Port–Bradenton–Sarasota", state: "FL", population: "910,000", shortName: "Sarasota" },
-    { rank: 64, name: "Albany–Schenectady–Troy", state: "NY", population: "904,682", shortName: "Albany" },
-    { rank: 65, name: "McAllen–Edinburg–Mission", state: "TX", population: "898,000", shortName: "McAllen" },
-    { rank: 66, name: "Baton Rouge", state: "LA", population: "873,000", shortName: "Baton Rouge" },
-    { rank: 67, name: "Allentown–Bethlehem–Easton", state: "PA-NJ", population: "873,555", shortName: "Allentown" },
-    { rank: 68, name: "El Paso", state: "TX", population: "873,331", shortName: "El Paso" },
-    { rank: 69, name: "Worcester", state: "MA", population: "866,866", shortName: "Worcester" },
-    { rank: 70, name: "Columbia", state: "SC", population: "858,000", shortName: "Columbia" },
-    { rank: 71, name: "Charleston–North Charleston", state: "SC", population: "850,000", shortName: "Charleston" },
-    { rank: 72, name: "Cape Coral–Fort Myers", state: "FL", population: "834,573", shortName: "Cape Coral" },
-    { rank: 73, name: "Oxnard–Thousand Oaks–Ventura", state: "CA", population: "829,590", shortName: "Oxnard" },
-    { rank: 74, name: "Boise City", state: "ID", population: "824,657", shortName: "Boise" },
-    { rank: 75, name: "Lakeland–Winter Haven", state: "FL", population: "818,330", shortName: "Lakeland" },
-    { rank: 76, name: "Dayton–Kettering–Beavercreek", state: "OH", population: "814,363", shortName: "Dayton" },
-    { rank: 77, name: "Stockton–Lodi", state: "CA", population: "800,000", shortName: "Stockton" },
-    { rank: 78, name: "Greensboro–High Point", state: "NC", population: "789,842", shortName: "Greensboro" },
-    { rank: 79, name: "Colorado Springs", state: "CO", population: "768,832", shortName: "Colorado Springs" },
-    { rank: 80, name: "Little Rock–North Little Rock–Conway", state: "AR", population: "764,000", shortName: "Little Rock" },
-    { rank: 81, name: "Des Moines–West Des Moines", state: "IA", population: "737,164", shortName: "Des Moines" },
-    { rank: 82, name: "Provo–Orem–Lehi", state: "UT", population: "732,000", shortName: "Provo" },
-    { rank: 83, name: "Deltona–Daytona Beach–Ormond Beach", state: "FL", population: "721,000", shortName: "Deltona" },
-    { rank: 84, name: "Kiryas Joel–Poughkeepsie–Newburgh", state: "NY", population: "704,620", shortName: "Poughkeepsie" },
-    { rank: 85, name: "Akron", state: "OH", population: "698,398", shortName: "Akron" },
-    { rank: 86, name: "Winston-Salem", state: "NC", population: "695,630", shortName: "Winston-Salem" },
-    { rank: 87, name: "Madison", state: "WI", population: "694,345", shortName: "Madison" },
-    { rank: 88, name: "Ogden", state: "UT", population: "658,133", shortName: "Ogden" },
-    { rank: 89, name: "Syracuse", state: "NY", population: "652,956", shortName: "Syracuse" },
-    { rank: 90, name: "Wichita", state: "KS", population: "652,939", shortName: "Wichita" },
-    { rank: 91, name: "Palm Bay–Melbourne–Titusville", state: "FL", population: "643,979", shortName: "Palm Bay" },
-    { rank: 92, name: "Augusta-Richmond County", state: "GA-SC", population: "629,429", shortName: "Augusta" },
-    { rank: 93, name: "Jackson", state: "MS", population: "610,257", shortName: "Jackson" },
-    { rank: 94, name: "Durham–Chapel Hill", state: "NC", population: "608,879", shortName: "Durham" },
-    { rank: 95, name: "Harrisburg–Carlisle", state: "PA", population: "606,055", shortName: "Harrisburg" },
-    { rank: 96, name: "Spokane–Spokane Valley", state: "WA", population: "600,292", shortName: "Spokane" },
-    { rank: 97, name: "Toledo", state: "OH", population: "600,000", shortName: "Toledo" },
-    { rank: 98, name: "Fayetteville–Springdale–Rogers", state: "AR", population: "590,337", shortName: "Fayetteville" },
-    { rank: 99, name: "Chattanooga", state: "TN-GA", population: "580,000", shortName: "Chattanooga" },
-    { rank: 100, name: "Scranton–Wilkes-Barre", state: "PA", population: "569,413", shortName: "Scranton" }
-];
-
-
 
 
 const highPoints = [
