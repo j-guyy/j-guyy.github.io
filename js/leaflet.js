@@ -5,12 +5,12 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     const adirondackBounds = L.latLngBounds(
-        L.latLng(44, -74.5),   // Southwest corner
-        L.latLng(44.4, -73.5)    // Northeast corner
+        L.latLng(43.9, -74.4),   // Southwest corner
+        L.latLng(44.5, -73.4)    // Northeast corner
     );
 
     createLeafletMap('colorado-map', colorado14ers, 39.1178, -106.4454, 7, coloradoBounds);
-    createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9, adirondackBounds);
+    createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9.8, adirondackBounds);
 });
 
 const colorado14ers = [
