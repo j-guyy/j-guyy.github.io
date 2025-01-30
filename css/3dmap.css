@@ -107,3 +107,19 @@ model-viewer {
 .threeDmap-info-section li {
     margin-bottom: 10px;
 }
+
+.strava-container {
+    width: 100%;
+    margin: 20px auto;
+    min-height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.strava-container .strava-embed-placeholder {
+    width: 100%;
+    max-width: 800px;
+    /* Adjust this value as needed */
+    margin: 0 auto;
+}

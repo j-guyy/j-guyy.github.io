@@ -33,8 +33,8 @@
         </div>
 
         <div class="threeDmap-section">
-            <h2>Explore the 3D Model</h2>
-            <p class="threeDmap-description">Interact with this 3D model of an astronaut</p>
+            <h2>Dummy 3D Model</h2>
+            <p class="threeDmap-description">Modelviewer test with astronaut.glb</p>
             <div class="model-container">
                 <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
                     alt="A 3D model of an astronaut" auto-rotate camera-controls environment-image="neutral"
@@ -45,18 +45,39 @@
                 <button id="toggle-rotation">Stop Rotation</button>
                 <button id="reset-camera">Reset Camera</button>
             </div>
-            <div class="strava-embed-placeholder" data-embed-type="route" data-embed-id="3310478120663030006"
-                data-style="satellite" data-terrain="3d" data-map-hash="11.86/19.04347/-97.27439/156.2/74"
-                data-from-embed="true">
+        </div>
+
+        <div class="threeDmap-section">
+            <h2>Pico de Orizaba 3D Model</h2>
+            <p class="threeDmap-description">GLB representaion of Pico de Orizaba</p>
+            <div class="model-container">
+                <model-viewer src="data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
+                    camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
+                    background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
+                    field-of-view="30deg">
+                </model-viewer>
+            </div>
+            <div class="model-controls">
+                <button id="toggle-rotation-orizaba">Stop Rotation</button>
+                <button id="reset-camera-orizaba">Reset Camera</button>
             </div>
         </div>
 
-
-
+        <div class="threeDmap-section">
+            <h2>Pico de Orizaba Strava</h2>
+            <p class="threeDmap-description">Embedded Strava Route</p>
+            <div class="strava-container">
+                <div class="strava-embed-placeholder" data-embed-type="route" data-embed-id="3310478120663030006"
+                    data-style="satellite" data-terrain="3d" data-map-hash="11.86/19.04347/-97.27439/156.2/74"
+                    data-from-embed="true">
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Astronaut model controls
             const modelViewer = document.querySelector('model-viewer');
             const rotateButton = document.getElementById('toggle-rotation');
             const resetButton = document.getElementById('reset-camera');
@@ -70,6 +91,22 @@
                 modelViewer.cameraOrbit = '0deg 75deg 105%';
                 modelViewer.cameraTarget = '0m 0m 0m';
                 modelViewer.fieldOfView = '30deg';
+            });
+
+            // Pico de Orizaba model controls
+            const orizabaViewer = document.querySelectorAll('model-viewer')[1];
+            const orizabaRotateButton = document.getElementById('toggle-rotation-orizaba');
+            const orizabaResetButton = document.getElementById('reset-camera-orizaba');
+
+            orizabaRotateButton.addEventListener('click', () => {
+                orizabaViewer.autoRotate = !orizabaViewer.autoRotate;
+                orizabaRotateButton.textContent = orizabaViewer.autoRotate ? 'Stop Rotation' : 'Start Rotation';
+            });
+
+            orizabaResetButton.addEventListener('click', () => {
+                orizabaViewer.cameraOrbit = '0deg 75deg 105%';
+                orizabaViewer.cameraTarget = '0m 0m 0m';
+                orizabaViewer.fieldOfView = '30deg';
             });
         });
     </script>
