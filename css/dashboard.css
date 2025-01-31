@@ -1,0 +1,258 @@
+/* Dashboard specific styles */
+.dashboard-page {
+    position: relative;
+    overflow-x: hidden;
+    background-color: transparent;
+}
+
+.dashboard-content {
+    position: relative;
+    z-index: 1;
+    padding-top: 60px;
+}
+
+.dashboard-hero {
+    height: 60vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.dashboard-hero h1 {
+    font-size: 4em;
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-section {
+    width: 90%;
+    max-width: 1600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: rgba(45, 45, 45, 0.8);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.dashboard-section h2 {
+    color: var(--text-color);
+    margin: 0 0 20px 0;
+    font-size: 2.5em;
+}
+
+/* Summary Stats Styling */
+.summary-stats-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.other-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    text-align: center;
+}
+
+.summary-stat {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.states-summary {
+    padding: 30px;
+}
+
+.states-summary .stat-number {
+    font-size: 3.5em;
+}
+
+.states-summary .stat-total,
+.states-summary .stat-percentage {
+    font-size: 1.8em;
+}
+
+.states-summary .stat-label {
+    font-size: 1.2em;
+    margin-top: 10px;
+}
+
+.summary-stat:hover {
+    transform: translateY(-2px);
+}
+
+.stat-number-container {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 5px;
+}
+
+.stat-number {
+    color: var(--primary-color);
+    font-size: 2.5em;
+    font-weight: bold;
+}
+
+.stat-total,
+.stat-percentage {
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-left: 5px;
+    font-size: 1.25em;
+}
+
+.stat-label {
+    color: var(--text-color);
+    opacity: 0.9;
+    font-size: 0.9em;
+    text-align: center;
+    width: 100%;
+}
+
+/* Table Controls */
+.table-controls {
+    margin: 30px 0;
+}
+
+#table-selector {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+}
+
+#table-selector:hover {
+    background-color: var(--primary-hover-color);
+}
+
+/* Travel Table Styling */
+.travel-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+}
+
+.travel-table th {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 12px 20px;
+    /* Added consistent horizontal padding */
+    text-align: left;
+    /* Align header text left */
+    font-weight: bold;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.travel-table td {
+    padding: 12px 20px;
+    /* Added consistent horizontal padding */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+    /* Align cell text left */
+}
+
+/* Center the Status column */
+.travel-table th:last-child,
+.travel-table td:last-child {
+    text-align: center;
+}
+
+.travel-table tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.travel-table tr.visited {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.travel-table tr.visited:hover {
+    background-color: rgba(76, 175, 80, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-hero {
+        height: auto;
+        min-height: 40vh;
+    }
+
+    .dashboard-hero h1 {
+        font-size: 2em;
+        padding: 10px;
+    }
+
+    .dashboard-section {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .states-summary .stat-number {
+        font-size: 2.8em;
+    }
+
+    .states-summary .stat-total,
+    .states-summary .stat-percentage {
+        font-size: 1.4em;
+    }
+
+    .states-summary .stat-label {
+        font-size: 1em;
+    }
+
+    .stat-number {
+        font-size: 2em;
+    }
+
+    .travel-table {
+        font-size: 0.9em;
+    }
+
+    .travel-table th,
+    .travel-table td {
+        padding: 8px;
+    }
+
+    .other-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1199px) {
+    .dashboard-content {
+        padding: 20px;
+    }
+
+    .other-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1200px) {
+    .dashboard-section {
+        padding: 40px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .dashboard-section {
+        padding: 50px;
+    }
+}

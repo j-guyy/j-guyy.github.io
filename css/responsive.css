@@ -4,13 +4,65 @@
 @media (max-width: 768px) {
 
     /* Navigation adjustments */
-    nav ul {
-        flex-wrap: wrap;
-        justify-content: center;
+    .navbar {
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        z-index: 1000;
     }
 
-    nav ul li {
+    .nav-menu {
+        width: 100%;
+        padding: 5px 0;
+        position: relative;
+        /* Add this */
+    }
+
+    .nav-menu li {
         margin: 5px 10px;
+        position: relative;
+    }
+
+    /* Dropdown mobile adjustments */
+    .dropdown-content {
+        display: none;
+        /* Hidden by default */
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        z-index: 1002;
+        background-color: rgba(0, 0, 0, 0.95);
+    }
+
+    /* Show dropdown when active */
+    .dropdown.active .dropdown-content {
+        display: block;
+    }
+
+    .dropdown-content a {
+        padding: 15px 20px;
+        font-size: 1.1em;
+    }
+
+    /* Override hover effects for touch devices */
+    .dropdown:hover .dropdown-content {
+        display: none;
+    }
+
+    /* Animation fix for mobile dropdowns */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) translateX(-50%);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) translateX(-50%);
+        }
     }
 
     /* General adjustments */
@@ -20,6 +72,38 @@
 
     .container {
         padding: 10px;
+    }
+
+    /* Homepage mobile adjustments */
+    .home-page .content {
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 100%;
+    }
+
+    .home-page .content h1 {
+        font-size: 2em;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+
+    .home-page .subtitle-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .home-page .content .subtitle {
+        font-size: 0.8em;
+        letter-spacing: 1px;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+        width: auto;
+        display: inline-block;
     }
 
     /* About page adjustments */
@@ -45,7 +129,8 @@
     }
 
     /* Map and travel adjustments */
-    .map-section {
+    .map-section,
+    .dashboard-section {
         display: flex;
         flex-direction: column;
         width: 95%;
@@ -61,7 +146,6 @@
     .map-container {
         width: 100%;
         height: 400px;
-        /* Adjust this value as needed */
     }
 
     #combined-map {
@@ -84,22 +168,20 @@
     }
 
     .map-hero,
+    .dashboard-hero,
     .hero,
     .travels-hero {
         height: auto;
-        /* Allow height to adjust based on content */
         min-height: 40vh;
-        /* Set a minimum height */
     }
 
     .map-hero h1,
+    .dashboard-hero h1,
     .hero h1,
     .travels-hero h1,
     .threeDmap-hero h1 {
         font-size: 2em;
-        /* Reduce font size for smaller screens */
         padding: 10px;
-        /* Add some padding around the text */
     }
 
     .travel-section,
@@ -137,6 +219,12 @@
     .model-container {
         height: 300px;
     }
+
+    /* Dashboard mobile adjustments */
+    .dashboard-content,
+    .map-content {
+        padding-top: 80px;
+    }
 }
 
 /* Medium screens */
@@ -148,11 +236,17 @@
     #combined-map {
         height: 70vh;
     }
+
+    .other-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 /* Large screens */
 @media (min-width: 1200px) {
-    .map-section {
+
+    .map-section,
+    .dashboard-section {
         padding: 40px;
     }
 
@@ -169,7 +263,9 @@
 
 /* Extra large screens */
 @media (min-width: 1600px) {
-    .map-section {
+
+    .map-section,
+    .dashboard-section {
         padding: 50px;
     }
 

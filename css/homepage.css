@@ -33,14 +33,30 @@
     animation: fadeInUp 0.5s forwards;
 }
 
+.subtitle-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* Add this */
+}
+
 .home-page .content .subtitle {
     opacity: 0;
     font-size: 1.2em;
     color: #f0f0f0;
-    margin-top: 20px;
+    margin: 20px 0 0 0;
+    /* Updated margin */
     letter-spacing: 3px;
     animation: fadeIn 2s forwards;
     animation-delay: 2s;
+    text-align: center;
+    /* Add this */
+    width: auto;
+    /* Add this */
+    display: inline-block;
+    /* Add this */
 }
 
 @keyframes fadeInUp {

@@ -16,13 +16,30 @@
     <div class="parallax-background"></div>
     <div class="parallax-overlay"></div>
 
-    <nav>
-        <ul>
+    <nav class="navbar">
+        <ul class="nav-menu">
             <li><a href="index.html">Home</a></li>
+
+            <li class="dropdown">
+                <a href="#" class="dropbtn">US Travel</a>
+                <div class="dropdown-content">
+                    <a href="us-dashboard.html">Dashboard</a>
+                    <a href="us-map.html">Interactive Map</a>
+                    <a href="us-quests.html">Side Quests</a>
+                </div>
+            </li>
+
+            <li class="dropdown">
+                <a href="#" class="dropbtn">World Travel</a>
+                <div class="dropdown-content">
+                    <a href="world-dashboard.html">Dashboard</a>
+                    <a href="world-map.html">Interactive Map</a>
+                    <a href="world-quests.html">Side Quests</a>
+                </div>
+            </li>
+
+            <li><a href="3dmap.html">3D Model Viewer</a></li>
             <li><a href="about.html">About Me</a></li>
-            <li><a href="map.html">Interactive Map</a></li>
-            <li><a href="leaflet.html" class="active">Side Quests</a></li>
-            <li><a href="3dmap.html">3D Map Viewer</a></li>
         </ul>
     </nav>
 
@@ -44,6 +61,8 @@
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="js/leaflet.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/mobile-nav.js"></script>
 </body>
 
 </html>
