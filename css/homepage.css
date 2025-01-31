@@ -1,0 +1,24 @@
+.home-page .container {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: transparent;
+    /* Ensures container is transparent */
+}
+
+.home-page .content {
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 2rem 4rem;
+    border-radius: 10px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.home-page .content h1 {
+    margin: 0;
+    font-size: 2.5em;
+    color: white;
+}
