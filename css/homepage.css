@@ -5,20 +5,53 @@
     align-items: center;
     padding: 20px;
     background: transparent;
-    /* Ensures container is transparent */
 }
 
 .home-page .content {
     background-color: rgba(0, 0, 0, 0.6);
-    padding: 2rem 4rem;
-    border-radius: 10px;
+    padding: 3rem 5rem;
+    border-radius: 15px;
     text-align: center;
     backdrop-filter: blur(10px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .home-page .content h1 {
     margin: 0;
-    font-size: 2.5em;
+    font-size: 3.5em;
+    font-weight: 800;
     color: white;
+    letter-spacing: 2px;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.home-page .content h1 span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s forwards;
+}
+
+.home-page .content .subtitle {
+    opacity: 0;
+    font-size: 1.2em;
+    color: #f0f0f0;
+    margin-top: 20px;
+    letter-spacing: 3px;
+    animation: fadeIn 2s forwards;
+    animation-delay: 2s;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
 }

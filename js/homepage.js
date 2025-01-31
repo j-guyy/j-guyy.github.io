@@ -62,4 +62,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Set initial background and start preloading
     body.style.backgroundImage = `url(images/img4.jpg)`;
     preloadAllImages();
+
+    // Add animation delays to each letter
+    const letters = document.querySelectorAll('.content h1 span');
+    letters.forEach((letter, index) => {
+        letter.style.animationDelay = `${index * 0.1}s`;
+    });
+
 });
