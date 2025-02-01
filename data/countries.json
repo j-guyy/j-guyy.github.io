@@ -1,0 +1,989 @@
+{
+    "northAmericanCountries": [
+        {
+            "name": "United States of America",
+            "population": 335893238,
+            "visited": true
+        },
+        {
+            "name": "Mexico",
+            "population": 130207371,
+            "visited": true
+        },
+        {
+            "name": "Canada",
+            "population": 40528396,
+            "visited": true
+        },
+        {
+            "name": "Guatemala",
+            "population": 18092026,
+            "visited": false
+        },
+        {
+            "name": "Cuba",
+            "population": 11212191,
+            "visited": false
+        },
+        {
+            "name": "Haiti",
+            "population": 11584996,
+            "visited": true
+        },
+        {
+            "name": "Dominican Republic",
+            "population": 11117873,
+            "visited": false
+        },
+        {
+            "name": "Honduras",
+            "population": 10432860,
+            "visited": false
+        },
+        {
+            "name": "Nicaragua",
+            "population": 6948392,
+            "visited": false
+        },
+        {
+            "name": "El Salvador",
+            "population": 6524339,
+            "visited": false
+        },
+        {
+            "name": "Costa Rica",
+            "population": 5182354,
+            "visited": false
+        },
+        {
+            "name": "Panama",
+            "population": 4408581,
+            "visited": false
+        },
+        {
+            "name": "Jamaica",
+            "population": 2827377,
+            "visited": true
+        },
+        {
+            "name": "Trinidad and Tobago",
+            "population": 1406585,
+            "visited": false
+        },
+        {
+            "name": "Bahamas",
+            "population": 409984,
+            "visited": false
+        },
+        {
+            "name": "Belize",
+            "population": 400031,
+            "visited": true
+        },
+        {
+            "name": "Barbados",
+            "population": 287711,
+            "visited": false
+        },
+        {
+            "name": "Saint Lucia",
+            "population": 179857,
+            "visited": false
+        },
+        {
+            "name": "Grenada",
+            "population": 113021,
+            "visited": false
+        },
+        {
+            "name": "Saint Vincent and the Grenadines",
+            "population": 111263,
+            "visited": false
+        },
+        {
+            "name": "Antigua and Barbuda",
+            "population": 98731,
+            "visited": false
+        },
+        {
+            "name": "Dominica",
+            "population": 72167,
+            "visited": false
+        },
+        {
+            "name": "Saint Kitts and Nevis",
+            "population": 53819,
+            "visited": false
+        }
+    ],
+    "southAmericanCountries": [
+        {
+            "name": "Brazil",
+            "population": 216290284,
+            "visited": false
+        },
+        {
+            "name": "Colombia",
+            "population": 52085168,
+            "visited": false
+        },
+        {
+            "name": "Argentina",
+            "population": 45510318,
+            "visited": false
+        },
+        {
+            "name": "Peru",
+            "population": 34049588,
+            "visited": false
+        },
+        {
+            "name": "Venezuela",
+            "population": 28435943,
+            "visited": false
+        },
+        {
+            "name": "Chile",
+            "population": 19458310,
+            "visited": false
+        },
+        {
+            "name": "Ecuador",
+            "population": 18001000,
+            "visited": true
+        },
+        {
+            "name": "Bolivia",
+            "population": 12224110,
+            "visited": false
+        },
+        {
+            "name": "Paraguay",
+            "population": 7359718,
+            "visited": false
+        },
+        {
+            "name": "Uruguay",
+            "population": 3407062,
+            "visited": false
+        },
+        {
+            "name": "Guyana",
+            "population": 804567,
+            "visited": false
+        },
+        {
+            "name": "Suriname",
+            "population": 586634,
+            "visited": false
+        }
+    ],
+    "europeanCountries": [
+        {
+            "name": "Albania",
+            "population": 2811655,
+            "visited": false
+        },
+        {
+            "name": "Andorra",
+            "population": 80856,
+            "visited": false
+        },
+        {
+            "name": "Austria",
+            "population": 9130429,
+            "visited": false
+        },
+        {
+            "name": "Belarus",
+            "population": 9115680,
+            "visited": false
+        },
+        {
+            "name": "Belgium",
+            "population": 11712893,
+            "visited": true
+        },
+        {
+            "name": "Bosnia and Herzegovina",
+            "population": 3185073,
+            "visited": false
+        },
+        {
+            "name": "Bulgaria",
+            "population": 6687717,
+            "visited": false
+        },
+        {
+            "name": "Croatia",
+            "population": 3896023,
+            "visited": false
+        },
+        {
+            "name": "Cyprus",
+            "population": 1344976,
+            "visited": false
+        },
+        {
+            "name": "Czech Republic",
+            "population": 10809716,
+            "visited": false
+        },
+        {
+            "name": "Denmark",
+            "population": 5948136,
+            "visited": false
+        },
+        {
+            "name": "Estonia",
+            "population": 1367196,
+            "visited": false
+        },
+        {
+            "name": "Finland",
+            "population": 5601185,
+            "visited": false
+        },
+        {
+            "name": "France",
+            "population": 68308000,
+            "visited": true
+        },
+        {
+            "name": "Germany",
+            "population": 84552242,
+            "visited": false
+        },
+        {
+            "name": "Greece",
+            "population": 10242908,
+            "visited": true
+        },
+        {
+            "name": "Hungary",
+            "population": 9686463,
+            "visited": false
+        },
+        {
+            "name": "Iceland",
+            "population": 387558,
+            "visited": true
+        },
+        {
+            "name": "Ireland",
+            "population": 5123536,
+            "visited": true
+        },
+        {
+            "name": "Italy",
+            "population": 58856847,
+            "visited": true
+        },
+        {
+            "name": "Kosovo",
+            "population": 1700031,
+            "visited": false
+        },
+        {
+            "name": "Latvia",
+            "population": 1882396,
+            "visited": false
+        },
+        {
+            "name": "Liechtenstein",
+            "population": 39598,
+            "visited": false
+        },
+        {
+            "name": "Lithuania",
+            "population": 2854099,
+            "visited": false
+        },
+        {
+            "name": "Luxembourg",
+            "population": 665098,
+            "visited": false
+        },
+        {
+            "name": "Malta",
+            "population": 532956,
+            "visited": false
+        },
+        {
+            "name": "Moldova",
+            "population": 3067070,
+            "visited": false
+        },
+        {
+            "name": "Monaco",
+            "population": 38956,
+            "visited": false
+        },
+        {
+            "name": "Montenegro",
+            "population": 633552,
+            "visited": false
+        },
+        {
+            "name": "Netherlands",
+            "population": 18092524,
+            "visited": true
+        },
+        {
+            "name": "North Macedonia",
+            "population": 1831802,
+            "visited": false
+        },
+        {
+            "name": "Norway",
+            "population": 5519167,
+            "visited": false
+        },
+        {
+            "name": "Poland",
+            "population": 37769399,
+            "visited": false
+        },
+        {
+            "name": "Portugal",
+            "population": 10430738,
+            "visited": true
+        },
+        {
+            "name": "Romania",
+            "population": 19118479,
+            "visited": false
+        },
+        {
+            "name": "Russia",
+            "population": 145440500,
+            "visited": false
+        },
+        {
+            "name": "San Marino",
+            "population": 33733,
+            "visited": false
+        },
+        {
+            "name": "Serbia",
+            "population": 6871547,
+            "visited": false
+        },
+        {
+            "name": "Slovakia",
+            "population": 5518055,
+            "visited": false
+        },
+        {
+            "name": "Slovenia",
+            "population": 2118396,
+            "visited": false
+        },
+        {
+            "name": "Spain",
+            "population": 47828382,
+            "visited": true
+        },
+        {
+            "name": "Sweden",
+            "population": 10551494,
+            "visited": false
+        },
+        {
+            "name": "Switzerland",
+            "population": 8796669,
+            "visited": true
+        },
+        {
+            "name": "Ukraine",
+            "population": 36744636,
+            "visited": false
+        },
+        {
+            "name": "United Kingdom",
+            "population": 67333383,
+            "visited": true
+        },
+        {
+            "name": "Vatican City",
+            "population": 825,
+            "visited": false
+        }
+    ],
+    "africanCountries": [
+        {
+            "name": "Algeria",
+            "population": 44616624,
+            "visited": false
+        },
+        {
+            "name": "Angola",
+            "population": 36749906,
+            "visited": false
+        },
+        {
+            "name": "Benin",
+            "population": 14111034,
+            "visited": false
+        },
+        {
+            "name": "Botswana",
+            "population": 2480244,
+            "visited": false
+        },
+        {
+            "name": "Burkina Faso",
+            "population": 20903273,
+            "visited": false
+        },
+        {
+            "name": "Burundi",
+            "population": 13689450,
+            "visited": false
+        },
+        {
+            "name": "Cameroon",
+            "population": 26545863,
+            "visited": false
+        },
+        {
+            "name": "Cape Verde",
+            "population": 522331,
+            "visited": false
+        },
+        {
+            "name": "Central African Republic",
+            "population": 5457154,
+            "visited": false
+        },
+        {
+            "name": "Chad",
+            "population": 19319064,
+            "visited": false
+        },
+        {
+            "name": "Comoros",
+            "population": 850387,
+            "visited": false
+        },
+        {
+            "name": "Congo",
+            "population": 6182885,
+            "visited": false
+        },
+        {
+            "name": "DR Congo",
+            "population": 89561403,
+            "visited": false
+        },
+        {
+            "name": "Djibouti",
+            "population": 1152944,
+            "visited": false
+        },
+        {
+            "name": "Egypt",
+            "population": 104258327,
+            "visited": false
+        },
+        {
+            "name": "Equatorial Guinea",
+            "population": 1847549,
+            "visited": false
+        },
+        {
+            "name": "Eritrea",
+            "population": 3470390,
+            "visited": false
+        },
+        {
+            "name": "Ethiopia",
+            "population": 128691692,
+            "visited": false
+        },
+        {
+            "name": "Gabon",
+            "population": 2484789,
+            "visited": false
+        },
+        {
+            "name": "Gambia",
+            "population": 2697845,
+            "visited": false
+        },
+        {
+            "name": "Ghana",
+            "population": 31072940,
+            "visited": false
+        },
+        {
+            "name": "Guinea",
+            "population": 14405465,
+            "visited": false
+        },
+        {
+            "name": "Guinea-Bissau",
+            "population": 2153339,
+            "visited": false
+        },
+        {
+            "name": "Ivory Coast",
+            "population": 26378274,
+            "visited": false
+        },
+        {
+            "name": "Kenya",
+            "population": 54985698,
+            "visited": false
+        },
+        {
+            "name": "Lesotho",
+            "population": 2311472,
+            "visited": false
+        },
+        {
+            "name": "Liberia",
+            "population": 5302681,
+            "visited": false
+        },
+        {
+            "name": "Libya",
+            "population": 7305659,
+            "visited": false
+        },
+        {
+            "name": "Madagascar",
+            "population": 27691018,
+            "visited": false
+        },
+        {
+            "name": "Malawi",
+            "population": 21104482,
+            "visited": false
+        },
+        {
+            "name": "Mali",
+            "population": 20250833,
+            "visited": false
+        },
+        {
+            "name": "Mauritania",
+            "population": 4736139,
+            "visited": false
+        },
+        {
+            "name": "Mauritius",
+            "population": 1273588,
+            "visited": false
+        },
+        {
+            "name": "Morocco",
+            "population": 37457000,
+            "visited": false
+        },
+        {
+            "name": "Mozambique",
+            "population": 31255435,
+            "visited": false
+        },
+        {
+            "name": "Namibia",
+            "population": 2963095,
+            "visited": false
+        },
+        {
+            "name": "Niger",
+            "population": 26159867,
+            "visited": false
+        },
+        {
+            "name": "Nigeria",
+            "population": 227882945,
+            "visited": false
+        },
+        {
+            "name": "Rwanda",
+            "population": 13954471,
+            "visited": false
+        },
+        {
+            "name": "Senegal",
+            "population": 16743927,
+            "visited": false
+        },
+        {
+            "name": "Seychelles",
+            "population": 127951,
+            "visited": false
+        },
+        {
+            "name": "Sierra Leone",
+            "population": 8460512,
+            "visited": false
+        },
+        {
+            "name": "Somalia",
+            "population": 15893222,
+            "visited": false
+        },
+        {
+            "name": "South Africa",
+            "population": 59308690,
+            "visited": false
+        },
+        {
+            "name": "South Sudan",
+            "population": 11483374,
+            "visited": false
+        },
+        {
+            "name": "Sudan",
+            "population": 50042791,
+            "visited": false
+        },
+        {
+            "name": "Tanzania",
+            "population": 59734218,
+            "visited": false
+        },
+        {
+            "name": "Togo",
+            "population": 9304337,
+            "visited": false
+        },
+        {
+            "name": "Tunisia",
+            "population": 12200431,
+            "visited": false
+        },
+        {
+            "name": "Uganda",
+            "population": 45741007,
+            "visited": false
+        },
+        {
+            "name": "Zambia",
+            "population": 20723965,
+            "visited": false
+        },
+        {
+            "name": "Zimbabwe",
+            "population": 16340822,
+            "visited": false
+        }
+    ],
+    "oceaniaCountries": [
+        {
+            "name": "Australia",
+            "population": 26177413,
+            "visited": true
+        },
+        {
+            "name": "Fiji",
+            "population": 924145,
+            "visited": false
+        },
+        {
+            "name": "Kiribati",
+            "population": 132530,
+            "visited": false
+        },
+        {
+            "name": "Marshall Islands",
+            "population": 38827,
+            "visited": false
+        },
+        {
+            "name": "Micronesia",
+            "population": 112630,
+            "visited": false
+        },
+        {
+            "name": "Nauru",
+            "population": 11875,
+            "visited": false
+        },
+        {
+            "name": "New Zealand",
+            "population": 5122600,
+            "visited": true
+        },
+        {
+            "name": "Palau",
+            "population": 17727,
+            "visited": false
+        },
+        {
+            "name": "Papua New Guinea",
+            "population": 10389635,
+            "visited": false
+        },
+        {
+            "name": "Samoa",
+            "population": 216663,
+            "visited": false
+        },
+        {
+            "name": "Solomon Islands",
+            "population": 686884,
+            "visited": false
+        },
+        {
+            "name": "Tonga",
+            "population": 104597,
+            "visited": false
+        },
+        {
+            "name": "Tuvalu",
+            "population": 9816,
+            "visited": false
+        },
+        {
+            "name": "Vanuatu",
+            "population": 320409,
+            "visited": false
+        }
+    ],
+    "asianCountries": [
+        {
+            "name": "Afghanistan",
+            "population": 38928346,
+            "visited": false
+        },
+        {
+            "name": "Armenia",
+            "population": 2943393,
+            "visited": false
+        },
+        {
+            "name": "Azerbaijan",
+            "population": 10318207,
+            "visited": false
+        },
+        {
+            "name": "Bahrain",
+            "population": 1569666,
+            "visited": false
+        },
+        {
+            "name": "Bangladesh",
+            "population": 164689383,
+            "visited": false
+        },
+        {
+            "name": "Bhutan",
+            "population": 786385,
+            "visited": false
+        },
+        {
+            "name": "Brunei",
+            "population": 458949,
+            "visited": false
+        },
+        {
+            "name": "Cambodia",
+            "population": 17423880,
+            "visited": false
+        },
+        {
+            "name": "China",
+            "population": 1411750000,
+            "visited": true
+        },
+        {
+            "name": "Georgia",
+            "population": 3807492,
+            "visited": false
+        },
+        {
+            "name": "India",
+            "population": 1392329000,
+            "visited": false
+        },
+        {
+            "name": "Indonesia",
+            "population": 281190067,
+            "visited": false
+        },
+        {
+            "name": "Iran",
+            "population": 84164175,
+            "visited": false
+        },
+        {
+            "name": "Iraq",
+            "population": 40462701,
+            "visited": false
+        },
+        {
+            "name": "Israel",
+            "population": 9256314,
+            "visited": false
+        },
+        {
+            "name": "Japan",
+            "population": 124997578,
+            "visited": true
+        },
+        {
+            "name": "Jordan",
+            "population": 11439213,
+            "visited": false
+        },
+        {
+            "name": "Kazakhstan",
+            "population": 19397998,
+            "visited": false
+        },
+        {
+            "name": "Kuwait",
+            "population": 4838782,
+            "visited": false
+        },
+        {
+            "name": "Kyrgyzstan",
+            "population": 7073516,
+            "visited": false
+        },
+        {
+            "name": "Laos",
+            "population": 7664993,
+            "visited": false
+        },
+        {
+            "name": "Lebanon",
+            "population": 5489739,
+            "visited": false
+        },
+        {
+            "name": "Malaysia",
+            "population": 32365999,
+            "visited": false
+        },
+        {
+            "name": "Maldives",
+            "population": 525994,
+            "visited": false
+        },
+        {
+            "name": "Mongolia",
+            "population": 3347782,
+            "visited": false
+        },
+        {
+            "name": "Myanmar",
+            "population": 54409800,
+            "visited": false
+        },
+        {
+            "name": "Nepal",
+            "population": 29964614,
+            "visited": false
+        },
+        {
+            "name": "North Korea",
+            "population": 25778816,
+            "visited": false
+        },
+        {
+            "name": "Oman",
+            "population": 5049269,
+            "visited": false
+        },
+        {
+            "name": "Pakistan",
+            "population": 247504495,
+            "visited": false
+        },
+        {
+            "name": "Palestine",
+            "population": 5250072,
+            "visited": false
+        },
+        {
+            "name": "Philippines",
+            "population": 109581078,
+            "visited": false
+        },
+        {
+            "name": "Qatar",
+            "population": 2979082,
+            "visited": false
+        },
+        {
+            "name": "Saudi Arabia",
+            "population": 35340683,
+            "visited": false
+        },
+        {
+            "name": "Singapore",
+            "population": 5637022,
+            "visited": false
+        },
+        {
+            "name": "South Korea",
+            "population": 51744876,
+            "visited": true
+        },
+        {
+            "name": "Sri Lanka",
+            "population": 22156000,
+            "visited": false
+        },
+        {
+            "name": "Syria",
+            "population": 22125249,
+            "visited": false
+        },
+        {
+            "name": "Taiwan",
+            "population": 23420111,
+            "visited": false
+        },
+        {
+            "name": "Tajikistan",
+            "population": 10389799,
+            "visited": false
+        },
+        {
+            "name": "Thailand",
+            "population": 69950850,
+            "visited": false
+        },
+        {
+            "name": "Timor-Leste",
+            "population": 1384286,
+            "visited": false
+        },
+        {
+            "name": "Turkey",
+            "population": 84339067,
+            "visited": false
+        },
+        {
+            "name": "Turkmenistan",
+            "population": 7364438,
+            "visited": false
+        },
+        {
+            "name": "United Arab Emirates",
+            "population": 10642081,
+            "visited": false
+        },
+        {
+            "name": "Uzbekistan",
+            "population": 34915100,
+            "visited": false
+        },
+        {
+            "name": "Vietnam",
+            "population": 97338579,
+            "visited": false
+        },
+        {
+            "name": "Yemen",
+            "population": 29825964,
+            "visited": false
+        }
+    ]
+}

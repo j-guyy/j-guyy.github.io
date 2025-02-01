@@ -4,22 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Colorado 14ers Map</title>
+    <title>World Travel Dashboard</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
 
-<body class="map-page">
+<body class="dashboard-page">
     <div class="parallax-background"></div>
     <div class="parallax-overlay"></div>
 
     <nav class="navbar">
         <ul class="nav-menu">
             <li><a href="index.html">Home</a></li>
-
             <li class="dropdown">
                 <a href="#" class="dropbtn">US Travel</a>
                 <div class="dropdown-content">
@@ -28,7 +26,6 @@
                     <a href="us-quests.html">Side Quests</a>
                 </div>
             </li>
-
             <li class="dropdown">
                 <a href="#" class="dropbtn">World Travel</a>
                 <div class="dropdown-content">
@@ -36,32 +33,34 @@
                     <a href="world-map.html">Interactive Map</a>
                 </div>
             </li>
-
             <li><a href="3dmap.html">3D Model Viewer</a></li>
             <li><a href="about.html">About Me</a></li>
         </ul>
     </nav>
 
-    <div class="map-content">
-        <div class="map-hero">
-            <h1>US Side Quests</h1>
+    <div class="dashboard-content">
+        <div class="dashboard-hero">
+            <h1>World Travel Dashboard</h1>
         </div>
 
-        <div class="map-section">
-            <h2>Colorado 14ers</h2>
-            <p>58 Colorado peaks above 14,000ft elevation</p>
-            <div id="colorado-map" class="map-container"></div>
-        </div>
-
-        <div class="map-section">
-            <h2>Adirondack 46ers</h2>
-            <p>46 New York peaks above 4,000ft elevation</p>
-            <div id="adirondack-map" class="map-container"></div>
+        <div class="dashboard-section">
+            <h2>Global Progress Report</h2>
+            <div id="travel-summary"></div>
+            <div class="table-controls">
+                <select id="table-selector">
+                    <option value="northAmerica">North America</option>
+                    <option value="southAmerica">South America</option>
+                    <option value="europe">Europe</option>
+                    <option value="asia">Asia</option>
+                    <option value="africa">Africa</option>
+                    <option value="oceania">Oceania</option>
+                </select>
+            </div>
+            <div id="travel-table-container"></div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="js/leaflet.js"></script>
+    <script src="js/world-dashboard.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/mobile-nav.js"></script>
 </body>
