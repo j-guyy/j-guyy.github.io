@@ -7,12 +7,13 @@
     <title>3D Map Viewer - My Travels</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/map.css">
     <link rel="stylesheet" href="css/3dmap.css">
     <link rel="stylesheet" href="css/responsive.css">
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 
-<body class="threeDmap-page">
+<body class="map-page">
     <div class="parallax-background"></div>
     <div class="parallax-overlay"></div>
 
@@ -43,14 +44,14 @@
         </ul>
     </nav>
 
-    <div class="threeDmap-content">
-        <div class="threeDmap-hero">
+    <div class="map-content">
+        <div class="map-hero">
             <h1>3D Map Viewer</h1>
         </div>
 
-        <div class="threeDmap-section">
+        <div class="map-section">
             <h2>Dummy 3D Model</h2>
-            <p class="threeDmap-description">Modelviewer test with astronaut.glb</p>
+            <p class="map-description">Modelviewer test with astronaut.glb</p>
             <div class="model-container">
                 <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
                     alt="A 3D model of an astronaut" auto-rotate camera-controls environment-image="neutral"
@@ -63,9 +64,9 @@
             </div>
         </div>
 
-        <div class="threeDmap-section">
+        <div class="map-section">
             <h2>Pico de Orizaba 3D Model</h2>
-            <p class="threeDmap-description">GLB representaion of Pico de Orizaba</p>
+            <p class="map-description">GLB representaion of Pico de Orizaba</p>
             <div class="model-container">
                 <model-viewer src="data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
                     camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
@@ -79,9 +80,9 @@
             </div>
         </div>
 
-        <div class="threeDmap-section">
+        <div class="map-section">
             <h2>Pico de Orizaba Strava</h2>
-            <p class="threeDmap-description">Embedded Strava Route</p>
+            <p class="map-description">Embedded Strava Route</p>
             <div class="strava-container">
                 <div class="strava-embed-placeholder" data-embed-type="route" data-embed-id="3310478120663030006"
                     data-style="satellite" data-terrain="3d" data-map-hash="11.86/19.04347/-97.27439/156.2/74"

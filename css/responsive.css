@@ -16,7 +16,6 @@
         width: 100%;
         padding: 5px 0;
         position: relative;
-        /* Add this */
     }
 
     .nav-menu li {
@@ -79,21 +78,24 @@
         padding: 1.5rem;
         width: 90%;
         max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     .home-page .content h1 {
-        font-size: 2em;
+        font-size: 1.7em;
         letter-spacing: 1px;
         text-align: center;
     }
 
-    .home-page .subtitle-container {
+    .subtitle-container {
         width: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
-        text-align: center;
         margin-top: 10px;
+        padding: 0;
     }
 
     .home-page .content .subtitle {
@@ -103,7 +105,20 @@
         padding: 0;
         text-align: center;
         width: auto;
-        display: inline-block;
+        position: static;
+        transform: none;
+        animation: fadeInMobile 2s forwards;
+        animation-delay: 1s;
+    }
+
+    @keyframes fadeInMobile {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
 
     /* About page adjustments */
@@ -128,7 +143,7 @@
         margin-bottom: 20px;
     }
 
-    /* Map and travel adjustments */
+    /* Section adjustments */
     .map-section,
     .dashboard-section {
         display: flex;
@@ -137,6 +152,20 @@
         padding: 20px;
     }
 
+    .map-section h2,
+    .dashboard-section h2 {
+        font-size: 1.5em;
+    }
+
+    .map-section h2 {
+        margin: 0;
+    }
+
+    .map-section p {
+        font-size: .7em;
+    }
+
+    /* Map components */
     .map-legend-container {
         flex-direction: column;
         height: auto;
@@ -149,7 +178,7 @@
     }
 
     #combined-map {
-        height: 100%;
+        height: 60vh;
         width: 100%;
     }
 
@@ -167,6 +196,7 @@
         box-sizing: border-box;
     }
 
+    /* Hero sections */
     .map-hero,
     .dashboard-hero,
     .hero,
@@ -178,34 +208,14 @@
     .map-hero h1,
     .dashboard-hero h1,
     .hero h1,
-    .travels-hero h1,
-    .threeDmap-hero h1 {
+    .travels-hero h1 {
         font-size: 2em;
         padding: 10px;
     }
 
-    .travel-section,
-    .map-section {
-        width: 95%;
-        padding: 20px;
-    }
-
+    /* Other components */
     .high-point {
         width: calc(50% - 20px);
-    }
-
-    #combined-map {
-        height: 60vh;
-    }
-
-    .map-legend-container {
-        flex-direction: column;
-        height: auto;
-    }
-
-    #map-legend {
-        width: 100%;
-        margin-top: 20px;
     }
 
     .other-stats {
@@ -220,7 +230,7 @@
         height: 300px;
     }
 
-    /* Dashboard mobile adjustments */
+    /* Content padding */
     .dashboard-content,
     .map-content {
         padding-top: 80px;
