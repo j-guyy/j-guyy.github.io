@@ -56,4 +56,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // Add hover effect to dropdowns
+    const dropdownLinks = document.querySelectorAll('.dropdown-content a');
+    dropdownLinks.forEach(link => {
+        link.addEventListener('mouseover', function () {
+            this.style.backgroundColor = 'rgba(0, 128, 0, 0.5)'; // semi-transparent green
+            this.style.color = '#fff'; // white text
+        });
+        link.addEventListener('mouseout', function () {
+            this.style.backgroundColor = ''; // reset background color
+            this.style.color = ''; // reset text color
+        });
+    });
 });
