@@ -5,6 +5,8 @@
     align-items: center;
     padding: 20px;
     background: transparent;
+    overflow: hidden;
+    /* Prevent overflow */
 }
 
 .home-page .content {
