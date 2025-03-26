@@ -2,13 +2,17 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 10px;
     background: transparent;
     height: calc(var(--vh, 1vh) * 100);
     position: fixed;
     width: 100%;
     top: 0;
     left: 0;
+    box-sizing: border-box;
+    /* Ensure padding is included in the width */
+    overflow-x: hidden;
+    /* Prevent horizontal overflow */
 }
 
 .home-page .content {
@@ -18,6 +22,10 @@
     text-align: center;
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    max-width: 100%;
+    /* Ensure content does not exceed container width */
+    box-sizing: border-box;
+    /* Ensure padding is included in the width */
 }
 
 .home-page .content h1 {

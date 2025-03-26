@@ -3,6 +3,22 @@
 /* Small screens and mobile devices */
 @media (max-width: 768px) {
 
+    body,
+    html {
+        overflow-x: hidden;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .navbar,
+    .parallax-background,
+    .parallax-overlay,
+    .map-hero,
+    .map-section {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
     /* Navigation adjustments */
     .navbar {
         position: fixed;
@@ -74,6 +90,14 @@
     }
 
     /* Homepage mobile adjustments */
+    .home-page .container {
+        padding: 10px;
+        box-sizing: border-box;
+        /* Ensure padding is included in the width */
+        overflow-x: hidden;
+        /* Prevent horizontal overflow */
+    }
+
     .home-page .content {
         padding: 1.5rem;
         width: 90%;
@@ -81,6 +105,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        box-sizing: border-box;
+        /* Ensure padding is included in the width */
     }
 
     .home-page .content h1 {

@@ -113,6 +113,24 @@
     background-color: var(--primary-color);
 }
 
+body,
+html {
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.navbar,
+.parallax-background,
+.parallax-overlay,
+.map-hero,
+.map-section,
+.dashboard-hero,
+.dashboard-section {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .container {
     flex-grow: 1;
     display: flex;
