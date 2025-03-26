@@ -1,14 +1,23 @@
-let metros;
+let metros, highPoints, nationalParks, visitedStates, additionalMetros;
 
 document.addEventListener('DOMContentLoaded', function () {
-    fetch('/data/city_metro_data.json')
-        .then(response => response.json())
-        .then(data => {
-            metros = data;
+    Promise.all([
+        fetch('/data/baseMetros.json').then(response => response.json()),
+        fetch('/data/highPoints.json').then(response => response.json()),
+        fetch('/data/nationalParks.json').then(response => response.json()),
+        fetch('/data/visitedStates.json').then(response => response.json()),
+        fetch('/data/addtionalMetros.json').then(response => response.json())
+    ])
+        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData, additionalMetrosData]) => {
+            metros = metrosData;
+            highPoints = highPointsData;
+            nationalParks = nationalParksData;
+            visitedStates = visitedStatesData;
+            additionalMetros = additionalMetrosData.metros;
             createCombinedMap();
             setupToggleButtons();
         })
-        .catch(error => console.error('Error loading the JSON file:', error));
+        .catch(error => console.error('Error loading the JSON files:', error));
 });
 
 function createCombinedMap() {
@@ -269,8 +278,6 @@ function toggleCategory(className, buttonId, categoryName) {
 
     updateButtonState(button, !isVisible, categoryName);
 }
-
-
 
 function updateButtonState(button, isVisible, categoryName) {
     if (isVisible) {

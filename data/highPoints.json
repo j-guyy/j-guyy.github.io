@@ -1,0 +1,502 @@
+[
+    {
+        "state": "AK",
+        "name": "Denali",
+        "elevation": 20310,
+        "visited": false,
+        "coords": [
+            -151.0063,
+            63.0695
+        ]
+    },
+    {
+        "state": "CA",
+        "name": "Mount Whitney",
+        "elevation": 14494,
+        "visited": false,
+        "coords": [
+            -118.2922,
+            36.5785
+        ]
+    },
+    {
+        "state": "CO",
+        "name": "Mount Elbert",
+        "elevation": 14433,
+        "visited": false,
+        "coords": [
+            -106.4454,
+            39.1178
+        ]
+    },
+    {
+        "state": "WA",
+        "name": "Mount Rainier",
+        "elevation": 14411,
+        "visited": false,
+        "coords": [
+            -121.7603,
+            46.8523
+        ]
+    },
+    {
+        "state": "WY",
+        "name": "Gannett Peak",
+        "elevation": 13804,
+        "visited": false,
+        "coords": [
+            -109.6542,
+            43.1842
+        ]
+    },
+    {
+        "state": "HI",
+        "name": "Mauna Kea",
+        "elevation": 13803,
+        "visited": false,
+        "coords": [
+            -155.4682,
+            19.8207
+        ]
+    },
+    {
+        "state": "UT",
+        "name": "Kings Peak",
+        "elevation": 13528,
+        "visited": false,
+        "coords": [
+            -110.3729,
+            40.7764
+        ]
+    },
+    {
+        "state": "NM",
+        "name": "Wheeler Peak",
+        "elevation": 13161,
+        "visited": true,
+        "coords": [
+            -105.4172,
+            36.5568
+        ]
+    },
+    {
+        "state": "NV",
+        "name": "Boundary Peak",
+        "elevation": 13140,
+        "visited": false,
+        "coords": [
+            -118.3513,
+            37.8462
+        ]
+    },
+    {
+        "state": "MT",
+        "name": "Granite Peak",
+        "elevation": 12799,
+        "visited": false,
+        "coords": [
+            -110.1072,
+            45.1633
+        ]
+    },
+    {
+        "state": "ID",
+        "name": "Borah Peak",
+        "elevation": 12662,
+        "visited": false,
+        "coords": [
+            -113.7811,
+            44.1374
+        ]
+    },
+    {
+        "state": "AZ",
+        "name": "Humphreys Peak",
+        "elevation": 12633,
+        "visited": true,
+        "coords": [
+            -111.6781,
+            35.3464
+        ]
+    },
+    {
+        "state": "OR",
+        "name": "Mount Hood",
+        "elevation": 11239,
+        "visited": true,
+        "coords": [
+            -121.6959,
+            45.3735
+        ]
+    },
+    {
+        "state": "TX",
+        "name": "Guadalupe Peak",
+        "elevation": 8749,
+        "visited": true,
+        "coords": [
+            -104.8606,
+            31.8914
+        ]
+    },
+    {
+        "state": "SD",
+        "name": "Black Elk Peak",
+        "elevation": 7242,
+        "visited": true,
+        "coords": [
+            -103.7516,
+            43.8662
+        ]
+    },
+    {
+        "state": "NC",
+        "name": "Mount Mitchell",
+        "elevation": 6684,
+        "visited": true,
+        "coords": [
+            -82.2656,
+            35.7648
+        ]
+    },
+    {
+        "state": "TN",
+        "name": "Clingmans Dome",
+        "elevation": 6643,
+        "visited": true,
+        "coords": [
+            -83.4985,
+            35.5629
+        ]
+    },
+    {
+        "state": "NH",
+        "name": "Mount Washington",
+        "elevation": 6288,
+        "visited": false,
+        "coords": [
+            -71.3033,
+            44.2705
+        ]
+    },
+    {
+        "state": "VA",
+        "name": "Mount Rogers",
+        "elevation": 5729,
+        "visited": true,
+        "coords": [
+            -81.5447,
+            36.6597
+        ]
+    },
+    {
+        "state": "NE",
+        "name": "Panorama Point",
+        "elevation": 5424,
+        "visited": true,
+        "coords": [
+            -104.0317,
+            41.0037
+        ]
+    },
+    {
+        "state": "NY",
+        "name": "Mount Marcy",
+        "elevation": 5344,
+        "visited": true,
+        "coords": [
+            -73.9237,
+            44.1121
+        ]
+    },
+    {
+        "state": "ME",
+        "name": "Mount Katahdin",
+        "elevation": 5268,
+        "visited": false,
+        "coords": [
+            -68.9214,
+            45.9044
+        ]
+    },
+    {
+        "state": "OK",
+        "name": "Black Mesa",
+        "elevation": 4973,
+        "visited": true,
+        "coords": [
+            -102.9972,
+            36.9317
+        ]
+    },
+    {
+        "state": "WV",
+        "name": "Spruce Knob",
+        "elevation": 4863,
+        "visited": true,
+        "coords": [
+            -79.5312,
+            38.6998
+        ]
+    },
+    {
+        "state": "GA",
+        "name": "Brasstown Bald",
+        "elevation": 4784,
+        "visited": false,
+        "coords": [
+            -83.8107,
+            34.8740
+        ]
+    },
+    {
+        "state": "VT",
+        "name": "Mount Mansfield",
+        "elevation": 4393,
+        "visited": true,
+        "coords": [
+            -72.8143,
+            44.5437
+        ]
+    },
+    {
+        "state": "KY",
+        "name": "Black Mountain",
+        "elevation": 4145,
+        "visited": true,
+        "coords": [
+            -82.8940,
+            36.9143
+        ]
+    },
+    {
+        "state": "KS",
+        "name": "Mount Sunflower",
+        "elevation": 4039,
+        "visited": false,
+        "coords": [
+            -102.0372,
+            39.0219
+        ]
+    },
+    {
+        "state": "ND",
+        "name": "White Butte",
+        "elevation": 3506,
+        "visited": false,
+        "coords": [
+            -103.3048,
+            46.3863
+        ]
+    },
+    {
+        "state": "MA",
+        "name": "Mount Greylock",
+        "elevation": 3489,
+        "visited": true,
+        "coords": [
+            -73.1662,
+            42.6376
+        ]
+    },
+    {
+        "state": "SC",
+        "name": "Sassafras Mountain",
+        "elevation": 3553,
+        "visited": true,
+        "coords": [
+            -82.7770,
+            35.0647
+        ]
+    },
+    {
+        "state": "MD",
+        "name": "Hoye-Crest",
+        "elevation": 3360,
+        "visited": true,
+        "coords": [
+            -79.4876,
+            39.2383
+        ]
+    },
+    {
+        "state": "PA",
+        "name": "Mount Davis",
+        "elevation": 3213,
+        "visited": true,
+        "coords": [
+            -79.1347,
+            39.7861
+        ]
+    },
+    {
+        "state": "AR",
+        "name": "Magazine Mountain",
+        "elevation": 2753,
+        "visited": false,
+        "coords": [
+            -93.6452,
+            35.1671
+        ]
+    },
+    {
+        "state": "AL",
+        "name": "Cheaha Mountain",
+        "elevation": 2407,
+        "visited": false,
+        "coords": [
+            -85.8086,
+            33.4857
+        ]
+    },
+    {
+        "state": "CT",
+        "name": "Mount Frissell-South Slope",
+        "elevation": 2380,
+        "visited": true,
+        "coords": [
+            -73.4834,
+            42.0497
+        ]
+    },
+    {
+        "state": "MN",
+        "name": "Eagle Mountain",
+        "elevation": 2301,
+        "visited": false,
+        "coords": [
+            -90.5598,
+            47.8974
+        ]
+    },
+    {
+        "state": "MI",
+        "name": "Mount Arvon",
+        "elevation": 1979,
+        "visited": false,
+        "coords": [
+            -88.1553,
+            46.7564
+        ]
+    },
+    {
+        "state": "WI",
+        "name": "Timms Hill",
+        "elevation": 1951,
+        "visited": false,
+        "coords": [
+            -90.1953,
+            45.4519
+        ]
+    },
+    {
+        "state": "NJ",
+        "name": "High Point",
+        "elevation": 1803,
+        "visited": true,
+        "coords": [
+            -74.6615,
+            41.3208
+        ]
+    },
+    {
+        "state": "MO",
+        "name": "Taum Sauk Mountain",
+        "elevation": 1772,
+        "visited": false,
+        "coords": [
+            -90.7279,
+            37.5719
+        ]
+    },
+    {
+        "state": "IA",
+        "name": "Hawkeye Point",
+        "elevation": 1670,
+        "visited": false,
+        "coords": [
+            -95.7083,
+            43.4602
+        ]
+    },
+    {
+        "state": "OH",
+        "name": "Campbell Hill",
+        "elevation": 1550,
+        "visited": true,
+        "coords": [
+            -83.7201,
+            40.3698
+        ]
+    },
+    {
+        "state": "IN",
+        "name": "Hoosier Hill",
+        "elevation": 1257,
+        "visited": true,
+        "coords": [
+            -84.8519,
+            39.9478
+        ]
+    },
+    {
+        "state": "IL",
+        "name": "Charles Mound",
+        "elevation": 1235,
+        "visited": false,
+        "coords": [
+            -90.2394,
+            42.5045
+        ]
+    },
+    {
+        "state": "RI",
+        "name": "Jerimoth Hill",
+        "elevation": 812,
+        "visited": false,
+        "coords": [
+            -71.7789,
+            41.8507
+        ]
+    },
+    {
+        "state": "MS",
+        "name": "Woodall Mountain",
+        "elevation": 807,
+        "visited": false,
+        "coords": [
+            -88.2413,
+            34.7880
+        ]
+    },
+    {
+        "state": "LA",
+        "name": "Driskill Mountain",
+        "elevation": 535,
+        "visited": false,
+        "coords": [
+            -92.8972,
+            32.4251
+        ]
+    },
+    {
+        "state": "DE",
+        "name": "Ebright Azimuth",
+        "elevation": 448,
+        "visited": true,
+        "coords": [
+            -75.5220,
+            39.8362
+        ]
+    },
+    {
+        "state": "FL",
+        "name": "Britton Hill",
+        "elevation": 345,
+        "visited": false,
+        "coords": [
+            -86.2814,
+            30.9833
+        ]
+    }
+]
