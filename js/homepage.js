@@ -72,11 +72,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Function to adjust container height
     function adjustContainerHeight() {
         const container = document.querySelector('.home-page .container');
-        container.style.height = `${window.innerHeight}px`;
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
     }
 
-    // Adjust container height on load and resize
-    adjustContainerHeight();
+    // Add event listener for resize and orientation change
     window.addEventListener('resize', adjustContainerHeight);
+    window.addEventListener('orientationchange', adjustContainerHeight);
+
 
 });

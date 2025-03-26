@@ -4,7 +4,11 @@
     align-items: center;
     padding: 20px;
     background: transparent;
-    /* Removed fixed height and overflow */
+    height: calc(var(--vh, 1vh) * 100);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
 }
 
 .home-page .content {
