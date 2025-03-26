@@ -69,4 +69,14 @@ document.addEventListener('DOMContentLoaded', function () {
         letter.style.animationDelay = `${index * 0.1}s`;
     });
 
+    // Function to adjust container height
+    function adjustContainerHeight() {
+        const container = document.querySelector('.home-page .container');
+        container.style.height = `${window.innerHeight}px`;
+    }
+
+    // Adjust container height on load and resize
+    adjustContainerHeight();
+    window.addEventListener('resize', adjustContainerHeight);
+
 });

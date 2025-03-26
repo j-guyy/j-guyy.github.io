@@ -1,11 +1,10 @@
 .home-page .container {
-    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
     background: transparent;
-    overflow: hidden;
+    /* Removed fixed height and overflow */
 }
 
 .home-page .content {
