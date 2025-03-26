@@ -69,16 +69,4 @@ document.addEventListener('DOMContentLoaded', function () {
         letter.style.animationDelay = `${index * 0.1}s`;
     });
 
-    // Function to adjust container height
-    function adjustContainerHeight() {
-        const container = document.querySelector('.home-page .container');
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-    }
-
-    // Add event listener for resize and orientation change
-    window.addEventListener('resize', adjustContainerHeight);
-    window.addEventListener('orientationchange', adjustContainerHeight);
-
-
 });
