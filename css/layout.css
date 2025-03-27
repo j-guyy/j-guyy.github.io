@@ -48,9 +48,9 @@
     backdrop-filter: blur(10px);
     min-width: 180px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    border-radius: 0 0 4px 4px;
     overflow: hidden;
-    top: 100%;
+    top: calc(100% + 0.5rem);
     left: 50%;
     transform: translateX(-50%);
     z-index: 1001;
@@ -76,9 +76,20 @@
     animation: fadeIn 0.3s ease;
 }
 
+.dropdown::after {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 100%;
+    bottom: -20px;
+    left: 0;
+}
+
 /* Only apply hover effect on non-touch devices */
 @media (hover: hover) {
-    .dropdown:hover .dropdown-content {
+
+    .dropdown:hover .dropdown-content,
+    .dropdown:hover::after+.dropdown-content {
         display: block;
         animation: fadeIn 0.3s ease;
     }
