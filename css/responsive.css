@@ -1,5 +1,28 @@
 /* Responsive design */
 
+/* Extremely narrow screens */
+@media screen and (max-width: 450px) {
+    .map-controls {
+        flex-direction: column;
+        /* Stack buttons vertically */
+        align-items: center;
+        /* Center buttons horizontally */
+        gap: 8px;
+        /* Reduce gap between buttons */
+        width: 100%;
+        /* Full width container */
+    }
+
+    .map-controls button {
+        width: 90%;
+        /* Make buttons take up most of the container width */
+        max-width: 300px;
+        /* Optional: limit maximum width of buttons */
+        padding: 8px 15px;
+        /* Optional: slightly reduce padding for better mobile fit */
+    }
+}
+
 /* Small screens and mobile devices */
 @media (max-width: 768px) {
 
@@ -200,11 +223,11 @@
 
     .map-container {
         width: 100%;
-        height: 400px;
+        height: auto;
     }
 
     #combined-map {
-        height: 60vh;
+        height: auto;
         width: 100%;
     }
 
@@ -269,8 +292,10 @@
         width: calc(33.33% - 20px);
     }
 
-    #combined-map {
-        height: 70vh;
+    #combined-map,
+    .map-container,
+    .map-legend-container {
+        height: auto;
     }
 
     .other-stats {
@@ -286,14 +311,14 @@
         padding: 40px;
     }
 
-    #combined-map {
-        height: 85vh;
-        max-height: 1000px;
+    #combined-map,
+    .map-container,
+    .map-legend-container {
+        height: auto;
     }
 
     .map-legend-container {
-        height: 85vh;
-        max-height: 1000px;
+        padding-bottom: 20px;
     }
 }
 
@@ -305,14 +330,14 @@
         padding: 50px;
     }
 
-    #combined-map {
-        height: 90vh;
-        max-height: 1200px;
+    #combined-map,
+    .map-container,
+    .map-legend-container {
+        height: auto;
     }
 
     .map-legend-container {
-        height: 90vh;
-        max-height: 1200px;
+        padding-bottom: 50px;
     }
 }
 
