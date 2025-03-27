@@ -119,8 +119,8 @@ function createCombinedMap() {
 }
 
 function handleMouseOver(element, event, d, tooltip, type) {
-    if (type === 'metro') {
-    } else if (type === 'highpoint') {
+    // Handle element scaling/size changes (unchanged)
+    if (type === 'highpoint') {
         d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(200));
     } else if (type === 'park') {
         d3.select(element)
@@ -134,6 +134,7 @@ function handleMouseOver(element, event, d, tooltip, type) {
             });
     }
 
+    // Show tooltip
     tooltip.transition()
         .duration(200)
         .style("opacity", .9);
@@ -144,10 +145,39 @@ function handleMouseOver(element, event, d, tooltip, type) {
             ? `<strong>${d.name}, ${d.state}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not Summited'}`
             : `<strong>${d.name} NP</strong><br/>${d.state}<br/>${d.visited ? 'Visited' : 'Not Visited'}`;
 
-    tooltip.html(tooltipContent)
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
+    tooltip.html(tooltipContent);
+
+    // Get map container bounds
+    const mapContainer = d3.select("#combined-map").node();
+    const mapBounds = mapContainer.getBoundingClientRect();
+
+    // Get mouse position relative to map container
+    const mouseX = event.clientX - mapBounds.left;
+    const mouseY = event.clientY - mapBounds.top;
+
+    const tooltipWidth = tooltip.node().offsetWidth;
+    const tooltipHeight = tooltip.node().offsetHeight;
+
+    // Calculate position
+    let left = mouseX + 15;
+    let top = mouseY + 15;
+
+    // Adjust if tooltip would go off the right side of the map
+    if (left + tooltipWidth > mapBounds.width) {
+        left = mouseX - tooltipWidth - 15;
+    }
+
+    // Adjust if tooltip would go off the bottom of the map
+    if (top + tooltipHeight > mapBounds.height) {
+        top = mouseY - tooltipHeight - 15;
+    }
+
+    // Set position relative to map container
+    tooltip
+        .style("left", left + "px")
+        .style("top", top + "px");
 }
+
 
 function handleMouseOut(element, tooltip, type) {
     if (type === 'metro') {

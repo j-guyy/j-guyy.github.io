@@ -53,6 +53,7 @@
     height: 80vh;
     max-height: 800px;
     margin: 0 auto;
+    position: relative;
 }
 
 #combined-map .state.not-visited {
@@ -106,6 +107,10 @@
     color: black;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     z-index: 1000;
+    max-width: 200px;
+    /* Add this to prevent very wide tooltips */
+    width: max-content;
+    /* Add this to ensure tooltip width fits content */
 }
 
 .map-legend-container {
