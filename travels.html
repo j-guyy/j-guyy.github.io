@@ -15,14 +15,32 @@
 <body class="travels-page">
     <div class="parallax-background"></div>
     <div class="parallax-overlay"></div>
-    <nav>
-        <ul>
+    <nav class="navbar">
+        <ul class="nav-menu">
             <li><a href="index.html">Home</a></li>
+            <li class="dropdown">
+                <a href="#" class="dropbtn">US Travel</a>
+                <div class="dropdown-content">
+                    <a href="us-dashboard.html">Dashboard</a>
+                    <a href="us-map.html">Interactive Map</a>
+                    <a href="us-quests.html">Side Quests</a>
+                </div>
+            </li>
+            <li class="dropdown">
+                <a href="#" class="dropbtn">World Travel</a>
+                <div class="dropdown-content">
+                    <a href="world-dashboard.html">Dashboard</a>
+                    <a href="world-map.html">Interactive Map</a>
+                </div>
+            </li>
+            <li class="dropdown">
+                <a href="#" class="dropbtn">Objectives</a>
+                <div class="dropdown-content">
+                    <a href="objectives-list.html">Objectives List</a>
+                    <a href="3dmap.html">3D Model Viewer</a>
+                </div>
+            </li>
             <li><a href="about.html">About Me</a></li>
-            <li><a href="travels.html" class="active">Travels</a></li>
-            <li><a href="map.html">Interactive Map</a></li>
-            <li><a href="leaflet.html">Side Quests</a></li>
-            <li><a href="3dmap.html">3D Map Viewer</a></li>
         </ul>
     </nav>
     <div class="travels-content">
