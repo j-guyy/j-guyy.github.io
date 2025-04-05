@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">
 </head>
 
-<body class="map-page">
+<body class="page">
     <div class="parallax-background"></div>
     <div class="parallax-overlay"></div>
 
@@ -47,12 +47,12 @@
         </ul>
     </nav>
 
-    <div class="map-content">
-        <div class="map-hero">
+    <div class="content">
+        <div class="hero">
             <h1>Objectives List</h1>
         </div>
 
-        <div class="map-section">
+        <div class="section">
             <h2>Spotlight</h2>
             <div class="glide">
                 <div class="glide__track" data-glide-el="track">
@@ -80,22 +80,19 @@
             </div>
         </div>
 
-        <div class="map-section">
+        <div class="section">
             <h2>Mountaineering</h2>
         </div>
 
-
-        <div class="map-section">
+        <div class="section">
             <h2>Cycling</h2>
         </div>
 
-
-
-        <div class="map-section">
+        <div class="section">
             <h2>Ultrarunning</h2>
         </div>
 
-        <div class="map-section">
+        <div class="section">
             <h2>Triathlon</h2>
         </div>
     </div>
@@ -109,6 +106,7 @@
             carousels.forEach(carousel => {
                 new Glide(carousel, {
                     perView: 3,
+                    gap: 15,
                     bound: true,
                     breakpoints: {
                         768: { perView: 1 },

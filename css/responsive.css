@@ -36,8 +36,8 @@
     .navbar,
     .parallax-background,
     .parallax-overlay,
-    .map-hero,
-    .map-section {
+    .hero,
+    .section {
         width: 100%;
         box-sizing: border-box;
     }
@@ -193,7 +193,7 @@
     }
 
     /* Section adjustments */
-    .map-section,
+    .section,
     .dashboard-section {
         display: flex;
         flex-direction: column;
@@ -201,16 +201,16 @@
         padding: 20px;
     }
 
-    .map-section h2,
+    .section h2,
     .dashboard-section h2 {
         font-size: 1.5em;
     }
 
-    .map-section h2 {
+    .section h2 {
         margin: 0;
     }
 
-    .map-section p {
+    .section p {
         font-size: .7em;
     }
 
@@ -246,7 +246,7 @@
     }
 
     /* Hero sections */
-    .map-hero,
+    .hero,
     .dashboard-hero,
     .hero,
     .travels-hero {
@@ -254,7 +254,7 @@
         min-height: 40vh;
     }
 
-    .map-hero h1,
+    .hero h1,
     .dashboard-hero h1,
     .hero h1,
     .travels-hero h1 {
@@ -281,7 +281,7 @@
 
     /* Content padding */
     .dashboard-content,
-    .map-content {
+    .content {
         padding-top: 80px;
     }
 }
@@ -306,7 +306,7 @@
 /* Large screens */
 @media (min-width: 1200px) {
 
-    .map-section,
+    .section,
     .dashboard-section {
         padding: 40px;
     }
@@ -325,7 +325,7 @@
 /* Extra large screens */
 @media (min-width: 1600px) {
 
-    .map-section,
+    .section,
     .dashboard-section {
         padding: 50px;
     }

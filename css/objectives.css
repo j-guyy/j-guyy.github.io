@@ -17,11 +17,11 @@
 }
 
 .glide__slide img {
-    height: 280px;
-    /* Ensure images fit within the track */
     object-fit: cover;
-    border-radius: 5px;
-    /* Apply consistent border-radius to all corners */
+    border-radius: 10px;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 4/3;
 }
 
 .glide__slide p {
