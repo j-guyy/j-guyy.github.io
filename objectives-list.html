@@ -8,7 +8,10 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/objectives.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">
 </head>
 
 <body class="map-page">
@@ -50,15 +53,71 @@
         </div>
 
         <div class="map-section">
-            <h2>My Goals</h2>
-            <ul>
-                <li>No Spoilers Just Yet</li>
-            </ul>
+            <h2>Spotlight</h2>
+            <div class="glide">
+                <div class="glide__track" data-glide-el="track">
+                    <ul class="glide__slides">
+                        <li class="glide__slide">
+                            <a href="trip-reports/pico-de-orizaba.html">
+                                <img src="images/pico/summit.jpg" alt="Pico de Orizaba">
+                                <p>Pico de Orizaba</p>
+                            </a>
+                        </li>
+                        <li class="glide__slide">
+                            <a href="trip-reports/creede-100.html">
+                                <img src="images/creede/start.jpg" alt="Creede 100">
+                                <p>Creede 100</p>
+                            </a>
+                        </li>
+                        <li class="glide__slide">
+                            <a href="trip-reports/ironman-lake-placid.html">
+                                <img src="images/imlp/bikehoriz.JPG" alt="IRONMAN Lake Placid">
+                                <p>IRONMAN Lake Placid</p>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <h2>Mountaineering</h2>
+        </div>
+
+
+        <div class="map-section">
+            <h2>Cycling</h2>
+        </div>
+
+
+
+        <div class="map-section">
+            <h2>Ultrarunning</h2>
+        </div>
+
+        <div class="map-section">
+            <h2>Triathlon</h2>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@glidejs/glide"></script>
     <script src="js/nav.js"></script>
     <script src="js/mobile-nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const carousels = document.querySelectorAll('.glide');
+            carousels.forEach(carousel => {
+                new Glide(carousel, {
+                    perView: 3,
+                    bound: true,
+                    breakpoints: {
+                        768: { perView: 1 },
+                        1024: { perView: 2 }
+                    }
+                }).mount();
+            });
+        });
+    </script>
 </body>
 
 </html>

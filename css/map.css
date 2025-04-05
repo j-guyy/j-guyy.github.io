@@ -13,6 +13,8 @@
 .map-hero {
     height: 60vh;
     display: flex;
+    flex-direction: column;
+    /* Stack elements vertically */
     justify-content: center;
     align-items: center;
     color: var(--text-color);
@@ -24,7 +26,26 @@
     font-size: 4em;
     position: relative;
     z-index: 1;
+    margin-bottom: 10px;
+    /* Add spacing between h1 and h2 */
 }
+
+.map-hero h2 {
+    font-size: 1.2em;
+    /* Adjust font size for better hierarchy */
+    margin: 0;
+}
+
+.map-hero h1::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--primary-color);
+}
+
 
 .map-section {
     width: 90%;
