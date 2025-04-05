@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/objectives.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/objectives.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.theme.min.css">
 </head>
@@ -75,6 +75,18 @@
                                 <p>IRONMAN Lake Placid</p>
                             </a>
                         </li>
+                        <li class="glide__slide">
+                            <a href="trip-reports/ironman-lake-placid.html">
+                                <img src="images/img21.jpg" alt="IRONMAN Lake Placid">
+                                <p>IMG4</p>
+                            </a>
+                        </li>
+                        <li class="glide__slide">
+                            <a href="trip-reports/ironman-lake-placid.html">
+                                <img src="images/img22.jpg" alt="IRONMAN Lake Placid">
+                                <p>IMG5</p>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -108,9 +120,16 @@
                     perView: 3,
                     gap: 15,
                     bound: true,
+                    rewind: false,
                     breakpoints: {
-                        768: { perView: 1 },
-                        1024: { perView: 2 }
+                        1024: {
+                            perView: 2,
+                            peek: { before: 50, after: 50 }
+                        },
+                        768: {
+                            perView: 1,
+                            peek: { before: 20, after: 20 },
+                        }
                     }
                 }).mount();
             });
