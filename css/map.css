@@ -42,25 +42,6 @@
 
 .city-dot:hover {
     r: 7.5px;
-    /* 1.5 times the size of top-100 dots */
-}
-
-.tooltip {
-    position: absolute;
-    text-align: center;
-    padding: 8px;
-    font: 12px sans-serif;
-    background: white;
-    border: 0px;
-    border-radius: 8px;
-    pointer-events: none;
-    color: black;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    max-width: 200px;
-    /* Add this to prevent very wide tooltips */
-    width: max-content;
-    /* Add this to ensure tooltip width fits content */
 }
 
 .map-legend-container {
@@ -130,132 +111,23 @@
     background-color: #999;
 }
 
-/* Summary Stats */
-.summary-stats-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 40px;
-    margin-bottom: 40px;
-    width: 100%;
-}
 
-.states-summary,
-.summary-stat {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 20px;
-    border-radius: 10px;
+.tooltip {
+    position: absolute;
     text-align: center;
-}
-
-.states-summary {
-    font-size: 1.5em;
-    width: 100%;
-}
-
-.other-stats {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    width: 100%;
-}
-
-.summary-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-}
-
-.stat-number-container {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.stat-number {
-    font-size: 2.5em;
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
-.stat-total,
-.stat-percentage {
-    font-size: 1.25em;
-    color: rgba(255, 255, 255, 0.7);
-    margin-left: 5px;
-}
-
-.stat-label {
-    font-size: 0.8em;
-    margin-top: 5px;
-}
-
-/* Travel Table */
-.table-controls {
-    margin-top: 40px;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-#table-selector {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    background-color: var(--primary-color);
-    color: var(--text-color);
-    border: none;
-    cursor: pointer;
-}
-
-#table-selector:hover {
-    background-color: var(--primary-hover-color);
-}
-
-.travel-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.travel-table th,
-.travel-table td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.travel-table th {
-    background-color: rgba(0, 0, 0, 0.3);
-    font-weight: bold;
-}
-
-.travel-table tr:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.travel-table tr.visited {
-    background-color: rgba(76, 175, 80, 0.1);
-}
-
-.travel-table tr.visited:hover {
-    background-color: rgba(76, 175, 80, 0.2);
-}
-
-.info.legend {
+    padding: 8px;
+    font: 12px sans-serif;
     background: white;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-}
-
-.info.legend div {
-    margin: 5px 0;
-    border-radius: 3px;
-    color: #000;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+    color: black;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-width: 200px;
+    /* Add this to prevent very wide tooltips */
+    width: max-content;
+    /* Add this to ensure tooltip width fits content */
 }
 
 #world-map {

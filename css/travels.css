@@ -58,6 +58,5 @@
 @media (max-width: 768px) {
     .map-container iframe {
         height: 400px;
-        /* Adjust this value as needed */
     }
 }
