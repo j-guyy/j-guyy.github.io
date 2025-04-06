@@ -348,7 +348,6 @@
                             peek: { before: 50, after: 50 }
                         },
                         768: {
-                            bound: false,
                             perView: 1,
                             peek: { before: 20, after: 20 },
                             animationDuration: 200,
@@ -356,6 +355,12 @@
                         }
                     }
                 }).mount();
+            });
+
+            // Disable text decoration for links inside glide__slide
+            const glideLinks = document.querySelectorAll('.glide__slide a');
+            glideLinks.forEach(link => {
+                link.style.textDecoration = 'none';
             });
         });
     </script>
