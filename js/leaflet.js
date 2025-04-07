@@ -136,7 +136,20 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, bounds) {
         maxBoundsViscosity: 1.0,
         zoomSnap: 0.1,
         zoomDelta: 0.5,
-        wheelPxPerZoomLevel: 120
+        wheelPxPerZoomLevel: 120,
+        gestureHandling: true // Enable gesture handling
+    });
+
+    // Add fullscreen control using Leaflet.fullscreen
+    map.addControl(new L.Control.Fullscreen());
+
+    // Disable gesture handling in fullscreen mode
+    map.on('fullscreenchange', () => {
+        if (map.isFullscreen()) {
+            map.gestureHandling.disable();
+        } else {
+            map.gestureHandling.enable();
+        }
     });
 
     // Thunderforest Outdoors layer
