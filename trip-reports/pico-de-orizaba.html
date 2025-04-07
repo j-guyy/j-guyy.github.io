@@ -7,13 +7,14 @@
     <title>Objectives List</title>
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/layout.css">
-    <link rel="stylesheet" href="../css/map.css">
     <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="stylesheet" href="../css/tripreports.css">
+    <link rel="stylesheet" href="../css/3dmap.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" type="application/javascript"></script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 
-<body class="page">
-    <div class="parallax-background"></div>
-    <div class="parallax-overlay"></div>
+<body class="page tr-background trip-report">
 
     <nav class="navbar">
         <ul class="nav-menu">
@@ -50,13 +51,44 @@
             <h2>The tallest volcano in North America</h2>
         </div>
 
+
+
+        <div class="model-container">
+            <model-viewer src="../data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
+                camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
+                background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
+                field-of-view="30deg" disable-zoom>
+            </model-viewer>
+        </div>
+
+        <!-- Success Banner -->
+        <div class="success-banner">
+            <h1>Success</h1>
+        </div>
+
+        <!-- Trip Report Section -->
         <div class="section">
             <h2>Trip Report</h2>
+            <div class="markdown-content">
+                <h3>YEEWWWW</h3>
+            </div>
         </div>
+
     </div>
 
     <script src="../js/nav.js"></script>
     <script src="../js/mobile-nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Remove Markdown logic
+            console.log('Markdown rendering skipped. Displaying plain text.');
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Pico de Orizaba model controls
+            const orizabaViewer = document.querySelector('model-viewer');
+        });
+    </script>
 </body>
 
 </html>

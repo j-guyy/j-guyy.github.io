@@ -1,0 +1,219 @@
+/* Success Banner */
+.success-banner {
+    background-color: rgba(76, 175, 80, 0.1);
+    /* Lighter green background */
+    color: var(--primary-color);
+    text-align: center;
+    padding: 0.5rem;
+    /* Reduced padding */
+    font-size: 1.2rem;
+    /* Slightly smaller font size */
+    font-weight: normal;
+    /* Normal font weight */
+    margin: 10px auto;
+    /* Reduced margin */
+    border: 1px solid rgba(76, 175, 80, 0.5);
+    /* Subtle border */
+    border-radius: 5px;
+    /* Slightly smaller border radius */
+    max-width: 800px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow */
+}
+
+/* Image Gallery */
+.image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.image-gallery img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.image-gallery img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* 3D Map */
+.map-iframe {
+    width: 100%;
+    height: 400px;
+    border: none;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Markdown Content */
+.markdown-content {
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    text-align: left;
+    line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.markdown-content ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    padding-left: 20px;
+}
+
+.tr-background {
+    background-color: var(--bg-color);
+}
+
+/* Shrink hero height for trip report pages */
+.trip-report .hero {
+    width: 100%;
+    /* Ensure hero spans full width */
+    height: 30vh;
+    /* Adjusted height */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('../images/mountaineering/pico/crater.jpg');
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* Center hero text */
+    color: var(--text-color);
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+    min-height: 200px;
+    /* Ensure a minimum height */
+}
+
+.trip-report .hero h1 {
+    font-size: 3.5rem;
+    margin-bottom: 10px;
+}
+
+.trip-report .hero h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+}
+
+/* General layout for trip report pages */
+.trip-report .content {
+    max-width: 100%;
+    /* Allow full width */
+    margin: 0 10%;
+    /* Center horizontally */
+    padding: 20px;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: var(--text-color);
+    text-align: center;
+    /* Center text */
+}
+
+.trip-report .model-container {
+    width: 100%;
+    /* Allow model container to span full width */
+    height: 40%;
+    margin: 20px auto;
+    /* Center the 3D model container */
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.model-controls {
+    display: flex;
+    justify-content: center;
+    /* Center the buttons */
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Section Styling */
+.trip-report .section {
+    width: 100%;
+    /* Allow sections to span full width */
+    margin: 40px auto;
+    /* Center sections */
+    padding: 20px;
+    background-color: rgba(45, 45, 45, 0.9);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    /* Center text inside sections */
+}
+
+.trip-report .section h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.trip-report .section p {
+    margin-bottom: 20px;
+    text-align: justify;
+}
+
+/* Climb Data Section */
+.climb-data {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* Center climb data items */
+    gap: 20px;
+    width: 100%;
+    /* Allow climb data to span full width */
+    margin: 0 auto;
+}
+
+.climb-data li {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    font-size: 1.1rem;
+    color: var(--text-color);
+    text-align: center;
+    min-width: 200px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .trip-report .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .trip-report .hero h2 {
+        font-size: 1.2rem;
+    }
+
+    .success-banner {
+        font-size: 1.2rem;
+    }
+
+    .trip-report .section h2 {
+        font-size: 1.8rem;
+    }
+
+    .climb-data li {
+        font-size: 1rem;
+    }
+}
