@@ -1,0 +1,524 @@
+[
+    {
+        "name": "Mount Elbert",
+        "elevation": 14433,
+        "coords": [
+            -106.44547,
+            39.11777
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Massive",
+        "elevation": 14421,
+        "coords": [
+            -106.47518,
+            39.18753
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Harvard",
+        "elevation": 14420,
+        "coords": [
+            -106.32123,
+            38.92458
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Blanca Peak",
+        "elevation": 14345,
+        "coords": [
+            -105.48569,
+            37.57753
+        ],
+        "climbed": false
+    },
+    {
+        "name": "La Plata Peak",
+        "elevation": 14336,
+        "coords": [
+            -106.47317,
+            39.02949
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Uncompahgre Peak",
+        "elevation": 14309,
+        "coords": [
+            -107.46211,
+            38.07168
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Crestone Peak",
+        "elevation": 14294,
+        "coords": [
+            -105.58567,
+            37.96679
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Lincoln",
+        "elevation": 14286,
+        "coords": [
+            -106.11156,
+            39.35154
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Grays Peak",
+        "elevation": 14270,
+        "coords": [
+            -105.81759,
+            39.63379
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Mount Antero",
+        "elevation": 14269,
+        "coords": [
+            -106.2462,
+            38.67414
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Torreys Peak",
+        "elevation": 14267,
+        "coords": [
+            -105.82111,
+            39.64277
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Castle Peak",
+        "elevation": 14265,
+        "coords": [
+            -106.86144,
+            39.00972
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Quandary Peak",
+        "elevation": 14265,
+        "coords": [
+            -106.10644,
+            39.39725
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Mount Blue Sky",
+        "elevation": 14264,
+        "coords": [
+            -105.64358,
+            39.58835
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Longs Peak",
+        "elevation": 14255,
+        "coords": [
+            -105.6153,
+            40.25455
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Wilson",
+        "elevation": 14246,
+        "coords": [
+            -107.99176,
+            37.83912
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Shavano",
+        "elevation": 14229,
+        "coords": [
+            -106.23938,
+            38.61926
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Princeton",
+        "elevation": 14197,
+        "coords": [
+            -106.24249,
+            38.74919
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Mount Belford",
+        "elevation": 14197,
+        "coords": [
+            -106.36064,
+            38.96062
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Crestone Needle",
+        "elevation": 14197,
+        "coords": [
+            -105.57667,
+            37.96468
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Yale",
+        "elevation": 14196,
+        "coords": [
+            -106.31381,
+            38.8442
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Bross",
+        "elevation": 14172,
+        "coords": [
+            -106.10735,
+            39.33517
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Kit Carson Peak",
+        "elevation": 14165,
+        "coords": [
+            -105.60253,
+            37.97958
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Maroon Peak",
+        "elevation": 14156,
+        "coords": [
+            -106.98908,
+            39.07084
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Tabeguache Peak",
+        "elevation": 14155,
+        "coords": [
+            -106.25067,
+            38.62545
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Oxford",
+        "elevation": 14153,
+        "coords": [
+            -106.33879,
+            38.96477
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Mount Sneffels",
+        "elevation": 14150,
+        "coords": [
+            -107.79239,
+            38.00358
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Democrat",
+        "elevation": 14148,
+        "coords": [
+            -106.13989,
+            39.33969
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Capitol Peak",
+        "elevation": 14130,
+        "coords": [
+            -107.08293,
+            39.15026
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Pikes Peak",
+        "elevation": 14110,
+        "coords": [
+            -105.04212,
+            38.84058
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Snowmass Mountain",
+        "elevation": 14092,
+        "coords": [
+            -107.06619,
+            39.11876
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Windom Peak",
+        "elevation": 14087,
+        "coords": [
+            -107.59158,
+            37.62122
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Eolus",
+        "elevation": 14083,
+        "coords": [
+            -107.62301,
+            37.62287
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Challenger Point",
+        "elevation": 14081,
+        "coords": [
+            -105.60603,
+            37.98035
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Columbia",
+        "elevation": 14073,
+        "coords": [
+            -106.29758,
+            38.90368
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Missouri Mountain",
+        "elevation": 14067,
+        "coords": [
+            -106.37785,
+            38.9477
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Humboldt Peak",
+        "elevation": 14064,
+        "coords": [
+            -105.55518,
+            37.97625
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Bierstadt",
+        "elevation": 14060,
+        "coords": [
+            -105.66874,
+            39.58252
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Sunlight Peak",
+        "elevation": 14059,
+        "coords": [
+            -107.59571,
+            37.62736
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Handies Peak",
+        "elevation": 14048,
+        "coords": [
+            -107.50439,
+            37.91297
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Culebra Peak",
+        "elevation": 14047,
+        "coords": [
+            -105.18569,
+            37.12237
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Ellingwood Point",
+        "elevation": 14042,
+        "coords": [
+            -105.49253,
+            37.58251
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Lindsey",
+        "elevation": 14042,
+        "coords": [
+            -105.49717,
+            37.58389
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Little Bear Peak",
+        "elevation": 14037,
+        "coords": [
+            -105.49726,
+            37.56668
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Sherman",
+        "elevation": 14036,
+        "coords": [
+            -106.16988,
+            39.22508
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Redcloud Peak",
+        "elevation": 14034,
+        "coords": [
+            -107.42169,
+            37.94088
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Pyramid Peak",
+        "elevation": 14018,
+        "coords": [
+            -106.95018,
+            39.07149
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Wilson Peak",
+        "elevation": 14017,
+        "coords": [
+            -107.98469,
+            37.86035
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Wetterhorn Peak",
+        "elevation": 14015,
+        "coords": [
+            -107.5109,
+            38.06068
+        ],
+        "climbed": false
+    },
+    {
+        "name": "San Luis Peak",
+        "elevation": 14014,
+        "coords": [
+            -106.93118,
+            37.98683
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount of the Holy Cross",
+        "elevation": 14005,
+        "coords": [
+            -106.47946,
+            39.46771
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Huron Peak",
+        "elevation": 14003,
+        "coords": [
+            -106.4382,
+            38.94543
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Sunshine Peak",
+        "elevation": 14001,
+        "coords": [
+            -107.42548,
+            37.92268
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Cameron",
+        "elevation": 14238,
+        "coords": [
+            -106.11852,
+            39.34687
+        ],
+        "climbed": true
+    },
+    {
+        "name": "El Diente Peak",
+        "elevation": 14159,
+        "coords": [
+            -108.00531,
+            37.83927
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Conundrum Peak",
+        "elevation": 14060,
+        "coords": [
+            -106.86396,
+            39.01555
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Eolus",
+        "elevation": 14039,
+        "coords": [
+            -107.62044,
+            37.62505
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Maroon Peak",
+        "elevation": 14014,
+        "coords": [
+            -106.98724,
+            39.07605
+        ],
+        "climbed": false
+    }
+]
