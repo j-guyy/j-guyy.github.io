@@ -135,9 +135,7 @@ html {
 .parallax-background,
 .parallax-overlay,
 .hero,
-.section,
-.dashboard-hero,
-.dashboard-section {
+.section {
     width: 100%;
     box-sizing: border-box;
 }

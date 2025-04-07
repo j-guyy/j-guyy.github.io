@@ -193,16 +193,16 @@
     }
 
     /* Section adjustments */
-    .section,
-    .dashboard-section {
+    .section {
         display: flex;
         flex-direction: column;
-        width: 95%;
-        padding: 20px;
+        width: 100%;
+        padding: 20px 0;
+        margin-left: 0;
+        margin-right: 0;
     }
 
-    .section h2,
-    .dashboard-section h2 {
+    .section h2 {
         font-size: 1.5em;
     }
 
@@ -247,7 +247,6 @@
 
     /* Hero sections */
     .hero,
-    .dashboard-hero,
     .hero,
     .travels-hero {
         height: auto;
@@ -255,7 +254,6 @@
     }
 
     .hero h1,
-    .dashboard-hero h1,
     .hero h1,
     .travels-hero h1 {
         font-size: 2em;
@@ -280,7 +278,6 @@
     }
 
     /* Content padding */
-    .dashboard-content,
     .content {
         padding-top: 80px;
     }
@@ -306,8 +303,7 @@
 /* Large screens */
 @media (min-width: 1200px) {
 
-    .section,
-    .dashboard-section {
+    .section {
         padding: 40px;
     }
 
@@ -325,8 +321,7 @@
 /* Extra large screens */
 @media (min-width: 1600px) {
 
-    .section,
-    .dashboard-section {
+    .section {
         padding: 50px;
     }
 
