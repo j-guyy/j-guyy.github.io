@@ -4,29 +4,18 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/adirondack46ers.json').then(response => response.json())
     ])
         .then(([colorado14ers, adirondack46ers]) => {
-            const coloradoBounds = L.latLngBounds(
-                L.latLng(36.5, -110.0),  // Southwest corner
-                L.latLng(41.0, -103.0)   // Northeast corner
-            );
-
-            const adirondackBounds = L.latLngBounds(
-                L.latLng(43.9, -74.4),   // Southwest corner
-                L.latLng(44.5, -73.4)    // Northeast corner
-            );
-
-            createLeafletMap('colorado-map', colorado14ers, 39.1178, -106.4454, 7, coloradoBounds);
-            createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9.8, adirondackBounds);
+            createLeafletMap('colorado-map', colorado14ers, 39.1178, -106.4454, 7);
+            createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9.8);
         })
         .catch(error => console.error('Error loading the JSON files:', error));
 });
 
-function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, bounds) {
+function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom) {
     const map = L.map(mapId, {
         center: [centerLat, centerLng],
         zoom: zoom,
         minZoom: zoom,
         maxZoom: 18,
-        maxBounds: bounds,
         maxBoundsViscosity: 1.0,
         zoomSnap: 0.1,
         zoomDelta: 0.5,
@@ -49,8 +38,7 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, bounds) {
     // Thunderforest Outdoors layer
     L.tileLayer('https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f', {
         attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 22,
-        bounds: bounds
+        maxZoom: 22
     }).addTo(map);
 
     peaks.forEach(peak => {
@@ -66,8 +54,9 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, bounds) {
 
     createLegend(map);
 
-    // Fit the map to the bounds
-    map.fitBounds(bounds);
+    // Fit the map to the peaks
+    const group = new L.featureGroup(peaks.map(peak => L.marker([peak.coords[1], peak.coords[0]])));
+    map.fitBounds(group.getBounds());
 }
 
 function createLegend(map) {
