@@ -53,7 +53,7 @@
         "state": "HI",
         "name": "Mauna Kea",
         "elevation": 13803,
-        "visited": false,
+        "visited": true,
         "coords": [
             -155.4682,
             19.8207
@@ -413,7 +413,7 @@
         "state": "IA",
         "name": "Hawkeye Point",
         "elevation": 1670,
-        "visited": false,
+        "visited": true,
         "coords": [
             -95.7083,
             43.4602
@@ -443,7 +443,7 @@
         "state": "IL",
         "name": "Charles Mound",
         "elevation": 1235,
-        "visited": false,
+        "visited": true,
         "coords": [
             -90.2394,
             42.5045

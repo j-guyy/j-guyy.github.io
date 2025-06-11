@@ -712,7 +712,7 @@
       21.3069
     ],
     "population": "989,408",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Omaha",
@@ -725,7 +725,7 @@
       41.2565
     ],
     "population": "983,969",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Greenville",
@@ -1050,7 +1050,7 @@
       41.5868
     ],
     "population": "737,164",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Provo",

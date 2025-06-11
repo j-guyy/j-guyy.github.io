@@ -258,7 +258,7 @@
             -156.1711,
             20.7204
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Hawaii Volcanoes",
@@ -267,7 +267,7 @@
             -155.2864,
             19.4194
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Hot Springs",
