@@ -387,7 +387,7 @@
         {
             "name": "Sweden",
             "population": 10551494,
-            "visited": false
+            "visited": true
         },
         {
             "name": "Switzerland",
