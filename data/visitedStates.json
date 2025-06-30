@@ -21,7 +21,7 @@
     "Maryland": true,
     "Massachusetts": true,
     "Michigan": true,
-    "Minnesota": false,
+    "Minnesota": true,
     "Mississippi": true,
     "Missouri": false,
     "Montana": true,
@@ -47,6 +47,6 @@
     "Virginia": true,
     "Washington": true,
     "West Virginia": true,
-    "Wisconsin": false,
+    "Wisconsin": true,
     "Wyoming": true
 }

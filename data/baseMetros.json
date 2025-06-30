@@ -205,7 +205,7 @@
       44.9778
     ],
     "population": "3,710,000",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Tampa",
@@ -634,7 +634,7 @@
       42.9634
     ],
     "population": "1,162,950",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Buffalo",

@@ -373,7 +373,7 @@
         "state": "MI",
         "name": "Mount Arvon",
         "elevation": 1979,
-        "visited": false,
+        "visited": true,
         "coords": [
             -88.1553,
             46.7564
@@ -383,7 +383,7 @@
         "state": "WI",
         "name": "Timms Hill",
         "elevation": 1951,
-        "visited": false,
+        "visited": true,
         "coords": [
             -90.1953,
             45.4519
