@@ -348,7 +348,7 @@
             -73.834300,
             44.093900
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "Mount Emmons",
@@ -384,7 +384,7 @@
             -73.844500,
             44.081300
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "Cliff Mountain",
