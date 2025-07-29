@@ -296,7 +296,7 @@
       38.627
     ],
     "population": "2,796,999",
-    "visited": false
+    "visited": true
   },
   {
     "name": "San Antonio",
@@ -400,7 +400,7 @@
       39.0997
     ],
     "population": "2,220,000",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Columbus",
@@ -439,7 +439,7 @@
       39.7684
     ],
     "population": "2,138,468",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Nashville",
@@ -556,7 +556,7 @@
       38.2527
     ],
     "population": "1,365,557",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Richmond",
@@ -1167,7 +1167,7 @@
       37.6872
     ],
     "population": "652,939",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Palm Bay",

@@ -177,7 +177,7 @@
             -90.1847,
             38.6247
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Glacier",
@@ -510,7 +510,7 @@
             -103.4213,
             43.5724
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Wrangell-St. Elias",

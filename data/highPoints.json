@@ -273,7 +273,7 @@
         "state": "KS",
         "name": "Mount Sunflower",
         "elevation": 4039,
-        "visited": false,
+        "visited": true,
         "coords": [
             -102.0372,
             39.0219
