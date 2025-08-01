@@ -69,16 +69,8 @@ class NavbarComponent extends HTMLElement {
             }
         });
 
-        // Mobile menu handling
-        const dropdowns = this.querySelectorAll('.dropdown');
-
-        dropdowns.forEach(dropdown => {
-            dropdown.addEventListener('touchstart', function (e) {
-                e.preventDefault();
-                this.querySelector('.dropdown-content').style.display =
-                    this.querySelector('.dropdown-content').style.display === 'block' ? 'none' : 'block';
-            });
-        });
+        // Mobile menu handling - removed duplicate touch handling
+        // This is now handled in setupMobileTouchHandlers for better mobile support
 
         // Add hover effect to dropdowns
         const dropdownLinks = this.querySelectorAll('.dropdown-content a');
@@ -141,6 +133,13 @@ class NavbarComponent extends HTMLElement {
             }
         }, { passive: true });
 
+        // Also handle clicks as fallback for devices that don't properly support touch events
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                closeAllDropdowns();
+            }
+        });
+
         dropdowns.forEach(dropdown => {
             const button = dropdown.querySelector('.dropbtn');
             const content = dropdown.querySelector('.dropdown-content');
@@ -160,8 +159,8 @@ class NavbarComponent extends HTMLElement {
                 });
             }
 
-            // Enhanced touch handling for dropdown buttons
-            button.addEventListener('touchstart', (e) => {
+            // Function to toggle dropdown state
+            const toggleDropdownState = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -202,7 +201,11 @@ class NavbarComponent extends HTMLElement {
                         }
                     }
                 }
-            }, { passive: false });
+            };
+
+            // Add both touch and click handlers for maximum compatibility
+            button.addEventListener('touchstart', toggleDropdownState, { passive: false });
+            button.addEventListener('click', toggleDropdownState);
 
             // Enhanced touch handling for dropdown links
             if (content) {
@@ -214,22 +217,15 @@ class NavbarComponent extends HTMLElement {
                     link.style.alignItems = 'center';
                     link.style.justifyContent = 'center';
 
+                    // Handle touch events for visual feedback
                     link.addEventListener('touchstart', (e) => {
                         e.stopPropagation();
-
                         // Add visual feedback
                         link.style.backgroundColor = 'rgba(0, 128, 0, 0.3)';
-
-                        // Navigate after a short delay to show feedback
-                        setTimeout(() => {
-                            if (link.href && link.href !== '#') {
-                                window.location.href = link.href;
-                            }
-                        }, 150);
                     }, { passive: true });
 
                     link.addEventListener('touchend', (e) => {
-                        // Remove visual feedback
+                        // Remove visual feedback and navigate
                         setTimeout(() => {
                             link.style.backgroundColor = '';
                         }, 200);
@@ -239,6 +235,13 @@ class NavbarComponent extends HTMLElement {
                         // Remove visual feedback on cancel
                         link.style.backgroundColor = '';
                     }, { passive: true });
+
+                    // Handle click events for navigation (works on both touch and non-touch devices)
+                    link.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Close dropdown after navigation
+                        closeAllDropdowns();
+                    });
                 });
             }
         });
