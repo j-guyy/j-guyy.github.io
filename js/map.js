@@ -201,36 +201,8 @@ function handleMouseOut(element, tooltip, type) {
 }
 
 function handleClick(d, type) {
-    if (d.visited) {
-        let url;
-        if (type === 'metro') {
-            url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)},_${d.state}`;
-        } else if (type === 'highpoint') {
-            const customUrls = {
-                "UT": "https://en.wikipedia.org/wiki/Kings_Peak_(Utah)",
-                "NM": "https://en.wikipedia.org/wiki/Wheeler_Peak_(New_Mexico)",
-                "NV": "https://en.wikipedia.org/wiki/Boundary_Peak_(Nevada)",
-                "MT": "https://en.wikipedia.org/wiki/Granite_Peak_(Montana)",
-                "NH": "https://en.wikipedia.org/wiki/Mount_Washington_(New_Hampshire)",
-                "OK": "https://en.wikipedia.org/wiki/Black_Mesa_(Oklahoma)",
-                "KY": "https://en.wikipedia.org/wiki/Black_Mountain_(Kentucky)",
-                "PA": "https://en.wikipedia.org/wiki/Mount_Davis_(Pennsylvania)",
-                "MN": "https://en.wikipedia.org/wiki/Eagle_Mountain_(Minnesota)",
-                "NJ": "https://en.wikipedia.org/wiki/High_Point_(New_Jersey)",
-                "OH": "https://en.wikipedia.org/wiki/Campbell_Hill_(Ohio)",
-            };
-
-            if (customUrls[d.state]) {
-                url = customUrls[d.state];
-            } else {
-                // Fallback for any highpoints not in the custom list
-                url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}`;
-            }
-        } else if (type === 'park') {
-            url = `https://en.wikipedia.org/wiki/${encodeURIComponent(d.name)}_National_Park`;
-        }
-        window.open(url, '_blank');
-    }
+    // Click functionality removed - no longer opens Wikipedia links
+    // Items are still clickable but don't perform any action
 }
 
 function createLegend() {

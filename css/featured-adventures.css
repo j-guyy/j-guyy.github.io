@@ -1,0 +1,550 @@
+/* Featured Adventures Page Styles */
+
+/* Main content containers */
+.featured-adventures-content,
+.all-adventures-content {
+    width: 100%;
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: rgba(45, 45, 45, 0.8);
+    /* Semi-transparent background for readability */
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+}
+
+
+
+/* Section containers */
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.section-description {
+    text-align: center;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 3rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Featured Adventures Section */
+.featured-section {
+    margin-bottom: 4rem;
+}
+
+.featured-adventures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* Featured Adventure Cards */
+.featured-card {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.featured-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border-color: #4CAF50;
+}
+
+.featured-card-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Specific positioning for Pico de Orizaba image to show higher part */
+.featured-card[data-adventure-id="pico-de-orizaba"] .featured-card-image {
+    object-position: center 10%;
+}
+
+
+
+.featured-card-content {
+    padding: 1.5rem;
+}
+
+.featured-card-category {
+    display: inline-block;
+    background: rgba(76, 175, 80, 0.8);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.featured-card-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+.featured-card-subtitle {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 1rem;
+    font-style: italic;
+}
+
+.featured-card-description {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.featured-card-date {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+/* All Adventures Section */
+.all-adventures-section {
+    margin-top: 0;
+}
+
+
+
+.adventures-catalog {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* Category Sections */
+.category-section {
+    margin-bottom: 4rem;
+    padding: 0;
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+    border-bottom: 3px solid rgba(76, 175, 80, 0.6);
+    position: relative;
+}
+
+.category-header::before {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #4CAF50, #66BB6A);
+    border-radius: 2px;
+}
+
+.category-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    text-transform: capitalize;
+    letter-spacing: 0.5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.category-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 1.2rem;
+    opacity: 0.9;
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+    padding: 0;
+}
+
+/* Enhanced responsive grid behavior */
+@media (min-width: 1400px) {
+    .category-grid {
+        grid-template-columns: repeat(4, 1fr);
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1399px) {
+    .category-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .category-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+
+    .category-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .category-section {
+        padding: 0 0.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .category-header {
+        margin-bottom: 1.5rem;
+        padding: 0.8rem 0;
+    }
+
+    .category-title {
+        font-size: 1.6rem;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .category-section {
+        padding: 0 0.25rem;
+    }
+
+    .category-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .category-title {
+        font-size: 1.4rem;
+    }
+}
+
+/* Adventure Cards (smaller format) */
+.adventure-card {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.adventure-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    border-color: #4CAF50;
+}
+
+.adventure-card-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.adventure-card-content {
+    padding: 1rem;
+}
+
+.adventure-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.adventure-card-category {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+
+
+/* Mobile-First Responsive Design */
+@media (max-width: 768px) {
+    .featured-adventures-content {
+        padding: 1.5rem 0.5rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-description {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+        padding: 0 0.5rem;
+    }
+
+    /* Mobile Featured Cards - Horizontal Layout */
+    .featured-adventures-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        padding: 0;
+    }
+
+    .featured-card {
+        display: flex;
+        flex-direction: row;
+        height: auto;
+        min-height: 160px;
+        border-radius: 8px;
+    }
+
+    .featured-card-image {
+        width: 40%;
+        height: auto;
+        min-height: 160px;
+        object-fit: cover;
+        border-radius: 8px 0 0 8px;
+    }
+
+    .featured-card-content {
+        width: 60%;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .featured-card-category {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.6rem;
+        margin-bottom: 0.5rem;
+        align-self: flex-start;
+    }
+
+    .featured-card-title {
+        font-size: 1.3rem;
+        line-height: 1.2;
+        margin-bottom: 0.3rem;
+    }
+
+    .featured-card-subtitle {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+    }
+
+    .featured-card-description {
+        font-size: 0.8rem;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .featured-card-date {
+        font-size: 0.75rem;
+        margin-top: auto;
+    }
+
+    /* Alternate layout for variety */
+    .featured-card:nth-child(even) {
+        flex-direction: row-reverse;
+    }
+
+    .featured-card:nth-child(even) .featured-card-image {
+        border-radius: 0 8px 8px 0;
+    }
+
+    /* All Adventures Section - Mobile Optimization */
+    .all-adventures-content {
+        padding: 1.5rem 0.5rem;
+    }
+
+    .category-section {
+        margin-bottom: 2.5rem;
+        padding: 0;
+    }
+
+    .category-header {
+        margin-bottom: 1rem;
+        padding: 0.5rem 0;
+    }
+
+    .category-title {
+        font-size: 1.4rem;
+    }
+
+    /* Mobile Adventure Cards - Compact Horizontal Layout */
+    .category-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0;
+    }
+
+    .adventure-card {
+        display: flex;
+        flex-direction: row;
+        height: 100px;
+        border-radius: 6px;
+    }
+
+    .adventure-card-image {
+        width: 100px;
+        height: 100px;
+        min-width: 100px;
+        object-fit: cover;
+        border-radius: 6px 0 0 6px;
+    }
+
+    .adventure-card-content {
+        flex: 1;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .adventure-card-title {
+        font-size: 1rem;
+        line-height: 1.2;
+        margin-bottom: 0.25rem;
+    }
+
+    .adventure-card-category {
+        font-size: 0.7rem;
+        margin-top: auto;
+    }
+
+    /* Show only first few cards by default, with expand option */
+    .category-grid.collapsed .adventure-card:nth-child(n+4) {
+        display: none;
+    }
+
+    .category-expand-btn {
+        background: rgba(76, 175, 80, 0.8);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        margin-top: 0.5rem;
+        align-self: flex-start;
+        transition: background-color 0.3s ease;
+    }
+
+    .category-expand-btn:hover {
+        background: rgba(76, 175, 80, 1);
+    }
+}
+
+/* Hide expand buttons on desktop */
+@media (min-width: 769px) {
+    .category-expand-btn {
+        display: none !important;
+    }
+
+    .category-grid.collapsed .adventure-card {
+        display: flex !important;
+    }
+}
+
+
+@media (max-width: 480px) {
+    .featured-adventures-content {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+
+    .page-header {
+        padding: 2rem 0;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    .featured-adventures-grid {
+        padding: 0;
+    }
+
+    .section-container {
+        padding: 0 0.5rem;
+    }
+}
+
+/* Loading States */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.1rem;
+}
+
+.loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

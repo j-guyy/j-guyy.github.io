@@ -1,0 +1,52 @@
+[
+    {
+        "name": "Ben Nevis",
+        "elevation": 1345,
+        "country": "Scotland",
+        "coords": [
+            -5.003611,
+            56.796944
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Scafell Pike",
+        "elevation": 978,
+        "country": "England",
+        "coords": [
+            -3.211389,
+            54.454167
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Snowdon",
+        "elevation": 1085,
+        "country": "Wales",
+        "coords": [
+            -4.076111,
+            53.068611
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Carrauntoohil",
+        "elevation": 1038,
+        "country": "Ireland",
+        "coords": [
+            -9.742778,
+            52.039722
+        ],
+        "climbed": true
+    },
+    {
+        "name": "Slieve Donard",
+        "elevation": 850,
+        "country": "Northern Ireland",
+        "coords": [
+            -5.952222,
+            54.178889
+        ],
+        "climbed": true
+    }
+]

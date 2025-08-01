@@ -4,19 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Objectives List</title>
+    <title>Pico de Orizaba - Trip Report</title>
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/responsive.css">
     <link rel="stylesheet" href="../css/tripreports.css">
     <link rel="stylesheet" href="../css/3dmap.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" type="application/javascript"></script>
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 
 <body class="page tr-background trip-report">
 
-    <nav-bar></nav-bar>
+    <nav-bar base-path="../"></nav-bar>
 
     <div class="content">
         <div class="hero">
@@ -24,41 +23,188 @@
             <h2>The tallest volcano in North America</h2>
         </div>
 
-
-
-        <div class="model-container">
-            <model-viewer src="../data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
-                camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
-                background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
-                field-of-view="30deg" disable-zoom>
-            </model-viewer>
+        <!-- Status Banner -->
+        <div class="status-banner">
+            <div class="status-icon">🏔️</div>
+            <div class="status-text">
+                <span class="status-label">Mission Status</span>
+                <span class="status-value">SUMMIT ACHIEVED</span>
+            </div>
+            <div class="status-checkmark">✓</div>
         </div>
 
-        <!-- Success Banner -->
-        <div class="success-banner">
-            <h1>Success</h1>
+        <!-- Quick Stats -->
+        <div class="section">
+            <div class="climb-data">
+                <div class="stat-item">
+                    <div class="stat-label">Elevation</div>
+                    <div class="stat-value">18,491 ft</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Location</div>
+                    <div class="stat-value">Mexico</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Date</div>
+                    <div class="stat-value">Feb 2024</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D Model - Centerpiece -->
+        <div class="section model-section">
+            <h2>3D Mountain Model</h2>
+            <div class="model-container">
+                <model-viewer src="../data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
+                    camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
+                    background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
+                    field-of-view="30deg">
+                    <div class="model-loading">Loading 3D model...</div>
+                </model-viewer>
+            </div>
+            <p class="model-description">Interactive 3D model of Pico de Orizaba. Click and drag to rotate, scroll to
+                zoom.</p>
         </div>
 
         <!-- Trip Report Section -->
         <div class="section">
-            <h2>Trip Report</h2>
-            <div class="markdown-content">
-                <h3>YEEWWWW</h3>
+            <h2>The Adventure</h2>
+            <div class="trip-content">
+                <p>Dazed and confused after a record-chasing battle with Izta (read the trip report on that one!), it
+                    was time for the
+                    kingpin of my Mexico expedition. Though I could surely hear him before I could see him, I stepped
+                    outside just
+                    in time to watch
+                    Ilgamesh arrive at my hotel in his rickety old pickup truck.
+
+                </p>
+                <p>
+                    The 2.5-hour drive eastward
+                    toward
+                    Mexico's
+                    highest peak was filled with all sorts of chaotic stories, and conversation alternated between
+                    English and
+                    Spanish at what seemed like just the perfect cadence. As we progressed, I monitored the ever-growing
+                    silhouette of what
+                    would become one of the most challenging climbs of my life.</p>
+
+                <h3>Into the Unknown</h3>
+                <p>We stopped for a meal at a family-run hostel in Miguel Hidalgo y Costilla before transferring to a
+                    beast of a 4WD off-roader for the
+                    ascent to Refugio. I hopped in the lifted Jeep and quickly realized... no seatbelts? Mexico truly
+                    plays by
+                    their own rules. As we bucked every-which-way up the
+                    dusty mountain roads, I laughed to myself. This was happening, I was really doing this.
+                </p>
+
+                <p>At the Refugio, we met Ahmed, a young guide who would be our basecamp support, cooking us meals, and
+                    serving as our safety net if the summit push didn't go as planned. After he whipped up some
+                    delicious
+                    rice
+                    and beans, we crashed at 6 PM, listening to the whipping wind rattle the frame of the Refugio. I
+                    drifted off knowing that in just
+                    seven hours, I'd be starting my
+                    attempt on North America's tallest volcano.</p>
+
+                <h3>The Battle Begins</h3>
+                <p>1 AM crept up quickly. Ahmed had us covered, with eggs and hot water Nalgene refills as our last
+                    comforts before
+                    stepping into the
+                    cold darkness of the night. We followed el acueducto past the 3 nests without concern. These were
+                    our first
+                    indicators of being on-route.
+                </p>
+                <p>
+                    We entered Laberinto (the Labyrinth), where many esteemed mountaineers get lost and turn back.
+                    Ilgamesh had me covered. Every step of this mountain was familiar to him, and he moved gracefully as
+                    though the entire act was rehearsed. We popped on glacier gear by the Sarcofago (the Sarcophagus),
+                    and off we went up the Jamapa Glacier, held together by nothing more than an 8mm rope.
+                </p>
+                <p>
+                    It was here on the glacier, completely exposed to the elements, that Type I fun began gravitating
+                    toward
+                    Type II.
+                    While focusing on the criticality of foot placement in this crevasse minefield, we were barraged by
+                    Mother Nature's worst. Sustained 45 mph winds with gusts over 50 mph turned the mountain into a
+                    frozen
+                    battlefield. But we continued, onward and upward.</p>
+                </p>
+                <p>My hands were losing the fight. The liner gloves and ski mittens that had carried me through
+                    countless
+                    previous expeditions
+                    were completely inadequate against Pico's fury. Frostbite was creeping in quickly when Ilgamesh
+                    showed me a
+                    mountaineer's secret: unzip your shell slightly and shove your hands under your armpits. Hold them
+                    there, through all of the extreme burning sensations, and you will regain feeling. It was a
+                    game-changer that likely saved my fingers.</p>
+
+                <h3>Dawn at 18,491 Feet</h3>
+                <p>We reached the crater rim just as the first light spread across the horizon. Finding shelter from the
+                    relentless wind, we watched the sun rise over a sea of clouds that stretched into infinity below us.
+                    At first, it seemed that the worst was over, that we had braved the storm.
+                    But
+                    the altitude was taking its toll - I felt myself nodding off, fighting an eerie drowsiness that
+                    signals the early stages of altitude sickness. It didn't take long for us to pack up our gear and
+                    head back onto the glacier.</p>
+
+                <p>To our surprise, the descent brought only relief, as the sun emerged and temperatures rose. We
+                    navigated
+                    past crevasses, large
+                    and small,
+                    around the glacier - reminders of the technical terrain we'd navigated in darkness. By the time we
+                    reached
+                    base camp, Pico released us from its grip. We'd finally made peace with the giant.
+                </p>
+
+                <h3>Victory</h3>
+                <p>The ride back to town felt surreal. We had done it — summited the highest
+                    peak in Mexico, battled extreme weather, and staved off altitude sickness in the process. Pico de
+                    Orizaba was one
+                    to
+                    remember.</p>
             </div>
         </div>
 
     </div>
 
-    <script src="js/navbar-component.js"></script>
+    <script src="../js/navbar-component.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Remove Markdown logic
-            console.log('Markdown rendering skipped. Displaying plain text.');
-        });
+            // 3D model interaction enhancements
+            const modelViewer = document.querySelector('model-viewer');
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Pico de Orizaba model controls
-            const orizabaViewer = document.querySelector('model-viewer');
+            if (modelViewer) {
+                console.log('Model viewer element found');
+
+                modelViewer.addEventListener('load', () => {
+                    console.log('Pico de Orizaba 3D model loaded successfully');
+                    // Hide loading message
+                    const loadingDiv = modelViewer.querySelector('.model-loading');
+                    if (loadingDiv) loadingDiv.style.display = 'none';
+                });
+
+                modelViewer.addEventListener('error', (event) => {
+                    console.error('Failed to load 3D model:', event);
+                    // Show error message
+                    const loadingDiv = modelViewer.querySelector('.model-loading');
+                    if (loadingDiv) {
+                        loadingDiv.textContent = 'Failed to load 3D model. Please check your connection.';
+                        loadingDiv.style.color = '#ff6b6b';
+                    }
+                });
+
+                modelViewer.addEventListener('progress', (event) => {
+                    const progress = event.detail.totalProgress;
+                    console.log('Loading progress:', Math.round(progress * 100) + '%');
+                });
+
+                // Check if model-viewer is defined
+                if (!customElements.get('model-viewer')) {
+                    console.error('model-viewer web component not loaded');
+                }
+            } else {
+                console.error('Model viewer element not found');
+            }
         });
     </script>
 </body>

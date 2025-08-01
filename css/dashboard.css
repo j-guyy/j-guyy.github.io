@@ -143,6 +143,11 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    .summary-stats-container {
+        margin-top: 30px;
+        /* Add spacing between h2 and travel summary on mobile */
+    }
+
     .states-summary .stat-number {
         font-size: 2.8em;
     }
@@ -178,4 +183,21 @@
     .other-stats {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* Completed Quest Styling */
+.summary-stat.completed-quest {
+    background-color: rgba(76, 175, 80, 0.3);
+    border: 2px solid #4CAF50;
+}
+
+.summary-stat.completed-quest:hover {
+    background-color: rgba(76, 175, 80, 0.4);
+    transform: translateY(-3px);
+}
+
+.completion-check {
+    font-size: 3em;
+    color: #4CAF50;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Featured Adventures - Justin's Website</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/featured-adventures.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body class="featured-adventures-page">
+    <!-- Parallax background elements -->
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <!-- Navigation -->
+    <nav-bar></nav-bar>
+
+    <!-- Main Content with proper structure like other pages -->
+    <div class="content">
+        <div class="hero">
+            <h1>Adventures</h1>
+        </div>
+
+        <!-- Featured Adventures Section -->
+        <div class="featured-adventures-content">
+            <section class="featured-section">
+                <div class="section-container">
+                    <h2 class="section-title">Featured Adventures</h2>
+                    <p class="section-description">Highlighting the most significant and challenging outdoor
+                        accomplishments
+                    </p>
+                    <div class="featured-adventures-grid" id="featured-adventures-container">
+                        <!-- Featured adventure cards will be dynamically loaded here -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- All Adventures Section (separate box) -->
+        <div class="all-adventures-content">
+            <section class="all-adventures-section">
+                <div class="section-container">
+                    <h2 class="section-title">All Adventures</h2>
+                    <p class="section-description">Explore the complete catalog of outdoor activities organized by
+                        category
+                    </p>
+                    <div class="adventures-catalog" id="all-adventures-container">
+                        <!-- Adventure categories and cards will be dynamically loaded here -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="data/adventures.js"></script>
+    <script src="js/navbar-component.js"></script>
+    <script src="js/featured-adventures.js"></script>
+</body>
+
+</html>

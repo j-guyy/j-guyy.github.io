@@ -4,6 +4,7 @@ class NavbarComponent extends HTMLElement {
         // Get the base path from attribute, default to empty string
         const basePath = this.getAttribute('base-path') || '';
 
+        // Organized navigation structure with logical groupings
         this.innerHTML = `
             <nav class="navbar">
                 <ul class="nav-menu">
@@ -12,25 +13,25 @@ class NavbarComponent extends HTMLElement {
                         <a href="#" class="dropbtn">US Travel</a>
                         <div class="dropdown-content">
                             <a href="${basePath}us-dashboard.html">Dashboard</a>
-                            <a href="${basePath}us-map.html">Interactive Map</a>
-                            <a href="${basePath}us-quests.html">Side Quests</a>
+                            <a href="${basePath}us-map.html">Map</a>
                         </div>
                     </li>
                     <li class="dropdown">
                         <a href="#" class="dropbtn">World Travel</a>
                         <div class="dropdown-content">
                             <a href="${basePath}world-dashboard.html">Dashboard</a>
-                            <a href="${basePath}world-map.html">Interactive Map</a>
+                            <a href="${basePath}world-map.html">Map</a>
                         </div>
                     </li>
                     <li class="dropdown">
-                        <a href="#" class="dropbtn">Objectives</a>
+                        <a href="#" class="dropbtn">Adventures</a>
                         <div class="dropdown-content">
-                            <a href="${basePath}objectives-list.html">Objectives List</a>
-                            <a href="${basePath}3dmap.html">3D Model Viewer</a>
+                            <a href="${basePath}adventures.html">List</a>
+                            <a href="${basePath}objectives-list.html">Glider</a>
+                            <a href="${basePath}side-quests.html">Side Quests</a>
                         </div>
                     </li>
-                    <li><a href="${basePath}about.html">About Me</a></li>
+                    <li><a href="${basePath}about.html">About</a></li>
                 </ul>
             </nav>
         `;
@@ -88,75 +89,281 @@ class NavbarComponent extends HTMLElement {
 
     initializeMobileNavigation() {
         const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+        const dropdowns = this.querySelectorAll('.dropdown');
 
+        // Enhanced mobile navigation with improved touch handling
         if (isMobile) {
-            const dropdowns = this.querySelectorAll('.dropdown');
+            this.setupMobileTouchHandlers(dropdowns);
+        }
 
-            const closeAllDropdowns = () => {
-                dropdowns.forEach(d => {
-                    d.classList.remove('active');
-                    const content = d.querySelector('.dropdown-content');
-                    if (content) content.style.display = 'none';
-                });
-            };
+        // Setup keyboard navigation for accessibility
+        this.setupKeyboardNavigation(dropdowns);
 
-            document.addEventListener('touchstart', (e) => {
-                if (!e.target.closest('.dropdown')) {
-                    closeAllDropdowns();
+        // Add hover effects for non-touch devices
+        this.setupHoverEffects();
+
+        // Handle window resize to reinitialize mobile features
+        window.addEventListener('resize', () => {
+            this.handleResize();
+        });
+    }
+
+    setupMobileTouchHandlers(dropdowns) {
+        const closeAllDropdowns = () => {
+            dropdowns.forEach(d => {
+                d.classList.remove('active');
+                d.setAttribute('aria-expanded', 'false');
+                const content = d.querySelector('.dropdown-content');
+                if (content) {
+                    content.style.display = 'none';
+                    content.setAttribute('aria-hidden', 'true');
                 }
             });
+        };
 
-            dropdowns.forEach(dropdown => {
-                const button = dropdown.querySelector('.dropbtn');
-                const content = dropdown.querySelector('.dropdown-content');
+        // Close dropdowns when touching outside
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                closeAllDropdowns();
+            }
+        }, { passive: true });
 
-                button.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+        dropdowns.forEach(dropdown => {
+            const button = dropdown.querySelector('.dropbtn');
+            const content = dropdown.querySelector('.dropdown-content');
 
-                    // Close other dropdowns
-                    dropdowns.forEach(d => {
-                        if (d !== dropdown) {
-                            d.classList.remove('active');
-                            const otherContent = d.querySelector('.dropdown-content');
-                            if (otherContent) otherContent.style.display = 'none';
+            // Set initial ARIA attributes
+            button.setAttribute('aria-haspopup', 'true');
+            button.setAttribute('aria-expanded', 'false');
+            if (content) {
+                content.setAttribute('role', 'menu');
+                content.setAttribute('aria-hidden', 'true');
+
+                // Set ARIA attributes for menu items
+                const links = content.querySelectorAll('a');
+                links.forEach(link => {
+                    link.setAttribute('role', 'menuitem');
+                    link.setAttribute('tabindex', '-1');
+                });
+            }
+
+            // Enhanced touch handling for dropdown buttons
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const isCurrentlyOpen = dropdown.classList.contains('active');
+
+                // Close all other dropdowns
+                dropdowns.forEach(d => {
+                    if (d !== dropdown) {
+                        d.classList.remove('active');
+                        d.setAttribute('aria-expanded', 'false');
+                        const otherContent = d.querySelector('.dropdown-content');
+                        if (otherContent) {
+                            otherContent.style.display = 'none';
+                            otherContent.setAttribute('aria-hidden', 'true');
                         }
-                    });
-
-                    // Toggle current dropdown
-                    dropdown.classList.toggle('active');
-                    if (content) {
-                        content.style.display = content.style.display === 'block' ? 'none' : 'block';
                     }
                 });
 
-                // Ensure links are clickable
-                if (content) {
-                    const links = content.querySelectorAll('a');
-                    links.forEach(link => {
-                        link.addEventListener('touchstart', (e) => {
-                            e.stopPropagation();
-                            setTimeout(() => {
+                // Toggle current dropdown
+                if (isCurrentlyOpen) {
+                    dropdown.classList.remove('active');
+                    button.setAttribute('aria-expanded', 'false');
+                    if (content) {
+                        content.style.display = 'none';
+                        content.setAttribute('aria-hidden', 'true');
+                    }
+                } else {
+                    dropdown.classList.add('active');
+                    button.setAttribute('aria-expanded', 'true');
+                    if (content) {
+                        content.style.display = 'block';
+                        content.setAttribute('aria-hidden', 'false');
+
+                        // Focus first menu item for keyboard users
+                        const firstLink = content.querySelector('a');
+                        if (firstLink && document.activeElement === button) {
+                            firstLink.focus();
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            // Enhanced touch handling for dropdown links
+            if (content) {
+                const links = content.querySelectorAll('a');
+                links.forEach(link => {
+                    // Improve touch target size and add visual feedback
+                    link.style.minHeight = '44px';
+                    link.style.display = 'flex';
+                    link.style.alignItems = 'center';
+                    link.style.justifyContent = 'center';
+
+                    link.addEventListener('touchstart', (e) => {
+                        e.stopPropagation();
+
+                        // Add visual feedback
+                        link.style.backgroundColor = 'rgba(0, 128, 0, 0.3)';
+
+                        // Navigate after a short delay to show feedback
+                        setTimeout(() => {
+                            if (link.href && link.href !== '#') {
                                 window.location.href = link.href;
-                            }, 100);
-                        });
-                    });
+                            }
+                        }, 150);
+                    }, { passive: true });
+
+                    link.addEventListener('touchend', (e) => {
+                        // Remove visual feedback
+                        setTimeout(() => {
+                            link.style.backgroundColor = '';
+                        }, 200);
+                    }, { passive: true });
+
+                    link.addEventListener('touchcancel', (e) => {
+                        // Remove visual feedback on cancel
+                        link.style.backgroundColor = '';
+                    }, { passive: true });
+                });
+            }
+        });
+    }
+
+    setupKeyboardNavigation(dropdowns) {
+        dropdowns.forEach(dropdown => {
+            const button = dropdown.querySelector('.dropbtn');
+            const content = dropdown.querySelector('.dropdown-content');
+
+            button.addEventListener('keydown', (e) => {
+                switch (e.key) {
+                    case 'Enter':
+                    case ' ':
+                        e.preventDefault();
+                        this.toggleDropdown(dropdown);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        this.openDropdownAndFocusFirst(dropdown);
+                        break;
+                    case 'Escape':
+                        this.closeDropdown(dropdown);
+                        break;
                 }
             });
-        }
 
-        // Add hover effect to dropdowns (for both mobile and desktop)
-        const dropdownLinks = this.querySelectorAll('.dropdown-content a');
-        dropdownLinks.forEach(link => {
-            link.addEventListener('mouseover', function () {
-                this.style.backgroundColor = 'rgba(0, 128, 0, 0.5)'; // semi-transparent green
-                this.style.color = '#fff'; // white text
-            });
-            link.addEventListener('mouseout', function () {
-                this.style.backgroundColor = ''; // reset background color
-                this.style.color = ''; // reset text color
-            });
+            if (content) {
+                const links = content.querySelectorAll('a');
+                links.forEach((link, index) => {
+                    link.addEventListener('keydown', (e) => {
+                        switch (e.key) {
+                            case 'ArrowDown':
+                                e.preventDefault();
+                                const nextLink = links[index + 1] || links[0];
+                                nextLink.focus();
+                                break;
+                            case 'ArrowUp':
+                                e.preventDefault();
+                                const prevLink = links[index - 1] || links[links.length - 1];
+                                prevLink.focus();
+                                break;
+                            case 'Escape':
+                                e.preventDefault();
+                                this.closeDropdown(dropdown);
+                                button.focus();
+                                break;
+                            case 'Tab':
+                                if (e.shiftKey && index === 0) {
+                                    this.closeDropdown(dropdown);
+                                } else if (!e.shiftKey && index === links.length - 1) {
+                                    this.closeDropdown(dropdown);
+                                }
+                                break;
+                        }
+                    });
+                });
+            }
         });
+    }
+
+    toggleDropdown(dropdown) {
+        const isOpen = dropdown.classList.contains('active');
+        if (isOpen) {
+            this.closeDropdown(dropdown);
+        } else {
+            this.openDropdown(dropdown);
+        }
+    }
+
+    openDropdown(dropdown) {
+        const button = dropdown.querySelector('.dropbtn');
+        const content = dropdown.querySelector('.dropdown-content');
+
+        dropdown.classList.add('active');
+        button.setAttribute('aria-expanded', 'true');
+        if (content) {
+            content.style.display = 'block';
+            content.setAttribute('aria-hidden', 'false');
+        }
+    }
+
+    openDropdownAndFocusFirst(dropdown) {
+        this.openDropdown(dropdown);
+        const content = dropdown.querySelector('.dropdown-content');
+        if (content) {
+            const firstLink = content.querySelector('a');
+            if (firstLink) {
+                firstLink.focus();
+            }
+        }
+    }
+
+    closeDropdown(dropdown) {
+        const button = dropdown.querySelector('.dropbtn');
+        const content = dropdown.querySelector('.dropdown-content');
+
+        dropdown.classList.remove('active');
+        button.setAttribute('aria-expanded', 'false');
+        if (content) {
+            content.style.display = 'none';
+            content.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    setupHoverEffects() {
+        // Only add hover effects for non-touch devices
+        if (!('ontouchstart' in window)) {
+            const dropdownLinks = this.querySelectorAll('.dropdown-content a');
+            dropdownLinks.forEach(link => {
+                link.addEventListener('mouseover', function () {
+                    this.style.backgroundColor = 'rgba(0, 128, 0, 0.5)';
+                    this.style.color = '#fff';
+                });
+                link.addEventListener('mouseout', function () {
+                    this.style.backgroundColor = '';
+                    this.style.color = '';
+                });
+            });
+        }
+    }
+
+    handleResize() {
+        const isMobile = window.innerWidth <= 768;
+        const dropdowns = this.querySelectorAll('.dropdown');
+
+        // Close all dropdowns on resize to prevent layout issues
+        dropdowns.forEach(dropdown => {
+            this.closeDropdown(dropdown);
+        });
+
+        // Reinitialize mobile features if needed
+        if (isMobile && !this.mobileInitialized) {
+            this.setupMobileTouchHandlers(dropdowns);
+            this.mobileInitialized = true;
+        } else if (!isMobile && this.mobileInitialized) {
+            this.mobileInitialized = false;
+        }
     }
 }
 

@@ -81,8 +81,8 @@
 .trip-report .hero {
     width: 100%;
     /* Ensure hero spans full width */
-    height: 30vh;
-    /* Adjusted height */
+    height: 35vh;
+    /* Increased height to push content down */
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('../images/mountaineering/pico/crater.jpg');
     background-size: cover;
     background-position: center;
@@ -94,8 +94,10 @@
     /* Center hero text */
     color: var(--text-color);
     text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
-    min-height: 200px;
-    /* Ensure a minimum height */
+    min-height: 250px;
+    /* Increased minimum height */
+    margin-top: 60px;
+    /* Add top margin to account for fixed navbar */
 }
 
 .trip-report .hero h1 {
@@ -125,7 +127,8 @@
 .trip-report .model-container {
     width: 100%;
     /* Allow model container to span full width */
-    height: 40%;
+    height: 500px;
+    /* Fixed height instead of percentage */
     margin: 20px auto;
     /* Center the 3D model container */
     border-radius: 10px;
@@ -169,30 +172,202 @@
     text-align: justify;
 }
 
+/* Modern Status Banner */
+.status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    max-width: 450px;
+    margin: 25px auto;
+    padding: 18px 30px;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.05));
+    border: 2px solid rgba(76, 175, 80, 0.4);
+    border-radius: 50px;
+    backdrop-filter: blur(10px);
+    box-shadow:
+        0 8px 32px rgba(76, 175, 80, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.status-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.1), transparent);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+.status-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 0 10px rgba(76, 175, 80, 0.5));
+}
+
+.status-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+}
+
+.status-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+    letter-spacing: 1px;
+}
+
+.status-checkmark {
+    font-size: 2rem;
+    color: var(--primary-color);
+    background: rgba(76, 175, 80, 0.2);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(76, 175, 80, 0.5);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
 /* Climb Data Section */
 .climb-data {
-    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
     padding: 0;
     margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    /* Center climb data items */
-    gap: 20px;
-    width: 100%;
-    /* Allow climb data to span full width */
+    max-width: 800px;
     margin: 0 auto;
 }
 
-.climb-data li {
+.stat-item {
     background-color: rgba(0, 0, 0, 0.8);
-    padding: 15px 20px;
+    padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    font-size: 1.1rem;
-    color: var(--text-color);
     text-align: center;
-    min-width: 200px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.stat-item:hover {
+    transform: translateY(-2px);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.stat-value.success {
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+/* 3D Model Section - Centerpiece */
+.model-section {
+    background: linear-gradient(135deg, rgba(45, 45, 45, 0.95), rgba(30, 30, 30, 0.95));
+    border: 2px solid rgba(76, 175, 80, 0.3);
+    position: relative;
+}
+
+.model-section::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--primary-color), transparent, var(--primary-color));
+    border-radius: 12px;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+.model-description {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 15px;
+    font-style: italic;
+}
+
+.model-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+}
+
+/* Trip Content */
+.trip-content {
+    text-align: left;
+    line-height: 1.8;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.trip-content h3 {
+    color: var(--primary-color);
+    font-size: 1.3rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trip-content p {
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Responsive Adjustments */

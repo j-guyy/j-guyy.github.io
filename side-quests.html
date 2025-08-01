@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Colorado 14ers Map</title>
+    <title>Side Quests</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
@@ -23,7 +24,13 @@
 
     <div class="content">
         <div class="hero">
-            <h1>US Side Quests</h1>
+            <h1>Side Quests</h1>
+        </div>
+
+        <!-- Progress Summary Cards -->
+        <div class="section">
+            <h2>Progress Summary</h2>
+            <div id="quest-summary"></div>
         </div>
 
         <div class="section">
@@ -37,12 +44,19 @@
             <p>46 New York peaks above 4,000ft elevation</p>
             <div id="adirondack-map" class="map-container"></div>
         </div>
+
+        <div class="section">
+            <h2>British Isles High Five</h2>
+            <p>The highest peaks in England, Scotland, Wales, Ireland, and Northern Ireland</p>
+            <div id="british-isles-map" class="map-container"></div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script src="js/leaflet.js"></script>
+    <script src="js/us-quests.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 
