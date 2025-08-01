@@ -123,12 +123,22 @@ class NavbarComponent extends HTMLElement {
             });
         };
 
-        // Close dropdowns when clicking/touching outside - use a single event listener
-        document.addEventListener('pointerdown', (e) => {
-            if (!e.target.closest('.dropdown')) {
-                closeAllDropdowns();
-            }
-        }, { passive: true });
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Close dropdowns when touching/clicking outside
+        if (isTouchDevice) {
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    closeAllDropdowns();
+                }
+            }, { passive: true });
+        } else {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown')) {
+                    closeAllDropdowns();
+                }
+            });
+        }
 
         dropdowns.forEach(dropdown => {
             const button = dropdown.querySelector('.dropbtn');
@@ -193,8 +203,12 @@ class NavbarComponent extends HTMLElement {
                 }
             };
 
-            // Use pointer events for universal compatibility (works with mouse, touch, pen)
-            button.addEventListener('pointerdown', toggleDropdownState);
+            // Use touch events for touch devices, click for others
+            if (isTouchDevice) {
+                button.addEventListener('touchstart', toggleDropdownState, { passive: false });
+            } else {
+                button.addEventListener('click', toggleDropdownState);
+            }
 
             // Enhanced handling for dropdown links
             if (content) {
@@ -206,24 +220,35 @@ class NavbarComponent extends HTMLElement {
                     link.style.alignItems = 'center';
                     link.style.justifyContent = 'center';
 
-                    // Add visual feedback on pointer down
-                    link.addEventListener('pointerdown', (e) => {
-                        e.stopPropagation();
-                        link.style.backgroundColor = 'rgba(0, 128, 0, 0.3)';
-                    });
+                    if (isTouchDevice) {
+                        // Touch-only handling for mobile
+                        link.addEventListener('touchstart', (e) => {
+                            e.stopPropagation();
+                            link.style.backgroundColor = 'rgba(0, 128, 0, 0.3)';
+                        }, { passive: true });
 
-                    // Remove visual feedback and handle navigation
-                    link.addEventListener('pointerup', () => {
-                        setTimeout(() => {
+                        link.addEventListener('touchend', (e) => {
+                            e.stopPropagation();
+                            setTimeout(() => {
+                                link.style.backgroundColor = '';
+                                closeAllDropdowns();
+                                // Navigate after visual feedback
+                                if (link.href && link.href !== '#') {
+                                    window.location.href = link.href;
+                                }
+                            }, 150);
+                        }, { passive: true });
+
+                        link.addEventListener('touchcancel', () => {
                             link.style.backgroundColor = '';
-                        }, 200);
-                    });
-
-                    // Handle click events for navigation
-                    link.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        closeAllDropdowns();
-                    });
+                        }, { passive: true });
+                    } else {
+                        // Click handling for desktop
+                        link.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            closeAllDropdowns();
+                        });
+                    }
                 });
             }
         });
