@@ -93,13 +93,10 @@ class NavbarComponent extends HTMLElement {
     }
 
     initializeMobileNavigation() {
-        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
         const dropdowns = this.querySelectorAll('.dropdown');
 
-        // Enhanced mobile navigation with improved touch handling
-        if (isMobile) {
-            this.setupMobileTouchHandlers(dropdowns);
-        }
+        // Always setup universal handlers for maximum compatibility
+        this.setupUniversalDropdownHandlers(dropdowns);
 
         // Setup keyboard navigation for accessibility
         this.setupKeyboardNavigation(dropdowns);
@@ -113,7 +110,7 @@ class NavbarComponent extends HTMLElement {
         });
     }
 
-    setupMobileTouchHandlers(dropdowns) {
+    setupUniversalDropdownHandlers(dropdowns) {
         const closeAllDropdowns = () => {
             dropdowns.forEach(d => {
                 d.classList.remove('active');
@@ -126,19 +123,12 @@ class NavbarComponent extends HTMLElement {
             });
         };
 
-        // Close dropdowns when touching outside
-        document.addEventListener('touchstart', (e) => {
+        // Close dropdowns when clicking/touching outside - use a single event listener
+        document.addEventListener('pointerdown', (e) => {
             if (!e.target.closest('.dropdown')) {
                 closeAllDropdowns();
             }
         }, { passive: true });
-
-        // Also handle clicks as fallback for devices that don't properly support touch events
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.dropdown')) {
-                closeAllDropdowns();
-            }
-        });
 
         dropdowns.forEach(dropdown => {
             const button = dropdown.querySelector('.dropbtn');
@@ -203,43 +193,35 @@ class NavbarComponent extends HTMLElement {
                 }
             };
 
-            // Add both touch and click handlers for maximum compatibility
-            button.addEventListener('touchstart', toggleDropdownState, { passive: false });
-            button.addEventListener('click', toggleDropdownState);
+            // Use pointer events for universal compatibility (works with mouse, touch, pen)
+            button.addEventListener('pointerdown', toggleDropdownState);
 
-            // Enhanced touch handling for dropdown links
+            // Enhanced handling for dropdown links
             if (content) {
                 const links = content.querySelectorAll('a');
                 links.forEach(link => {
-                    // Improve touch target size and add visual feedback
+                    // Improve touch target size
                     link.style.minHeight = '44px';
                     link.style.display = 'flex';
                     link.style.alignItems = 'center';
                     link.style.justifyContent = 'center';
 
-                    // Handle touch events for visual feedback
-                    link.addEventListener('touchstart', (e) => {
+                    // Add visual feedback on pointer down
+                    link.addEventListener('pointerdown', (e) => {
                         e.stopPropagation();
-                        // Add visual feedback
                         link.style.backgroundColor = 'rgba(0, 128, 0, 0.3)';
-                    }, { passive: true });
+                    });
 
-                    link.addEventListener('touchend', (e) => {
-                        // Remove visual feedback and navigate
+                    // Remove visual feedback and handle navigation
+                    link.addEventListener('pointerup', () => {
                         setTimeout(() => {
                             link.style.backgroundColor = '';
                         }, 200);
-                    }, { passive: true });
+                    });
 
-                    link.addEventListener('touchcancel', (e) => {
-                        // Remove visual feedback on cancel
-                        link.style.backgroundColor = '';
-                    }, { passive: true });
-
-                    // Handle click events for navigation (works on both touch and non-touch devices)
+                    // Handle click events for navigation
                     link.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        // Close dropdown after navigation
                         closeAllDropdowns();
                     });
                 });
@@ -427,13 +409,7 @@ class NavbarComponent extends HTMLElement {
             hamburger.setAttribute('aria-expanded', 'false');
         }
 
-        // Reinitialize mobile features if needed
-        if (isMobile && !this.mobileInitialized) {
-            this.setupMobileTouchHandlers(dropdowns);
-            this.mobileInitialized = true;
-        } else if (!isMobile && this.mobileInitialized) {
-            this.mobileInitialized = false;
-        }
+        // No need to reinitialize - universal handlers work on all devices
     }
 }
 
