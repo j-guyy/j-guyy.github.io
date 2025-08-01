@@ -111,30 +111,39 @@ class NavbarComponent extends HTMLElement {
     }
 
     setupUniversalDropdownHandlers(dropdowns) {
+        const isMobile = () => window.innerWidth <= 768;
+
         const closeAllDropdowns = () => {
             dropdowns.forEach(d => {
                 d.classList.remove('active');
                 d.setAttribute('aria-expanded', 'false');
                 const content = d.querySelector('.dropdown-content');
+                const plusIcon = d.querySelector('.mobile-plus-icon');
                 if (content) {
-                    content.style.display = 'none';
+                    // Don't manipulate display on mobile - CSS handles it with max-height
+                    if (!isMobile()) {
+                        content.style.display = 'none';
+                    }
                     content.setAttribute('aria-hidden', 'true');
+                }
+                if (plusIcon) {
+                    plusIcon.textContent = '+';
                 }
             });
         };
 
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-        // Close dropdowns when touching/clicking outside
+        // Close dropdowns when touching/clicking outside (only on desktop)
         if (isTouchDevice) {
             document.addEventListener('touchstart', (e) => {
-                if (!e.target.closest('.dropdown')) {
+                if (!isMobile() && !e.target.closest('.dropdown')) {
                     closeAllDropdowns();
                 }
             }, { passive: true });
         } else {
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.dropdown')) {
+                if (!isMobile() && !e.target.closest('.dropdown')) {
                     closeAllDropdowns();
                 }
             });
@@ -143,6 +152,7 @@ class NavbarComponent extends HTMLElement {
         dropdowns.forEach(dropdown => {
             const button = dropdown.querySelector('.dropbtn');
             const content = dropdown.querySelector('.dropdown-content');
+            const plusIcon = dropdown.querySelector('.mobile-plus-icon');
 
             // Set initial ARIA attributes
             button.setAttribute('aria-haspopup', 'true');
@@ -166,32 +176,63 @@ class NavbarComponent extends HTMLElement {
 
                 const isCurrentlyOpen = dropdown.classList.contains('active');
 
-                // Close all other dropdowns
-                dropdowns.forEach(d => {
-                    if (d !== dropdown) {
-                        d.classList.remove('active');
-                        d.setAttribute('aria-expanded', 'false');
-                        const otherContent = d.querySelector('.dropdown-content');
-                        if (otherContent) {
-                            otherContent.style.display = 'none';
-                            otherContent.setAttribute('aria-hidden', 'true');
-                        }
+                // On mobile, use accordion behavior (only close others if opening this one)
+                if (isMobile()) {
+                    if (!isCurrentlyOpen) {
+                        // Close all other dropdowns when opening a new one
+                        dropdowns.forEach(d => {
+                            if (d !== dropdown) {
+                                d.classList.remove('active');
+                                d.setAttribute('aria-expanded', 'false');
+                                const otherContent = d.querySelector('.dropdown-content');
+                                const otherPlusIcon = d.querySelector('.mobile-plus-icon');
+                                if (otherContent) {
+                                    // Don't manipulate display on mobile - CSS handles it
+                                    otherContent.setAttribute('aria-hidden', 'true');
+                                }
+                                if (otherPlusIcon) {
+                                    otherPlusIcon.textContent = '+';
+                                }
+                            }
+                        });
                     }
-                });
+                } else {
+                    // Desktop behavior - close all others
+                    dropdowns.forEach(d => {
+                        if (d !== dropdown) {
+                            d.classList.remove('active');
+                            d.setAttribute('aria-expanded', 'false');
+                            const otherContent = d.querySelector('.dropdown-content');
+                            if (otherContent) {
+                                otherContent.style.display = 'none';
+                                otherContent.setAttribute('aria-hidden', 'true');
+                            }
+                        }
+                    });
+                }
 
                 // Toggle current dropdown
                 if (isCurrentlyOpen) {
                     dropdown.classList.remove('active');
                     button.setAttribute('aria-expanded', 'false');
                     if (content) {
-                        content.style.display = 'none';
+                        // Only manipulate display on desktop
+                        if (!isMobile()) {
+                            content.style.display = 'none';
+                        }
                         content.setAttribute('aria-hidden', 'true');
+                    }
+                    if (plusIcon) {
+                        plusIcon.textContent = '+';
                     }
                 } else {
                     dropdown.classList.add('active');
                     button.setAttribute('aria-expanded', 'true');
                     if (content) {
-                        content.style.display = 'block';
+                        // Only manipulate display on desktop
+                        if (!isMobile()) {
+                            content.style.display = 'block';
+                        }
                         content.setAttribute('aria-hidden', 'false');
 
                         // Focus first menu item for keyboard users
@@ -199,6 +240,9 @@ class NavbarComponent extends HTMLElement {
                         if (firstLink && document.activeElement === button) {
                             firstLink.focus();
                         }
+                    }
+                    if (plusIcon) {
+                        plusIcon.textContent = '−';
                     }
                 }
             };
@@ -218,7 +262,7 @@ class NavbarComponent extends HTMLElement {
                     link.style.minHeight = '44px';
                     link.style.display = 'flex';
                     link.style.alignItems = 'center';
-                    link.style.justifyContent = 'center';
+                    link.style.justifyContent = 'flex-start';
 
                     if (isTouchDevice) {
                         // Touch-only handling for mobile
@@ -231,7 +275,10 @@ class NavbarComponent extends HTMLElement {
                             e.stopPropagation();
                             setTimeout(() => {
                                 link.style.backgroundColor = '';
-                                closeAllDropdowns();
+                                // Don't close dropdowns on mobile - let them stay open for accordion behavior
+                                if (!isMobile()) {
+                                    closeAllDropdowns();
+                                }
                                 // Navigate after visual feedback
                                 if (link.href && link.href !== '#') {
                                     window.location.href = link.href;
@@ -322,12 +369,20 @@ class NavbarComponent extends HTMLElement {
     openDropdown(dropdown) {
         const button = dropdown.querySelector('.dropbtn');
         const content = dropdown.querySelector('.dropdown-content');
+        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
+        const isMobile = window.innerWidth <= 768;
 
         dropdown.classList.add('active');
         button.setAttribute('aria-expanded', 'true');
         if (content) {
-            content.style.display = 'block';
+            // Only manipulate display on desktop - mobile uses CSS max-height
+            if (!isMobile) {
+                content.style.display = 'block';
+            }
             content.setAttribute('aria-hidden', 'false');
+        }
+        if (plusIcon) {
+            plusIcon.textContent = '−';
         }
     }
 
@@ -345,12 +400,20 @@ class NavbarComponent extends HTMLElement {
     closeDropdown(dropdown) {
         const button = dropdown.querySelector('.dropbtn');
         const content = dropdown.querySelector('.dropdown-content');
+        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
+        const isMobile = window.innerWidth <= 768;
 
         dropdown.classList.remove('active');
         button.setAttribute('aria-expanded', 'false');
         if (content) {
-            content.style.display = 'none';
+            // Only manipulate display on desktop - mobile uses CSS max-height
+            if (!isMobile) {
+                content.style.display = 'none';
+            }
             content.setAttribute('aria-hidden', 'true');
+        }
+        if (plusIcon) {
+            plusIcon.textContent = '+';
         }
     }
 
@@ -391,6 +454,10 @@ class NavbarComponent extends HTMLElement {
                     const dropdowns = this.querySelectorAll('.dropdown');
                     dropdowns.forEach(dropdown => {
                         this.closeDropdown(dropdown);
+                        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
+                        if (plusIcon) {
+                            plusIcon.textContent = '+';
+                        }
                     });
                 }
             });
@@ -401,11 +468,21 @@ class NavbarComponent extends HTMLElement {
                     navMenu.classList.remove('nav-menu-active');
                     hamburger.classList.remove('hamburger-active');
                     hamburger.setAttribute('aria-expanded', 'false');
+
+                    // Close all dropdowns when menu closes
+                    const dropdowns = this.querySelectorAll('.dropdown');
+                    dropdowns.forEach(dropdown => {
+                        this.closeDropdown(dropdown);
+                        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
+                        if (plusIcon) {
+                            plusIcon.textContent = '+';
+                        }
+                    });
                 }
             });
 
-            // Close menu when clicking on a nav link
-            const navLinks = this.querySelectorAll('.nav-menu a');
+            // Close menu when clicking on a nav link (but not dropdown buttons)
+            const navLinks = this.querySelectorAll('.nav-menu a:not(.dropbtn)');
             navLinks.forEach(link => {
                 link.addEventListener('click', () => {
                     navMenu.classList.remove('nav-menu-active');

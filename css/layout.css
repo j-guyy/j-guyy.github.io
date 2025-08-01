@@ -393,38 +393,64 @@ html {
         font-size: 1.2rem;
     }
 
-    /* Mobile dropdown adjustments */
+    /* Mobile dropdown adjustments - true accordion style */
     .dropdown-content {
         position: static;
-        background-color: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(10px);
-        box-shadow: none;
+        background-color: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(5px);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         border-radius: 0;
         transform: none;
-        width: 100%;
-        margin-top: 0.5rem;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
+        width: calc(100% - 1rem);
+        margin: 0 0 0 1rem;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-in-out;
+        border-left: 3px solid var(--primary-color);
+        display: block !important;
+        /* Always display block, control with max-height */
     }
 
     .dropdown.active .dropdown-content {
-        opacity: 1;
-        visibility: visible;
+        max-height: 300px;
+        /* Generous height for content */
     }
 
     .dropdown-content a {
-        padding: 0.8rem 2rem;
-        font-size: 1rem;
-        border-left: 3px solid var(--primary-color);
+        padding: 0.8rem 1.5rem;
+        font-size: 0.95rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.2s ease;
+        text-align: left;
+        display: block !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dropdown-content a:last-child {
+        border-bottom: none;
+    }
+
+    .dropdown-content a:hover,
+    .dropdown-content a:focus {
+        background-color: rgba(0, 128, 0, 0.4);
+        padding-left: 2rem;
     }
 
     /* Hide desktop hover effects on mobile */
     .dropdown:hover .dropdown-content {
-        display: none;
+        display: block !important;
+        max-height: 0;
+        /* Keep collapsed on hover */
     }
 
-    .dropdown.active .dropdown-content {
-        display: block;
+    /* Plus icon animation - smooth plus to minus transition */
+    .mobile-plus-icon {
+        transition: all 0.3s ease;
+        display: inline-block;
+        font-family: monospace;
+        /* Ensures consistent width for + and − */
+        width: 1.2rem;
+        text-align: center;
     }
 }
