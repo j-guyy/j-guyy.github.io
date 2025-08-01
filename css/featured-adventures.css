@@ -309,6 +309,10 @@
         padding: 1.5rem 0.5rem;
     }
 
+    .featured-section {
+        margin-bottom: 1rem;
+    }
+
     .section-title {
         font-size: 2rem;
         margin-bottom: 0.5rem;

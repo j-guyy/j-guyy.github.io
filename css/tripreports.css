@@ -124,6 +124,19 @@
     /* Center text */
 }
 
+/* Mobile-specific overrides for trip reports */
+@media (max-width: 768px) {
+    .trip-report .content {
+        margin: 0;
+        /* Remove horizontal margins on mobile */
+        padding: 10px;
+        /* Reduce padding on mobile */
+        width: 100%;
+        /* Full width on mobile */
+        box-sizing: border-box;
+    }
+}
+
 .trip-report .model-container {
     width: 100%;
     /* Allow model container to span full width */
@@ -382,13 +395,141 @@
 
     .success-banner {
         font-size: 1.2rem;
+        max-width: 90%;
+        padding: 15px 20px;
+        gap: 10px;
+    }
+
+    .status-icon {
+        font-size: 1.5rem;
+    }
+
+    .status-value {
+        font-size: 1.2rem;
+    }
+
+    .status-checkmark {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .trip-report .section {
+        margin: 20px auto;
+        padding: 15px;
     }
 
     .trip-report .section h2 {
         font-size: 1.8rem;
     }
 
-    .climb-data li {
+    /* Fix climb-data grid for mobile */
+    .climb-data {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        max-width: 100%;
+        padding: 0 5px;
+    }
+
+    .stat-item {
+        padding: 15px;
+        min-width: 0;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+    }
+
+    .stat-value {
+        font-size: 1.2rem;
+    }
+
+    /* 3D Model mobile adjustments */
+    .trip-report .model-container {
+        height: 300px;
+        /* Reduced from 500px */
+        margin: 15px auto;
+        /* Reduced margin */
+    }
+
+    .model-section {
+        margin: 20px auto;
+        /* Reduced margin */
+        padding: 15px;
+        /* Reduced padding */
+    }
+
+    .model-description {
+        display: none;
+        /* Hide on mobile since touch interaction is different */
+    }
+
+    .model-loading {
+        height: 300px;
+        /* Match container height */
+        font-size: 1rem;
+    }
+
+    /* Trip content mobile adjustments */
+    .trip-content {
+        max-width: 100%;
+        padding: 0 10px;
+    }
+
+    .trip-content h3 {
+        font-size: 1.1rem;
+        margin-top: 1.5rem;
+    }
+
+    .trip-content p {
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .status-banner {
+        gap: 8px;
+        padding: 12px 15px;
+        max-width: 95%;
+    }
+
+    .status-icon {
+        font-size: 1.3rem;
+    }
+
+    .status-value {
+        font-size: 1rem;
+    }
+
+    .status-checkmark {
+        width: 35px;
+        height: 35px;
+        font-size: 1.3rem;
+    }
+
+    .climb-data {
+        padding: 0 5px;
+    }
+
+    .stat-item {
+        padding: 12px;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .stat-value {
+        font-size: 1.1rem;
+    }
+
+    .trip-report .hero h1 {
+        font-size: 2rem;
+    }
+
+    .trip-report .hero h2 {
         font-size: 1rem;
     }
 }

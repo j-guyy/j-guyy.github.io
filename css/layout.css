@@ -10,6 +10,62 @@
     backdrop-filter: blur(10px);
 }
 
+.navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.navbar-brand a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.navbar-brand a:hover {
+    color: var(--text-color);
+}
+
+/* Hamburger menu styles */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 1001;
+}
+
+.hamburger-line {
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-color);
+    margin: 3px 0;
+    transition: 0.3s;
+    border-radius: 2px;
+}
+
+.hamburger-active .hamburger-line:nth-child(1) {
+    transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.hamburger-active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-active .hamburger-line:nth-child(3) {
+    transform: rotate(45deg) translate(-5px, -6px);
+}
+
 .nav-menu {
     list-style-type: none;
     margin: 0;
@@ -240,4 +296,135 @@ html {
 .description {
     color: var(--text-color);
     margin-bottom: 20px;
+}
+
+/* Hide Home link on desktop since JG logo serves as home link */
+@media (min-width: 769px) {
+    .nav-menu li:first-child {
+        display: none;
+    }
+
+    /* Hide mobile plus icons on desktop */
+    .mobile-plus-icon {
+        display: none;
+    }
+}
+
+/* Mobile hamburger menu styles */
+@media (max-width: 768px) {
+    .navbar {
+        background-color: transparent;
+        backdrop-filter: none;
+        padding: 0;
+        pointer-events: none;
+        touch-action: pan-y;
+    }
+
+    .navbar-container {
+        padding: 0.5rem 0.5rem;
+        justify-content: flex-start;
+        pointer-events: none;
+        touch-action: pan-y;
+    }
+
+    .navbar-brand {
+        display: none;
+    }
+
+    .hamburger {
+        display: flex;
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 1003;
+        pointer-events: auto;
+        touch-action: auto;
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        flex-direction: column;
+        background-color: var(--bg-transparent);
+        backdrop-filter: blur(15px);
+        width: 250px;
+        text-align: left;
+        transition: 0.3s;
+        box-shadow: 0 10px 27px rgba(0, 0, 0, 0.3);
+        padding: 1rem 0;
+        border-radius: 10px;
+        opacity: 0;
+        visibility: hidden;
+        z-index: 1002;
+        pointer-events: none;
+        touch-action: pan-y;
+    }
+
+    .nav-menu.nav-menu-active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        touch-action: auto;
+    }
+
+    .nav-menu li {
+        margin: 1rem 0;
+        width: 100%;
+    }
+
+    .nav-menu li a {
+        padding: 1rem 1rem 1rem 3rem;
+        font-size: 1.1rem;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    /* Mobile plus icon styling */
+    .mobile-plus-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-weight: bold;
+        color: var(--primary-color);
+        font-size: 1.2rem;
+    }
+
+    /* Mobile dropdown adjustments */
+    .dropdown-content {
+        position: static;
+        background-color: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        box-shadow: none;
+        border-radius: 0;
+        transform: none;
+        width: 100%;
+        margin-top: 0.5rem;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .dropdown.active .dropdown-content {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .dropdown-content a {
+        padding: 0.8rem 2rem;
+        font-size: 1rem;
+        border-left: 3px solid var(--primary-color);
+    }
+
+    /* Hide desktop hover effects on mobile */
+    .dropdown:hover .dropdown-content {
+        display: none;
+    }
+
+    .dropdown.active .dropdown-content {
+        display: block;
+    }
 }

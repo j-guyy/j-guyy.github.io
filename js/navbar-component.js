@@ -7,32 +7,42 @@ class NavbarComponent extends HTMLElement {
         // Organized navigation structure with logical groupings
         this.innerHTML = `
             <nav class="navbar">
-                <ul class="nav-menu">
-                    <li><a href="${basePath}index.html">Home</a></li>
-                    <li class="dropdown">
-                        <a href="#" class="dropbtn">US Travel</a>
-                        <div class="dropdown-content">
-                            <a href="${basePath}us-dashboard.html">Dashboard</a>
-                            <a href="${basePath}us-map.html">Map</a>
-                        </div>
-                    </li>
-                    <li class="dropdown">
-                        <a href="#" class="dropbtn">World Travel</a>
-                        <div class="dropdown-content">
-                            <a href="${basePath}world-dashboard.html">Dashboard</a>
-                            <a href="${basePath}world-map.html">Map</a>
-                        </div>
-                    </li>
-                    <li class="dropdown">
-                        <a href="#" class="dropbtn">Adventures</a>
-                        <div class="dropdown-content">
-                            <a href="${basePath}adventures.html">List</a>
-                            <a href="${basePath}objectives-list.html">Glider</a>
-                            <a href="${basePath}side-quests.html">Side Quests</a>
-                        </div>
-                    </li>
-                    <li><a href="${basePath}about.html">About</a></li>
-                </ul>
+                <div class="navbar-container">
+                    <div class="navbar-brand">
+                        <a href="${basePath}index.html">JG</a>
+                    </div>
+                    <button class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
+                    <ul class="nav-menu">
+                        <li><a href="${basePath}index.html">Home</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropbtn">US Travel <span class="mobile-plus-icon">+</span></a>
+                            <div class="dropdown-content">
+                                <a href="${basePath}us-dashboard.html">Dashboard</a>
+                                <a href="${basePath}us-map.html">Map</a>
+                            </div>
+                        </li>
+                        <li class="dropdown">
+                            <a href="#" class="dropbtn">World Travel <span class="mobile-plus-icon">+</span></a>
+                            <div class="dropdown-content">
+                                <a href="${basePath}world-dashboard.html">Dashboard</a>
+                                <a href="${basePath}world-map.html">Map</a>
+                            </div>
+                        </li>
+                        <li class="dropdown">
+                            <a href="#" class="dropbtn">Adventures <span class="mobile-plus-icon">+</span></a>
+                            <div class="dropdown-content">
+                                <a href="${basePath}adventures.html">List</a>
+                                <a href="${basePath}objectives-list.html">Glider</a>
+                                <a href="${basePath}side-quests.html">Side Quests</a>
+                            </div>
+                        </li>
+                        <li><a href="${basePath}about.html">About</a></li>
+                    </ul>
+                </div>
             </nav>
         `;
     }
@@ -85,6 +95,9 @@ class NavbarComponent extends HTMLElement {
 
         // Mobile-specific functionality
         this.initializeMobileNavigation();
+
+        // Initialize hamburger menu
+        this.initializeHamburgerMenu();
     }
 
     initializeMobileNavigation() {
@@ -348,14 +361,68 @@ class NavbarComponent extends HTMLElement {
         }
     }
 
+    initializeHamburgerMenu() {
+        const hamburger = this.querySelector('.hamburger');
+        const navMenu = this.querySelector('.nav-menu');
+
+        if (hamburger && navMenu) {
+            hamburger.addEventListener('click', () => {
+                const isExpanded = hamburger.getAttribute('aria-expanded') === 'true';
+
+                // Toggle menu visibility
+                navMenu.classList.toggle('nav-menu-active');
+                hamburger.classList.toggle('hamburger-active');
+
+                // Update ARIA attribute
+                hamburger.setAttribute('aria-expanded', !isExpanded);
+
+                // Close any open dropdowns when hamburger menu closes
+                if (isExpanded) {
+                    const dropdowns = this.querySelectorAll('.dropdown');
+                    dropdowns.forEach(dropdown => {
+                        this.closeDropdown(dropdown);
+                    });
+                }
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.contains(e.target)) {
+                    navMenu.classList.remove('nav-menu-active');
+                    hamburger.classList.remove('hamburger-active');
+                    hamburger.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            // Close menu when clicking on a nav link
+            const navLinks = this.querySelectorAll('.nav-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    navMenu.classList.remove('nav-menu-active');
+                    hamburger.classList.remove('hamburger-active');
+                    hamburger.setAttribute('aria-expanded', 'false');
+                });
+            });
+        }
+    }
+
     handleResize() {
         const isMobile = window.innerWidth <= 768;
         const dropdowns = this.querySelectorAll('.dropdown');
+        const navMenu = this.querySelector('.nav-menu');
+        const hamburger = this.querySelector('.hamburger');
 
         // Close all dropdowns on resize to prevent layout issues
         dropdowns.forEach(dropdown => {
             this.closeDropdown(dropdown);
         });
+
+        // Close hamburger menu on resize
+        if (navMenu && hamburger) {
+            navMenu.classList.remove('nav-menu-active');
+            hamburger.classList.remove('hamburger-active');
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
 
         // Reinitialize mobile features if needed
         if (isMobile && !this.mobileInitialized) {
