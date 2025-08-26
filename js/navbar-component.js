@@ -36,8 +36,8 @@ class NavbarComponent extends HTMLElement {
                             <a href="#" class="dropbtn">Adventures <span class="mobile-plus-icon">+</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}adventures.html">List</a>
-                                <a href="${basePath}objectives-list.html">Glider</a>
                                 <a href="${basePath}side-quests.html">Side Quests</a>
+                                <a href="${basePath}statshunters.html">StatsHunters</a>
                             </div>
                         </li>
                         <li><a href="${basePath}about.html">About</a></li>

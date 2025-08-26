@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StatsHunters Adventure Map</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        .embed-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #45a049 100%);
+            color: var(--text-color);
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .embed-title {
+            font-weight: 600;
+            font-size: 1.2em;
+            letter-spacing: 1px;
+        }
+
+        .fullscreen-btn {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .embed-container {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s ease;
+        }
+
+        .embed-container:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 15px 40px rgba(76, 175, 80, 0.3);
+        }
+
+        .embed-frame {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .embed-header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .embed-title {
+                font-size: 1.1em;
+            }
+
+            .fullscreen-btn {
+                width: 100%;
+                max-width: 250px;
+                padding: 12px 24px;
+            }
+
+            .embed-frame {
+                height: 400px;
+            }
+        }
+
+        @media (max-width: 450px) {
+            .embed-header {
+                padding: 12px 15px;
+            }
+
+            .fullscreen-btn {
+                font-size: 0.9em;
+                padding: 10px 20px;
+            }
+
+            .embed-frame {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>My Statshunters</h1>
+        </div>
+
+        <div class="section">
+            <div class="embed-header">
+                <span class="embed-title">StatsHunters Activity Map</span>
+                <button onclick="openFullscreen()" class="fullscreen-btn">Open in New Tab</button>
+            </div>
+            <p>Interactive map of tile hunting progress</p>
+            <div class="embed-container">
+                <iframe id="embedFrame" class="embed-frame" src="https://statshunters.com/share/052d5a08ff97"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/navbar-component.js"></script>
+    <script>
+        function openFullscreen() {
+            // Open the StatsHunters page in a new tab/window
+            window.open('https://statshunters.com/share/052d5a08ff97', '_blank');
+        }
+    </script>
+</body>
+
+</html>
