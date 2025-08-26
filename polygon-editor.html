@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mountain Range Polygon Editor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .controls {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        select,
+        button {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .export-btn {
+            background: #27ae60;
+        }
+
+        .export-btn:hover {
+            background: #229954;
+        }
+
+        .clear-btn {
+            background: #e74c3c;
+        }
+
+        .clear-btn:hover {
+            background: #c0392b;
+        }
+
+        #map {
+            height: calc(100vh - 140px);
+            width: 100%;
+        }
+
+        .status {
+            padding: 0.5rem 1rem;
+            background: #ecf0f1;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+        }
+
+        .export-area {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 80%;
+            max-height: 80%;
+            overflow: auto;
+            z-index: 10000;
+            display: none;
+        }
+
+        .export-area textarea {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            padding: 1rem;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Mountain Range Polygon Editor</h1>
+        <p>All mountain ranges are shown on the map. Click any polygon to select and edit it directly.</p>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="mapLayerSelect">Map Layer:</label>
+            <select id="mapLayerSelect">
+                <option value="opentopomap">OpenTopoMap</option>
+                <option value="arcgis">ArcGIS World Topo</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <button id="showAllBtn">Show All Ranges</button>
+            <button id="newPolygonBtn" disabled>Create New Polygon</button>
+            <button id="deleteBtn" class="clear-btn" disabled>Delete Polygon</button>
+        </div>
+
+        <div class="control-group">
+            <button id="exportBtn" class="export-btn" disabled>Export Selected</button>
+            <button id="exportAllBtn" class="export-btn">Export All</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="status" id="status">
+        Loading mountain ranges...
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="export-area" id="exportArea">
+        <h3>Exported JSON</h3>
+        <textarea id="exportText" readonly></textarea>
+        <div style="margin-top: 1rem; text-align: right;">
+            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+            <button onclick="closeExport()">Close</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script>
+        // Simple error handling
+        window.addEventListener('error', function (e) {
+            console.error('Error:', e.error);
+            document.getElementById('status').textContent = 'Error: ' + e.error.message;
+        });
+    </script>
+    <script src="js/polygon-editor.js"></script>
+</body>
+
+</html>
