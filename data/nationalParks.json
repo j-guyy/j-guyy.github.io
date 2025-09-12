@@ -60,7 +60,7 @@
             -112.1871,
             37.5930
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Canyonlands",
@@ -78,7 +78,7 @@
             -111.2615,
             38.0877
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Carlsbad Caverns",
@@ -546,7 +546,7 @@
             -113.0263,
             37.2982
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "American Samoa",
