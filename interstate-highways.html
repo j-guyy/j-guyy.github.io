@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Interstate Highways Tracker</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+        rel='stylesheet' />
+    <style>
+        .list-item.driven {
+            background-color: #e8f5e8;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 8px;
+        }
+
+        .driven-line {
+            background-color: #28a745;
+        }
+
+        .not-driven-line {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>US Interstate Highways Tracker</h1>
+        </div>
+
+        <!-- Progress Summary Cards -->
+        <div class="section">
+            <h2>Progress Overview</h2>
+            <p>Track your progress driving the major interstate highways across the United States</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-interstates">0</div>
+                    <div class="stat-label">Total Interstates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="driven-interstates">0</div>
+                    <div class="stat-label">Driven</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completion-percentage">0%</div>
+                    <div class="stat-label">Completion</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-miles">0</div>
+                    <div class="stat-label">Total Miles</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Interstate Highway Map</h2>
+            <p>Interactive map showing major US interstate highways</p>
+            <div class="controls-panel">
+                <div class="filter-controls">
+                    <span>Filter:</span>
+                    <button class="btn btn-primary active" data-filter="all">All Interstates</button>
+                    <button class="btn btn-secondary" data-filter="driven">Driven</button>
+                    <button class="btn btn-secondary" data-filter="not-driven">Not Driven</button>
+                    <button class="btn btn-secondary" data-filter="transcontinental">Transcontinental</button>
+                </div>
+            </div>
+            <div class="map-container">
+                <div id="interstate-map" style="height: 100%; width: 100%;"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color driven-line"></div>
+                        <span>Driven</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color not-driven-line"></div>
+                        <span>Not Driven</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Interstate Highway List</h2>
+            <p>Mark the highways you've driven and track your progress</p>
+            <div class="data-list" id="interstate-list">
+                <!-- Interstate list will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <script>
+        let interstateData = {};
+        let map;
+        let interstateLayer;
+
+        // Initialize the map
+        function initMap() {
+            map = L.map('interstate-map', {
+                gestureHandling: true,
+                fullscreenControl: true
+            }).setView([39.8283, -98.5795], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            interstateLayer = L.layerGroup().addTo(map);
+        }
+
+        // Load interstate data
+        async function loadInterstateData() {
+            try {
+                const response = await fetch('data/interstateHighways.json');
+                interstateData = await response.json();
+                updateStats();
+                renderInterstateList();
+                drawInterstateRoutes();
+            } catch (error) {
+                console.error('Error loading interstate data:', error);
+            }
+        }
+
+        // Draw interstate routes on the map
+        function drawInterstateRoutes() {
+            interstateLayer.clearLayers();
+
+            interstateData.interstates.forEach(interstate => {
+                if (interstate.routeSegments && interstate.routeSegments.length > 0) {
+                    // Draw each segment individually
+                    interstate.routeSegments.forEach((segment, index) => {
+                        const color = segment.driven ? '#28a745' : '#dc3545';
+                        const polyline = L.polyline([segment.from, segment.to], {
+                            color: color,
+                            weight: 4,
+                            opacity: 0.8
+                        }).addTo(interstateLayer);
+
+                        // Add popup with segment info
+                        polyline.bindPopup(`
+                            <div>
+                                <h4>${interstate.number} - ${segment.description}</h4>
+                                <p><strong>Distance:</strong> ${segment.miles} miles</p>
+                                <p><strong>Status:</strong> ${segment.driven ? 'Driven' : 'Not Driven'}</p>
+                                <button onclick="toggleSegment('${interstate.number}', ${index})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                                    ${segment.driven ? 'Mark as Not Driven' : 'Mark as Driven'}
+                                </button>
+                            </div>
+                        `);
+                    });
+                } else if (interstate.coordinates && interstate.coordinates.length > 0) {
+                    // Fallback for interstates that haven't been converted to segments yet
+                    const color = interstate.driven ? '#28a745' : '#dc3545';
+                    const polyline = L.polyline(interstate.coordinates, {
+                        color: color,
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(interstateLayer);
+
+                    polyline.bindPopup(`
+                        <div>
+                            <h4>${interstate.name}</h4>
+                            <p>${interstate.description}</p>
+                            <p><strong>Length:</strong> ${interstate.length.toLocaleString()} miles</p>
+                            <p><strong>States:</strong> ${interstate.states.join(', ')}</p>
+                            <p><strong>Status:</strong> ${interstate.driven ? 'Driven' : 'Not Driven'}</p>
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        // Toggle individual segment driven status
+        function toggleSegment(interstateNumber, segmentIndex) {
+            const interstate = interstateData.interstates.find(i => i.number === interstateNumber);
+            if (interstate && interstate.routeSegments && interstate.routeSegments[segmentIndex]) {
+                interstate.routeSegments[segmentIndex].driven = !interstate.routeSegments[segmentIndex].driven;
+
+                // Update overall interstate driven status based on segments
+                updateInterstateStatus(interstate);
+
+                updateStats();
+                renderInterstateList(getCurrentFilter());
+                drawInterstateRoutes();
+                saveData();
+            }
+        }
+
+        // Update overall interstate driven status based on segments
+        function updateInterstateStatus(interstate) {
+            if (interstate.routeSegments) {
+                const drivenSegments = interstate.routeSegments.filter(s => s.driven).length;
+                const totalSegments = interstate.routeSegments.length;
+
+                // Mark interstate as driven if all segments are driven
+                interstate.driven = drivenSegments === totalSegments;
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = interstateData.interstates.length;
+            const driven = interstateData.interstates.filter(i => i.driven).length;
+            const percentage = total > 0 ? Math.round((driven / total) * 100) : 0;
+            const totalMiles = interstateData.interstates.reduce((sum, i) => sum + i.length, 0);
+
+            document.getElementById('total-interstates').textContent = total;
+            document.getElementById('driven-interstates').textContent = driven;
+            document.getElementById('completion-percentage').textContent = percentage + '%';
+            document.getElementById('total-miles').textContent = totalMiles.toLocaleString();
+        }
+
+        // Render interstate list
+        function renderInterstateList(filter = 'all') {
+            const listContainer = document.getElementById('interstate-list');
+            let filteredInterstates = interstateData.interstates;
+
+            // Apply filters
+            switch (filter) {
+                case 'driven':
+                    filteredInterstates = interstateData.interstates.filter(i => i.driven);
+                    break;
+                case 'not-driven':
+                    filteredInterstates = interstateData.interstates.filter(i => !i.driven);
+                    break;
+                case 'transcontinental':
+                    filteredInterstates = interstateData.interstates.filter(i =>
+                        ['I-10', 'I-40', 'I-70', 'I-80', 'I-90'].includes(i.number)
+                    );
+                    break;
+            }
+
+            listContainer.innerHTML = filteredInterstates.map(interstate => `
+                <div class="list-item ${interstate.driven ? 'driven' : ''}" data-interstate="${interstate.number}">
+                    <div class="item-header">
+                        <h3>${interstate.number}</h3>
+                        <label class="checkbox-label">
+                            <input type="checkbox" ${interstate.driven ? 'checked' : ''} 
+                                   onchange="toggleInterstate('${interstate.number}', this.checked)">
+                            Driven
+                        </label>
+                    </div>
+                    <div class="item-content">
+                        <h4>${interstate.name}</h4>
+                        <p>${interstate.description}</p>
+                        <div class="item-meta">${interstate.length.toLocaleString()} miles • ${interstate.states.join(', ')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Toggle interstate driven status
+        function toggleInterstate(interstateNumber, driven) {
+            const interstate = interstateData.interstates.find(i => i.number === interstateNumber);
+            if (interstate) {
+                interstate.driven = driven;
+                updateStats();
+                renderInterstateList(getCurrentFilter());
+                saveData();
+            }
+        }
+
+        // Get current filter
+        function getCurrentFilter() {
+            const activeBtn = document.querySelector('.btn.active');
+            return activeBtn ? activeBtn.dataset.filter : 'all';
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('interstateHighwaysData', JSON.stringify(interstateData));
+        }
+
+        // Load data from localStorage
+        function loadSavedData() {
+            const saved = localStorage.getItem('interstateHighwaysData');
+            if (saved) {
+                const savedData = JSON.parse(saved);
+                // Merge saved driven status with current data structure
+                savedData.interstates.forEach(savedInterstate => {
+                    const currentInterstate = interstateData.interstates.find(i => i.number === savedInterstate.number);
+                    if (currentInterstate) {
+                        currentInterstate.driven = savedInterstate.driven;
+
+                        // Handle new routeSegments format
+                        if (savedInterstate.routeSegments && currentInterstate.routeSegments) {
+                            currentInterstate.routeSegments.forEach((segment, index) => {
+                                if (savedInterstate.routeSegments[index]) {
+                                    segment.driven = savedInterstate.routeSegments[index].driven;
+                                }
+                            });
+                        }
+
+                        // Handle legacy segments format for backward compatibility
+                        if (savedInterstate.segments && currentInterstate.segments) {
+                            currentInterstate.segments.forEach((segment, index) => {
+                                if (savedInterstate.segments[index]) {
+                                    segment.driven = savedInterstate.segments[index].driven;
+                                    segment.notes = savedInterstate.segments[index].notes || '';
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize filter buttons
+        function initFilters() {
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.btn').forEach(b => {
+                        b.classList.remove('active', 'btn-primary');
+                        b.classList.add('btn-secondary');
+                    });
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('active', 'btn-primary');
+                    renderInterstateList(btn.dataset.filter);
+                });
+            });
+        }
+
+        // Initialize the application
+        async function init() {
+            initMap();
+            await loadInterstateData();
+            loadSavedData();
+            updateStats();
+            renderInterstateList();
+            initFilters();
+        }
+
+        // Start the application when the page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

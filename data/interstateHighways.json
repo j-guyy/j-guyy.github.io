@@ -1,0 +1,1991 @@
+{
+    "interstates": [
+        {
+            "number": "I-5",
+            "name": "Interstate 5",
+            "description": "West Coast highway from Mexico to Canada",
+            "states": [
+                "CA",
+                "OR",
+                "WA"
+            ],
+            "length": 1381,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        32.5,
+                        -117.1
+                    ],
+                    "to": [
+                        34.0,
+                        -118.2
+                    ],
+                    "description": "San Diego to Los Angeles",
+                    "driven": true,
+                    "miles": 120
+                },
+                {
+                    "from": [
+                        34.0,
+                        -118.2
+                    ],
+                    "to": [
+                        36.7,
+                        -119.8
+                    ],
+                    "description": "Los Angeles to Central Valley",
+                    "driven": false,
+                    "miles": 280
+                },
+                {
+                    "from": [
+                        36.7,
+                        -119.8
+                    ],
+                    "to": [
+                        37.8,
+                        -122.4
+                    ],
+                    "description": "Central Valley to San Francisco",
+                    "driven": false,
+                    "miles": 200
+                },
+                {
+                    "from": [
+                        37.8,
+                        -122.4
+                    ],
+                    "to": [
+                        39.1,
+                        -121.6
+                    ],
+                    "description": "San Francisco to Sacramento",
+                    "driven": false,
+                    "miles": 90
+                },
+                {
+                    "from": [
+                        39.1,
+                        -121.6
+                    ],
+                    "to": [
+                        42.3,
+                        -122.9
+                    ],
+                    "description": "Sacramento to Oregon Border",
+                    "driven": false,
+                    "miles": 280
+                },
+                {
+                    "from": [
+                        42.3,
+                        -122.9
+                    ],
+                    "to": [
+                        45.5,
+                        -122.7
+                    ],
+                    "description": "Oregon Border to Portland",
+                    "driven": false,
+                    "miles": 220
+                },
+                {
+                    "from": [
+                        45.5,
+                        -122.7
+                    ],
+                    "to": [
+                        47.6,
+                        -122.3
+                    ],
+                    "description": "Portland to Seattle",
+                    "driven": true,
+                    "miles": 173
+                },
+                {
+                    "from": [
+                        47.6,
+                        -122.3
+                    ],
+                    "to": [
+                        49.0,
+                        -122.8
+                    ],
+                    "description": "Seattle to Canadian Border",
+                    "driven": true,
+                    "miles": 158
+                }
+            ],
+            "segments": [
+                {
+                    "state": "CA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OR",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WA",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-10",
+            "name": "Interstate 10",
+            "description": "Southern transcontinental highway",
+            "states": [
+                "CA",
+                "AZ",
+                "NM",
+                "TX",
+                "LA",
+                "MS",
+                "AL",
+                "FL"
+            ],
+            "length": 2460,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        34.0,
+                        -118.2
+                    ],
+                    "to": [
+                        33.4,
+                        -112.1
+                    ],
+                    "description": "Los Angeles to Phoenix",
+                    "driven": false,
+                    "miles": 370
+                },
+                {
+                    "from": [
+                        33.4,
+                        -112.1
+                    ],
+                    "to": [
+                        35.1,
+                        -106.6
+                    ],
+                    "description": "Phoenix to Albuquerque",
+                    "driven": true,
+                    "miles": 450
+                },
+                {
+                    "from": [
+                        35.1,
+                        -106.6
+                    ],
+                    "to": [
+                        31.8,
+                        -106.4
+                    ],
+                    "description": "Albuquerque to El Paso",
+                    "driven": true,
+                    "miles": 220
+                },
+                {
+                    "from": [
+                        31.8,
+                        -106.4
+                    ],
+                    "to": [
+                        29.8,
+                        -95.4
+                    ],
+                    "description": "El Paso to Houston",
+                    "driven": true,
+                    "miles": 740
+                },
+                {
+                    "from": [
+                        29.8,
+                        -95.4
+                    ],
+                    "to": [
+                        30.2,
+                        -93.2
+                    ],
+                    "description": "Houston to Louisiana",
+                    "driven": true,
+                    "miles": 120
+                },
+                {
+                    "from": [
+                        30.2,
+                        -93.2
+                    ],
+                    "to": [
+                        32.3,
+                        -90.2
+                    ],
+                    "description": "Louisiana to Mississippi",
+                    "driven": true,
+                    "miles": 200
+                },
+                {
+                    "from": [
+                        32.3,
+                        -90.2
+                    ],
+                    "to": [
+                        32.4,
+                        -86.8
+                    ],
+                    "description": "Mississippi to Alabama",
+                    "driven": false,
+                    "miles": 170
+                },
+                {
+                    "from": [
+                        32.4,
+                        -86.8
+                    ],
+                    "to": [
+                        30.4,
+                        -81.7
+                    ],
+                    "description": "Alabama to Jacksonville",
+                    "driven": false,
+                    "miles": 290
+                }
+            ],
+            "segments": [
+                {
+                    "state": "CA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AZ",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NM",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "TX",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "LA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MS",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "FL",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-15",
+            "name": "Interstate 15",
+            "description": "Southwest to northwest highway",
+            "states": [
+                "CA",
+                "NV",
+                "AZ",
+                "UT",
+                "ID",
+                "MT"
+            ],
+            "length": 1433,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        32.7,
+                        -117.2
+                    ],
+                    "to": [
+                        34.1,
+                        -117.3
+                    ],
+                    "description": "San Diego to San Bernardino",
+                    "driven": true,
+                    "miles": 120
+                },
+                {
+                    "from": [
+                        34.1,
+                        -117.3
+                    ],
+                    "to": [
+                        36.1,
+                        -115.1
+                    ],
+                    "description": "San Bernardino to Las Vegas",
+                    "driven": true,
+                    "miles": 270
+                },
+                {
+                    "from": [
+                        36.1,
+                        -115.1
+                    ],
+                    "to": [
+                        37.0,
+                        -113.6
+                    ],
+                    "description": "Las Vegas to St. George",
+                    "driven": true,
+                    "miles": 120
+                },
+                {
+                    "from": [
+                        37.0,
+                        -113.6
+                    ],
+                    "to": [
+                        39.5,
+                        -111.9
+                    ],
+                    "description": "St. George to Salt Lake City",
+                    "driven": false,
+                    "miles": 300
+                },
+                {
+                    "from": [
+                        39.5,
+                        -111.9
+                    ],
+                    "to": [
+                        41.2,
+                        -111.9
+                    ],
+                    "description": "Salt Lake City to Ogden",
+                    "driven": true,
+                    "miles": 40
+                },
+                {
+                    "from": [
+                        41.2,
+                        -111.9
+                    ],
+                    "to": [
+                        43.6,
+                        -112.0
+                    ],
+                    "description": "Ogden to Pocatello",
+                    "driven": false,
+                    "miles": 170
+                },
+                {
+                    "from": [
+                        43.6,
+                        -112.0
+                    ],
+                    "to": [
+                        45.8,
+                        -112.5
+                    ],
+                    "description": "Pocatello to Butte",
+                    "driven": false,
+                    "miles": 250
+                },
+                {
+                    "from": [
+                        45.8,
+                        -112.5
+                    ],
+                    "to": [
+                        48.9,
+                        -112.5
+                    ],
+                    "description": "Butte to Canadian Border",
+                    "driven": false,
+                    "miles": 210
+                }
+            ],
+            "segments": [
+                {
+                    "state": "CA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NV",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AZ",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "UT",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "ID",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MT",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-20",
+            "name": "Interstate 20",
+            "description": "Southern highway from Texas to South Carolina",
+            "states": [
+                "TX",
+                "LA",
+                "MS",
+                "AL",
+                "GA",
+                "SC"
+            ],
+            "length": 1539,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        32.8,
+                        -96.8
+                    ],
+                    "to": [
+                        32.5,
+                        -93.7
+                    ],
+                    "description": "Dallas to Shreveport",
+                    "driven": false,
+                    "miles": 190
+                },
+                {
+                    "from": [
+                        32.5,
+                        -93.7
+                    ],
+                    "to": [
+                        32.3,
+                        -90.2
+                    ],
+                    "description": "Shreveport to Jackson",
+                    "driven": false,
+                    "miles": 210
+                },
+                {
+                    "from": [
+                        32.3,
+                        -90.2
+                    ],
+                    "to": [
+                        33.5,
+                        -86.8
+                    ],
+                    "description": "Jackson to Birmingham",
+                    "driven": false,
+                    "miles": 240
+                },
+                {
+                    "from": [
+                        33.5,
+                        -86.8
+                    ],
+                    "to": [
+                        33.7,
+                        -84.4
+                    ],
+                    "description": "Birmingham to Atlanta",
+                    "driven": false,
+                    "miles": 150
+                },
+                {
+                    "from": [
+                        33.7,
+                        -84.4
+                    ],
+                    "to": [
+                        34.0,
+                        -81.0
+                    ],
+                    "description": "Atlanta to Columbia",
+                    "driven": false,
+                    "miles": 210
+                }
+            ],
+            "segments": [
+                {
+                    "state": "TX",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "LA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MS",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "GA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "SC",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-25",
+            "name": "Interstate 25",
+            "description": "North-south highway through Rocky Mountain region",
+            "states": [
+                "NM",
+                "CO",
+                "WY"
+            ],
+            "length": 1062,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        31.8,
+                        -106.5
+                    ],
+                    "to": [
+                        35.1,
+                        -106.6
+                    ],
+                    "description": "Las Cruces to Albuquerque",
+                    "driven": true,
+                    "miles": 225
+                },
+                {
+                    "from": [
+                        35.1,
+                        -106.6
+                    ],
+                    "to": [
+                        39.7,
+                        -105.0
+                    ],
+                    "description": "Albuquerque to Denver",
+                    "driven": true,
+                    "miles": 450
+                },
+                {
+                    "from": [
+                        39.7,
+                        -105.0
+                    ],
+                    "to": [
+                        40.6,
+                        -105.1
+                    ],
+                    "description": "Denver to Fort Collins",
+                    "driven": true,
+                    "miles": 65
+                },
+                {
+                    "from": [
+                        40.6,
+                        -105.1
+                    ],
+                    "to": [
+                        41.1,
+                        -104.8
+                    ],
+                    "description": "Fort Collins to Cheyenne",
+                    "driven": true,
+                    "miles": 45
+                }
+            ],
+            "segments": [
+                {
+                    "state": "NM",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "CO",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WY",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-35",
+            "name": "Interstate 35",
+            "description": "North-south highway from Texas to Minnesota",
+            "states": [
+                "TX",
+                "OK",
+                "KS",
+                "MO",
+                "IA",
+                "MN"
+            ],
+            "length": 1568,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        25.9,
+                        -97.5
+                    ],
+                    "to": [
+                        29.8,
+                        -95.4
+                    ],
+                    "description": "Laredo to Houston",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        29.8,
+                        -95.4
+                    ],
+                    "to": [
+                        32.8,
+                        -96.8
+                    ],
+                    "description": "Houston to Dallas",
+                    "driven": false,
+                    "miles": 240
+                },
+                {
+                    "from": [
+                        32.8,
+                        -96.8
+                    ],
+                    "to": [
+                        35.5,
+                        -97.5
+                    ],
+                    "description": "Dallas to Oklahoma City",
+                    "driven": false,
+                    "miles": 200
+                },
+                {
+                    "from": [
+                        35.5,
+                        -97.5
+                    ],
+                    "to": [
+                        39.1,
+                        -94.6
+                    ],
+                    "description": "Oklahoma City to Kansas City",
+                    "driven": false,
+                    "miles": 240
+                },
+                {
+                    "from": [
+                        39.1,
+                        -94.6
+                    ],
+                    "to": [
+                        41.6,
+                        -93.6
+                    ],
+                    "description": "Kansas City to Des Moines",
+                    "driven": false,
+                    "miles": 190
+                },
+                {
+                    "from": [
+                        41.6,
+                        -93.6
+                    ],
+                    "to": [
+                        44.9,
+                        -93.3
+                    ],
+                    "description": "Des Moines to Minneapolis",
+                    "driven": false,
+                    "miles": 240
+                }
+            ],
+            "segments": [
+                {
+                    "state": "TX",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OK",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "KS",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MO",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MN",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-40",
+            "name": "Interstate 40",
+            "description": "East-west transcontinental highway",
+            "states": [
+                "CA",
+                "AZ",
+                "NM",
+                "TX",
+                "OK",
+                "AR",
+                "TN",
+                "NC"
+            ],
+            "length": 2555,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        34.0,
+                        -118.2
+                    ],
+                    "to": [
+                        35.2,
+                        -111.7
+                    ],
+                    "description": "Los Angeles to Flagstaff",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        35.2,
+                        -111.7
+                    ],
+                    "to": [
+                        35.1,
+                        -106.6
+                    ],
+                    "description": "Flagstaff to Albuquerque",
+                    "driven": true,
+                    "miles": 220
+                },
+                {
+                    "from": [
+                        35.1,
+                        -106.6
+                    ],
+                    "to": [
+                        35.2,
+                        -101.8
+                    ],
+                    "description": "Albuquerque to Amarillo",
+                    "driven": true,
+                    "miles": 290
+                },
+                {
+                    "from": [
+                        35.2,
+                        -101.8
+                    ],
+                    "to": [
+                        35.5,
+                        -97.5
+                    ],
+                    "description": "Amarillo to Oklahoma City",
+                    "driven": false,
+                    "miles": 260
+                },
+                {
+                    "from": [
+                        35.5,
+                        -97.5
+                    ],
+                    "to": [
+                        34.7,
+                        -92.3
+                    ],
+                    "description": "Oklahoma City to Little Rock",
+                    "driven": false,
+                    "miles": 330
+                },
+                {
+                    "from": [
+                        34.7,
+                        -92.3
+                    ],
+                    "to": [
+                        36.2,
+                        -86.8
+                    ],
+                    "description": "Little Rock to Nashville",
+                    "driven": false,
+                    "miles": 340
+                },
+                {
+                    "from": [
+                        36.2,
+                        -86.8
+                    ],
+                    "to": [
+                        35.8,
+                        -78.6
+                    ],
+                    "description": "Nashville to Asheville",
+                    "driven": false,
+                    "miles": 460
+                }
+            ],
+            "segments": [
+                {
+                    "state": "CA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AZ",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NM",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "TX",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OK",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "AR",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "TN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NC",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-70",
+            "name": "Interstate 70",
+            "description": "East-west highway through central United States",
+            "states": [
+                "UT",
+                "CO",
+                "KS",
+                "MO",
+                "IL",
+                "IN",
+                "OH",
+                "WV",
+                "PA",
+                "MD"
+            ],
+            "length": 2151,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        39.1,
+                        -111.9
+                    ],
+                    "to": [
+                        39.7,
+                        -105.0
+                    ],
+                    "description": "Salt Lake City to Denver",
+                    "driven": true,
+                    "miles": 525
+                },
+                {
+                    "from": [
+                        39.7,
+                        -105.0
+                    ],
+                    "to": [
+                        39.1,
+                        -94.6
+                    ],
+                    "description": "Denver to Kansas City",
+                    "driven": true,
+                    "miles": 600
+                },
+                {
+                    "from": [
+                        39.1,
+                        -94.6
+                    ],
+                    "to": [
+                        38.6,
+                        -90.2
+                    ],
+                    "description": "Kansas City to St. Louis",
+                    "driven": true,
+                    "miles": 250
+                },
+                {
+                    "from": [
+                        38.6,
+                        -90.2
+                    ],
+                    "to": [
+                        39.8,
+                        -89.6
+                    ],
+                    "description": "St. Louis to Springfield",
+                    "driven": false,
+                    "miles": 100
+                },
+                {
+                    "from": [
+                        39.8,
+                        -89.6
+                    ],
+                    "to": [
+                        39.8,
+                        -86.1
+                    ],
+                    "description": "Springfield to Indianapolis",
+                    "driven": false,
+                    "miles": 240
+                },
+                {
+                    "from": [
+                        39.8,
+                        -86.1
+                    ],
+                    "to": [
+                        40.1,
+                        -83.0
+                    ],
+                    "description": "Indianapolis to Columbus",
+                    "driven": true,
+                    "miles": 175
+                },
+                {
+                    "from": [
+                        40.1,
+                        -83.0
+                    ],
+                    "to": [
+                        39.3,
+                        -81.1
+                    ],
+                    "description": "Columbus to Wheeling",
+                    "driven": false,
+                    "miles": 120
+                },
+                {
+                    "from": [
+                        39.3,
+                        -81.1
+                    ],
+                    "to": [
+                        40.4,
+                        -80.0
+                    ],
+                    "description": "Wheeling to Pittsburgh",
+                    "driven": false,
+                    "miles": 60
+                },
+                {
+                    "from": [
+                        40.4,
+                        -80.0
+                    ],
+                    "to": [
+                        39.3,
+                        -76.6
+                    ],
+                    "description": "Pittsburgh to Baltimore",
+                    "driven": false,
+                    "miles": 250
+                }
+            ],
+            "segments": [
+                {
+                    "state": "UT",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "CO",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "KS",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MO",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OH",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WV",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "PA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MD",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-75",
+            "name": "Interstate 75",
+            "description": "North-south highway from Florida to Michigan",
+            "states": [
+                "FL",
+                "GA",
+                "TN",
+                "KY",
+                "OH",
+                "MI"
+            ],
+            "length": 1786,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        25.8,
+                        -80.2
+                    ],
+                    "to": [
+                        30.3,
+                        -81.7
+                    ],
+                    "description": "Miami to Jacksonville",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        30.3,
+                        -81.7
+                    ],
+                    "to": [
+                        33.7,
+                        -84.4
+                    ],
+                    "description": "Jacksonville to Atlanta",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        33.7,
+                        -84.4
+                    ],
+                    "to": [
+                        36.2,
+                        -86.8
+                    ],
+                    "description": "Atlanta to Nashville",
+                    "driven": false,
+                    "miles": 250
+                },
+                {
+                    "from": [
+                        36.2,
+                        -86.8
+                    ],
+                    "to": [
+                        37.1,
+                        -84.1
+                    ],
+                    "description": "Nashville to Lexington",
+                    "driven": false,
+                    "miles": 180
+                },
+                {
+                    "from": [
+                        37.1,
+                        -84.1
+                    ],
+                    "to": [
+                        41.5,
+                        -81.7
+                    ],
+                    "description": "Lexington to Cleveland",
+                    "driven": false,
+                    "miles": 300
+                },
+                {
+                    "from": [
+                        41.5,
+                        -81.7
+                    ],
+                    "to": [
+                        42.3,
+                        -83.0
+                    ],
+                    "description": "Cleveland to Detroit",
+                    "driven": false,
+                    "miles": 170
+                }
+            ],
+            "segments": [
+                {
+                    "state": "FL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "GA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "TN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "KY",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OH",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MI",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-80",
+            "name": "Interstate 80",
+            "description": "Northern transcontinental highway",
+            "states": [
+                "CA",
+                "NV",
+                "UT",
+                "WY",
+                "NE",
+                "IA",
+                "IL",
+                "IN",
+                "OH",
+                "PA",
+                "NJ"
+            ],
+            "length": 2899,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        37.8,
+                        -122.4
+                    ],
+                    "to": [
+                        39.5,
+                        -119.8
+                    ],
+                    "description": "San Francisco to Reno",
+                    "driven": false,
+                    "miles": 220
+                },
+                {
+                    "from": [
+                        39.5,
+                        -119.8
+                    ],
+                    "to": [
+                        40.8,
+                        -111.9
+                    ],
+                    "description": "Reno to Salt Lake City",
+                    "driven": false,
+                    "miles": 525
+                },
+                {
+                    "from": [
+                        40.8,
+                        -111.9
+                    ],
+                    "to": [
+                        41.1,
+                        -104.8
+                    ],
+                    "description": "Salt Lake City to Cheyenne",
+                    "driven": true,
+                    "miles": 440
+                },
+                {
+                    "from": [
+                        41.1,
+                        -104.8
+                    ],
+                    "to": [
+                        41.3,
+                        -95.9
+                    ],
+                    "description": "Cheyenne to Omaha",
+                    "driven": true,
+                    "miles": 540
+                },
+                {
+                    "from": [
+                        41.3,
+                        -95.9
+                    ],
+                    "to": [
+                        41.6,
+                        -93.6
+                    ],
+                    "description": "Omaha to Des Moines",
+                    "driven": true,
+                    "miles": 135
+                },
+                {
+                    "from": [
+                        41.6,
+                        -93.6
+                    ],
+                    "to": [
+                        41.9,
+                        -87.6
+                    ],
+                    "description": "Des Moines to Chicago",
+                    "driven": true,
+                    "miles": 470
+                },
+                {
+                    "from": [
+                        41.9,
+                        -87.6
+                    ],
+                    "to": [
+                        41.6,
+                        -87.3
+                    ],
+                    "description": "Chicago to Gary",
+                    "driven": false,
+                    "miles": 30
+                },
+                {
+                    "from": [
+                        41.6,
+                        -87.3
+                    ],
+                    "to": [
+                        41.5,
+                        -81.7
+                    ],
+                    "description": "Gary to Cleveland",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        41.5,
+                        -81.7
+                    ],
+                    "to": [
+                        40.4,
+                        -80.0
+                    ],
+                    "description": "Cleveland to Pittsburgh",
+                    "driven": false,
+                    "miles": 135
+                },
+                {
+                    "from": [
+                        40.4,
+                        -80.0
+                    ],
+                    "to": [
+                        40.9,
+                        -74.2
+                    ],
+                    "description": "Pittsburgh to New York City",
+                    "driven": false,
+                    "miles": 370
+                }
+            ],
+            "segments": [
+                {
+                    "state": "CA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NV",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "UT",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WY",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NE",
+                    "driven": true,
+                    "notes": ""
+                },
+                {
+                    "state": "IA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OH",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "PA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NJ",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-90",
+            "name": "Interstate 90",
+            "description": "Northern transcontinental highway - longest interstate",
+            "states": [
+                "WA",
+                "ID",
+                "MT",
+                "WY",
+                "SD",
+                "MN",
+                "WI",
+                "IL",
+                "IN",
+                "OH",
+                "PA",
+                "NY",
+                "MA"
+            ],
+            "length": 3020,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        47.6,
+                        -122.3
+                    ],
+                    "to": [
+                        47.7,
+                        -116.8
+                    ],
+                    "description": "Seattle to Spokane",
+                    "driven": false,
+                    "miles": 280
+                },
+                {
+                    "from": [
+                        47.7,
+                        -116.8
+                    ],
+                    "to": [
+                        45.8,
+                        -108.5
+                    ],
+                    "description": "Spokane to Billings",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        45.8,
+                        -108.5
+                    ],
+                    "to": [
+                        44.3,
+                        -105.5
+                    ],
+                    "description": "Billings to Gillette",
+                    "driven": true,
+                    "miles": 230
+                },
+                {
+                    "from": [
+                        44.3,
+                        -105.5
+                    ],
+                    "to": [
+                        44.4,
+                        -100.3
+                    ],
+                    "description": "Gillette to Rapid City",
+                    "driven": true,
+                    "miles": 300
+                },
+                {
+                    "from": [
+                        44.4,
+                        -100.3
+                    ],
+                    "to": [
+                        44.9,
+                        -93.3
+                    ],
+                    "description": "Rapid City to Minneapolis",
+                    "driven": true,
+                    "miles": 410
+                },
+                {
+                    "from": [
+                        44.9,
+                        -93.3
+                    ],
+                    "to": [
+                        43.0,
+                        -87.9
+                    ],
+                    "description": "Minneapolis to Milwaukee",
+                    "driven": false,
+                    "miles": 340
+                },
+                {
+                    "from": [
+                        43.0,
+                        -87.9
+                    ],
+                    "to": [
+                        41.9,
+                        -87.6
+                    ],
+                    "description": "Milwaukee to Chicago",
+                    "driven": false,
+                    "miles": 90
+                },
+                {
+                    "from": [
+                        41.9,
+                        -87.6
+                    ],
+                    "to": [
+                        41.6,
+                        -87.3
+                    ],
+                    "description": "Chicago to Gary",
+                    "driven": false,
+                    "miles": 30
+                },
+                {
+                    "from": [
+                        41.6,
+                        -87.3
+                    ],
+                    "to": [
+                        41.5,
+                        -81.7
+                    ],
+                    "description": "Gary to Cleveland",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        41.5,
+                        -81.7
+                    ],
+                    "to": [
+                        40.4,
+                        -80.0
+                    ],
+                    "description": "Cleveland to Pittsburgh",
+                    "driven": false,
+                    "miles": 135
+                },
+                {
+                    "from": [
+                        40.4,
+                        -80.0
+                    ],
+                    "to": [
+                        42.4,
+                        -76.5
+                    ],
+                    "description": "Pittsburgh to Syracuse",
+                    "driven": false,
+                    "miles": 220
+                },
+                {
+                    "from": [
+                        42.4,
+                        -76.5
+                    ],
+                    "to": [
+                        42.4,
+                        -71.1
+                    ],
+                    "description": "Syracuse to Boston",
+                    "driven": true,
+                    "miles": 300
+                }
+            ],
+            "segments": [
+                {
+                    "state": "WA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "ID",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MT",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WY",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "SD",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "WI",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "IN",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "OH",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "PA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NY",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MA",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        },
+        {
+            "number": "I-95",
+            "name": "Interstate 95",
+            "description": "East Coast highway from Florida to Maine",
+            "states": [
+                "FL",
+                "GA",
+                "SC",
+                "NC",
+                "VA",
+                "MD",
+                "DE",
+                "PA",
+                "NJ",
+                "NY",
+                "CT",
+                "RI",
+                "MA",
+                "NH",
+                "ME"
+            ],
+            "length": 1908,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        25.8,
+                        -80.2
+                    ],
+                    "to": [
+                        30.3,
+                        -81.7
+                    ],
+                    "description": "Miami to Jacksonville",
+                    "driven": false,
+                    "miles": 350
+                },
+                {
+                    "from": [
+                        30.3,
+                        -81.7
+                    ],
+                    "to": [
+                        32.1,
+                        -81.1
+                    ],
+                    "description": "Jacksonville to Savannah",
+                    "driven": false,
+                    "miles": 140
+                },
+                {
+                    "from": [
+                        32.1,
+                        -81.1
+                    ],
+                    "to": [
+                        34.0,
+                        -78.9
+                    ],
+                    "description": "Savannah to Wilmington",
+                    "driven": false,
+                    "miles": 200
+                },
+                {
+                    "from": [
+                        34.0,
+                        -78.9
+                    ],
+                    "to": [
+                        36.9,
+                        -76.2
+                    ],
+                    "description": "Wilmington to Norfolk",
+                    "driven": false,
+                    "miles": 250
+                },
+                {
+                    "from": [
+                        36.9,
+                        -76.2
+                    ],
+                    "to": [
+                        39.3,
+                        -76.6
+                    ],
+                    "description": "Norfolk to Baltimore",
+                    "driven": false,
+                    "miles": 200
+                },
+                {
+                    "from": [
+                        39.3,
+                        -76.6
+                    ],
+                    "to": [
+                        39.7,
+                        -75.5
+                    ],
+                    "description": "Baltimore to Wilmington",
+                    "driven": true,
+                    "miles": 70
+                },
+                {
+                    "from": [
+                        39.7,
+                        -75.5
+                    ],
+                    "to": [
+                        40.4,
+                        -80.0
+                    ],
+                    "description": "Wilmington to Philadelphia",
+                    "driven": false,
+                    "miles": 30
+                },
+                {
+                    "from": [
+                        40.4,
+                        -80.0
+                    ],
+                    "to": [
+                        40.9,
+                        -74.2
+                    ],
+                    "description": "Philadelphia to Trenton",
+                    "driven": false,
+                    "miles": 35
+                },
+                {
+                    "from": [
+                        40.9,
+                        -74.2
+                    ],
+                    "to": [
+                        40.7,
+                        -74.0
+                    ],
+                    "description": "Trenton to New York City",
+                    "driven": false,
+                    "miles": 60
+                },
+                {
+                    "from": [
+                        40.7,
+                        -74.0
+                    ],
+                    "to": [
+                        41.8,
+                        -72.7
+                    ],
+                    "description": "New York City to New Haven",
+                    "driven": false,
+                    "miles": 80
+                },
+                {
+                    "from": [
+                        41.8,
+                        -72.7
+                    ],
+                    "to": [
+                        41.8,
+                        -71.4
+                    ],
+                    "description": "New Haven to Providence",
+                    "driven": false,
+                    "miles": 60
+                },
+                {
+                    "from": [
+                        41.8,
+                        -71.4
+                    ],
+                    "to": [
+                        42.4,
+                        -71.1
+                    ],
+                    "description": "Providence to Boston",
+                    "driven": false,
+                    "miles": 50
+                },
+                {
+                    "from": [
+                        42.4,
+                        -71.1
+                    ],
+                    "to": [
+                        43.2,
+                        -71.5
+                    ],
+                    "description": "Boston to Portsmouth",
+                    "driven": true,
+                    "miles": 60
+                },
+                {
+                    "from": [
+                        43.2,
+                        -71.5
+                    ],
+                    "to": [
+                        44.3,
+                        -69.8
+                    ],
+                    "description": "Portsmouth to Bangor",
+                    "driven": true,
+                    "miles": 180
+                }
+            ],
+            "segments": [
+                {
+                    "state": "FL",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "GA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "SC",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NC",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "VA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MD",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "DE",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "PA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NJ",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NY",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "CT",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "RI",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "MA",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "NH",
+                    "driven": false,
+                    "notes": ""
+                },
+                {
+                    "state": "ME",
+                    "driven": false,
+                    "notes": ""
+                }
+            ]
+        }
+    ]
+}
