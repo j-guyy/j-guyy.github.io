@@ -1,0 +1,492 @@
+{
+    "visitedCities": [
+        {
+            "name": "Dublin",
+            "country": "Ireland",
+            "latitude": 53.3498,
+            "longitude": -6.2603,
+            "population": 1388000,
+            "description": "Capital and largest city of Ireland, known for its literary history and vibrant culture."
+        },
+        {
+            "name": "Madrid",
+            "country": "Spain",
+            "latitude": 40.4168,
+            "longitude": -3.7038,
+            "population": 3223000,
+            "description": "Capital of Spain, famous for its art museums and beautiful parks."
+        },
+        {
+            "name": "Paris",
+            "country": "France",
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+            "population": 2161000,
+            "description": "Capital of France, the City of Light known for its art, fashion, and cuisine."
+        },
+        {
+            "name": "Beijing",
+            "country": "China",
+            "latitude": 39.9042,
+            "longitude": 116.4074,
+            "population": 21540000,
+            "description": "Capital of China, a city rich in history with modern developments."
+        },
+        {
+            "name": "Shanghai",
+            "country": "China",
+            "latitude": 31.2304,
+            "longitude": 121.4737,
+            "population": 24870000,
+            "description": "China's largest city and global financial hub with impressive skyline."
+        },
+        {
+            "name": "Lisbon",
+            "country": "Portugal",
+            "latitude": 38.7223,
+            "longitude": -9.1393,
+            "population": 547733,
+            "description": "Capital of Portugal, known for its colorful buildings, historic trams, and beautiful coastline."
+        },
+        {
+            "name": "Galway",
+            "country": "Ireland",
+            "latitude": 53.2707,
+            "longitude": -9.0568,
+            "population": 83456,
+            "description": "Vibrant coastal city in western Ireland, famous for its arts scene and traditional Irish culture."
+        },
+        {
+            "name": "Porto",
+            "country": "Portugal",
+            "latitude": 41.1579,
+            "longitude": -8.6291,
+            "population": 237591,
+            "description": "Portugal's second-largest city, renowned for its port wine and stunning riverside architecture."
+        },
+        {
+            "name": "Zaragoza",
+            "country": "Spain",
+            "latitude": 41.6488,
+            "longitude": -0.8891,
+            "population": 674997,
+            "description": "Historic city in northeastern Spain, known for the Basilica of Our Lady of the Pillar."
+        },
+        {
+            "name": "Barcelona",
+            "country": "Spain",
+            "latitude": 41.3851,
+            "longitude": 2.1734,
+            "population": 1620343,
+            "description": "Catalonia's capital, famous for Gaudí's architecture, beaches, and vibrant culture."
+        },
+        {
+            "name": "Amsterdam",
+            "country": "Netherlands",
+            "latitude": 52.3676,
+            "longitude": 4.9041,
+            "population": 872680,
+            "description": "Capital of the Netherlands, known for its canals, museums, and cycling culture."
+        },
+        {
+            "name": "Stockholm",
+            "country": "Sweden",
+            "latitude": 59.3293,
+            "longitude": 18.0686,
+            "population": 975551,
+            "description": "Capital of Sweden, built on 14 islands and known for its beautiful archipelago."
+        },
+        {
+            "name": "Brussels",
+            "country": "Belgium",
+            "latitude": 50.8503,
+            "longitude": 4.3517,
+            "population": 1218255,
+            "description": "Capital of Belgium and the EU, famous for its medieval architecture and chocolate."
+        },
+        {
+            "name": "Athens",
+            "country": "Greece",
+            "latitude": 37.9838,
+            "longitude": 23.7275,
+            "population": 664046,
+            "description": "Capital of Greece, the cradle of democracy and home to ancient landmarks like the Acropolis."
+        },
+        {
+            "name": "Rome",
+            "country": "Italy",
+            "latitude": 41.9028,
+            "longitude": 12.4964,
+            "population": 2872800,
+            "description": "Capital of Italy, the Eternal City filled with ancient history, art, and incredible cuisine."
+        },
+        {
+            "name": "Naples",
+            "country": "Italy",
+            "latitude": 40.8518,
+            "longitude": 14.2681,
+            "population": 967069,
+            "description": "Historic city in southern Italy, birthplace of pizza and gateway to the Amalfi Coast."
+        },
+        {
+            "name": "Venice",
+            "country": "Italy",
+            "latitude": 45.4408,
+            "longitude": 12.3155,
+            "population": 258685,
+            "description": "Unique floating city built on canals, famous for its gondolas, art, and romantic atmosphere."
+        },
+        {
+            "name": "Manchester",
+            "country": "United Kingdom",
+            "latitude": 53.4808,
+            "longitude": -2.2426,
+            "population": 547899,
+            "description": "Industrial city in northern England, known for its music scene, football clubs, and cultural heritage."
+        },
+        {
+            "name": "Edinburgh",
+            "country": "United Kingdom",
+            "latitude": 55.9533,
+            "longitude": -3.1883,
+            "population": 518500,
+            "description": "Capital of Scotland, famous for its medieval Old Town, Edinburgh Castle, and annual festivals."
+        },
+        {
+            "name": "Tokyo",
+            "country": "Japan",
+            "latitude": 35.6762,
+            "longitude": 139.6503,
+            "population": 13960000,
+            "description": "Capital of Japan, a bustling metropolis blending traditional culture with cutting-edge technology."
+        },
+        {
+            "name": "Seoul",
+            "country": "South Korea",
+            "latitude": 37.5665,
+            "longitude": 126.9780,
+            "population": 9720846,
+            "description": "Capital of South Korea, a dynamic city known for K-pop, technology, and vibrant street food culture."
+        },
+        {
+            "name": "Sydney",
+            "country": "Australia",
+            "latitude": -33.8688,
+            "longitude": 151.2093,
+            "population": 5312163,
+            "description": "Australia's largest city, famous for the Sydney Opera House, Harbour Bridge, and beautiful beaches."
+        },
+        {
+            "name": "Wellington",
+            "country": "New Zealand",
+            "latitude": -41.2865,
+            "longitude": 174.7762,
+            "population": 215400,
+            "description": "Capital of New Zealand, known for its vibrant arts scene, craft beer, and stunning harbor views."
+        },
+        {
+            "name": "Dunedin",
+            "country": "New Zealand",
+            "latitude": -45.8788,
+            "longitude": 170.5028,
+            "population": 130500,
+            "description": "Historic city in New Zealand's South Island, known for its Scottish heritage and unique wildlife."
+        },
+        {
+            "name": "Canberra",
+            "country": "Australia",
+            "latitude": -35.2809,
+            "longitude": 149.1300,
+            "population": 431380,
+            "description": "Capital of Australia, a planned city known for its national institutions and beautiful gardens."
+        },
+        {
+            "name": "Cairns",
+            "country": "Australia",
+            "latitude": -16.9186,
+            "longitude": 145.7781,
+            "population": 153075,
+            "description": "Tropical city in northern Australia, gateway to the Great Barrier Reef and Daintree Rainforest."
+        },
+        {
+            "name": "Quito",
+            "country": "Ecuador",
+            "latitude": -0.1807,
+            "longitude": -78.4678,
+            "population": 2781641,
+            "description": "Capital of Ecuador, a UNESCO World Heritage site known for its well-preserved colonial center and high altitude."
+        },
+        {
+            "name": "Calgary",
+            "country": "Canada",
+            "latitude": 51.0447,
+            "longitude": -114.0719,
+            "population": 1336000,
+            "description": "Major city in Alberta, Canada, known for the Calgary Stampede and proximity to the Canadian Rockies."
+        },
+        {
+            "name": "Toronto",
+            "country": "Canada",
+            "latitude": 43.6532,
+            "longitude": -79.3832,
+            "population": 2794356,
+            "description": "Canada's largest city, a multicultural metropolis known for the CN Tower and vibrant neighborhoods."
+        },
+        {
+            "name": "Ottawa",
+            "country": "Canada",
+            "latitude": 45.4215,
+            "longitude": -75.6972,
+            "population": 994837,
+            "description": "Capital of Canada, known for Parliament Hill, national museums, and the Rideau Canal."
+        },
+        {
+            "name": "Montreal",
+            "country": "Canada",
+            "latitude": 45.5017,
+            "longitude": -73.5673,
+            "population": 1762949,
+            "description": "Quebec's largest city, famous for its French culture, festivals, and historic Old Montreal."
+        },
+        {
+            "name": "Edmonton",
+            "country": "Canada",
+            "latitude": 53.5461,
+            "longitude": -113.4938,
+            "population": 981280,
+            "description": "Capital of Alberta, Canada, known for its festivals, river valley parks, and oil industry."
+        },
+        {
+            "name": "Mexico City",
+            "country": "Mexico",
+            "latitude": 19.4326,
+            "longitude": -99.1332,
+            "population": 9209944,
+            "description": "Capital of Mexico, one of the world's largest cities with rich Aztec and colonial history."
+        },
+        {
+            "name": "Tijuana",
+            "country": "Mexico",
+            "latitude": 32.5149,
+            "longitude": -117.0382,
+            "population": 1810645,
+            "description": "Border city in Baja California, Mexico, known for its vibrant culture and proximity to San Diego."
+        },
+        {
+            "name": "Ensenada",
+            "country": "Mexico",
+            "latitude": 31.8670,
+            "longitude": -116.5956,
+            "population": 279765,
+            "description": "Coastal city in Baja California, Mexico, famous for its wine region and Pacific Ocean beaches."
+        },
+        {
+            "name": "Frankfurt",
+            "country": "Germany",
+            "latitude": 50.1109,
+            "longitude": 8.6821,
+            "population": 753056,
+            "description": "Major financial hub in Germany, known for its skyline, international airport, and banking district."
+        },
+        {
+            "name": "Cozumel",
+            "country": "Mexico",
+            "latitude": 20.4230,
+            "longitude": -86.9223,
+            "population": 88626,
+            "description": "Island paradise off Mexico's Caribbean coast, famous for world-class diving and Mayan ruins."
+        },
+        {
+            "name": "Kingston",
+            "country": "Jamaica",
+            "latitude": 17.9970,
+            "longitude": -76.7936,
+            "population": 937700,
+            "description": "Capital of Jamaica, birthplace of reggae music and home to Bob Marley's legacy."
+        },
+        {
+            "name": "Belize City",
+            "country": "Belize",
+            "latitude": 17.5045,
+            "longitude": -88.1962,
+            "population": 61461,
+            "description": "Former capital of Belize, a Caribbean coastal city known for its colonial architecture and proximity to the Belize Barrier Reef."
+        },
+        {
+            "name": "Deauville",
+            "country": "France",
+            "latitude": 49.3598,
+            "longitude": 0.0750,
+            "population": 3883,
+            "description": "Elegant seaside resort town in Normandy, France, famous for its film festival, horse racing, and Belle Époque architecture."
+        },
+        {
+            "name": "Milan",
+            "country": "Italy",
+            "latitude": 45.4642,
+            "longitude": 9.1900,
+            "population": 1396059,
+            "description": "Fashion and design capital of Italy, known for La Scala opera house, high-end shopping, and modern architecture."
+        },
+        {
+            "name": "Bologna",
+            "country": "Italy",
+            "latitude": 44.4949,
+            "longitude": 11.3426,
+            "population": 390636,
+            "description": "Historic university city in northern Italy, famous for its medieval towers, porticoes, and exceptional cuisine."
+        },
+        {
+            "name": "Salobreña",
+            "country": "Spain",
+            "latitude": 36.7442,
+            "longitude": -3.5881,
+            "population": 12598,
+            "description": "Picturesque white village on Spain's Costa Tropical, perched on a rocky outcrop overlooking the Mediterranean Sea."
+        },
+        {
+            "name": "Toledo",
+            "country": "Spain",
+            "latitude": 39.8628,
+            "longitude": -4.0273,
+            "population": 85449,
+            "description": "Medieval city in central Spain, UNESCO World Heritage site known as the 'City of Three Cultures' for its Christian, Muslim, and Jewish heritage."
+        },
+        {
+            "name": "Liverpool",
+            "country": "United Kingdom",
+            "latitude": 53.4084,
+            "longitude": -2.9916,
+            "population": 498042,
+            "description": "Historic port city in northwest England, birthplace of The Beatles and home to iconic waterfront landmarks."
+        },
+        {
+            "name": "Inverness",
+            "country": "United Kingdom",
+            "latitude": 57.4778,
+            "longitude": -4.2247,
+            "population": 47790,
+            "description": "Capital of the Scottish Highlands, gateway to Loch Ness and known for its stunning Highland scenery."
+        },
+        {
+            "name": "Port-au-Prince",
+            "country": "Haiti",
+            "latitude": 18.5944,
+            "longitude": -72.3074,
+            "population": 987310,
+            "description": "Capital of Haiti, a vibrant Caribbean city known for its rich culture, art, and resilient spirit."
+        },
+        {
+            "name": "Reykjavik",
+            "country": "Iceland",
+            "latitude": 64.1466,
+            "longitude": -21.9426,
+            "population": 131136,
+            "description": "Capital of Iceland, the world's northernmost capital city, known for its colorful buildings, geothermal pools, and Northern Lights."
+        },
+        {
+            "name": "Guangzhou",
+            "country": "China",
+            "latitude": 23.1291,
+            "longitude": 113.2644,
+            "population": 15300000,
+            "description": "Major port city in southern China, known for its Cantonese cuisine, trading history, and modern skyline."
+        },
+        {
+            "name": "Hong Kong",
+            "country": "Hong Kong",
+            "latitude": 22.3193,
+            "longitude": 114.1694,
+            "population": 7482500,
+            "description": "International financial hub and former British colony, famous for its skyline, dim sum, and East-meets-West culture."
+        },
+        {
+            "name": "Yangshuo",
+            "country": "China",
+            "latitude": 24.7804,
+            "longitude": 110.4933,
+            "population": 300000,
+            "description": "Picturesque town in southern China, renowned for its dramatic karst mountain landscapes along the Li River."
+        },
+        {
+            "name": "Chamonix",
+            "country": "France",
+            "latitude": 45.9237,
+            "longitude": 6.8694,
+            "population": 8906,
+            "description": "World-famous Alpine resort town in France, birthplace of extreme skiing and home to the first Winter Olympics."
+        },
+        {
+            "name": "Zermatt",
+            "country": "Switzerland",
+            "latitude": 46.0207,
+            "longitude": 7.7491,
+            "population": 5800,
+            "description": "Iconic Swiss Alpine village at the foot of the Matterhorn, renowned for skiing, mountaineering, and car-free streets."
+        },
+        {
+            "name": "Jeju",
+            "country": "South Korea",
+            "latitude": 33.4996,
+            "longitude": 126.5312,
+            "population": 670989,
+            "description": "Volcanic island province of South Korea, famous for its natural beauty, beaches, hiking trails, and unique women divers called haenyeo."
+        },
+        {
+            "name": "Kyoto",
+            "country": "Japan",
+            "latitude": 35.0116,
+            "longitude": 135.7681,
+            "population": 1475183,
+            "description": "Former imperial capital of Japan, renowned for its thousands of temples, traditional wooden houses, and preserved geisha districts."
+        },
+        {
+            "name": "Florence",
+            "country": "Italy",
+            "latitude": 43.7696,
+            "longitude": 11.2558,
+            "population": 382258,
+            "description": "Renaissance capital of Italy, birthplace of the Renaissance and home to masterpieces by Michelangelo, Leonardo da Vinci, and Botticelli."
+        },
+        {
+            "name": "Vik",
+            "country": "Iceland",
+            "latitude": 63.4186,
+            "longitude": -19.0059,
+            "population": 318,
+            "description": "Small coastal village in southern Iceland, famous for its dramatic black sand beaches, basalt sea stacks, and Northern Lights viewing."
+        },
+        {
+            "name": "Puebla",
+            "country": "Mexico",
+            "latitude": 19.0414,
+            "longitude": -98.2063,
+            "population": 1692181,
+            "description": "Historic colonial city in central Mexico, UNESCO World Heritage site known for its baroque architecture, Talavera pottery, and mole cuisine."
+        },
+        {
+            "name": "Eskilstuna",
+            "country": "Sweden",
+            "latitude": 59.3667,
+            "longitude": 16.5077,
+            "population": 69948,
+            "description": "Historic industrial city in central Sweden, known for its steel production heritage, Parken Zoo, and beautiful lakeside setting."
+        },
+        {
+            "name": "Geneva",
+            "country": "Switzerland",
+            "latitude": 46.2044,
+            "longitude": 6.1432,
+            "population": 201818,
+            "description": "International city in Switzerland, home to the United Nations and Red Cross, known for its lake, luxury watches, and diplomatic importance."
+        },
+        {
+            "name": "Zurich",
+            "country": "Switzerland",
+            "latitude": 47.3769,
+            "longitude": 8.5417,
+            "population": 415367,
+            "description": "Switzerland's largest city and financial center, known for its banking industry, high quality of life, and beautiful lakeside setting."
+        }
+    ]
+}
