@@ -1,19 +1,17 @@
-let metros, highPoints, nationalParks, visitedStates, additionalMetros;
+let metros, highPoints, nationalParks, visitedStates;
 
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
-        fetch('/data/baseMetros.json').then(response => response.json()),
+        fetch('/data/metros.json').then(response => response.json()),
         fetch('/data/highPoints.json').then(response => response.json()),
         fetch('/data/nationalParks.json').then(response => response.json()),
-        fetch('/data/visitedStates.json').then(response => response.json()),
-        fetch('/data/addtionalMetros.json').then(response => response.json())
+        fetch('/data/visitedStates.json').then(response => response.json())
     ])
-        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData, additionalMetrosData]) => {
+        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
             metros = metrosData;
             highPoints = highPointsData;
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
-            additionalMetros = additionalMetrosData.metros;
             displayTravelSummary();
             // Initialize with highpoints table
             updateTable('highpoints');
@@ -29,8 +27,9 @@ function displayTravelSummary() {
     // Calculate summary statistics
     const stateCount = Object.values(visitedStates).filter(visited => visited).length;
     const statePercentage = ((stateCount / 50) * 100).toFixed(0);
-    const metroCount = metros.filter(city => city.visited).length;
-    const metroPercentage = ((metroCount / metros.length) * 100).toFixed(0);
+    const top100Metros = metros.filter(city => city.rank <= 100);
+    const metroCount = top100Metros.filter(city => city.visited).length;
+    const metroPercentage = ((metroCount / 100) * 100).toFixed(0);
     const highPointCount = highPoints.filter(point => point.visited).length;
     const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
     const parkCount = nationalParks.filter(park => park.visited).length;
@@ -51,7 +50,7 @@ function displayTravelSummary() {
                 <div class="summary-stat">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>
-                        <span class="stat-total">/${metros.length}</span>
+                        <span class="stat-total">/100</span>
                         <span class="stat-percentage">(${metroPercentage}%)</span>
                     </div>
                     <span class="stat-label">Largest Metros Visited</span>

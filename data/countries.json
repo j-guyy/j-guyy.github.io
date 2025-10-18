@@ -252,7 +252,7 @@
         {
             "name": "Germany",
             "population": 84552242,
-            "visited": false
+            "visited": true
         },
         {
             "name": "Greece",

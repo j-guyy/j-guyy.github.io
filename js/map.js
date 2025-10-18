@@ -1,19 +1,17 @@
-let metros, highPoints, nationalParks, visitedStates, additionalMetros;
+let metros, highPoints, nationalParks, visitedStates;
 
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
-        fetch('/data/baseMetros.json').then(response => response.json()),
+        fetch('/data/metros.json').then(response => response.json()),
         fetch('/data/highPoints.json').then(response => response.json()),
         fetch('/data/nationalParks.json').then(response => response.json()),
-        fetch('/data/visitedStates.json').then(response => response.json()),
-        fetch('/data/addtionalMetros.json').then(response => response.json())
+        fetch('/data/visitedStates.json').then(response => response.json())
     ])
-        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData, additionalMetrosData]) => {
+        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
             metros = metrosData;
             highPoints = highPointsData;
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
-            additionalMetros = additionalMetrosData.metros;
             createCombinedMap();
             setupToggleButtons();
         })
@@ -55,14 +53,20 @@ function createCombinedMap() {
                 })
                 .attr("d", path);
 
-            // Add metros (circles)
-            const allMetros = [...metros, ...additionalMetros];
+            // Add metros (circles) - filter out metros with invalid coordinates
+            const validMetros = metros.filter(d => d.coords && Array.isArray(d.coords) && d.coords.length === 2 && !isNaN(d.coords[0]) && !isNaN(d.coords[1]));
             svg.selectAll(".city-dot")
-                .data(allMetros)
+                .data(validMetros)
                 .enter().append("circle")
                 .attr("class", d => `city-dot ${d.visited ? 'visited' : 'not-visited'} ${d.rank <= 100 ? 'top-100' : 'top-200'}`)
-                .attr("cx", d => projection(d.coords)[0])
-                .attr("cy", d => projection(d.coords)[1])
+                .attr("cx", d => {
+                    const projected = projection(d.coords);
+                    return projected ? projected[0] : 0;
+                })
+                .attr("cy", d => {
+                    const projected = projection(d.coords);
+                    return projected ? projected[1] : 0;
+                })
                 .style("display", d => d.rank <= 100 ? null : 'none') // Hide additional metros by default
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'metro');
@@ -74,13 +78,17 @@ function createCombinedMap() {
                     handleClick(d, 'metro');
                 });
 
-            // Add high points (triangles)
+            // Add high points (triangles) - filter out points with invalid coordinates
+            const validHighPoints = highPoints.filter(d => d.coords && Array.isArray(d.coords) && d.coords.length === 2 && !isNaN(d.coords[0]) && !isNaN(d.coords[1]));
             svg.selectAll(".high-point-triangle")
-                .data(highPoints)
+                .data(validHighPoints)
                 .enter().append("path")
                 .attr("class", d => `high-point-triangle ${d.visited ? 'visited' : 'not-visited'}`)
                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(100))
-                .attr("transform", d => `translate(${projection(d.coords)})`)
+                .attr("transform", d => {
+                    const projected = projection(d.coords);
+                    return projected ? `translate(${projected[0]}, ${projected[1]})` : 'translate(0, 0)';
+                })
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'highpoint');
                 })
@@ -91,13 +99,20 @@ function createCombinedMap() {
                     handleClick(d, 'highpoint');
                 });
 
-            // Add national parks (squares)
+            // Add national parks (squares) - filter out parks with invalid coordinates
+            const validNationalParks = nationalParks.filter(d => d.coords && Array.isArray(d.coords) && d.coords.length === 2 && !isNaN(d.coords[0]) && !isNaN(d.coords[1]));
             svg.selectAll(".national-park-square")
-                .data(nationalParks)
+                .data(validNationalParks)
                 .enter().append("rect")
                 .attr("class", d => `national-park-square ${d.visited ? 'visited' : 'not-visited'}`)
-                .attr("x", d => projection(d.coords)[0] - 5)
-                .attr("y", d => projection(d.coords)[1] - 5)
+                .attr("x", d => {
+                    const projected = projection(d.coords);
+                    return projected ? projected[0] - 5 : -5;
+                })
+                .attr("y", d => {
+                    const projected = projection(d.coords);
+                    return projected ? projected[1] - 5 : -5;
+                })
                 .attr("width", 10)
                 .attr("height", 10)
                 .on("mouseover", function (event, d) {

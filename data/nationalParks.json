@@ -42,7 +42,7 @@
             -80.2100,
             25.4824
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Black Canyon of the Gunnison",
@@ -150,7 +150,7 @@
             -82.8732,
             24.6285
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Everglades",
@@ -159,7 +159,7 @@
             -80.9000,
             25.2866
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Gates of the Arctic",
