@@ -151,6 +151,16 @@
     }
 }
 
+/* Hide tools dropdown by default */
+.tools-dropdown {
+    display: none;
+}
+
+/* Show tools dropdown when body has show-tools class */
+body.show-tools .tools-dropdown {
+    display: inline-block;
+}
+
 /* Animation */
 @keyframes fadeIn {
     from {

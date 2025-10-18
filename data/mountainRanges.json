@@ -130,11 +130,12 @@
             "name": "Crazy Mountains",
             "lat": 46.0,
             "lng": -110.3,
-            "description": "Isolated volcanic range in south-central Montana with dramatic peaks",
+            "description": "Isolated laccolith range in south-central Montana with dramatic granite spires and steep-walled cirques, rising abruptly from surrounding plains",
             "peaks": [
                 "Crazy Peak",
                 "Conical Peak",
-                "Granite Peak"
+                "Idlewild Peak",
+                "Campfire Peak"
             ],
             "elevation": "3,417m (Crazy Peak)",
             "polygon": [
@@ -331,13 +332,14 @@
             "name": "Salmon River Mountains",
             "lat": 44.8,
             "lng": -115.0,
-            "description": "Central Idaho wilderness range surrounding the Salmon River drainage",
+            "description": "Vast wilderness range in central Idaho surrounding the Salmon River drainage, featuring rugged peaks and pristine backcountry",
             "peaks": [
                 "White Mountain",
-                "Hyndman Peak",
-                "Ryan Peak"
+                "Castle Peak",
+                "Ryan Peak",
+                "Boulder Chain Lakes Peak"
             ],
-            "elevation": "3,684m (Hyndman Peak)",
+            "elevation": "3,520m (White Mountain)",
             "polygon": [
                 [
                     45.03083274759959,
@@ -553,11 +555,12 @@
             "name": "Cabinet Mountains",
             "lat": 48,
             "lng": -115.7,
-            "description": "Northwestern Montana and northern Idaho",
+            "description": "Northwestern Montana and northern Idaho range known for dense forests, grizzly bear habitat, and the Cabinet Mountains Wilderness",
             "peaks": [
                 "Snowshoe Peak",
                 "A Peak",
-                "Elephant Peak"
+                "Elephant Peak",
+                "Blackwell Peak"
             ],
             "elevation": "2,665m (Snowshoe Peak)",
             "polygon": [
@@ -623,11 +626,13 @@
             "name": "Bitterroot Mountains",
             "lat": 46.1,
             "lng": -114.3,
-            "description": "Montana-Idaho border range",
+            "description": "Montana-Idaho border range featuring the Selway-Bitterroot Wilderness, steep granite peaks, and pristine alpine lakes",
             "peaks": [
                 "Trapper Peak",
                 "El Capitan",
-                "Canyon Peak"
+                "Canyon Peak",
+                "Saint Mary Peak",
+                "Blodgett Peak"
             ],
             "elevation": "3,096m (Trapper Peak)",
             "polygon": [
@@ -735,15 +740,15 @@
             "name": "Front Range",
             "lat": 39.7392,
             "lng": -105.0178,
-            "description": "Colorado's eastern mountain wall including Denver area peaks",
+            "description": "Colorado's easternmost mountain wall extending from Wyoming to New Mexico, featuring numerous fourteeners and the Denver metropolitan area's backdrop",
             "peaks": [
+                "Grays Peak",
+                "Torreys Peak",
                 "Longs Peak",
                 "Mount Evans",
-                "Pikes Peak",
-                "Mount Bierstadt",
-                "Grays Peak"
+                "Pikes Peak"
             ],
-            "elevation": "4,346m (Longs Peak)",
+            "elevation": "4,349m (Grays Peak)",
             "polygon": [
                 [
                     40.38212061782241,
@@ -851,7 +856,7 @@
             "name": "Sawatch Range",
             "lat": 39,
             "lng": -106.4,
-            "description": "Colorado's highest range with 15 fourteeners",
+            "description": "Colorado's highest mountain range containing 15 peaks over 14,000 feet, including the state's two highest summits",
             "peaks": [
                 "Mount Elbert",
                 "Mount Massive",
@@ -949,7 +954,7 @@
             "name": "Sangre de Cristo Mountains",
             "lat": 37.5,
             "lng": -105.5,
-            "description": "Southern Colorado and northern New Mexico",
+            "description": "Narrow, high range extending from south-central Colorado into northern New Mexico, featuring several fourteeners and the Great Sand Dunes",
             "peaks": [
                 "Blanca Peak",
                 "Crestone Peak",
@@ -1097,15 +1102,16 @@
         },
         {
             "name": "Wasatch Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.5,
+            "lng": -111.6,
+            "description": "Major north-south mountain range in Utah, extending from Idaho border to central Utah, forming the backbone of the Wasatch Front",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Nebo",
+                "Mount Timpanogos",
+                "Mount Olympus",
+                "Lone Peak"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,636m (Mount Nebo)",
             "polygon": [
                 [
                     39.47860556892209,
@@ -1203,15 +1209,16 @@
         },
         {
             "name": "Uinta Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.8,
+            "lng": -110.9,
+            "description": "East-west trending range in northeastern Utah and northwestern Colorado, containing Utah's highest peak",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Kings Peak",
+                "South Kings Peak",
+                "Gilbert Peak",
+                "Mount Emmons"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,123m (Kings Peak)",
             "polygon": [
                 [
                     40.50126945841645,
@@ -1265,15 +1272,16 @@
         },
         {
             "name": "Tenmile Range",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.4,
+            "lng": -106.1,
+            "description": "Colorado range between Breckenridge and Copper Mountain, featuring several peaks over 13,000 feet",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Quandary Peak",
+                "Fletcher Mountain",
+                "Wheeler Mountain",
+                "Tenmile Peak"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,274m (Quandary Peak)",
             "polygon": [
                 [
                     39.35978526869001,
@@ -1819,15 +1827,16 @@
         },
         {
             "name": "Mosquito Range",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.3,
+            "lng": -106.2,
+            "description": "High Colorado range containing several fourteeners, including Mount Lincoln and Mount Democrat",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Lincoln",
+                "Mount Cameron",
+                "Mount Democrat",
+                "Mount Bross"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,354m (Mount Lincoln)",
             "polygon": [
                 [
                     39.365094065036885,
@@ -1881,15 +1890,16 @@
         },
         {
             "name": "Kenosha Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.4,
+            "lng": -105.8,
+            "description": "Colorado range south of Breckenridge, featuring rounded peaks and the historic Kenosha Pass",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Guyot",
+                "Bald Mountain",
+                "Georgia Pass",
+                "Kenosha Pass"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,025m (Mount Guyot)",
             "polygon": [
                 [
                     39.326596150380794,
@@ -1943,15 +1953,16 @@
         },
         {
             "name": "Terryall Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.2,
+            "lng": -105.6,
+            "description": "Colorado range southwest of Denver, part of the Platte River Mountains with forested ridges",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "McCurdy Mountain",
+                "Bison Peak",
+                "Terryall Peak",
+                "Topaz Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,804m (McCurdy Mountain)",
             "polygon": [
                 [
                     39.15828458368495,
@@ -1997,15 +2008,16 @@
         },
         {
             "name": "Puma Hills",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.0,
+            "lng": -105.4,
+            "description": "Low hills in central Colorado between South Park and the Arkansas River valley",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Puma Hill",
+                "Antelope Hill",
+                "Buffalo Peak",
+                "Round Hill"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,200m (Buffalo Peak)",
             "polygon": [
                 [
                     38.99677401932448,
@@ -2079,15 +2091,16 @@
         },
         {
             "name": "West Elk Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 38.7,
+            "lng": -107.1,
+            "description": "Volcanic range in west-central Colorado featuring the West Elk Wilderness and distinctive volcanic peaks",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "West Elk Peak",
+                "Mount Gunnison",
+                "Baldy Alto",
+                "Storm King Peak"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,035m (West Elk Peak)",
             "polygon": [
                 [
                     38.46219172306828,
@@ -2125,15 +2138,16 @@
         },
         {
             "name": "San Juan Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 37.8,
+            "lng": -107.4,
+            "description": "Extensive volcanic range in southwestern Colorado containing numerous fourteeners and rugged wilderness areas",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Uncompahgre Peak",
+                "Mount Wilson",
+                "Mount Sneffels",
+                "Handies Peak"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,361m (Uncompahgre Peak)",
             "polygon": [
                 [
                     36.43012234551579,
@@ -2219,15 +2233,16 @@
         },
         {
             "name": "Medicine Bow Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.8,
+            "lng": -106.3,
+            "description": "Wyoming-Colorado border range extending from Laramie to Rabbit Ears Pass, featuring Medicine Bow Peak",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Medicine Bow Peak",
+                "Sugarloaf Mountain",
+                "Browns Peak",
+                "Kennaday Peak"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,661m (Medicine Bow Peak)",
             "polygon": [
                 [
                     40.75557964275589,
@@ -2289,15 +2304,16 @@
         },
         {
             "name": "Wet Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 37.9,
+            "lng": -105.4,
+            "description": "Colorado range west of the Great Plains, known for the Wet Mountain Valley and Spanish Peaks views",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Greenhorn Mountain",
+                "San Isabel Peak",
+                "Hermit Peak",
+                "Rough Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,001m (Greenhorn Mountain)",
             "polygon": [
                 [
                     38.14319750166766,
@@ -2335,15 +2351,16 @@
         },
         {
             "name": "Never Summer Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.4,
+            "lng": -105.9,
+            "description": "Colorado range on the western border of Rocky Mountain National Park, known for year-round snow patches",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Richthofen",
+                "Static Peak",
+                "Mount Nimbus",
+                "Howard Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,838m (Mount Richthofen)",
             "polygon": [
                 [
                     40.36224194899873,
@@ -2385,15 +2402,16 @@
         },
         {
             "name": "Rabbit Ears Mountains",
-            "lat": 35.8,
+            "lat": 40.3,
             "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "description": "Colorado range near Steamboat Springs, named for the distinctive twin peaks resembling rabbit ears",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Rabbit Ears Peak",
+                "Mount Werner",
+                "Whiteley Peak",
+                "Parkview Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,446m (Parkview Mountain)",
             "polygon": [
                 [
                     40.08752795413118,
@@ -2435,15 +2453,16 @@
         },
         {
             "name": "Park Range",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.5,
+            "lng": -106.8,
+            "description": "North-south trending range in northwestern Colorado and southern Wyoming, containing Mount Zirkel Wilderness",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Zirkel",
+                "Farwell Mountain",
+                "Big Agnes Mountain",
+                "Sheep Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,712m (Mount Zirkel)",
             "polygon": [
                 [
                     40.83719066854113,
@@ -2493,15 +2512,16 @@
         },
         {
             "name": "Elkhead Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.8,
+            "lng": -107.2,
+            "description": "Northwestern Colorado range extending into Wyoming, featuring rolling hills and extensive wilderness",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Elkhead Mountain",
+                "Round Mountain",
+                "Hahns Peak",
+                "Farwell Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,271m (Hahns Peak)",
             "polygon": [
                 [
                     40.901576859936284,
@@ -2563,15 +2583,16 @@
         },
         {
             "name": "Gore Range",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.9,
+            "lng": -106.3,
+            "description": "Rugged Colorado range between Vail and Silverthorne, known for technical climbing and pristine wilderness",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Mount Powell",
+                "Eagles Nest",
+                "Mount Vail",
+                "Kneeknocker Pass"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "4,016m (Mount Powell)",
             "polygon": [
                 [
                     39.94975340768179,
@@ -2617,15 +2638,16 @@
         },
         {
             "name": "Williams Fork Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.8,
+            "lng": -106.0,
+            "description": "Colorado range between the Gore Range and Front Range, featuring several peaks over 12,000 feet",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Ptarmigan Peak",
+                "Ute Peak",
+                "Bottle Peak",
+                "Sheep Mountain"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,962m (Ptarmigan Peak)",
             "polygon": [
                 [
                     39.6458824809188,
@@ -2679,15 +2701,16 @@
         },
         {
             "name": "Vasquez Mountains",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.7,
+            "lng": -105.8,
+            "description": "Colorado range west of Denver near Winter Park, featuring several peaks accessible from Berthoud Pass",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Vasquez Peak",
+                "Stanley Mountain",
+                "Mount Flora",
+                "Berthoud Pass"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,835m (Vasquez Peak)",
             "polygon": [
                 [
                     39.999215966720165,
@@ -2749,15 +2772,16 @@
         },
         {
             "name": "Flat Tops",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 40.0,
+            "lng": -107.2,
+            "description": "Distinctive flat-topped plateau in northwestern Colorado, featuring the Flat Tops Wilderness and unique geology",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Flat Top Mountain",
+                "Chinese Wall",
+                "Devils Causeway",
+                "Trappers Lake"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,840m (Flat Top Mountain)",
             "polygon": [
                 [
                     39.95185892663005,
@@ -2807,15 +2831,16 @@
         },
         {
             "name": "White River Plateau",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.6,
+            "lng": -107.4,
+            "description": "High plateau in west-central Colorado between the Colorado and White Rivers, featuring extensive forests",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Blair Mountain",
+                "Transfer Peak",
+                "Dome Peak",
+                "Coffin Top"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "3,505m (Blair Mountain)",
             "polygon": [
                 [
                     40.006579667838636,
@@ -2861,15 +2886,16 @@
         },
         {
             "name": "Roan Plateau",
-            "lat": 35.8,
-            "lng": -106.6,
-            "description": "Volcanic range in north-central New Mexico",
+            "lat": 39.6,
+            "lng": -108.2,
+            "description": "High plateau in northwestern Colorado known for natural gas resources and distinctive red rock formations",
             "peaks": [
-                "Chicoma Mountain",
-                "Redondo Peak",
-                "Cerro Grande"
+                "Roan Cliffs",
+                "Cathedral Bluffs",
+                "Anvil Points",
+                "Piceance Creek"
             ],
-            "elevation": "3,524m (Chicoma Mountain)",
+            "elevation": "2,743m (Roan Cliffs)",
             "polygon": [
                 [
                     39.842286020743394,

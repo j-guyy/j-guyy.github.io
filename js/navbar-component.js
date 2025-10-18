@@ -40,6 +40,14 @@ class NavbarComponent extends HTMLElement {
                                 <a href="${basePath}statshunters.html">StatsHunters</a>
                             </div>
                         </li>
+                        <li class="dropdown tools-dropdown">
+                            <a href="#" class="dropbtn">Tools <span class="mobile-plus-icon">+</span></a>
+                            <div class="dropdown-content">
+                                <a href="${basePath}mountain-mapping.html">Mountain Mapping</a>
+                                <a href="${basePath}polygon-editor.html">Polygon Editor</a>
+                                <a href="${basePath}interstate-highways.html">Interstate Highways</a>
+                            </div>
+                        </li>
                         <li><a href="${basePath}about.html">About</a></li>
                     </ul>
                 </div>
@@ -90,6 +98,14 @@ class NavbarComponent extends HTMLElement {
 
         // Initialize hamburger menu
         this.initializeHamburgerMenu();
+
+        // Add keyboard shortcut to toggle tools menu (Ctrl+Shift+T)
+        document.addEventListener('keydown', function (event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'T') {
+                event.preventDefault();
+                document.body.classList.toggle('show-tools');
+            }
+        });
     }
 
     initializeMobileNavigation() {
