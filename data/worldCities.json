@@ -57,6 +57,14 @@
             "description": "Vibrant coastal city in western Ireland, famous for its arts scene and traditional Irish culture."
         },
         {
+            "name": "Belfast",
+            "country": "United Kingdom",
+            "latitude": 54.5973,
+            "longitude": -5.9301,
+            "population": 343542,
+            "description": "Capital of Northern Ireland, known for its maritime heritage, Titanic Belfast museum, vibrant murals, and rich industrial history."
+        },
+        {
             "name": "Porto",
             "country": "Portugal",
             "latitude": 41.1579,
@@ -255,6 +263,46 @@
             "longitude": -113.4938,
             "population": 981280,
             "description": "Capital of Alberta, Canada, known for its festivals, river valley parks, and oil industry."
+        },
+        {
+            "name": "Vancouver",
+            "country": "Canada",
+            "latitude": 49.2827,
+            "longitude": -123.1207,
+            "population": 2642825,
+            "description": "Coastal city in British Columbia, known for its stunning natural setting between mountains and ocean, diverse culture, and outdoor recreation opportunities."
+        },
+        {
+            "name": "Whistler",
+            "country": "Canada",
+            "latitude": 50.1163,
+            "longitude": -122.9574,
+            "population": 13982,
+            "description": "World-renowned ski resort town in British Columbia, host of 2010 Winter Olympics alpine events, famous for Whistler Blackcomb ski area and year-round outdoor activities."
+        },
+        {
+            "name": "Revelstoke",
+            "country": "Canada",
+            "latitude": 50.9981,
+            "longitude": -118.2027,
+            "population": 8275,
+            "description": "Mountain town in British Columbia's Columbia Mountains, renowned for deep powder skiing, heli-skiing, and as a gateway to stunning alpine wilderness and national parks."
+        },
+        {
+            "name": "Banff",
+            "country": "Canada",
+            "latitude": 51.1784,
+            "longitude": -115.5708,
+            "population": 8305,
+            "description": "Iconic mountain town in Alberta's Canadian Rockies, located in Banff National Park and famous for its stunning alpine scenery, hot springs, and world-class skiing."
+        },
+        {
+            "name": "Jasper",
+            "country": "Canada",
+            "latitude": 52.8737,
+            "longitude": -118.0814,
+            "population": 4590,
+            "description": "Charming mountain town in Alberta's Jasper National Park, known for its pristine wilderness, dark sky preserve, and access to glaciers, lakes, and wildlife."
         },
         {
             "name": "Mexico City",
@@ -487,6 +535,30 @@
             "longitude": 8.5417,
             "population": 415367,
             "description": "Switzerland's largest city and financial center, known for its banking industry, high quality of life, and beautiful lakeside setting."
+        },
+        {
+            "name": "Mumbai",
+            "country": "India",
+            "latitude": 19.0760,
+            "longitude": 72.8777,
+            "population": 12442373,
+            "description": "India's financial capital and largest city, known as the 'City of Dreams' for its Bollywood film industry, bustling markets, and colonial architecture."
+        },
+        {
+            "name": "Raglan",
+            "country": "New Zealand",
+            "latitude": -37.7974,
+            "longitude": 174.8738,
+            "population": 3000,
+            "description": "Laid-back surf town on New Zealand's North Island, famous for its world-class left-hand surf breaks, black sand beaches, and bohemian atmosphere."
+        },
+        {
+            "name": "Queenstown",
+            "country": "New Zealand",
+            "latitude": -45.0312,
+            "longitude": 168.6626,
+            "population": 53000,
+            "description": "Adventure capital of New Zealand, nestled on the shores of Lake Wakatipu and surrounded by dramatic mountains, known for bungee jumping, skiing, and stunning scenery."
         }
     ]
 }

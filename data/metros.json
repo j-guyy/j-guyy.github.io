@@ -946,7 +946,7 @@
       26.5629
     ],
     "population": "844,226",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Oxnard",
@@ -1388,7 +1388,7 @@
       27.2939
     ],
     "population": "540,427",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Pensacola",
@@ -1765,7 +1765,7 @@
       26.142
     ],
     "population": "410,065",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Anchorage",

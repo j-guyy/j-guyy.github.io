@@ -62,6 +62,15 @@
             "elevation": 3776,
             "elevationUnit": "meters",
             "description": "Japan's highest peak and iconic sacred mountain, an active stratovolcano located southwest of Tokyo."
+        },
+        {
+            "name": "Sincholagua",
+            "country": "Ecuador",
+            "latitude": -0.4833,
+            "longitude": -78.3500,
+            "elevation": 4873,
+            "elevationUnit": "meters",
+            "description": "A stratovolcano in the Cordillera Real of Ecuador, known for its challenging climbing routes and stunning views of the surrounding Andes."
         }
     ]
 }

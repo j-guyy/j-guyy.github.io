@@ -22,10 +22,6 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     const map = L.map(mapId, {
         center: [centerLat, centerLng],
         zoom: zoom,
-        minZoom: 2,
-        maxZoom: 8,
-        maxBounds: bounds,
-        maxBoundsViscosity: 1.0,
         zoomSnap: 0.1,
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120
@@ -34,8 +30,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     // Use your existing tile layer
     L.tileLayer('https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f', {
         attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 22,
-        bounds: bounds
+        maxZoom: 22
     }).addTo(map);
 
     // Fetch GeoJSON from Natural Earth
