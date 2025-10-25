@@ -1,0 +1,802 @@
+[
+    {
+        "name": "London",
+        "country": "England",
+        "coords": [
+            -0.1276,
+            51.5074
+        ]
+    },
+    {
+        "name": "Paris",
+        "country": "France",
+        "coords": [
+            2.3522,
+            48.8566
+        ]
+    },
+    {
+        "name": "New York City",
+        "country": "USA",
+        "coords": [
+            -74.006,
+            40.7128
+        ]
+    },
+    {
+        "name": "Tokyo",
+        "country": "Japan",
+        "coords": [
+            139.6917,
+            35.6895
+        ]
+    },
+    {
+        "name": "Singapore",
+        "country": "Singapore",
+        "coords": [
+            103.8198,
+            1.3521
+        ]
+    },
+    {
+        "name": "Dubai",
+        "country": "UAE",
+        "coords": [
+            55.2708,
+            25.2048
+        ]
+    },
+    {
+        "name": "San Francisco",
+        "country": "USA",
+        "coords": [
+            -122.4194,
+            37.7749
+        ]
+    },
+    {
+        "name": "Barcelona",
+        "country": "Spain",
+        "coords": [
+            2.1734,
+            41.3851
+        ]
+    },
+    {
+        "name": "Amsterdam",
+        "country": "The Netherlands",
+        "coords": [
+            4.9041,
+            52.3676
+        ]
+    },
+    {
+        "name": "Seoul",
+        "country": "South Korea",
+        "coords": [
+            126.9780,
+            37.5665
+        ]
+    },
+    {
+        "name": "Rome",
+        "country": "Italy",
+        "coords": [
+            12.4964,
+            41.9028
+        ]
+    },
+    {
+        "name": "Prague",
+        "country": "Czech Republic",
+        "coords": [
+            14.4378,
+            50.0755
+        ]
+    },
+    {
+        "name": "Madrid",
+        "country": "Spain",
+        "coords": [
+            -3.7038,
+            40.4168
+        ]
+    },
+    {
+        "name": "Berlin",
+        "country": "Germany",
+        "coords": [
+            13.4050,
+            52.5200
+        ]
+    },
+    {
+        "name": "Los Angeles",
+        "country": "USA",
+        "coords": [
+            -118.2437,
+            34.0522
+        ]
+    },
+    {
+        "name": "Chicago",
+        "country": "USA",
+        "coords": [
+            -87.6298,
+            41.8781
+        ]
+    },
+    {
+        "name": "Washington, D.C.",
+        "country": "USA",
+        "coords": [
+            -77.0369,
+            38.9072
+        ]
+    },
+    {
+        "name": "Beijing",
+        "country": "China",
+        "coords": [
+            116.4074,
+            39.9042
+        ]
+    },
+    {
+        "name": "Istanbul",
+        "country": "Turkey",
+        "coords": [
+            28.9784,
+            41.0082
+        ]
+    },
+    {
+        "name": "Dublin",
+        "country": "Ireland",
+        "coords": [
+            -6.2603,
+            53.3498
+        ]
+    },
+    {
+        "name": "Vienna",
+        "country": "Austria",
+        "coords": [
+            16.3738,
+            48.2082
+        ]
+    },
+    {
+        "name": "Milan",
+        "country": "Italy",
+        "coords": [
+            9.1900,
+            45.4642
+        ]
+    },
+    {
+        "name": "Toronto",
+        "country": "Canada",
+        "coords": [
+            -79.3832,
+            43.6532
+        ]
+    },
+    {
+        "name": "Boston",
+        "country": "USA",
+        "coords": [
+            -71.0589,
+            42.3601
+        ]
+    },
+    {
+        "name": "Abu Dhabi",
+        "country": "UAE",
+        "coords": [
+            54.3773,
+            24.2992
+        ]
+    },
+    {
+        "name": "Budapest",
+        "country": "Hungary",
+        "coords": [
+            19.0402,
+            47.4979
+        ]
+    },
+    {
+        "name": "Sao Paulo",
+        "country": "Brazil",
+        "coords": [
+            -46.6333,
+            -23.5505
+        ]
+    },
+    {
+        "name": "Riyadh",
+        "country": "Saudi Arabia",
+        "coords": [
+            46.6753,
+            24.7136
+        ]
+    },
+    {
+        "name": "Stockholm",
+        "country": "Sweden",
+        "coords": [
+            18.0686,
+            59.3293
+        ]
+    },
+    {
+        "name": "Munich",
+        "country": "Germany",
+        "coords": [
+            11.5820,
+            48.1351
+        ]
+    },
+    {
+        "name": "Melbourne",
+        "country": "Australia",
+        "coords": [
+            144.9631,
+            -37.8136
+        ]
+    },
+    {
+        "name": "Lisbon",
+        "country": "Portugal",
+        "coords": [
+            -9.1393,
+            38.7223
+        ]
+    },
+    {
+        "name": "Zurich",
+        "country": "Switzerland",
+        "coords": [
+            8.5417,
+            47.3769
+        ]
+    },
+    {
+        "name": "Seattle",
+        "country": "USA",
+        "coords": [
+            -122.3321,
+            47.6062
+        ]
+    },
+    {
+        "name": "Sydney",
+        "country": "Australia",
+        "coords": [
+            151.2093,
+            -33.8688
+        ]
+    },
+    {
+        "name": "Doha",
+        "country": "Qatar",
+        "coords": [
+            51.5310,
+            25.2854
+        ]
+    },
+    {
+        "name": "Brussels",
+        "country": "Belgium",
+        "coords": [
+            4.3517,
+            50.8503
+        ]
+    },
+    {
+        "name": "San Jose",
+        "country": "USA",
+        "coords": [
+            -121.8863,
+            37.3382
+        ]
+    },
+    {
+        "name": "Bangkok",
+        "country": "Thailand",
+        "coords": [
+            100.5018,
+            13.7563
+        ]
+    },
+    {
+        "name": "Warsaw",
+        "country": "Poland",
+        "coords": [
+            21.0122,
+            52.2297
+        ]
+    },
+    {
+        "name": "Copenhagen",
+        "country": "Denmark",
+        "coords": [
+            12.5683,
+            55.6761
+        ]
+    },
+    {
+        "name": "Taipei",
+        "country": "Taiwan",
+        "coords": [
+            121.5654,
+            25.0330
+        ]
+    },
+    {
+        "name": "Austin",
+        "country": "USA",
+        "coords": [
+            -97.7431,
+            30.2672
+        ]
+    },
+    {
+        "name": "Oslo",
+        "country": "Norway",
+        "coords": [
+            10.7522,
+            59.9139
+        ]
+    },
+    {
+        "name": "Osaka",
+        "country": "Japan",
+        "coords": [
+            135.5023,
+            34.6937
+        ]
+    },
+    {
+        "name": "Hong Kong",
+        "country": "China",
+        "coords": [
+            114.1694,
+            22.3193
+        ]
+    },
+    {
+        "name": "Tel Aviv",
+        "country": "Israel",
+        "coords": [
+            34.7818,
+            32.0853
+        ]
+    },
+    {
+        "name": "Athens",
+        "country": "Greece",
+        "coords": [
+            23.7275,
+            37.9838
+        ]
+    },
+    {
+        "name": "Frankfurt",
+        "country": "Germany",
+        "coords": [
+            8.6821,
+            50.1109
+        ]
+    },
+    {
+        "name": "Vancouver",
+        "country": "Canada",
+        "coords": [
+            -123.1207,
+            49.2827
+        ]
+    },
+    {
+        "name": "San Diego",
+        "country": "USA",
+        "coords": [
+            -117.1611,
+            32.7157
+        ]
+    },
+    {
+        "name": "Orlando",
+        "country": "USA",
+        "coords": [
+            -81.3792,
+            28.5383
+        ]
+    },
+    {
+        "name": "Helsinki",
+        "country": "Finland",
+        "coords": [
+            24.9384,
+            60.1699
+        ]
+    },
+    {
+        "name": "Miami",
+        "country": "USA",
+        "coords": [
+            -80.1918,
+            25.7617
+        ]
+    },
+    {
+        "name": "Buenos Aires",
+        "country": "Argentina",
+        "coords": [
+            -58.3816,
+            -34.6037
+        ]
+    },
+    {
+        "name": "Hamburg",
+        "country": "Germany",
+        "coords": [
+            9.9937,
+            53.5511
+        ]
+    },
+    {
+        "name": "Brisbane",
+        "country": "Australia",
+        "coords": [
+            153.0251,
+            -27.4698
+        ]
+    },
+    {
+        "name": "Kuwait City",
+        "country": "Kuwait",
+        "coords": [
+            47.9774,
+            29.3759
+        ]
+    },
+    {
+        "name": "Las Vegas",
+        "country": "USA",
+        "coords": [
+            -115.1398,
+            36.1699
+        ]
+    },
+    {
+        "name": "Montreal",
+        "country": "Canada",
+        "coords": [
+            -73.5673,
+            45.5017
+        ]
+    },
+    {
+        "name": "Glasgow",
+        "country": "Scotland",
+        "coords": [
+            -4.2518,
+            55.8642
+        ]
+    },
+    {
+        "name": "Shanghai",
+        "country": "China",
+        "coords": [
+            121.4737,
+            31.2304
+        ]
+    },
+    {
+        "name": "Rio de Janeiro",
+        "country": "Brazil",
+        "coords": [
+            -43.1729,
+            -22.9068
+        ]
+    },
+    {
+        "name": "Auckland",
+        "country": "New Zealand",
+        "coords": [
+            174.7633,
+            -36.8485
+        ]
+    },
+    {
+        "name": "Atlanta",
+        "country": "USA",
+        "coords": [
+            -84.3880,
+            33.7490
+        ]
+    },
+    {
+        "name": "Houston",
+        "country": "USA",
+        "coords": [
+            -95.3698,
+            29.7604
+        ]
+    },
+    {
+        "name": "Busan",
+        "country": "South Korea",
+        "coords": [
+            129.0756,
+            35.1796
+        ]
+    },
+    {
+        "name": "Philadelphia",
+        "country": "USA",
+        "coords": [
+            -75.1652,
+            39.9526
+        ]
+    },
+    {
+        "name": "Naples",
+        "country": "Italy",
+        "coords": [
+            14.2681,
+            40.8518
+        ]
+    },
+    {
+        "name": "Denver",
+        "country": "USA",
+        "coords": [
+            -104.9903,
+            39.7392
+        ]
+    },
+    {
+        "name": "Nashville",
+        "country": "USA",
+        "coords": [
+            -86.7816,
+            36.1627
+        ]
+    },
+    {
+        "name": "Manchester",
+        "country": "England",
+        "coords": [
+            -2.2426,
+            53.4808
+        ]
+    },
+    {
+        "name": "Dallas",
+        "country": "USA",
+        "coords": [
+            -96.7970,
+            32.7767
+        ]
+    },
+    {
+        "name": "Liverpool",
+        "country": "England",
+        "coords": [
+            -2.9916,
+            53.4084
+        ]
+    },
+    {
+        "name": "Minneapolis",
+        "country": "USA",
+        "coords": [
+            -93.2650,
+            44.9778
+        ]
+    },
+    {
+        "name": "Mexico City",
+        "country": "Mexico",
+        "coords": [
+            -99.1332,
+            19.4326
+        ]
+    },
+    {
+        "name": "Minsk",
+        "country": "Belarus",
+        "coords": [
+            27.5615,
+            53.9006
+        ]
+    },
+    {
+        "name": "Lyon",
+        "country": "France",
+        "coords": [
+            4.8357,
+            45.7640
+        ]
+    },
+    {
+        "name": "Portland",
+        "country": "USA",
+        "coords": [
+            -122.6765,
+            45.5152
+        ]
+    },
+    {
+        "name": "Rotterdam",
+        "country": "The Netherlands",
+        "coords": [
+            4.4777,
+            51.9244
+        ]
+    },
+    {
+        "name": "Bogota",
+        "country": "Colombia",
+        "coords": [
+            -74.0721,
+            4.7110
+        ]
+    },
+    {
+        "name": "Krakow",
+        "country": "Poland",
+        "coords": [
+            19.9445,
+            50.0647
+        ]
+    },
+    {
+        "name": "Valencia",
+        "country": "Spain",
+        "coords": [
+            -0.3763,
+            39.4699
+        ]
+    },
+    {
+        "name": "Santiago",
+        "country": "Chile",
+        "coords": [
+            -70.6693,
+            -33.4489
+        ]
+    },
+    {
+        "name": "Birmingham",
+        "country": "England",
+        "coords": [
+            -1.8904,
+            52.4862
+        ]
+    },
+    {
+        "name": "New Orleans",
+        "country": "USA",
+        "coords": [
+            -90.0715,
+            29.9511
+        ]
+    },
+    {
+        "name": "Bucharest",
+        "country": "Romania",
+        "coords": [
+            26.1025,
+            44.4268
+        ]
+    },
+    {
+        "name": "Leeds",
+        "country": "England",
+        "coords": [
+            -1.5491,
+            53.8008
+        ]
+    },
+    {
+        "name": "Muscat",
+        "country": "Oman",
+        "coords": [
+            58.4059,
+            23.5859
+        ]
+    },
+    {
+        "name": "Ottawa",
+        "country": "Canada",
+        "coords": [
+            -75.6972,
+            45.4215
+        ]
+    },
+    {
+        "name": "Cologne",
+        "country": "Germany",
+        "coords": [
+            6.9603,
+            50.9375
+        ]
+    },
+    {
+        "name": "Charlotte",
+        "country": "USA",
+        "coords": [
+            -80.8431,
+            35.2271
+        ]
+    },
+    {
+        "name": "Calgary",
+        "country": "Canada",
+        "coords": [
+            -114.0719,
+            51.0447
+        ]
+    },
+    {
+        "name": "Nagoya",
+        "country": "Japan",
+        "coords": [
+            136.9066,
+            35.1815
+        ]
+    },
+    {
+        "name": "Dusseldorf",
+        "country": "Germany",
+        "coords": [
+            6.7735,
+            51.2277
+        ]
+    },
+    {
+        "name": "Hanoi",
+        "country": "Vietnam",
+        "coords": [
+            105.8542,
+            21.0285
+        ]
+    },
+    {
+        "name": "Gothenburg",
+        "country": "Sweden",
+        "coords": [
+            11.9746,
+            57.7089
+        ]
+    },
+    {
+        "name": "Sapporo",
+        "country": "Japan",
+        "coords": [
+            141.3545,
+            43.0642
+        ]
+    },
+    {
+        "name": "Bilbao",
+        "country": "Spain",
+        "coords": [
+            -2.9253,
+            43.2627
+        ]
+    },
+    {
+        "name": "Baltimore",
+        "country": "USA",
+        "coords": [
+            -76.6122,
+            39.2904
+        ]
+    }
+]

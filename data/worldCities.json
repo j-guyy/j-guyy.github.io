@@ -161,6 +161,14 @@
             "description": "Capital of Scotland, famous for its medieval Old Town, Edinburgh Castle, and annual festivals."
         },
         {
+            "name": "Glasgow",
+            "country": "United Kingdom",
+            "latitude": 55.8642,
+            "longitude": -4.2518,
+            "population": 635640,
+            "description": "Scotland's largest city, known for its Victorian architecture, vibrant arts scene, and friendly locals."
+        },
+        {
             "name": "Tokyo",
             "country": "Japan",
             "latitude": 35.6762,

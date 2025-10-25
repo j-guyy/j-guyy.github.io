@@ -1,0 +1,962 @@
+{
+    "sevenWonders": [
+        {
+            "name": "Giza Pyramids",
+            "status": "honorary",
+            "location": "Giza Necropolis, Egypt",
+            "yearBuilt": "2560 BC",
+            "coordinates": {
+                "lat": 29.9792,
+                "lng": 31.1342
+            },
+            "country": "Egypt",
+            "type": "ancient",
+            "visited": false
+        },
+        {
+            "name": "Great Wall of China",
+            "location": "China",
+            "yearBuilt": "700 BC",
+            "coordinates": {
+                "lat": 40.4319,
+                "lng": 116.5704
+            },
+            "country": "China",
+            "type": "modern",
+            "visited": true
+        },
+        {
+            "name": "Petra",
+            "location": "Ma'an, Jordan",
+            "yearBuilt": "312 BC",
+            "coordinates": {
+                "lat": 30.3285,
+                "lng": 35.4444
+            },
+            "country": "Jordan",
+            "type": "modern",
+            "visited": false
+        },
+        {
+            "name": "Colosseum",
+            "location": "Rome, Italy",
+            "yearBuilt": "80 AD",
+            "coordinates": {
+                "lat": 41.8902,
+                "lng": 12.4922
+            },
+            "country": "Italy",
+            "type": "modern",
+            "visited": true
+        },
+        {
+            "name": "Chichén Itzá",
+            "location": "Yucatán, Mexico",
+            "yearBuilt": "600 AD",
+            "coordinates": {
+                "lat": 20.6843,
+                "lng": -88.5678
+            },
+            "country": "Mexico",
+            "type": "modern",
+            "visited": false
+        },
+        {
+            "name": "Machu Picchu",
+            "location": "Cuzco Region, Peru",
+            "yearBuilt": "1450 AD",
+            "coordinates": {
+                "lat": -13.1631,
+                "lng": -72.5450
+            },
+            "country": "Peru",
+            "type": "modern",
+            "visited": false
+        },
+        {
+            "name": "Taj Mahal",
+            "location": "Agra, India",
+            "yearBuilt": "1643 AD",
+            "coordinates": {
+                "lat": 27.1751,
+                "lng": 78.0421
+            },
+            "country": "India",
+            "type": "modern",
+            "visited": false
+        }
+    ],
+    "sevenNaturalWonders": [
+        {
+            "name": "Amazon Rainforest and River",
+            "countries": [
+                "Brazil",
+                "Bolivia",
+                "Colombia",
+                "Ecuador",
+                "French Guiana (France)",
+                "Guyana",
+                "Peru",
+                "Suriname",
+                "Venezuela"
+            ],
+            "coordinates": {
+                "lat": -3.4653,
+                "lng": -62.2159
+            },
+            "primaryCountry": "Brazil",
+            "visited": false
+        },
+        {
+            "name": "Hạ Long Bay",
+            "countries": [
+                "Vietnam"
+            ],
+            "coordinates": {
+                "lat": 20.9101,
+                "lng": 107.1839
+            },
+            "primaryCountry": "Vietnam",
+            "visited": false
+        },
+        {
+            "name": "Jeju Island",
+            "countries": [
+                "South Korea"
+            ],
+            "coordinates": {
+                "lat": 33.4996,
+                "lng": 126.5312
+            },
+            "primaryCountry": "South Korea",
+            "visited": true
+        },
+        {
+            "name": "Iguazú / Iguaçu Falls",
+            "countries": [
+                "Argentina",
+                "Brazil"
+            ],
+            "coordinates": {
+                "lat": -25.6953,
+                "lng": -54.4367
+            },
+            "primaryCountry": "Argentina",
+            "visited": false
+        },
+        {
+            "name": "Puerto Princesa Subterranean River National Park",
+            "countries": [
+                "Philippines"
+            ],
+            "coordinates": {
+                "lat": 10.1969,
+                "lng": 118.9158
+            },
+            "primaryCountry": "Philippines",
+            "visited": false
+        },
+        {
+            "name": "Komodo Island (National Park)",
+            "countries": [
+                "Indonesia"
+            ],
+            "coordinates": {
+                "lat": -8.5537,
+                "lng": 119.4493
+            },
+            "primaryCountry": "Indonesia",
+            "visited": false
+        },
+        {
+            "name": "Table Mountain (National Park)",
+            "countries": [
+                "South Africa"
+            ],
+            "coordinates": {
+                "lat": -33.9628,
+                "lng": 18.4098
+            },
+            "primaryCountry": "South Africa",
+            "visited": false
+        }
+    ],
+    "sevenNaturalWondersNominees": [
+        {
+            "name": "Al-hasa Oasis",
+            "countries": [
+                "Saudi Arabia"
+            ],
+            "coordinates": {
+                "lat": 25.4295,
+                "lng": 49.5951
+            },
+            "primaryCountry": "Saudi Arabia",
+            "visited": false
+        },
+        {
+            "name": "Angel Falls",
+            "countries": [
+                "Venezuela"
+            ],
+            "coordinates": {
+                "lat": 5.9678,
+                "lng": -62.5369
+            },
+            "primaryCountry": "Venezuela",
+            "visited": false
+        },
+        {
+            "name": "Askania-Nova",
+            "countries": [
+                "Ukraine"
+            ],
+            "coordinates": {
+                "lat": 46.4544,
+                "lng": 33.8836
+            },
+            "primaryCountry": "Ukraine",
+            "visited": false
+        },
+        {
+            "name": "Atacama Desert",
+            "countries": [
+                "Chile"
+            ],
+            "coordinates": {
+                "lat": -24.5,
+                "lng": -69.25
+            },
+            "primaryCountry": "Chile",
+            "visited": false
+        },
+        {
+            "name": "Azure Window",
+            "countries": [
+                "Malta"
+            ],
+            "coordinates": {
+                "lat": 36.0544,
+                "lng": 14.1997
+            },
+            "primaryCountry": "Malta",
+            "visited": false
+        },
+        {
+            "name": "Bay of Fundy",
+            "countries": [
+                "Canada"
+            ],
+            "coordinates": {
+                "lat": 45.0,
+                "lng": -65.0
+            },
+            "primaryCountry": "Canada",
+            "visited": false
+        },
+        {
+            "name": "Belogradchik Rocks",
+            "countries": [
+                "Bulgaria"
+            ],
+            "coordinates": {
+                "lat": 43.6275,
+                "lng": 22.6833
+            },
+            "primaryCountry": "Bulgaria",
+            "visited": false
+        },
+        {
+            "name": "Bialowieza Forest",
+            "countries": [
+                "Belarus",
+                "Poland"
+            ],
+            "coordinates": {
+                "lat": 52.7,
+                "lng": 23.85
+            },
+            "primaryCountry": "Poland",
+            "visited": false
+        },
+        {
+            "name": "Black Forest",
+            "countries": [
+                "Germany"
+            ],
+            "coordinates": {
+                "lat": 48.0,
+                "lng": 8.25
+            },
+            "primaryCountry": "Germany",
+            "visited": false
+        },
+        {
+            "name": "Bu Tinah Shoals",
+            "countries": [
+                "United Arab Emirates"
+            ],
+            "coordinates": {
+                "lat": 24.3333,
+                "lng": 52.75
+            },
+            "primaryCountry": "United Arab Emirates",
+            "visited": false
+        },
+        {
+            "name": "Chicamocha Canyon",
+            "countries": [
+                "Colombia"
+            ],
+            "coordinates": {
+                "lat": 6.8333,
+                "lng": -73.0833
+            },
+            "primaryCountry": "Colombia",
+            "visited": false
+        },
+        {
+            "name": "Christmas Island",
+            "countries": [
+                "Christmas Island"
+            ],
+            "coordinates": {
+                "lat": -10.4475,
+                "lng": 105.6904
+            },
+            "primaryCountry": "Christmas Island",
+            "visited": false
+        },
+        {
+            "name": "Cliffs of Moher",
+            "countries": [
+                "Ireland"
+            ],
+            "coordinates": {
+                "lat": 52.9715,
+                "lng": -9.4264
+            },
+            "primaryCountry": "Ireland",
+            "visited": false
+        },
+        {
+            "name": "Coatepeque Lake",
+            "countries": [
+                "El Salvador"
+            ],
+            "coordinates": {
+                "lat": 13.8667,
+                "lng": -89.55
+            },
+            "primaryCountry": "El Salvador",
+            "visited": false
+        },
+        {
+            "name": "Cocos Island",
+            "countries": [
+                "Costa Rica"
+            ],
+            "coordinates": {
+                "lat": 5.5319,
+                "lng": -87.0736
+            },
+            "primaryCountry": "Costa Rica",
+            "visited": false
+        },
+        {
+            "name": "Colca Canyon",
+            "countries": [
+                "Peru"
+            ],
+            "coordinates": {
+                "lat": -15.6167,
+                "lng": -71.9
+            },
+            "primaryCountry": "Peru",
+            "visited": false
+        },
+        {
+            "name": "Conchi",
+            "countries": [
+                "Aruba"
+            ],
+            "coordinates": {
+                "lat": 12.5833,
+                "lng": -69.9667
+            },
+            "primaryCountry": "Aruba",
+            "visited": false
+        },
+        {
+            "name": "Cox's Bazar",
+            "countries": [
+                "Bangladesh"
+            ],
+            "coordinates": {
+                "lat": 21.4272,
+                "lng": 92.0058
+            },
+            "primaryCountry": "Bangladesh",
+            "visited": false
+        },
+        {
+            "name": "Dead Sea",
+            "countries": [
+                "Israel",
+                "Jordan",
+                "Palestine"
+            ],
+            "coordinates": {
+                "lat": 31.5,
+                "lng": 35.5
+            },
+            "primaryCountry": "Jordan",
+            "visited": false
+        },
+        {
+            "name": "Dean's Blue Hole",
+            "countries": [
+                "Bahamas"
+            ],
+            "coordinates": {
+                "lat": 22.6167,
+                "lng": -74.0333
+            },
+            "primaryCountry": "Bahamas",
+            "visited": false
+        },
+        {
+            "name": "Djavolja Varos",
+            "countries": [
+                "Serbia"
+            ],
+            "coordinates": {
+                "lat": 42.6667,
+                "lng": 21.25
+            },
+            "primaryCountry": "Serbia",
+            "visited": false
+        },
+        {
+            "name": "Douro River Valley",
+            "countries": [
+                "Portugal"
+            ],
+            "coordinates": {
+                "lat": 41.1667,
+                "lng": -7.75
+            },
+            "primaryCountry": "Portugal",
+            "visited": false
+        },
+        {
+            "name": "Eisriesenwelt",
+            "countries": [
+                "Austria"
+            ],
+            "coordinates": {
+                "lat": 47.5,
+                "lng": 13.1833
+            },
+            "primaryCountry": "Austria",
+            "visited": false
+        },
+        {
+            "name": "El Yunque",
+            "countries": [
+                "Puerto Rico"
+            ],
+            "coordinates": {
+                "lat": 18.3167,
+                "lng": -65.7833
+            },
+            "primaryCountry": "Puerto Rico",
+            "visited": false
+        },
+        {
+            "name": "Fernando de Noronha",
+            "countries": [
+                "Brazil"
+            ],
+            "coordinates": {
+                "lat": -3.8333,
+                "lng": -32.4167
+            },
+            "primaryCountry": "Brazil",
+            "visited": false
+        },
+        {
+            "name": "Galápagos Islands",
+            "countries": [
+                "Ecuador"
+            ],
+            "coordinates": {
+                "lat": -0.9538,
+                "lng": -89.7
+            },
+            "primaryCountry": "Ecuador",
+            "visited": false
+        },
+        {
+            "name": "Grand Canyon",
+            "countries": [
+                "United States"
+            ],
+            "coordinates": {
+                "lat": 36.1069,
+                "lng": -112.1129
+            },
+            "primaryCountry": "United States",
+            "visited": false
+        },
+        {
+            "name": "Great Barrier Reef",
+            "countries": [
+                "Australia",
+                "Papua New Guinea"
+            ],
+            "coordinates": {
+                "lat": -18.2871,
+                "lng": 147.6992
+            },
+            "primaryCountry": "Australia",
+            "visited": true
+        },
+        {
+            "name": "Han-Sur-Lesse Caves",
+            "countries": [
+                "Belgium"
+            ],
+            "coordinates": {
+                "lat": 50.1167,
+                "lng": 5.1833
+            },
+            "primaryCountry": "Belgium",
+            "visited": false
+        },
+        {
+            "name": "Jeita Grotto",
+            "countries": [
+                "Lebanon"
+            ],
+            "coordinates": {
+                "lat": 33.9478,
+                "lng": 35.6447
+            },
+            "primaryCountry": "Lebanon",
+            "visited": false
+        },
+        {
+            "name": "Kaieteur Falls",
+            "countries": [
+                "Guyana"
+            ],
+            "coordinates": {
+                "lat": 5.1756,
+                "lng": -59.4808
+            },
+            "primaryCountry": "Guyana",
+            "visited": false
+        },
+        {
+            "name": "Kaziranga National Park",
+            "countries": [
+                "India"
+            ],
+            "coordinates": {
+                "lat": 26.5775,
+                "lng": 93.1714
+            },
+            "primaryCountry": "India",
+            "visited": false
+        },
+        {
+            "name": "Laguna Colorada",
+            "countries": [
+                "Bolivia"
+            ],
+            "coordinates": {
+                "lat": -22.2,
+                "lng": -67.7833
+            },
+            "primaryCountry": "Bolivia",
+            "visited": false
+        },
+        {
+            "name": "Lake Atitlan",
+            "countries": [
+                "Guatemala"
+            ],
+            "coordinates": {
+                "lat": 14.7,
+                "lng": -91.2
+            },
+            "primaryCountry": "Guatemala",
+            "visited": false
+        },
+        {
+            "name": "Lake Bled",
+            "countries": [
+                "Slovenia"
+            ],
+            "coordinates": {
+                "lat": 46.3683,
+                "lng": 14.1147
+            },
+            "primaryCountry": "Slovenia",
+            "visited": false
+        },
+        {
+            "name": "Lake Ohrid",
+            "countries": [
+                "Albania",
+                "North Macedonia"
+            ],
+            "coordinates": {
+                "lat": 41.1167,
+                "lng": 20.8
+            },
+            "primaryCountry": "North Macedonia",
+            "visited": false
+        },
+        {
+            "name": "Lake Saiful Maluk",
+            "countries": [
+                "Pakistan"
+            ],
+            "coordinates": {
+                "lat": 34.8667,
+                "lng": 73.6833
+            },
+            "primaryCountry": "Pakistan",
+            "visited": false
+        },
+        {
+            "name": "Lake Saimaa",
+            "countries": [
+                "Finland"
+            ],
+            "coordinates": {
+                "lat": 61.4167,
+                "lng": 28.1667
+            },
+            "primaryCountry": "Finland",
+            "visited": false
+        },
+        {
+            "name": "Lake Titicaca",
+            "countries": [
+                "Bolivia",
+                "Peru"
+            ],
+            "coordinates": {
+                "lat": -15.5,
+                "lng": -69.25
+            },
+            "primaryCountry": "Peru",
+            "visited": false
+        },
+        {
+            "name": "Maldives",
+            "countries": [
+                "Maldives"
+            ],
+            "coordinates": {
+                "lat": 3.2028,
+                "lng": 73.2207
+            },
+            "primaryCountry": "Maldives",
+            "visited": false
+        },
+        {
+            "name": "Masurian Lakes District",
+            "countries": [
+                "Poland"
+            ],
+            "coordinates": {
+                "lat": 53.8333,
+                "lng": 21.5
+            },
+            "primaryCountry": "Poland",
+            "visited": false
+        },
+        {
+            "name": "Matterhorn/Cervino",
+            "countries": [
+                "Italy",
+                "Switzerland"
+            ],
+            "coordinates": {
+                "lat": 45.9763,
+                "lng": 7.6586
+            },
+            "primaryCountry": "Switzerland",
+            "visited": true
+        },
+        {
+            "name": "Milford Sound",
+            "countries": [
+                "New Zealand"
+            ],
+            "coordinates": {
+                "lat": -44.6667,
+                "lng": 167.9167
+            },
+            "primaryCountry": "New Zealand",
+            "visited": false
+        },
+        {
+            "name": "Mount Kilimanjaro",
+            "countries": [
+                "Tanzania"
+            ],
+            "coordinates": {
+                "lat": -3.0674,
+                "lng": 37.3556
+            },
+            "primaryCountry": "Tanzania",
+            "visited": false
+        },
+        {
+            "name": "Mount Olympus",
+            "countries": [
+                "Greece"
+            ],
+            "coordinates": {
+                "lat": 40.0844,
+                "lng": 22.3581
+            },
+            "primaryCountry": "Greece",
+            "visited": false
+        },
+        {
+            "name": "Mud Volcanoes",
+            "countries": [
+                "Azerbaijan"
+            ],
+            "coordinates": {
+                "lat": 40.3667,
+                "lng": 49.3833
+            },
+            "primaryCountry": "Azerbaijan",
+            "visited": false
+        },
+        {
+            "name": "Norfolk Island",
+            "countries": [
+                "Norfolk Island"
+            ],
+            "coordinates": {
+                "lat": -29.0408,
+                "lng": 167.9547
+            },
+            "primaryCountry": "Norfolk Island",
+            "visited": false
+        },
+        {
+            "name": "Ometepe Island",
+            "countries": [
+                "Nicaragua"
+            ],
+            "coordinates": {
+                "lat": 11.5167,
+                "lng": -85.6167
+            },
+            "primaryCountry": "Nicaragua",
+            "visited": false
+        },
+        {
+            "name": "Platano Forest",
+            "countries": [
+                "Honduras"
+            ],
+            "coordinates": {
+                "lat": 15.75,
+                "lng": -84.6667
+            },
+            "primaryCountry": "Honduras",
+            "visited": false
+        },
+        {
+            "name": "Pravcice Gate",
+            "countries": [
+                "Czech Republic"
+            ],
+            "coordinates": {
+                "lat": 50.8833,
+                "lng": 14.2833
+            },
+            "primaryCountry": "Czech Republic",
+            "visited": false
+        },
+        {
+            "name": "Retezat National Park",
+            "countries": [
+                "Romania"
+            ],
+            "coordinates": {
+                "lat": 45.3667,
+                "lng": 22.8833
+            },
+            "primaryCountry": "Romania",
+            "visited": false
+        },
+        {
+            "name": "Rock of Aphrodite",
+            "countries": [
+                "Cyprus"
+            ],
+            "coordinates": {
+                "lat": 34.6667,
+                "lng": 32.6333
+            },
+            "primaryCountry": "Cyprus",
+            "visited": false
+        },
+        {
+            "name": "Sinharaja Rainforest",
+            "countries": [
+                "Sri Lanka"
+            ],
+            "coordinates": {
+                "lat": 6.4167,
+                "lng": 80.4167
+            },
+            "primaryCountry": "Sri Lanka",
+            "visited": false
+        },
+        {
+            "name": "Sipadan Island",
+            "countries": [
+                "Malaysia"
+            ],
+            "coordinates": {
+                "lat": 4.1167,
+                "lng": 118.6333
+            },
+            "primaryCountry": "Malaysia",
+            "visited": false
+        },
+        {
+            "name": "Sossusvlei",
+            "countries": [
+                "Namibia"
+            ],
+            "coordinates": {
+                "lat": -24.7292,
+                "lng": 15.2922
+            },
+            "primaryCountry": "Namibia",
+            "visited": false
+        },
+        {
+            "name": "Štrbské Pleso Lake",
+            "countries": [
+                "Slovakia"
+            ],
+            "coordinates": {
+                "lat": 49.1167,
+                "lng": 20.0667
+            },
+            "primaryCountry": "Slovakia",
+            "visited": false
+        },
+        {
+            "name": "Sumidero Canyon",
+            "countries": [
+                "Mexico"
+            ],
+            "coordinates": {
+                "lat": 16.8333,
+                "lng": -93.0833
+            },
+            "primaryCountry": "Mexico",
+            "visited": false
+        },
+        {
+            "name": "Sundarbans Forest",
+            "countries": [
+                "Bangladesh",
+                "India"
+            ],
+            "coordinates": {
+                "lat": 21.9497,
+                "lng": 89.1833
+            },
+            "primaryCountry": "Bangladesh",
+            "visited": false
+        },
+        {
+            "name": "Thy National Park",
+            "countries": [
+                "Denmark"
+            ],
+            "coordinates": {
+                "lat": 57.0,
+                "lng": 8.2167
+            },
+            "primaryCountry": "Denmark",
+            "visited": false
+        },
+        {
+            "name": "Uluru (Ayers Rock)",
+            "countries": [
+                "Australia"
+            ],
+            "coordinates": {
+                "lat": -25.3444,
+                "lng": 131.0369
+            },
+            "primaryCountry": "Australia",
+            "visited": false
+        },
+        {
+            "name": "Vesuvius",
+            "countries": [
+                "Italy"
+            ],
+            "coordinates": {
+                "lat": 40.8214,
+                "lng": 14.4289
+            },
+            "primaryCountry": "Italy",
+            "visited": false
+        },
+        {
+            "name": "Vrelo Caves",
+            "countries": [
+                "North Macedonia"
+            ],
+            "coordinates": {
+                "lat": 41.2333,
+                "lng": 20.9833
+            },
+            "primaryCountry": "North Macedonia",
+            "visited": false
+        },
+        {
+            "name": "Wadi Rum",
+            "countries": [
+                "Jordan"
+            ],
+            "coordinates": {
+                "lat": 29.5833,
+                "lng": 35.4167
+            },
+            "primaryCountry": "Jordan",
+            "visited": false
+        },
+        {
+            "name": "Yu Shan",
+            "countries": [
+                "Taiwan"
+            ],
+            "coordinates": {
+                "lat": 23.4697,
+                "lng": 120.9572
+            },
+            "primaryCountry": "Taiwan",
+            "visited": false
+        }
+    ]
+}

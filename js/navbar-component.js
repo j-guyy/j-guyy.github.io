@@ -37,6 +37,7 @@ class NavbarComponent extends HTMLElement {
                             <div class="dropdown-content">
                                 <a href="${basePath}adventures.html">List</a>
                                 <a href="${basePath}side-quests.html">Side Quests</a>
+                                <a href="${basePath}world-quests.html">World Quests</a>
                                 <a href="${basePath}statshunters.html">StatsHunters</a>
                             </div>
                         </li>

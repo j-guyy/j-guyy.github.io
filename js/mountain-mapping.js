@@ -1,9 +1,7 @@
 // Rocky Mountain Sub-Ranges Data and Mapping
 class MountainRangeMapper {
     constructor() {
-        this.maps = {};
         this.mountainRanges = null;
-
         this.loadMountainData();
     }
 
@@ -11,37 +9,22 @@ class MountainRangeMapper {
         try {
             const response = await fetch('data/mountainRanges.json');
             this.mountainRanges = await response.json();
-
-            this.initializeMaps();
-            this.createSummaryCards();
+            this.createOverviewMap();
         } catch (error) {
             console.error('Error loading mountain ranges data:', error);
-            // Fallback: show error message
             this.showErrorMessage();
         }
     }
 
     showErrorMessage() {
-        const summaryContainer = document.getElementById('mountain-summary');
-        if (summaryContainer) {
-            summaryContainer.innerHTML = `
+        const mapContainer = document.getElementById('rocky-mountains-map');
+        if (mapContainer) {
+            mapContainer.innerHTML = `
                 <div class="error-message">
                     <p>Error loading mountain ranges data. Please try refreshing the page.</p>
                 </div>
             `;
         }
-    }
-
-    initializeMaps() {
-        if (!this.mountainRanges) return;
-
-        // Main overview map
-        this.createOverviewMap();
-
-        // Regional maps
-        this.createRegionalMap('northern-rockies-map', this.mountainRanges.northern, 'Northern Rockies');
-        this.createRegionalMap('central-rockies-map', this.mountainRanges.central, 'Central Rockies');
-        this.createRegionalMap('southern-rockies-map', this.mountainRanges.southern, 'Southern Rockies');
     }
 
     createOverviewMap() {
@@ -97,61 +80,6 @@ class MountainRangeMapper {
             }
         });
 
-        this.maps['overview'] = map;
-    }
-
-    createRegionalMap(containerId, ranges, regionName) {
-        const mapContainer = document.getElementById(containerId);
-        if (!mapContainer) return;
-
-        // Calculate center point of ranges
-        const centerLat = ranges.reduce((sum, range) => sum + range.lat, 0) / ranges.length;
-        const centerLng = ranges.reduce((sum, range) => sum + range.lng, 0) / ranges.length;
-
-        const map = L.map(containerId, {
-            gestureHandling: true,
-            fullscreenControl: true
-        }).setView([centerLat, centerLng], 6);
-
-        // Add topographic tile layer
-        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)',
-            maxZoom: 17
-        }).addTo(map);
-
-        // Add ranges to regional map
-        ranges.forEach(range => {
-            const color = this.getRegionColor(range);
-
-            if (range.polygon) {
-                // Create polygon for mountain range
-                const polygon = L.polygon(range.polygon, {
-                    fillColor: color,
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.7
-                }).addTo(map);
-
-                const popupContent = this.createPopupContent(range);
-                polygon.bindPopup(popupContent);
-            } else {
-                // Fallback to circle marker if no polygon data
-                const marker = L.circleMarker([range.lat, range.lng], {
-                    radius: 10,
-                    fillColor: color,
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-
-                const popupContent = this.createPopupContent(range);
-                marker.bindPopup(popupContent);
-            }
-        });
-
-        this.maps[regionName.toLowerCase().replace(' ', '-')] = map;
     }
 
     getRegionColor(range) {
@@ -176,35 +104,7 @@ class MountainRangeMapper {
         `;
     }
 
-    createSummaryCards() {
-        const summaryContainer = document.getElementById('mountain-summary');
-        if (!summaryContainer || !this.mountainRanges) return;
 
-        const totalRanges = Object.values(this.mountainRanges).flat().length;
-        const totalPeaks = Object.values(this.mountainRanges).flat()
-            .reduce((sum, range) => sum + range.peaks.length, 0);
-
-        summaryContainer.innerHTML = `
-            <div class="summary-stats-container">
-                <div class="summary-stat">
-                    <div class="stat-number">${totalRanges}</div>
-                    <div class="stat-label">Mountain Ranges</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number">${totalPeaks}</div>
-                    <div class="stat-label">Notable Peaks</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number">3</div>
-                    <div class="stat-label">Major Regions</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number">2,000+</div>
-                    <div class="stat-label">Miles of Range</div>
-                </div>
-            </div>
-        `;
-    }
 }
 
 // Initialize when DOM is loaded
