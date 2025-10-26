@@ -8606,38 +8606,10 @@
                         -93.3799
                     ],
                     "to": [
-                        43.1536,
-                        -93.201
-                    ],
-                    "description": "Clear Lake to Mason City (IA-IA)",
-                    "driven": false,
-                    "miles": 9,
-                    "fromCity": "Clear Lake",
-                    "toCity": "Mason City",
-                    "states": [
-                        "IA"
-                    ],
-                    "waypoints": [
-                        [
-                            43.1378,
-                            -93.3799
-                        ],
-                        [
-                            43.1536,
-                            -93.201
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        43.1536,
-                        -93.201
-                    ],
-                    "to": [
                         43.648,
                         -93.3687
                     ],
-                    "description": "Mason City to Albert Lea (IA-MN)",
+                    "description": "Clear Lake to Albert Lea (IA-MN)",
                     "driven": false,
                     "miles": 35,
                     "fromCity": "Mason City",
@@ -8886,7 +8858,7 @@
                         -102.6768
                     ],
                     "description": "Glenrio to Adrian (NM-TX)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 21.6,
                     "fromCity": "Glenrio",
                     "toCity": "Adrian",
@@ -13698,14 +13670,14 @@
                         -80.3087
                     ],
                     "to": [
-                        26.007,
-                        -80.2962
+                        26.1003,
+                        -80.3997
                     ],
-                    "description": "Miami Lakes to Pembroke Pines (FL-FL)",
-                    "driven": false,
+                    "description": "Miami Lakes to Weston (FL-FL)",
+                    "driven": true,
                     "miles": 7,
                     "fromCity": "Miami Lakes",
-                    "toCity": "Pembroke Pines",
+                    "toCity": "Weston",
                     "states": [
                         "FL"
                     ],
@@ -13722,90 +13694,6 @@
                 },
                 {
                     "from": [
-                        26.007,
-                        -80.2962
-                    ],
-                    "to": [
-                        25.9873,
-                        -80.2323
-                    ],
-                    "description": "Pembroke Pines to Miramar (FL-FL)",
-                    "driven": false,
-                    "miles": 4,
-                    "fromCity": "Pembroke Pines",
-                    "toCity": "Miramar",
-                    "states": [
-                        "FL"
-                    ],
-                    "waypoints": [
-                        [
-                            26.007,
-                            -80.2962
-                        ],
-                        [
-                            25.9873,
-                            -80.2323
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        25.9873,
-                        -80.2323
-                    ],
-                    "to": [
-                        26.0765,
-                        -80.2331
-                    ],
-                    "description": "Miramar to Davie (FL-FL)",
-                    "driven": false,
-                    "miles": 6,
-                    "fromCity": "Miramar",
-                    "toCity": "Davie",
-                    "states": [
-                        "FL"
-                    ],
-                    "waypoints": [
-                        [
-                            25.9873,
-                            -80.2323
-                        ],
-                        [
-                            26.0765,
-                            -80.2331
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        26.0765,
-                        -80.2331
-                    ],
-                    "to": [
-                        26.1003,
-                        -80.3997
-                    ],
-                    "description": "Davie to Weston (FL-FL)",
-                    "driven": false,
-                    "miles": 10,
-                    "fromCity": "Davie",
-                    "toCity": "Weston",
-                    "states": [
-                        "FL"
-                    ],
-                    "waypoints": [
-                        [
-                            26.0765,
-                            -80.2331
-                        ],
-                        [
-                            26.1003,
-                            -80.3997
-                        ]
-                    ]
-                },
-                {
-                    "from": [
                         26.1003,
                         -80.3997
                     ],
@@ -13814,7 +13702,7 @@
                         -81.7948
                     ],
                     "description": "Weston to Naples (FL-FL)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 86,
                     "fromCity": "Weston",
                     "toCity": "Naples",
@@ -19861,13 +19749,41 @@
                         -80.0534
                     ],
                     "to": [
+                        29.2071,
+                        -81.0197
+                    ],
+                    "description": "West Palm Beach to Daytona Beach (FL-FL)",
+                    "driven": true,
+                    "miles": 268,
+                    "fromCity": "West Palm Beach",
+                    "toCity": "Daytona Beach",
+                    "states": [
+                        "FL"
+                    ],
+                    "waypoints": [
+                        [
+                            26.7153,
+                            -80.0534
+                        ],
+                        [
+                            29.2071,
+                            -81.0197
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        29.2071,
+                        -81.0197
+                    ],
+                    "to": [
                         30.3322,
                         -81.6557
                     ],
-                    "description": "West Palm Beach to Jacksonville (FL-FL)",
+                    "description": "Daytona Beach to Jacksonville (FL-FL)",
                     "driven": false,
                     "miles": 268,
-                    "fromCity": "West Palm Beach",
+                    "fromCity": "Daytona Beach",
                     "toCity": "Jacksonville",
                     "states": [
                         "FL"
@@ -33621,7 +33537,7 @@
                         -96.4003
                     ],
                     "description": "Sioux Falls to Sioux City (SD-IA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 74.2,
                     "fromCity": "Sioux Falls",
                     "toCity": "Sioux City",
