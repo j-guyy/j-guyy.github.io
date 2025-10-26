@@ -264,9 +264,20 @@ class NavbarComponent extends HTMLElement {
                 }
             };
 
-            // Use touch events for touch devices, click for others
+            // Use click events for all devices - iOS Safari handles this better
+            // Adding both touchend and click ensures compatibility across all devices
             if (isTouchDevice) {
-                button.addEventListener('touchstart', toggleDropdownState, { passive: false });
+                // For touch devices, use touchend instead of touchstart
+                // This allows the touch to complete naturally
+                button.addEventListener('touchend', (e) => {
+                    // Only handle if this wasn't a scroll/swipe
+                    if (e.cancelable) {
+                        toggleDropdownState(e);
+                    }
+                }, { passive: false });
+
+                // Also add click as fallback for iOS
+                button.addEventListener('click', toggleDropdownState);
             } else {
                 button.addEventListener('click', toggleDropdownState);
             }

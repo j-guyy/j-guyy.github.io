@@ -90,6 +90,9 @@
     transition: all 0.3s ease;
     font-size: 0.95rem;
     /* Slightly smaller font size */
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0, 128, 0, 0.3);
+    /* iOS tap feedback */
 }
 
 .nav-menu li a:hover {
