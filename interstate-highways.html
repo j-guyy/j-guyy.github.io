@@ -114,13 +114,7 @@
             </div>
         </div>
 
-        <div class="section">
-            <h2>Interstate Highway List</h2>
-            <p>Mark the highways you've driven and track your progress</p>
-            <div class="data-list" id="interstate-list">
-                <!-- Interstate list will be populated by JavaScript -->
-            </div>
-        </div>
+
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -151,7 +145,6 @@
                 const response = await fetch('data/interstateHighways.json');
                 interstateData = await response.json();
                 updateStats();
-                renderInterstateList();
                 drawInterstateRoutes();
             } catch (error) {
                 console.error('Error loading interstate data:', error);
@@ -159,15 +152,36 @@
         }
 
         // Draw interstate routes on the map
-        function drawInterstateRoutes() {
+        function drawInterstateRoutes(filter = 'all') {
             interstateLayer.clearLayers();
 
-            interstateData.interstates.forEach(interstate => {
+            let filteredInterstates = interstateData.interstates;
+
+            // Apply filters
+            switch (filter) {
+                case 'driven':
+                    filteredInterstates = interstateData.interstates.filter(i => i.driven);
+                    break;
+                case 'not-driven':
+                    filteredInterstates = interstateData.interstates.filter(i => !i.driven);
+                    break;
+                case 'transcontinental':
+                    filteredInterstates = interstateData.interstates.filter(i =>
+                        ['I-10', 'I-40', 'I-70', 'I-80', 'I-90'].includes(i.number)
+                    );
+                    break;
+            }
+
+            filteredInterstates.forEach(interstate => {
                 if (interstate.routeSegments && interstate.routeSegments.length > 0) {
                     // Draw each segment individually
                     interstate.routeSegments.forEach((segment, index) => {
                         const color = segment.driven ? '#28a745' : '#dc3545';
-                        const polyline = L.polyline([segment.from, segment.to], {
+                        // Use waypoints if available, otherwise fall back to from/to
+                        const coordinates = segment.waypoints && segment.waypoints.length > 0
+                            ? segment.waypoints
+                            : [segment.from, segment.to];
+                        const polyline = L.polyline(coordinates, {
                             color: color,
                             weight: 4,
                             opacity: 0.8
@@ -217,9 +231,7 @@
                 updateInterstateStatus(interstate);
 
                 updateStats();
-                renderInterstateList(getCurrentFilter());
                 drawInterstateRoutes();
-                saveData();
             }
         }
 
@@ -247,100 +259,9 @@
             document.getElementById('total-miles').textContent = totalMiles.toLocaleString();
         }
 
-        // Render interstate list
-        function renderInterstateList(filter = 'all') {
-            const listContainer = document.getElementById('interstate-list');
-            let filteredInterstates = interstateData.interstates;
 
-            // Apply filters
-            switch (filter) {
-                case 'driven':
-                    filteredInterstates = interstateData.interstates.filter(i => i.driven);
-                    break;
-                case 'not-driven':
-                    filteredInterstates = interstateData.interstates.filter(i => !i.driven);
-                    break;
-                case 'transcontinental':
-                    filteredInterstates = interstateData.interstates.filter(i =>
-                        ['I-10', 'I-40', 'I-70', 'I-80', 'I-90'].includes(i.number)
-                    );
-                    break;
-            }
 
-            listContainer.innerHTML = filteredInterstates.map(interstate => `
-                <div class="list-item ${interstate.driven ? 'driven' : ''}" data-interstate="${interstate.number}">
-                    <div class="item-header">
-                        <h3>${interstate.number}</h3>
-                        <label class="checkbox-label">
-                            <input type="checkbox" ${interstate.driven ? 'checked' : ''} 
-                                   onchange="toggleInterstate('${interstate.number}', this.checked)">
-                            Driven
-                        </label>
-                    </div>
-                    <div class="item-content">
-                        <h4>${interstate.name}</h4>
-                        <p>${interstate.description}</p>
-                        <div class="item-meta">${interstate.length.toLocaleString()} miles • ${interstate.states.join(', ')}</div>
-                    </div>
-                </div>
-            `).join('');
-        }
 
-        // Toggle interstate driven status
-        function toggleInterstate(interstateNumber, driven) {
-            const interstate = interstateData.interstates.find(i => i.number === interstateNumber);
-            if (interstate) {
-                interstate.driven = driven;
-                updateStats();
-                renderInterstateList(getCurrentFilter());
-                saveData();
-            }
-        }
-
-        // Get current filter
-        function getCurrentFilter() {
-            const activeBtn = document.querySelector('.btn.active');
-            return activeBtn ? activeBtn.dataset.filter : 'all';
-        }
-
-        // Save data to localStorage
-        function saveData() {
-            localStorage.setItem('interstateHighwaysData', JSON.stringify(interstateData));
-        }
-
-        // Load data from localStorage
-        function loadSavedData() {
-            const saved = localStorage.getItem('interstateHighwaysData');
-            if (saved) {
-                const savedData = JSON.parse(saved);
-                // Merge saved driven status with current data structure
-                savedData.interstates.forEach(savedInterstate => {
-                    const currentInterstate = interstateData.interstates.find(i => i.number === savedInterstate.number);
-                    if (currentInterstate) {
-                        currentInterstate.driven = savedInterstate.driven;
-
-                        // Handle new routeSegments format
-                        if (savedInterstate.routeSegments && currentInterstate.routeSegments) {
-                            currentInterstate.routeSegments.forEach((segment, index) => {
-                                if (savedInterstate.routeSegments[index]) {
-                                    segment.driven = savedInterstate.routeSegments[index].driven;
-                                }
-                            });
-                        }
-
-                        // Handle legacy segments format for backward compatibility
-                        if (savedInterstate.segments && currentInterstate.segments) {
-                            currentInterstate.segments.forEach((segment, index) => {
-                                if (savedInterstate.segments[index]) {
-                                    segment.driven = savedInterstate.segments[index].driven;
-                                    segment.notes = savedInterstate.segments[index].notes || '';
-                                }
-                            });
-                        }
-                    }
-                });
-            }
-        }
 
         // Initialize filter buttons
         function initFilters() {
@@ -352,7 +273,10 @@
                     });
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('active', 'btn-primary');
-                    renderInterstateList(btn.dataset.filter);
+
+                    // Filter the map based on selection
+                    const filter = btn.dataset.filter;
+                    drawInterstateRoutes(filter);
                 });
             });
         }
@@ -361,9 +285,8 @@
         async function init() {
             initMap();
             await loadInterstateData();
-            loadSavedData();
             updateStats();
-            renderInterstateList();
+            drawInterstateRoutes();
             initFilters();
         }
 
