@@ -97,6 +97,22 @@
             "description": "Capital of the Netherlands, known for its canals, museums, and cycling culture."
         },
         {
+            "name": "Agra",
+            "country": "India",
+            "latitude": 27.1767,
+            "longitude": 78.0081,
+            "population": 1585704,
+            "description": "Historic city in northern India, home to the iconic Taj Mahal and other Mughal architectural masterpieces."
+        },
+        {
+            "name": "Delhi",
+            "country": "India",
+            "latitude": 28.7041,
+            "longitude": 77.1025,
+            "population": 16753235,
+            "description": "Capital territory of India, a vibrant metropolis blending ancient history with modern development, known for its Mughal monuments and diverse culture."
+        },
+        {
             "name": "Stockholm",
             "country": "Sweden",
             "latitude": 59.3293,
