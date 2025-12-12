@@ -129,7 +129,8 @@
 <body>
     <div class="header">
         <h1>Mountain Range Polygon Editor</h1>
-        <p>All mountain ranges are shown on the map. Click any polygon to select and edit it directly.</p>
+        <p>Click "Add Polygon" to start drawing. Click on the map to place vertices (minimum 3), then click "Done
+            Adding" to finish.</p>
     </div>
 
     <div class="controls">
@@ -143,8 +144,9 @@
 
         <div class="control-group">
             <button id="showAllBtn">Show All Ranges</button>
-            <button id="newPolygonBtn" disabled>Edit Selected Polygon</button>
-            <button id="createNewBtn" class="create-btn">Create New Polygon</button>
+            <button id="addPolygonBtn" class="create-btn">Add Polygon</button>
+            <button id="doneAddingBtn" class="create-btn" style="display: none;" disabled>Done Adding</button>
+            <button id="cancelDrawingBtn" class="clear-btn" style="display: none;">Cancel</button>
             <button id="deleteBtn" class="clear-btn" disabled>Delete Polygon</button>
         </div>
 

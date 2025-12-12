@@ -6,6 +6,11 @@ class PolygonEditor {
         this.selectedPolygon = null;
         this.selectedRangeKey = null;
         this.drawnItems = null;
+        this.polygonCounter = 0; // Counter for new polygons
+        this.isDrawing = false; // Track if we're in drawing mode
+        this.drawingVertices = []; // Store vertices being drawn
+        this.drawingMarkers = []; // Store markers for vertices
+        this.drawingPolyline = null; // Temporary polyline showing the shape
         this.regionColors = {
             'northern': '#4A90E2',
             'central': '#4CAF50',
@@ -138,6 +143,9 @@ class PolygonEditor {
                 color: '#fff',
                 weight: 2
             });
+            if (this.selectedPolygon.editing) {
+                this.selectedPolygon.editing.disable();
+            }
         }
 
         // Select new polygon
@@ -150,11 +158,12 @@ class PolygonEditor {
             weight: 4
         });
 
-        // Enable editing for this polygon
+        // Enable editing for this polygon (vertex dragging)
         polygon.editing.enable();
 
         // Update UI
-        this.updateStatus(`Selected: ${polygon.range.name} - Drag the points to edit the polygon shape`);
+        const rangeName = polygon.range ? polygon.range.name : polygon.customName;
+        this.updateStatus(`Selected: ${rangeName} - Drag vertices to reshape the polygon`);
         this.updateButtons();
 
         // Center map on selected polygon
@@ -164,7 +173,9 @@ class PolygonEditor {
     setupControls() {
         const mapLayerSelect = document.getElementById('mapLayerSelect');
         const showAllBtn = document.getElementById('showAllBtn');
-        const newPolygonBtn = document.getElementById('newPolygonBtn');
+        const addPolygonBtn = document.getElementById('addPolygonBtn');
+        const doneAddingBtn = document.getElementById('doneAddingBtn');
+        const cancelDrawingBtn = document.getElementById('cancelDrawingBtn');
         const deleteBtn = document.getElementById('deleteBtn');
         const exportBtn = document.getElementById('exportBtn');
         const exportAllBtn = document.getElementById('exportAllBtn');
@@ -181,9 +192,21 @@ class PolygonEditor {
             });
         }
 
-        if (newPolygonBtn) {
-            newPolygonBtn.addEventListener('click', () => {
-                this.startNewPolygon();
+        if (addPolygonBtn) {
+            addPolygonBtn.addEventListener('click', () => {
+                this.startDrawingPolygon();
+            });
+        }
+
+        if (doneAddingBtn) {
+            doneAddingBtn.addEventListener('click', () => {
+                this.finishDrawingPolygon();
+            });
+        }
+
+        if (cancelDrawingBtn) {
+            cancelDrawingBtn.addEventListener('click', () => {
+                this.cancelDrawingPolygon();
             });
         }
 
@@ -205,9 +228,13 @@ class PolygonEditor {
             });
         }
 
-        // Click on map to deselect
-        this.map.on('click', () => {
-            this.deselectPolygon();
+        // Click on map to deselect (only when not drawing)
+        this.map.on('click', (e) => {
+            if (this.isDrawing) {
+                this.addVertex(e.latlng);
+            } else {
+                this.deselectPolygon();
+            }
         });
     }
 
@@ -238,29 +265,161 @@ class PolygonEditor {
         this.updateStatus('Showing all mountain ranges');
     }
 
-    startNewPolygon() {
-        if (!this.selectedPolygon) {
-            alert('Please select a mountain range first');
+    startDrawingPolygon() {
+        // Deselect any selected polygon
+        this.deselectPolygon();
+
+        // Enter drawing mode
+        this.isDrawing = true;
+        this.drawingVertices = [];
+        this.drawingMarkers = [];
+
+        // Pan to Wyoming
+        this.map.setView([43.0, -107.5], 6);
+
+        this.updateStatus('Click on the map to place vertices. Need at least 3 vertices to complete.');
+        this.updateButtons();
+    }
+
+    addVertex(latlng) {
+        // Add vertex to array
+        this.drawingVertices.push(latlng);
+
+        // Create draggable marker for this vertex
+        const marker = L.marker(latlng, {
+            draggable: true,
+            icon: L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41]
+            })
+        });
+
+        const vertexIndex = this.drawingVertices.length - 1;
+
+        // Update vertex position when marker is dragged
+        marker.on('drag', () => {
+            this.drawingVertices[vertexIndex] = marker.getLatLng();
+            this.updateDrawingPolyline();
+        });
+
+        marker.addTo(this.map);
+        this.drawingMarkers.push(marker);
+
+        // Update the polyline
+        this.updateDrawingPolyline();
+
+        // Update status
+        const vertexCount = this.drawingVertices.length;
+        if (vertexCount < 3) {
+            this.updateStatus(`${vertexCount} vertex placed. Need ${3 - vertexCount} more to complete.`);
+        } else {
+            this.updateStatus(`${vertexCount} vertices placed. Click "Done Adding" to finish, or keep adding more vertices.`);
+        }
+
+        this.updateButtons();
+    }
+
+    updateDrawingPolyline() {
+        // Remove old polyline
+        if (this.drawingPolyline) {
+            this.map.removeLayer(this.drawingPolyline);
+        }
+
+        // Create new polyline if we have at least 2 vertices
+        if (this.drawingVertices.length >= 2) {
+            // Close the shape if we have 3+ vertices
+            const coords = this.drawingVertices.length >= 3
+                ? [...this.drawingVertices, this.drawingVertices[0]]
+                : this.drawingVertices;
+
+            this.drawingPolyline = L.polyline(coords, {
+                color: '#ff0000',
+                weight: 2,
+                opacity: 0.8,
+                dashArray: '5, 5'
+            });
+            this.drawingPolyline.addTo(this.map);
+        }
+    }
+
+    finishDrawingPolygon() {
+        if (this.drawingVertices.length < 3) {
+            alert('Need at least 3 vertices to create a polygon');
             return;
         }
 
-        // Clear the selected polygon and create a new editable one
-        const polygon = this.selectedPolygon;
-        const center = polygon.range;
+        // Create the polygon
+        const polygon = L.polygon(this.drawingVertices, {
+            color: '#ff0000',
+            fillColor: '#9B59B6',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.6
+        });
 
-        // Create a small editable polygon at the center
-        const newCoords = [
-            [center.lat + 0.2, center.lng - 0.2],
-            [center.lat + 0.2, center.lng + 0.2],
-            [center.lat - 0.2, center.lng + 0.2],
-            [center.lat - 0.2, center.lng - 0.2],
-            [center.lat + 0.2, center.lng - 0.2]
-        ];
+        // Generate unique key and name
+        this.polygonCounter++;
+        const key = `custom:new_polygon_${this.polygonCounter}`;
+        const customName = `NEW_POLYGON_${this.polygonCounter}`;
 
-        polygon.setLatLngs(newCoords);
-        polygon.editing.enable();
+        // Add metadata to polygon
+        polygon.rangeKey = key;
+        polygon.customName = customName;
+        polygon.isCustom = true;
 
-        this.updateStatus(`New polygon created for ${polygon.range.name} - Drag the points to shape it`);
+        // Create popup content
+        const popupContent = `
+            <div class="mountain-popup">
+                <h3>${customName}</h3>
+                <p><em>New custom polygon - rename when adding to dataset</em></p>
+                <p>Click to select and edit</p>
+            </div>
+        `;
+        polygon.bindPopup(popupContent);
+
+        // Add click handler for selection
+        polygon.on('click', (e) => {
+            this.selectPolygon(polygon);
+            L.DomEvent.stopPropagation(e);
+        });
+
+        // Add to map and store reference
+        this.drawnItems.addLayer(polygon);
+        this.polygons.set(key, polygon);
+
+        // Clean up drawing mode
+        this.cleanupDrawing();
+
+        // Automatically select the new polygon
+        this.selectPolygon(polygon);
+
+        this.updateStatus(`Polygon created: ${customName} - Drag vertices to reshape the polygon`);
+    }
+
+    cancelDrawingPolygon() {
+        this.cleanupDrawing();
+        this.updateStatus('Polygon creation cancelled');
+    }
+
+    cleanupDrawing() {
+        // Remove markers
+        this.drawingMarkers.forEach(marker => this.map.removeLayer(marker));
+        this.drawingMarkers = [];
+
+        // Remove polyline
+        if (this.drawingPolyline) {
+            this.map.removeLayer(this.drawingPolyline);
+            this.drawingPolyline = null;
+        }
+
+        // Reset drawing state
+        this.isDrawing = false;
+        this.drawingVertices = [];
+
+        this.updateButtons();
     }
 
     deleteSelectedPolygon() {
@@ -269,23 +428,29 @@ class PolygonEditor {
             return;
         }
 
-        if (confirm(`Delete polygon for ${this.selectedPolygon.range.name}?`)) {
-            // Reset to center point placeholder
+        const polygonName = this.selectedPolygon.range ? this.selectedPolygon.range.name : this.selectedPolygon.customName;
+
+        if (confirm(`Delete polygon: ${polygonName}?`)) {
+            // Remove from map and storage
             this.drawnItems.removeLayer(this.selectedPolygon);
             this.polygons.delete(this.selectedRangeKey);
 
-            // Recreate as placeholder
-            this.createPolygonForRange(this.selectedPolygon.region, this.selectedPolygon.range);
+            // If it's a mountain range (not custom), recreate as placeholder
+            if (this.selectedPolygon.range) {
+                this.createPolygonForRange(this.selectedPolygon.region, this.selectedPolygon.range);
+            }
 
             this.deselectPolygon();
-            this.updateStatus('Polygon deleted and reset to placeholder');
+            this.updateStatus('Polygon deleted');
         }
     }
 
     deselectPolygon() {
         if (this.selectedPolygon) {
             // Disable editing
-            this.selectedPolygon.editing.disable();
+            if (this.selectedPolygon.editing) {
+                this.selectedPolygon.editing.disable();
+            }
 
             // Reset style
             this.selectedPolygon.setStyle({
@@ -297,7 +462,7 @@ class PolygonEditor {
             this.selectedRangeKey = null;
         }
 
-        this.updateStatus('Click any polygon to select and edit it');
+        this.updateStatus('Click any polygon to select and edit it, or click "Add Polygon" to create a new one');
         this.updateButtons();
     }
 
@@ -308,13 +473,38 @@ class PolygonEditor {
         }
 
         const coordinates = this.extractCoordinates(this.selectedPolygon);
-        const exportData = {
-            name: this.selectedPolygon.range.name,
-            region: this.selectedPolygon.region,
-            polygon: coordinates
-        };
 
-        this.showExport(JSON.stringify(exportData, null, 2));
+        let exportData;
+        if (this.selectedPolygon.isCustom) {
+            // Calculate center point from polygon
+            const bounds = this.selectedPolygon.getBounds();
+            const center = bounds.getCenter();
+
+            // Export custom polygon with all required fields and placeholder values
+            exportData = {
+                name: this.selectedPolygon.customName,
+                lat: Math.round(center.lat * 10) / 10,
+                lng: Math.round(center.lng * 10) / 10,
+                description: "DESCRIPTION_NEEDED",
+                peaks: ["PEAK_1", "PEAK_2", "PEAK_3"],
+                elevation: "ELEVATION_NEEDED",
+                polygon: coordinates
+            };
+        } else {
+            // Export existing mountain range with all fields
+            exportData = {
+                name: this.selectedPolygon.range.name,
+                lat: this.selectedPolygon.range.lat,
+                lng: this.selectedPolygon.range.lng,
+                description: this.selectedPolygon.range.description,
+                peaks: this.selectedPolygon.range.peaks,
+                elevation: this.selectedPolygon.range.elevation,
+                polygon: coordinates
+            };
+        }
+
+        // Add trailing comma for easy copy-paste into arrays
+        this.showExport(JSON.stringify(exportData, null, 2) + ',');
     }
 
     exportAllRanges() {
@@ -363,16 +553,29 @@ class PolygonEditor {
     updateButtons() {
         const hasSelection = !!this.selectedPolygon;
         const hasPolygons = this.polygons.size > 0;
+        const canFinishDrawing = this.isDrawing && this.drawingVertices.length >= 3;
 
-        const newPolygonBtn = document.getElementById('newPolygonBtn');
+        const addPolygonBtn = document.getElementById('addPolygonBtn');
+        const doneAddingBtn = document.getElementById('doneAddingBtn');
+        const cancelDrawingBtn = document.getElementById('cancelDrawingBtn');
         const deleteBtn = document.getElementById('deleteBtn');
         const exportBtn = document.getElementById('exportBtn');
         const exportAllBtn = document.getElementById('exportAllBtn');
 
-        if (newPolygonBtn) newPolygonBtn.disabled = !hasSelection;
-        if (deleteBtn) deleteBtn.disabled = !hasSelection;
-        if (exportBtn) exportBtn.disabled = !hasSelection;
-        if (exportAllBtn) exportAllBtn.disabled = !hasPolygons;
+        // Show/hide drawing buttons
+        if (addPolygonBtn) addPolygonBtn.style.display = this.isDrawing ? 'none' : 'inline-block';
+        if (doneAddingBtn) {
+            doneAddingBtn.style.display = this.isDrawing ? 'inline-block' : 'none';
+            doneAddingBtn.disabled = !canFinishDrawing;
+        }
+        if (cancelDrawingBtn) {
+            cancelDrawingBtn.style.display = this.isDrawing ? 'inline-block' : 'none';
+        }
+
+        // Disable other buttons while drawing
+        if (deleteBtn) deleteBtn.disabled = this.isDrawing || !hasSelection;
+        if (exportBtn) exportBtn.disabled = this.isDrawing || !hasSelection;
+        if (exportAllBtn) exportAllBtn.disabled = this.isDrawing || !hasPolygons;
     }
 
     updateStatus(message) {
