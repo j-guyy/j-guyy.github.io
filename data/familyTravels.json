@@ -1,0 +1,88 @@
+{
+    "locations": [
+        {
+            "name": "New York City",
+            "country": "United States",
+            "lat": 40.7128,
+            "lng": -74.0060,
+            "visitors": [
+                "sibling1",
+                "sibling2",
+                "sibling3"
+            ]
+        },
+        {
+            "name": "Los Angeles",
+            "country": "United States",
+            "lat": 34.0522,
+            "lng": -118.2437,
+            "visitors": [
+                "sibling1",
+                "sibling2"
+            ]
+        },
+        {
+            "name": "Chicago",
+            "country": "United States",
+            "lat": 41.8781,
+            "lng": -87.6298,
+            "visitors": [
+                "sibling2",
+                "sibling3"
+            ]
+        },
+        {
+            "name": "Miami",
+            "country": "United States",
+            "lat": 25.7617,
+            "lng": -80.1918,
+            "visitors": [
+                "sibling1"
+            ]
+        },
+        {
+            "name": "Seattle",
+            "country": "United States",
+            "lat": 47.6062,
+            "lng": -122.3321,
+            "visitors": [
+                "sibling1",
+                "sibling3"
+            ]
+        },
+        {
+            "name": "Boston",
+            "country": "United States",
+            "lat": 42.3601,
+            "lng": -71.0589,
+            "visitors": [
+                "sibling2"
+            ]
+        },
+        {
+            "name": "Denver",
+            "country": "United States",
+            "lat": 39.7392,
+            "lng": -104.9903,
+            "visitors": [
+                "sibling1",
+                "sibling2",
+                "sibling3"
+            ]
+        },
+        {
+            "name": "San Francisco",
+            "country": "United States",
+            "lat": 37.7749,
+            "lng": -122.4194,
+            "visitors": [
+                "sibling3"
+            ]
+        }
+    ],
+    "siblings": {
+        "sibling1": "Justin",
+        "sibling2": "Alex",
+        "sibling3": "Mike"
+    }
+}

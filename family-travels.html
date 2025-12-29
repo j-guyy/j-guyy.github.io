@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Travel Map</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/family-travels.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>Family Travel Map</h1>
+            <h2>Where We've Been Together</h2>
+        </div>
+
+        <div class="section">
+            <div class="controls-panel">
+                <div class="traveler-toggles">
+                    <label class="traveler-toggle">
+                        <input type="checkbox" id="toggle-sibling1" checked>
+                        <span class="toggle-label sibling1-color">Justin</span>
+                    </label>
+                    <label class="traveler-toggle">
+                        <input type="checkbox" id="toggle-sibling2" checked>
+                        <span class="toggle-label sibling2-color">Alex</span>
+                    </label>
+                    <label class="traveler-toggle">
+                        <input type="checkbox" id="toggle-sibling3" checked>
+                        <span class="toggle-label sibling3-color">Mike</span>
+                    </label>
+                </div>
+                <div class="filter-buttons">
+                    <button id="show-all">Show All</button>
+                    <button id="show-shared">Shared Only</button>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-locations">0</div>
+                    <div class="stat-label">Total Locations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="shared-locations">0</div>
+                    <div class="stat-label">Shared Locations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="overlap-percent">0%</div>
+                    <div class="stat-label">Overlap</div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="family-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="js/family-travels.js"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>
