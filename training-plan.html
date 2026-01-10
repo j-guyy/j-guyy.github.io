@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Plan Builder - Justin's Website</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/training-plan.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body class="show-tools">
+    <nav-bar></nav-bar>
+
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <div class="content">
+        <div class="hero">
+            <h1>Training Plan Builder</h1>
+            <h2>Build your weekly training schedule</h2>
+        </div>
+
+        <div class="section">
+            <div class="controls">
+                <button id="addWeekBtn" class="primary-btn">+ Add Week</button>
+                <button id="importBtn" class="secondary-btn">Import from Excel</button>
+                <button id="exportBtn" class="secondary-btn">Export to Excel</button>
+                <div class="start-date-control">
+                    <label for="startDateInput">Start Date:</label>
+                    <input type="date" id="startDateInput" class="date-input">
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
+
+            <div id="weeksContainer"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="js/navbar-component.js"></script>
+    <script src="js/training-plan.js"></script>
+</body>
+
+</html>

@@ -44,6 +44,7 @@ class NavbarComponent extends HTMLElement {
                         <li class="dropdown tools-dropdown">
                             <a href="#" class="dropbtn">Tools <span class="mobile-plus-icon">+</span></a>
                             <div class="dropdown-content">
+                                <a href="${basePath}training-plan.html">Training Plan</a>
                                 <a href="${basePath}family-travels.html">Family Travels</a>
                                 <a href="${basePath}mountain-mapping.html">Mountain Mapping</a>
                                 <a href="${basePath}polygon-editor.html">Polygon Editor</a>
