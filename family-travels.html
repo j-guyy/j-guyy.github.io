@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="css/family-travels.css">
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+        rel='stylesheet' />
 </head>
 
 <body class="page">
@@ -29,21 +32,44 @@
             <div class="controls-panel">
                 <div class="traveler-toggles">
                     <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-sibling1" checked>
-                        <span class="toggle-label sibling1-color">Justin</span>
+                        <input type="checkbox" id="toggle-person1" checked>
+                        <span class="toggle-label person1-color">Justin</span>
                     </label>
                     <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-sibling2" checked>
-                        <span class="toggle-label sibling2-color">Alex</span>
+                        <input type="checkbox" id="toggle-person2" checked>
+                        <span class="toggle-label person2-color">Alex</span>
                     </label>
                     <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-sibling3" checked>
-                        <span class="toggle-label sibling3-color">Mike</span>
+                        <input type="checkbox" id="toggle-person3" checked>
+                        <span class="toggle-label person3-color">Mike</span>
+                    </label>
+                    <label class="traveler-toggle">
+                        <input type="checkbox" id="toggle-person4" checked>
+                        <span class="toggle-label person4-color">Sarah</span>
+                    </label>
+                    <label class="traveler-toggle">
+                        <input type="checkbox" id="toggle-person5" checked>
+                        <span class="toggle-label person5-color">Dad</span>
                     </label>
                 </div>
                 <div class="filter-buttons">
                     <button id="show-all">Show All</button>
                     <button id="show-shared">Shared Only</button>
+                    <button id="toggle-pins">Hide Pins</button>
+                </div>
+                <div class="map-mode-toggle">
+                    <label class="mode-toggle">
+                        <input type="radio" name="map-mode" value="country" checked>
+                        <span class="mode-label">Country Coloring</span>
+                    </label>
+                    <label class="mode-toggle">
+                        <input type="radio" name="map-mode" value="proximity">
+                        <span class="mode-label">Proximity Coloring</span>
+                    </label>
+                    <label class="mode-toggle">
+                        <input type="radio" name="map-mode" value="radius">
+                        <span class="mode-label">Proximity Radius</span>
+                    </label>
                 </div>
             </div>
 
@@ -69,7 +95,10 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script src="js/family-travels.js"></script>
+    <script src="js/family-travels-voronoi.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 
