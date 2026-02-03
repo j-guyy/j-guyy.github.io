@@ -79,9 +79,78 @@ async function initMap() {
     setupEventListeners();
 }
 
+// Create special rainbow pin for locations visited by all 6 people
+function createRainbowPinSVG() {
+    const colors = ['#9b59b6', '#27ae60', '#f1c40f', '#e91e63', '#2196F3', '#FF69B4'];
+
+    // Create gradient stripes
+    let stripes = '';
+    const stripeHeight = 25 / 6; // Divide the stick height by 6 colors
+    colors.forEach((color, index) => {
+        stripes += `
+            <rect x="23" y="${10 + (index * stripeHeight)}" 
+                  width="4" height="${stripeHeight}" 
+                  fill="${color}"/>
+        `;
+    });
+
+    // Create rainbow circle segments
+    let circleSegments = '';
+    const anglePerSegment = 360 / 6;
+    colors.forEach((color, index) => {
+        const startAngle = index * anglePerSegment - 90;
+        const endAngle = (index + 1) * anglePerSegment - 90;
+        const startRad = (startAngle * Math.PI) / 180;
+        const endRad = (endAngle * Math.PI) / 180;
+        const x1 = 25 + 8 * Math.cos(startRad);
+        const y1 = 10 + 8 * Math.sin(startRad);
+        const x2 = 25 + 8 * Math.cos(endRad);
+        const y2 = 10 + 8 * Math.sin(endRad);
+
+        circleSegments += `
+            <path d="M 25 10 L ${x1} ${y1} A 8 8 0 0 1 ${x2} ${y2} Z" 
+                  fill="${color}" 
+                  stroke="rgba(255,255,255,0.9)" 
+                  stroke-width="0.5"/>
+        `;
+    });
+
+    return `
+        <svg width="60" height="50" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <filter id="rainbow-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+                    <feOffset dx="0" dy="2" result="offsetblur"/>
+                    <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.4"/>
+                    </feComponentTransfer>
+                    <feMerge>
+                        <feMergeNode/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            <g filter="url(#rainbow-shadow)" transform="translate(5, 5)">
+                ${stripes}
+                ${circleSegments}
+                <circle cx="25" cy="10" r="8" 
+                        fill="none" 
+                        stroke="rgba(255,255,255,0.9)" 
+                        stroke-width="1.5"/>
+            </g>
+        </svg>
+    `;
+}
+
 // Create combined SVG for all lollipops at a location
 function createCombinedLollipopSVG(visitors) {
     const total = visitors.length;
+
+    // Special rainbow pin for all 6 people
+    if (total === 6) {
+        return createRainbowPinSVG();
+    }
+
     let lollipops = '';
 
     visitors.forEach((visitor, index) => {
@@ -199,7 +268,8 @@ function getSiblingColor(personId) {
         person2: '#27ae60',
         person3: '#f1c40f',
         person4: '#e91e63',
-        person5: '#2196F3'
+        person5: '#2196F3',
+        person6: '#FF69B4'
     };
     return colors[personId] || '#888888';
 }
@@ -232,12 +302,18 @@ function renderMarkers() {
         // Create a single combined icon for all visitors at this location
         const combinedSVG = createCombinedLollipopSVG(visibleVisitors);
 
+        // Use larger size for rainbow pin (all 6 people)
+        const isRainbowPin = visibleVisitors.length === 6;
+        const iconSize = isRainbowPin ? [60, 50] : [50, 40];
+        const iconAnchor = isRainbowPin ? [30, 45] : [25, 35];
+        const popupAnchor = isRainbowPin ? [0, -45] : [0, -35];
+
         const icon = L.divIcon({
             className: 'pin-marker-group',
             html: combinedSVG,
-            iconSize: [50, 40],
-            iconAnchor: [25, 35],
-            popupAnchor: [0, -35]
+            iconSize: iconSize,
+            iconAnchor: iconAnchor,
+            popupAnchor: popupAnchor
         });
 
         const marker = L.marker([location.lat, location.lng], { icon: icon });
@@ -275,6 +351,7 @@ function getVisibleSiblings() {
     if (document.getElementById('toggle-person3').checked) visible.push('person3');
     if (document.getElementById('toggle-person4').checked) visible.push('person4');
     if (document.getElementById('toggle-person5').checked) visible.push('person5');
+    if (document.getElementById('toggle-person6').checked) visible.push('person6');
     return visible;
 }
 
@@ -307,7 +384,7 @@ function updateStats() {
 // Setup event listeners
 function setupEventListeners() {
     // Toggle checkboxes
-    ['person1', 'person2', 'person3', 'person4', 'person5'].forEach(person => {
+    ['person1', 'person2', 'person3', 'person4', 'person5', 'person6'].forEach(person => {
         document.getElementById(`toggle-${person}`).addEventListener('change', () => {
             refreshMap();
         });
@@ -420,40 +497,22 @@ function createStripePatterns() {
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
     // Create patterns for all possible person combinations
-    const persons = ['person1', 'person2', 'person3', 'person4', 'person5'];
-    const combinations = [
-        ['person1'],
-        ['person2'],
-        ['person3'],
-        ['person4'],
-        ['person5'],
-        ['person1', 'person2'],
-        ['person1', 'person3'],
-        ['person1', 'person4'],
-        ['person1', 'person5'],
-        ['person2', 'person3'],
-        ['person2', 'person4'],
-        ['person2', 'person5'],
-        ['person3', 'person4'],
-        ['person3', 'person5'],
-        ['person4', 'person5'],
-        ['person1', 'person2', 'person3'],
-        ['person1', 'person2', 'person4'],
-        ['person1', 'person2', 'person5'],
-        ['person1', 'person3', 'person4'],
-        ['person1', 'person3', 'person5'],
-        ['person1', 'person4', 'person5'],
-        ['person2', 'person3', 'person4'],
-        ['person2', 'person3', 'person5'],
-        ['person2', 'person4', 'person5'],
-        ['person3', 'person4', 'person5'],
-        ['person1', 'person2', 'person3', 'person4'],
-        ['person1', 'person2', 'person3', 'person5'],
-        ['person1', 'person2', 'person4', 'person5'],
-        ['person1', 'person3', 'person4', 'person5'],
-        ['person2', 'person3', 'person4', 'person5'],
-        ['person1', 'person2', 'person3', 'person4', 'person5']
-    ];
+    const persons = ['person1', 'person2', 'person3', 'person4', 'person5', 'person6'];
+
+    // Generate all possible combinations
+    const combinations = [];
+    for (let i = 1; i <= persons.length; i++) {
+        const getCombinations = (arr, size) => {
+            if (size === 1) return arr.map(el => [el]);
+            const result = [];
+            arr.forEach((el, idx) => {
+                const smaller = getCombinations(arr.slice(idx + 1), size - 1);
+                smaller.forEach(combo => result.push([el, ...combo]));
+            });
+            return result;
+        };
+        combinations.push(...getCombinations(persons, i));
+    }
 
     combinations.forEach(combo => {
         const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
