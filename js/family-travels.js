@@ -9,34 +9,66 @@ let mapMode = 'country'; // 'country' or 'proximity' or 'radius'
 let proximityCircles = [];
 let voronoiLayer = null;
 let landGeoJSON = null;
-let showPins = true; // Toggle for showing/hiding pins
+let showPins = true;
+// Lazy cache for stripe patterns — only created when needed
+const createdPatterns = new Set();
+let patternDefs = null;
+
+// Person colors — single source of truth (matches CSS custom properties)
+const PERSON_COLORS = {
+    person1: '#9b59b6',
+    person2: '#27ae60',
+    person3: '#f1c40f',
+    person4: '#e91e63',
+    person5: '#2196F3',
+    person6: '#FF69B4'
+};
+
+// Person initials for colorblind-friendly pins
+const PERSON_INITIALS = {};
+
+// Get color for person
+function getSiblingColor(personId) {
+    return PERSON_COLORS[personId] || '#888888';
+}
+
+// Get initials for person (first letter of name)
+function getPersonInitial(personId) {
+    return PERSON_INITIALS[personId] || '?';
+}
 
 // Initialize the map
 async function initMap() {
-    // Load the data
+    const loadingEl = document.getElementById('map-loading');
+    const errorEl = document.getElementById('map-error');
+    const controlsEl = document.getElementById('controls-panel');
+    const statsEl = document.getElementById('stats-panel');
+    const personStatsEl = document.getElementById('person-stats-panel');
+    const searchEl = document.getElementById('location-search');
+
     try {
         const response = await fetch('data/familyTravels.json');
         familyTravelsData = await response.json();
+
+        // Build initials map from data
+        Object.entries(familyTravelsData.persons).forEach(([id, name]) => {
+            PERSON_INITIALS[id] = name.charAt(0).toUpperCase();
+        });
 
         // Load metros.json and merge person1's US cities
         const metrosResponse = await fetch('data/metros.json');
         const metrosData = await metrosResponse.json();
 
-        // Add all visited metros to person1's locations
         metrosData.forEach(metro => {
             if (metro.visited) {
-                // Check if this location already exists
                 const existingLocation = familyTravelsData.locations.find(loc =>
                     loc.name === metro.name && loc.country === 'United States'
                 );
-
                 if (existingLocation) {
-                    // Add person1 if not already in visitors
                     if (!existingLocation.visitors.includes('person1')) {
                         existingLocation.visitors.push('person1');
                     }
                 } else {
-                    // Add new location for person1
                     familyTravelsData.locations.push({
                         name: metro.name,
                         country: 'United States',
@@ -49,20 +81,24 @@ async function initMap() {
         });
     } catch (error) {
         console.error('Error loading family travels data:', error);
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'block';
         return;
     }
+
+    // Generate traveler toggles from data
+    generateTravelerToggles();
 
     map = L.map('family-map', {
         gestureHandling: true,
         fullscreenControl: true
-    }).setView([20, 0], 2); // World view
+    }).setView([20, 0], 2);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
 
-    // Disable gesture handling in fullscreen mode
     map.on('fullscreenchange', () => {
         if (map.isFullscreen()) {
             map.gestureHandling.disable();
@@ -71,32 +107,95 @@ async function initMap() {
         }
     });
 
-    // Load and render countries
+    // Setup the lazy pattern SVG container
+    setupPatternContainer();
+
     await loadCountries();
 
     renderMarkers();
     updateStats();
     setupEventListeners();
+    setupSearch();
+
+    // Hide loading, show controls
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (controlsEl) controlsEl.style.display = '';
+    if (statsEl) statsEl.style.display = '';
+    if (personStatsEl) personStatsEl.style.display = '';
+    if (searchEl) searchEl.style.display = '';
 }
 
-// Create special rainbow pin for locations visited by all 6 people
-function createRainbowPinSVG() {
-    const colors = ['#9b59b6', '#27ae60', '#f1c40f', '#e91e63', '#2196F3', '#FF69B4'];
+// Generate traveler toggle checkboxes from data
+function generateTravelerToggles() {
+    const container = document.getElementById('traveler-toggles');
+    if (!container || !familyTravelsData) return;
 
-    // Create gradient stripes
-    let stripes = '';
-    const stripeHeight = 25 / 6; // Divide the stick height by 6 colors
-    colors.forEach((color, index) => {
-        stripes += `
-            <rect x="23" y="${10 + (index * stripeHeight)}" 
-                  width="4" height="${stripeHeight}" 
-                  fill="${color}"/>
+    const personIds = Object.keys(familyTravelsData.persons);
+    container.innerHTML = personIds.map(id => {
+        const name = familyTravelsData.persons[id];
+        const num = id.replace('person', '');
+        return `
+            <label class="traveler-toggle">
+                <input type="checkbox" id="toggle-${id}" checked aria-label="Show locations for ${name}">
+                <span class="toggle-label person${num}-color">${name}</span>
+            </label>
         `;
+    }).join('');
+}
+
+// Setup lazy pattern container (no upfront generation of all 63 combos)
+function setupPatternContainer() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.position = 'absolute';
+    svg.style.width = '0';
+    svg.style.height = '0';
+    svg.setAttribute('aria-hidden', 'true');
+    patternDefs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    svg.appendChild(patternDefs);
+    document.body.appendChild(svg);
+}
+
+// Lazily create a stripe pattern only when needed
+function ensureStripePattern(personIds) {
+    const sorted = [...personIds].sort();
+    const patternId = `stripe-${sorted.join('-')}`;
+    if (createdPatterns.has(patternId)) return patternId;
+
+    const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+    pattern.setAttribute('id', patternId);
+    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    pattern.setAttribute('width', sorted.length * 10);
+    pattern.setAttribute('height', sorted.length * 10);
+    pattern.setAttribute('patternTransform', 'rotate(45)');
+
+    sorted.forEach((person, index) => {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', index * 10);
+        rect.setAttribute('y', '0');
+        rect.setAttribute('width', '10');
+        rect.setAttribute('height', sorted.length * 10);
+        rect.setAttribute('fill', getSiblingColor(person));
+        pattern.appendChild(rect);
     });
 
-    // Create rainbow circle segments
+    patternDefs.appendChild(pattern);
+    createdPatterns.add(patternId);
+    return patternId;
+}
+
+// Create special rainbow pin for locations visited by all people
+function createRainbowPinSVG() {
+    const personIds = Object.keys(familyTravelsData.persons);
+    const colors = personIds.map(id => getSiblingColor(id));
+
+    let stripes = '';
+    const stripeHeight = 25 / colors.length;
+    colors.forEach((color, index) => {
+        stripes += `<rect x="23" y="${10 + (index * stripeHeight)}" width="4" height="${stripeHeight}" fill="${color}"/>`;
+    });
+
     let circleSegments = '';
-    const anglePerSegment = 360 / 6;
+    const anglePerSegment = 360 / colors.length;
     colors.forEach((color, index) => {
         const startAngle = index * anglePerSegment - 90;
         const endAngle = (index + 1) * anglePerSegment - 90;
@@ -106,204 +205,112 @@ function createRainbowPinSVG() {
         const y1 = 10 + 8 * Math.sin(startRad);
         const x2 = 25 + 8 * Math.cos(endRad);
         const y2 = 10 + 8 * Math.sin(endRad);
-
-        circleSegments += `
-            <path d="M 25 10 L ${x1} ${y1} A 8 8 0 0 1 ${x2} ${y2} Z" 
-                  fill="${color}" 
-                  stroke="rgba(255,255,255,0.9)" 
-                  stroke-width="0.5"/>
-        `;
+        circleSegments += `<path d="M 25 10 L ${x1} ${y1} A 8 8 0 0 1 ${x2} ${y2} Z" fill="${color}" stroke="rgba(255,255,255,0.9)" stroke-width="0.5"/>`;
     });
 
     return `
-        <svg width="60" height="50" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg">
+        <svg width="60" height="50" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="All family members visited">
             <defs>
                 <filter id="rainbow-shadow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
                     <feOffset dx="0" dy="2" result="offsetblur"/>
-                    <feComponentTransfer>
-                        <feFuncA type="linear" slope="0.4"/>
-                    </feComponentTransfer>
-                    <feMerge>
-                        <feMergeNode/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
+                    <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+                    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
             </defs>
             <g filter="url(#rainbow-shadow)" transform="translate(5, 5)">
                 ${stripes}
                 ${circleSegments}
-                <circle cx="25" cy="10" r="8" 
-                        fill="none" 
-                        stroke="rgba(255,255,255,0.9)" 
-                        stroke-width="1.5"/>
+                <circle cx="25" cy="10" r="8" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
             </g>
         </svg>
     `;
 }
 
-// Create combined SVG for all lollipops at a location
+// Create combined SVG for all lollipops at a location — with initials for colorblind accessibility
 function createCombinedLollipopSVG(visitors) {
+    const totalPersons = Object.keys(familyTravelsData.persons).length;
     const total = visitors.length;
 
-    // Special rainbow pin for all 6 people
-    if (total === 6) {
+    if (total === totalPersons) {
         return createRainbowPinSVG();
     }
 
     let lollipops = '';
-
     visitors.forEach((visitor, index) => {
         const color = getSiblingColor(visitor);
+        const initial = getPersonInitial(visitor);
         let lineX1 = 25, lineY1 = 35;
         let lineX2 = 25, lineY2 = 10;
 
-        if (total === 1) {
-            lineX2 = 25;
-            lineY2 = 10;
-        } else if (total === 2) {
-            if (index === 0) {
-                lineX2 = 19;
-                lineY2 = 10;
-            } else {
-                lineX2 = 31;
-                lineY2 = 10;
-            }
-        } else if (total === 3) {
-            if (index === 0) {
-                lineX2 = 13;
-                lineY2 = 10;
-            } else if (index === 1) {
-                lineX2 = 25;
-                lineY2 = 10;
-            } else {
-                lineX2 = 37;
-                lineY2 = 10;
-            }
-        } else if (total === 4) {
-            // Four circles in a square pattern
-            if (index === 0) {
-                lineX2 = 19;
-                lineY2 = 7;
-            } else if (index === 1) {
-                lineX2 = 31;
-                lineY2 = 7;
-            } else if (index === 2) {
-                lineX2 = 19;
-                lineY2 = 19;
-            } else {
-                lineX2 = 31;
-                lineY2 = 19;
-            }
+        if (total === 1) { lineX2 = 25; lineY2 = 10; }
+        else if (total === 2) { lineX2 = index === 0 ? 19 : 31; lineY2 = 10; }
+        else if (total === 3) { lineX2 = [13, 25, 37][index]; lineY2 = 10; }
+        else if (total === 4) {
+            lineX2 = [19, 31, 19, 31][index];
+            lineY2 = [7, 7, 19, 19][index];
         } else if (total === 5) {
-            // Five circles: four corners + one center
-            if (index === 0) {
-                lineX2 = 16;
-                lineY2 = 7;
-            } else if (index === 1) {
-                lineX2 = 34;
-                lineY2 = 7;
-            } else if (index === 2) {
-                lineX2 = 16;
-                lineY2 = 19;
-            } else if (index === 3) {
-                lineX2 = 34;
-                lineY2 = 19;
-            } else {
-                lineX2 = 25;
-                lineY2 = 13;
-            }
+            lineX2 = [16, 34, 16, 34, 25][index];
+            lineY2 = [7, 7, 19, 19, 13][index];
         }
 
-        // Use rect for vertical lines to ensure consistent width
         if (Math.abs(lineX2 - lineX1) < 0.5) {
             const rectWidth = 3;
             const rectHeight = lineY1 - lineY2;
-            lollipops += `
-                <rect x="${lineX1 - rectWidth / 2}" y="${lineY2}" 
-                      width="${rectWidth}" height="${rectHeight}" 
-                      fill="${color}" rx="1.5"/>
-            `;
+            lollipops += `<rect x="${lineX1 - rectWidth / 2}" y="${lineY2}" width="${rectWidth}" height="${rectHeight}" fill="${color}" rx="1.5"/>`;
         } else {
-            lollipops += `
-                <line x1="${lineX1}" y1="${lineY1}" x2="${lineX2}" y2="${lineY2}" 
-                      stroke="${color}" stroke-width="3" stroke-linecap="round"/>
-            `;
+            lollipops += `<line x1="${lineX1}" y1="${lineY1}" x2="${lineX2}" y2="${lineY2}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>`;
         }
 
-        lollipops += `
-            <circle cx="${lineX2}" cy="${lineY2}" r="6" 
-                    fill="${color}" 
-                    stroke="rgba(255,255,255,0.9)" 
-                    stroke-width="1.5"/>
-        `;
+        lollipops += `<circle cx="${lineX2}" cy="${lineY2}" r="6" fill="${color}" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>`;
+        // Add initial letter for colorblind accessibility
+        lollipops += `<text x="${lineX2}" y="${lineY2 + 3.5}" text-anchor="middle" font-size="7" font-weight="bold" fill="white" style="pointer-events:none">${initial}</text>`;
     });
 
+    const label = visitors.map(v => familyTravelsData.persons[v]).join(', ');
     return `
-        <svg width="50" height="40" viewBox="0 0 50 40" xmlns="http://www.w3.org/2000/svg">
+        <svg width="50" height="40" viewBox="0 0 50 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Visited by ${label}">
             <defs>
                 <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
                     <feOffset dx="0" dy="1" result="offsetblur"/>
-                    <feComponentTransfer>
-                        <feFuncA type="linear" slope="0.3"/>
-                    </feComponentTransfer>
-                    <feMerge>
-                        <feMergeNode/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
+                    <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+                    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
             </defs>
-            <g filter="url(#shadow)">
-                ${lollipops}
-            </g>
+            <g filter="url(#shadow)">${lollipops}</g>
         </svg>
     `;
 }
 
-// Get color for person
-function getSiblingColor(personId) {
-    const colors = {
-        person1: '#9b59b6',
-        person2: '#27ae60',
-        person3: '#f1c40f',
-        person4: '#e91e63',
-        person5: '#2196F3',
-        person6: '#FF69B4'
-    };
-    return colors[personId] || '#888888';
-}
-
-// Calculate pin offset for multiple pins at same location
-function calculatePinOffset(index, total) {
-    // All pins anchor at the same point - no offset needed
-    return [0, 0];
+// Get currently visible persons based on checkboxes
+function getVisibleSiblings() {
+    const visible = [];
+    Object.keys(familyTravelsData.persons).forEach(id => {
+        const el = document.getElementById(`toggle-${id}`);
+        if (el && el.checked) visible.push(id);
+    });
+    return visible;
 }
 
 // Render all markers
 function renderMarkers() {
-    // Clear existing markers
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
 
-    // If pins are hidden, don't render any markers
     if (!showPins) return;
 
     const visibleSiblings = getVisibleSiblings();
+    const allPersonIds = Object.keys(familyTravelsData.persons);
 
     familyTravelsData.locations.forEach(location => {
-        // Filter visitors based on visible persons
         const visibleVisitors = location.visitors.filter(v => visibleSiblings.includes(v));
-
-        // Skip if no visible visitors or if filtering for shared only
         if (visibleVisitors.length === 0) return;
         if (currentFilter === 'shared' && visibleVisitors.length < 2) return;
 
-        // Create a single combined icon for all visitors at this location
         const combinedSVG = createCombinedLollipopSVG(visibleVisitors);
-
-        // Use larger size for rainbow pin (all 6 people)
-        const isRainbowPin = visibleVisitors.length === 6;
+        const totalPersons = allPersonIds.length;
+        const isRainbowPin = visibleVisitors.length === totalPersons;
         const iconSize = isRainbowPin ? [60, 50] : [50, 40];
         const iconAnchor = isRainbowPin ? [30, 45] : [25, 35];
         const popupAnchor = isRainbowPin ? [0, -45] : [0, -35];
@@ -317,22 +324,24 @@ function renderMarkers() {
         });
 
         const marker = L.marker([location.lat, location.lng], { icon: icon });
-
         const popupContent = createPopupContent(location, visibleVisitors);
         marker.bindPopup(popupContent);
-
         marker.addTo(map);
         markers.push(marker);
     });
 }
 
-// Create popup content
+// Create popup content — now includes "not visited by" info
 function createPopupContent(location, visitors) {
-    const personNames = visitors.map(v => familyTravelsData.persons[v]);
+    const allPersonIds = Object.keys(familyTravelsData.persons);
     const visitorTags = visitors.map(v => {
-        const name = familyTravelsData.persons[v];
-        return `<span class="popup-visitor ${v}">${name}</span>`;
+        return `<span class="popup-visitor ${v}">${familyTravelsData.persons[v]}</span>`;
     }).join('');
+
+    const notVisited = allPersonIds.filter(id => !location.visitors.includes(id));
+    const notVisitedText = notVisited.length > 0 && notVisited.length < allPersonIds.length
+        ? `<div class="popup-not-visited">Not yet: ${notVisited.map(v => familyTravelsData.persons[v]).join(', ')}</div>`
+        : '';
 
     return `
         <div class="popup-location-name">${location.name}</div>
@@ -340,33 +349,20 @@ function createPopupContent(location, visitors) {
             <strong>Visited by:</strong><br>
             ${visitorTags}
         </div>
+        ${notVisitedText}
     `;
 }
 
-// Get currently visible persons based on checkboxes
-function getVisibleSiblings() {
-    const visible = [];
-    if (document.getElementById('toggle-person1').checked) visible.push('person1');
-    if (document.getElementById('toggle-person2').checked) visible.push('person2');
-    if (document.getElementById('toggle-person3').checked) visible.push('person3');
-    if (document.getElementById('toggle-person4').checked) visible.push('person4');
-    if (document.getElementById('toggle-person5').checked) visible.push('person5');
-    if (document.getElementById('toggle-person6').checked) visible.push('person6');
-    return visible;
-}
-
-// Update statistics
+// Update statistics — including per-person counts
 function updateStats() {
     const visibleSiblings = getVisibleSiblings();
 
-    // Filter locations based on visible persons
     const visibleLocations = familyTravelsData.locations.filter(loc => {
         const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
         return visibleVisitors.length > 0;
     });
 
     const totalLocations = visibleLocations.length;
-
     const sharedLocations = visibleLocations.filter(loc => {
         const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
         return visibleVisitors.length >= 2;
@@ -379,37 +375,63 @@ function updateStats() {
     document.getElementById('total-locations').textContent = totalLocations;
     document.getElementById('shared-locations').textContent = sharedLocations;
     document.getElementById('overlap-percent').textContent = overlapPercent + '%';
+
+    // Per-person stats
+    const personStatsEl = document.getElementById('person-stats-panel');
+    if (personStatsEl) {
+        const personIds = Object.keys(familyTravelsData.persons);
+        personStatsEl.innerHTML = personIds.map(id => {
+            const name = familyTravelsData.persons[id];
+            const color = getSiblingColor(id);
+            const count = familyTravelsData.locations.filter(loc => loc.visitors.includes(id)).length;
+            const isVisible = visibleSiblings.includes(id);
+            return `
+                <div class="person-stat" style="opacity: ${isVisible ? 1 : 0.4}">
+                    <span class="person-stat-dot" style="background-color: ${color}"></span>
+                    <span class="person-stat-name">${name}:</span>
+                    <span class="person-stat-count">${count}</span>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 // Setup event listeners
 function setupEventListeners() {
-    // Toggle checkboxes
-    ['person1', 'person2', 'person3', 'person4', 'person5', 'person6'].forEach(person => {
+    Object.keys(familyTravelsData.persons).forEach(person => {
         document.getElementById(`toggle-${person}`).addEventListener('change', () => {
             refreshMap();
         });
     });
 
-    // Show all button
-    document.getElementById('show-all').addEventListener('click', () => {
+    const showAllBtn = document.getElementById('show-all');
+    const showSharedBtn = document.getElementById('show-shared');
+
+    showAllBtn.addEventListener('click', () => {
         currentFilter = 'all';
+        showAllBtn.classList.add('active');
+        showAllBtn.setAttribute('aria-pressed', 'true');
+        showSharedBtn.classList.remove('active');
+        showSharedBtn.setAttribute('aria-pressed', 'false');
         refreshMap();
     });
 
-    // Show shared only button
-    document.getElementById('show-shared').addEventListener('click', () => {
+    showSharedBtn.addEventListener('click', () => {
         currentFilter = 'shared';
+        showSharedBtn.classList.add('active');
+        showSharedBtn.setAttribute('aria-pressed', 'true');
+        showAllBtn.classList.remove('active');
+        showAllBtn.setAttribute('aria-pressed', 'false');
         refreshMap();
     });
 
-    // Toggle pins button
     document.getElementById('toggle-pins').addEventListener('click', (e) => {
         showPins = !showPins;
         e.target.textContent = showPins ? 'Hide Pins' : 'Show Pins';
+        e.target.setAttribute('aria-pressed', !showPins);
         renderMarkers();
     });
 
-    // Map mode toggle
     document.querySelectorAll('input[name="map-mode"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             mapMode = e.target.value;
@@ -418,29 +440,90 @@ function setupEventListeners() {
     });
 }
 
+// Location search functionality
+function setupSearch() {
+    const input = document.getElementById('search-input');
+    const resultsContainer = document.getElementById('search-results');
+    if (!input || !resultsContainer) return;
+
+    let debounceTimer;
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const query = input.value.trim().toLowerCase();
+            if (query.length < 2) {
+                resultsContainer.classList.remove('visible');
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            const matches = familyTravelsData.locations
+                .filter(loc => loc.name.toLowerCase().includes(query) || loc.country.toLowerCase().includes(query))
+                .slice(0, 15);
+
+            if (matches.length === 0) {
+                resultsContainer.classList.remove('visible');
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            resultsContainer.innerHTML = matches.map((loc, i) => {
+                const dots = loc.visitors.map(v =>
+                    `<span class="search-result-dot" style="background-color:${getSiblingColor(v)}" title="${familyTravelsData.persons[v]}"></span>`
+                ).join('');
+                return `
+                    <div class="search-result-item" role="option" tabindex="0" data-index="${i}" data-lat="${loc.lat}" data-lng="${loc.lng}">
+                        <div>
+                            <span class="search-result-name">${loc.name}</span>
+                            <span class="search-result-country"> — ${loc.country}</span>
+                        </div>
+                        <div class="search-result-visitors">${dots}</div>
+                    </div>
+                `;
+            }).join('');
+            resultsContainer.classList.add('visible');
+
+            // Attach click handlers
+            resultsContainer.querySelectorAll('.search-result-item').forEach(item => {
+                const handler = () => {
+                    const lat = parseFloat(item.dataset.lat);
+                    const lng = parseFloat(item.dataset.lng);
+                    map.setView([lat, lng], 10);
+                    // Open the popup for the matching marker
+                    markers.forEach(m => {
+                        const pos = m.getLatLng();
+                        if (Math.abs(pos.lat - lat) < 0.001 && Math.abs(pos.lng - lng) < 0.001) {
+                            m.openPopup();
+                        }
+                    });
+                    resultsContainer.classList.remove('visible');
+                    input.value = '';
+                };
+                item.addEventListener('click', handler);
+                item.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') handler();
+                });
+            });
+        }, 200);
+    });
+
+    // Close search results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.location-search')) {
+            resultsContainer.classList.remove('visible');
+        }
+    });
+}
+
 // Refresh the entire map based on current settings
 function refreshMap() {
     if (mapMode === 'country') {
-        // Remove Voronoi layer if it exists
-        if (voronoiLayer) {
-            map.removeLayer(voronoiLayer);
-            voronoiLayer = null;
-        }
-        // Restore country layer visibility
-        if (countryLayer) {
-            countryLayer.setStyle(feature => styleCountry(feature));
-        }
+        if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
+        if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
         clearProximityCircles();
     } else if (mapMode === 'proximity') {
-        // Remove Voronoi layer if it exists
-        if (voronoiLayer) {
-            map.removeLayer(voronoiLayer);
-            voronoiLayer = null;
-        }
-        // Restore country layer visibility
-        if (countryLayer) {
-            countryLayer.setStyle(feature => styleCountry(feature));
-        }
+        if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
+        if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
         applyProximityColoring();
     } else if (mapMode === 'radius') {
         applyRadiusColoring();
@@ -453,14 +536,12 @@ function refreshMap() {
 document.addEventListener('DOMContentLoaded', initMap);
 
 // Load and render countries with visitor coloring
+// Using 110m resolution for faster loading (was 50m)
 async function loadCountries() {
     try {
-        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson');
+        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson');
         const geojson = await response.json();
-        landGeoJSON = geojson; // Store for Voronoi calculations
-
-        // Create SVG patterns for striped fills
-        createStripePatterns();
+        landGeoJSON = geojson;
 
         countryLayer = L.geoJSON(geojson, {
             style: feature => styleCountry(feature),
@@ -486,65 +567,9 @@ async function loadCountries() {
     }
 }
 
-// Create SVG stripe patterns for country fills
-function createStripePatterns() {
-    // Create a hidden SVG element to hold pattern definitions
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.style.position = 'absolute';
-    svg.style.width = '0';
-    svg.style.height = '0';
-
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-
-    // Create patterns for all possible person combinations
-    const persons = ['person1', 'person2', 'person3', 'person4', 'person5', 'person6'];
-
-    // Generate all possible combinations
-    const combinations = [];
-    for (let i = 1; i <= persons.length; i++) {
-        const getCombinations = (arr, size) => {
-            if (size === 1) return arr.map(el => [el]);
-            const result = [];
-            arr.forEach((el, idx) => {
-                const smaller = getCombinations(arr.slice(idx + 1), size - 1);
-                smaller.forEach(combo => result.push([el, ...combo]));
-            });
-            return result;
-        };
-        combinations.push(...getCombinations(persons, i));
-    }
-
-    combinations.forEach(combo => {
-        const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
-        const patternId = `stripe-${combo.join('-')}`;
-        pattern.setAttribute('id', patternId);
-        pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-        pattern.setAttribute('width', combo.length * 10);
-        pattern.setAttribute('height', combo.length * 10);
-        pattern.setAttribute('patternTransform', 'rotate(45)');
-
-        combo.forEach((person, index) => {
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', index * 10);
-            rect.setAttribute('y', '0');
-            rect.setAttribute('width', '10');
-            rect.setAttribute('height', combo.length * 10);
-            rect.setAttribute('fill', getSiblingColor(person));
-            pattern.appendChild(rect);
-        });
-
-        defs.appendChild(pattern);
-    });
-
-    svg.appendChild(defs);
-    document.body.appendChild(svg);
-}
-
 // Get visitors for a country
 function getCountryVisitors(countryName) {
     const visitors = new Set();
-
-    // Normalize country name for matching
     const normalizedName = normalizeCountryName(countryName);
 
     familyTravelsData.locations.forEach(location => {
@@ -565,11 +590,10 @@ function normalizeCountryName(name) {
         'United Kingdom': 'United Kingdom',
         'UK': 'United Kingdom'
     };
-
     return mappings[name] || name;
 }
 
-// Style a country based on visitors
+// Style a country based on visitors — uses lazy pattern creation
 function styleCountry(feature) {
     const countryName = feature.properties.ADMIN;
     const allVisitors = getCountryVisitors(countryName);
@@ -577,40 +601,12 @@ function styleCountry(feature) {
     const visibleVisitors = allVisitors.filter(v => visibleSiblings.includes(v));
 
     if (visibleVisitors.length === 0) {
-        // Not visited or all visitors filtered out
-        return {
-            fillColor: '#e0e0e0',
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.2
-        };
+        return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
     } else if (visibleVisitors.length === 1) {
-        // Single visitor - solid color
-        return {
-            fillColor: getSiblingColor(visibleVisitors[0]),
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.3
-        };
+        return { fillColor: getSiblingColor(visibleVisitors[0]), weight: 1, opacity: 1, color: 'white', fillOpacity: 0.3 };
     } else {
-        // Multiple visitors - use striped pattern
-        const patternId = `stripe-${visibleVisitors.sort().join('-')}`;
-        return {
-            fillColor: `url(#${patternId})`,
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.3
-        };
-    }
-}
-
-// Refresh country colors when filters change
-function refreshCountries() {
-    if (countryLayer) {
-        countryLayer.setStyle(feature => styleCountry(feature));
+        const patternId = ensureStripePattern(visibleVisitors);
+        return { fillColor: `url(#${patternId})`, weight: 1, opacity: 1, color: 'white', fillOpacity: 0.3 };
     }
 }
 
@@ -626,89 +622,45 @@ function applyProximityColoring() {
 
     const visibleSiblings = getVisibleSiblings();
 
-    // Get all visible locations
     const visibleLocations = familyTravelsData.locations.filter(loc => {
         const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
-        if (currentFilter === 'shared') {
-            return visibleVisitors.length >= 2;
-        }
+        if (currentFilter === 'shared') return visibleVisitors.length >= 2;
         return visibleVisitors.length > 0;
     });
 
-    // Color countries based on closest pin
     if (countryLayer) {
         countryLayer.setStyle(feature => {
             const countryCenter = getCountryCenter(feature);
             if (!countryCenter) {
-                return {
-                    fillColor: '#e0e0e0',
-                    weight: 1,
-                    opacity: 1,
-                    color: 'white',
-                    fillOpacity: 0.2
-                };
+                return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
             }
 
-            // Find closest location
             let closestLocation = null;
             let minDistance = Infinity;
-
             visibleLocations.forEach(loc => {
-                const distance = calculateDistance(
-                    countryCenter.lat, countryCenter.lng,
-                    loc.lat, loc.lng
-                );
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestLocation = loc;
-                }
+                const distance = calculateDistance(countryCenter.lat, countryCenter.lng, loc.lat, loc.lng);
+                if (distance < minDistance) { minDistance = distance; closestLocation = loc; }
             });
 
             if (!closestLocation) {
-                return {
-                    fillColor: '#e0e0e0',
-                    weight: 1,
-                    opacity: 1,
-                    color: 'white',
-                    fillOpacity: 0.2
-                };
+                return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
             }
 
             const visibleVisitors = closestLocation.visitors.filter(v => visibleSiblings.includes(v));
-
             if (visibleVisitors.length === 1) {
-                return {
-                    fillColor: getSiblingColor(visibleVisitors[0]),
-                    weight: 1,
-                    opacity: 1,
-                    color: 'white',
-                    fillOpacity: 0.3
-                };
+                return { fillColor: getSiblingColor(visibleVisitors[0]), weight: 1, opacity: 1, color: 'white', fillOpacity: 0.3 };
             } else {
-                // Multiple visitors - use striped pattern
-                const patternId = `stripe-${visibleVisitors.sort().join('-')}`;
-                return {
-                    fillColor: `url(#${patternId})`,
-                    weight: 1,
-                    opacity: 1,
-                    color: 'white',
-                    fillOpacity: 0.3
-                };
+                const patternId = ensureStripePattern(visibleVisitors);
+                return { fillColor: `url(#${patternId})`, weight: 1, opacity: 1, color: 'white', fillOpacity: 0.3 };
             }
         });
     }
 
-    // Add circles for locations with multiple visitors
     visibleLocations.forEach(loc => {
         const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
-
         if (visibleVisitors.length >= 2) {
-            // Create striped pattern for circle
-            const patternId = `stripe-${visibleVisitors.sort().join('-')}`;
-
-            // 100 miles = approximately 160934 meters
             const circle = L.circle([loc.lat, loc.lng], {
-                radius: 160934, // 100 miles in meters
+                radius: 160934,
                 fillColor: getSiblingColor(visibleVisitors[0]),
                 fillOpacity: 0.4,
                 color: 'white',
@@ -716,17 +668,8 @@ function applyProximityColoring() {
                 className: 'proximity-circle'
             });
 
-            // For multiple visitors, we need to create a custom styled circle
             if (visibleVisitors.length > 1) {
-                circle.setStyle({
-                    fillColor: getSiblingColor(visibleVisitors[0]),
-                    fillOpacity: 0.4,
-                    color: 'white',
-                    weight: 2
-                });
-
-                // Add a second circle with different color for striped effect
-                visibleVisitors.slice(1).forEach((visitor, index) => {
+                visibleVisitors.slice(1).forEach(visitor => {
                     const overlayCircle = L.circle([loc.lat, loc.lng], {
                         radius: 160934,
                         fillColor: getSiblingColor(visitor),
@@ -747,58 +690,37 @@ function applyProximityColoring() {
                     Shared by: ${visibleVisitors.map(v => familyTravelsData.persons[v]).join(', ')}
                 </div>
             `);
-
             circle.addTo(map);
             proximityCircles.push(circle);
         }
     });
 }
 
-// Get the center point of a country (using centroid)
+// Geo utility functions
+
 function getCountryCenter(feature) {
     if (!feature.geometry) return null;
-
-    // For polygons, calculate centroid
     if (feature.geometry.type === 'Polygon') {
-        const coords = feature.geometry.coordinates[0];
-        return calculateCentroid(coords);
+        return calculateCentroid(feature.geometry.coordinates[0]);
     } else if (feature.geometry.type === 'MultiPolygon') {
-        // For multipolygon, use the largest polygon
         let largestPolygon = feature.geometry.coordinates[0][0];
         let maxArea = 0;
-
         feature.geometry.coordinates.forEach(polygon => {
             const area = calculatePolygonArea(polygon[0]);
-            if (area > maxArea) {
-                maxArea = area;
-                largestPolygon = polygon[0];
-            }
+            if (area > maxArea) { maxArea = area; largestPolygon = polygon[0]; }
         });
-
         return calculateCentroid(largestPolygon);
     }
-
     return null;
 }
 
-// Calculate centroid of a polygon
 function calculateCentroid(coords) {
-    let latSum = 0;
-    let lngSum = 0;
-    let count = coords.length;
-
-    coords.forEach(coord => {
-        lngSum += coord[0];
-        latSum += coord[1];
-    });
-
-    return {
-        lat: latSum / count,
-        lng: lngSum / count
-    };
+    let latSum = 0, lngSum = 0;
+    const count = coords.length;
+    coords.forEach(coord => { lngSum += coord[0]; latSum += coord[1]; });
+    return { lat: latSum / count, lng: lngSum / count };
 }
 
-// Calculate approximate area of a polygon (for finding largest in multipolygon)
 function calculatePolygonArea(coords) {
     let area = 0;
     for (let i = 0; i < coords.length - 1; i++) {
@@ -808,142 +730,40 @@ function calculatePolygonArea(coords) {
     return Math.abs(area / 2);
 }
 
-// Calculate distance between two points using Haversine formula
 function calculateDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
-
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
         Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function toRad(degrees) {
     return degrees * (Math.PI / 180);
 }
 
-
-// Apply radius-based coloring (Voronoi-style)
-function applyRadiusColoring() {
-    clearProximityCircles();
-
-    const visibleSiblings = getVisibleSiblings();
-
-    // Get all visible locations
-    const visibleLocations = familyTravelsData.locations.filter(loc => {
-        const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
-        if (currentFilter === 'shared') {
-            return visibleVisitors.length >= 2;
-        }
-        return visibleVisitors.length > 0;
-    });
-
-    // Color countries based on closest pin to each point
-    if (countryLayer) {
-        countryLayer.setStyle(feature => styleCountryByRadius(feature, visibleLocations, visibleSiblings));
-    }
-
-    // Add circles for locations with multiple visitors
-    visibleLocations.forEach(loc => {
-        const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
-
-        if (visibleVisitors.length >= 2) {
-            // 100 miles = approximately 160934 meters
-            const circle = L.circle([loc.lat, loc.lng], {
-                radius: 160934, // 100 miles in meters
-                fillColor: getSiblingColor(visibleVisitors[0]),
-                fillOpacity: 0.4,
-                color: 'white',
-                weight: 2,
-                className: 'proximity-circle'
-            });
-
-            // For multiple visitors, add overlay circles
-            if (visibleVisitors.length > 1) {
-                circle.setStyle({
-                    fillColor: getSiblingColor(visibleVisitors[0]),
-                    fillOpacity: 0.4,
-                    color: 'white',
-                    weight: 2
-                });
-
-                visibleVisitors.slice(1).forEach((visitor, index) => {
-                    const overlayCircle = L.circle([loc.lat, loc.lng], {
-                        radius: 160934,
-                        fillColor: getSiblingColor(visitor),
-                        fillOpacity: 0.2,
-                        color: 'transparent',
-                        weight: 0,
-                        className: 'proximity-circle-overlay'
-                    });
-                    overlayCircle.addTo(map);
-                    proximityCircles.push(overlayCircle);
-                });
-            }
-
-            circle.bindPopup(`
-                <div class="popup-location-name">${loc.name}</div>
-                <div class="popup-visitors">
-                    <strong>100-mile radius</strong><br>
-                    Shared by: ${visibleVisitors.map(v => familyTravelsData.persons[v]).join(', ')}
-                </div>
-            `);
-
-            circle.addTo(map);
-            proximityCircles.push(circle);
-        }
-    });
-}
-
 // Style country by radius (checking multiple points within the country)
 function styleCountryByRadius(feature, visibleLocations, visibleSiblings) {
     if (!feature.geometry || visibleLocations.length === 0) {
-        return {
-            fillColor: '#e0e0e0',
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.2
-        };
+        return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
     }
 
-    // Sample multiple points within the country to determine dominant color
     const samplePoints = getSamplePointsFromGeometry(feature.geometry);
-
     if (samplePoints.length === 0) {
-        return {
-            fillColor: '#e0e0e0',
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.2
-        };
+        return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
     }
 
-    // For each sample point, find the closest location
     const closestLocations = samplePoints.map(point => {
-        let closestLoc = null;
-        let minDistance = Infinity;
-
+        let closestLoc = null, minDistance = Infinity;
         visibleLocations.forEach(loc => {
-            const distance = calculateDistance(
-                point.lat, point.lng,
-                loc.lat, loc.lng
-            );
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestLoc = loc;
-            }
+            const distance = calculateDistance(point.lat, point.lng, loc.lat, loc.lng);
+            if (distance < minDistance) { minDistance = distance; closestLoc = loc; }
         });
-
         return closestLoc;
     });
 
-    // Count which location is closest most often
     const locationCounts = {};
     closestLocations.forEach(loc => {
         if (loc) {
@@ -952,92 +772,51 @@ function styleCountryByRadius(feature, visibleLocations, visibleSiblings) {
         }
     });
 
-    // Find the most common closest location
-    let dominantLocation = null;
-    let maxCount = 0;
+    let dominantLocation = null, maxCount = 0;
     Object.keys(locationCounts).forEach(key => {
         if (locationCounts[key] > maxCount) {
             maxCount = locationCounts[key];
             const [lat, lng] = key.split(',').map(Number);
-            dominantLocation = visibleLocations.find(loc =>
-                loc.lat === lat && loc.lng === lng
-            );
+            dominantLocation = visibleLocations.find(loc => loc.lat === lat && loc.lng === lng);
         }
     });
 
     if (!dominantLocation) {
-        return {
-            fillColor: '#e0e0e0',
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.2
-        };
+        return { fillColor: '#e0e0e0', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.2 };
     }
 
     const visibleVisitors = dominantLocation.visitors.filter(v => visibleSiblings.includes(v));
-
     if (visibleVisitors.length === 1) {
-        return {
-            fillColor: getSiblingColor(visibleVisitors[0]),
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.35
-        };
+        return { fillColor: getSiblingColor(visibleVisitors[0]), weight: 1, opacity: 1, color: 'white', fillOpacity: 0.35 };
     } else {
-        // Multiple visitors - use striped pattern
-        const patternId = `stripe-${visibleVisitors.sort().join('-')}`;
-        return {
-            fillColor: `url(#${patternId})`,
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.35
-        };
+        const patternId = ensureStripePattern(visibleVisitors);
+        return { fillColor: `url(#${patternId})`, weight: 1, opacity: 1, color: 'white', fillOpacity: 0.35 };
     }
 }
 
-// Get sample points from a geometry (for radius coloring)
 function getSamplePointsFromGeometry(geometry) {
     const points = [];
-
     if (geometry.type === 'Polygon') {
         points.push(...samplePolygon(geometry.coordinates[0]));
     } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach(polygon => {
-            points.push(...samplePolygon(polygon[0]));
-        });
+        geometry.coordinates.forEach(polygon => points.push(...samplePolygon(polygon[0])));
     }
-
     return points;
 }
 
-// Sample points from a polygon (get centroid and boundary points)
 function samplePolygon(coords) {
     const points = [];
-
-    // Add centroid
     const centroid = calculateCentroid(coords);
     points.push(centroid);
 
-    // Add some boundary points (every 10th point to avoid too many samples)
     const step = Math.max(1, Math.floor(coords.length / 10));
     for (let i = 0; i < coords.length; i += step) {
-        points.push({
-            lat: coords[i][1],
-            lng: coords[i][0]
-        });
+        points.push({ lat: coords[i][1], lng: coords[i][0] });
     }
 
-    // Add midpoints between centroid and boundary
     const midStep = Math.max(1, Math.floor(coords.length / 5));
     for (let i = 0; i < coords.length; i += midStep) {
-        points.push({
-            lat: (centroid.lat + coords[i][1]) / 2,
-            lng: (centroid.lng + coords[i][0]) / 2
-        });
+        points.push({ lat: (centroid.lat + coords[i][1]) / 2, lng: (centroid.lng + coords[i][0]) / 2 });
     }
-
     return points;
 }

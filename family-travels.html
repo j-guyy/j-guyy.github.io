@@ -4,13 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Travel Map</title>
+    <title>Family Travel Map — Where We've Been</title>
+    <meta name="description"
+        content="Interactive family travel map showing locations visited by family members across the world, with filtering, proximity coloring, and shared location tracking.">
+    <meta property="og:title" content="Family Travel Map — Where We've Been">
+    <meta property="og:description"
+        content="Interactive map tracking family travel locations worldwide with per-person filtering and overlap analysis.">
+    <meta property="og:type" content="website">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/map.css">
     <link rel="stylesheet" href="css/family-travels.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
     <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
         rel='stylesheet' />
@@ -29,39 +35,22 @@
         </div>
 
         <div class="section">
-            <div class="controls-panel">
-                <div class="traveler-toggles">
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person1" checked>
-                        <span class="toggle-label person1-color">Justin</span>
-                    </label>
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person2" checked>
-                        <span class="toggle-label person2-color">Alex</span>
-                    </label>
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person3" checked>
-                        <span class="toggle-label person3-color">Mike</span>
-                    </label>
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person4" checked>
-                        <span class="toggle-label person4-color">Sarah</span>
-                    </label>
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person5" checked>
-                        <span class="toggle-label person5-color">Dad</span>
-                    </label>
-                    <label class="traveler-toggle">
-                        <input type="checkbox" id="toggle-person6" checked>
-                        <span class="toggle-label person6-color">Mom</span>
-                    </label>
+            <!-- Loading indicator -->
+            <div id="map-loading" class="map-loading" role="status" aria-live="polite">
+                <div class="loading-spinner"></div>
+                <span>Loading map data…</span>
+            </div>
+
+            <div class="controls-panel" id="controls-panel" style="display:none;">
+                <div class="traveler-toggles" id="traveler-toggles" role="group" aria-label="Filter by family member">
+                    <!-- Generated dynamically from data -->
                 </div>
-                <div class="filter-buttons">
-                    <button id="show-all">Show All</button>
-                    <button id="show-shared">Shared Only</button>
-                    <button id="toggle-pins">Hide Pins</button>
+                <div class="filter-buttons" role="group" aria-label="Location filters">
+                    <button id="show-all" class="filter-btn active" aria-pressed="true">Show All</button>
+                    <button id="show-shared" class="filter-btn" aria-pressed="false">Shared Only</button>
+                    <button id="toggle-pins" aria-pressed="false">Hide Pins</button>
                 </div>
-                <div class="map-mode-toggle">
+                <div class="map-mode-toggle" role="radiogroup" aria-label="Map coloring mode">
                     <label class="mode-toggle">
                         <input type="radio" name="map-mode" value="country" checked>
                         <span class="mode-label">Country Coloring</span>
@@ -77,7 +66,7 @@
                 </div>
             </div>
 
-            <div class="stats-panel">
+            <div class="stats-panel" id="stats-panel" style="display:none;" aria-label="Travel statistics">
                 <div class="stat-card">
                     <div class="stat-value" id="total-locations">0</div>
                     <div class="stat-label">Total Locations</div>
@@ -92,13 +81,31 @@
                 </div>
             </div>
 
+            <!-- Per-person stats -->
+            <div class="person-stats-panel" id="person-stats-panel" style="display:none;"
+                aria-label="Per-person location counts">
+                <!-- Generated dynamically -->
+            </div>
+
+            <!-- Location search -->
+            <div class="location-search" id="location-search" style="display:none;">
+                <input type="text" id="search-input" placeholder="Search locations…"
+                    aria-label="Search locations by name" autocomplete="off">
+                <div id="search-results" class="search-results" role="listbox" aria-label="Search results"></div>
+            </div>
+
             <div class="map-container">
-                <div id="family-map"></div>
+                <div id="family-map" role="application" aria-label="Interactive family travel map"></div>
+            </div>
+
+            <!-- Error message (hidden by default) -->
+            <div id="map-error" class="map-error" style="display:none;" role="alert">
+                <p>Unable to load map data. Please check your connection and try refreshing the page.</p>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script src="js/family-travels.js"></script>
