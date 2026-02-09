@@ -2,7 +2,10 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     Promise.all([
-        fetch('data/countries.json').then(response => response.json()),
+        loadCountriesWithPopulation('data/countries.json', function (updatedData) {
+            // Re-render summary when live population arrives
+            displayWorldTravelSummary(updatedData);
+        }),
         fetch('data/worldCities.json').then(response => response.json()),
         fetch('data/metros.json').then(response => response.json()),
         fetch('data/worldHighPoints.json').then(response => response.json())

@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
-    fetch('/data/countries.json')
-        .then(response => response.json())
+    loadCountriesWithPopulation('data/countries.json', function (updatedData) {
+        // Re-render when live population data arrives
+        worldData = updatedData;
+        displayWorldTravelSummary();
+        updateTable(document.getElementById('table-selector').value);
+    })
         .then(data => {
             worldData = data;
             displayWorldTravelSummary();
