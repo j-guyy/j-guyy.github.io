@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/worldHighPoints.json').then(response => response.json())
     ])
         .then(([worldData, citiesData, metrosData, highPointsData]) => {
+            displayWorldTravelSummary(worldData);
             const worldBounds = L.latLngBounds(
                 L.latLng(-60, -180),
                 L.latLng(85, 180)
@@ -18,13 +19,75 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
+function displayWorldTravelSummary(worldData) {
+    const summaryContainer = document.getElementById('travel-summary');
+    if (!summaryContainer) return;
+
+    const continents = [
+        { key: 'northAmericanCountries', label: 'North America' },
+        { key: 'southAmericanCountries', label: 'South America' },
+        { key: 'europeanCountries', label: 'Europe' },
+        { key: 'asianCountries', label: 'Asia' },
+        { key: 'africanCountries', label: 'Africa' },
+        { key: 'oceaniaCountries', label: 'Oceania' }
+    ];
+
+    let totalCountries = 0;
+    let totalVisited = 0;
+    const stats = continents.map(c => {
+        const countries = worldData[c.key];
+        const visited = countries.filter(x => x.visited).length;
+        totalCountries += countries.length;
+        totalVisited += visited;
+        return { label: c.label, visited, total: countries.length, pct: ((visited / countries.length) * 100).toFixed(0) };
+    });
+
+    const totalPct = ((totalVisited / totalCountries) * 100).toFixed(0);
+
+    summaryContainer.innerHTML = `
+        <div class="summary-stats-container">
+            <div class="summary-stat world-summary">
+                <div class="stat-number-container">
+                    <span class="stat-number">${totalVisited}</span>
+                    <span class="stat-total">/${totalCountries}</span>
+                    <span class="stat-percentage">(${totalPct}%)</span>
+                </div>
+                <span class="stat-label">Countries Visited</span>
+            </div>
+            <div class="other-stats">
+                ${stats.map(s => `
+                    <div class="summary-stat">
+                        <div class="stat-number-container">
+                            <span class="stat-number">${s.visited}</span>
+                            <span class="stat-total">/${s.total}</span>
+                            <span class="stat-percentage">(${s.pct}%)</span>
+                        </div>
+                        <span class="stat-label">${s.label}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
 function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData, centerLat, centerLng, zoom, bounds) {
     const map = L.map(mapId, {
         center: [centerLat, centerLng],
         zoom: zoom,
         zoomSnap: 0.1,
         zoomDelta: 0.5,
-        wheelPxPerZoomLevel: 120
+        wheelPxPerZoomLevel: 120,
+        gestureHandling: true,
+        fullscreenControl: true
+    });
+
+    // Disable gesture handling in fullscreen mode
+    map.on('fullscreenchange', () => {
+        if (map.isFullscreen()) {
+            map.gestureHandling.disable();
+        } else {
+            map.gestureHandling.enable();
+        }
     });
 
     // Use your existing tile layer
@@ -71,7 +134,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                     } else if (countryData && countryData.visited) {
                         status = 'Visited';
                     } else {
-                        status = 'Not yet visited';
+                        status = 'Not yet Visited';
                     }
 
                     layer.bindPopup(`
@@ -185,11 +248,11 @@ function createWorldLegend(map) {
     legend.onAdd = function (map) {
         const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
-            <div style="background-color: rgba(255, 193, 7, 0.7); padding: 5px;">Home Country</div>
-            <div style="background-color: rgba(76, 175, 80, 0.7); padding: 5px;">Visited Countries</div>
-            <div style="background-color: rgba(244, 67, 54, 0.7); padding: 5px;">Not yet visited</div>
-            <div style="padding: 5px;"><span style="font-size: 16px; color: #2196F3;">●</span> Visited Cities</div>
-            <div style="padding: 5px;"><span style="font-size: 14px; color: #9C27B0;">▲</span> Country High Points</div>
+            <div><span class="legend-swatch" style="background-color: rgba(255, 193, 7, 0.9);"></span> Home Country</div>
+            <div><span class="legend-swatch" style="background-color: rgba(76, 175, 80, 0.9);"></span> Visited Countries</div>
+            <div><span class="legend-swatch" style="background-color: rgba(244, 67, 54, 0.9);"></span> Not yet Visited</div>
+            <div><span class="legend-symbol" style="color: #2196F3;">●</span> Visited Cities</div>
+            <div><span class="legend-symbol" style="color: #9C27B0;">▲</span> Country High Points</div>
         `;
         return div;
     };

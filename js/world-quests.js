@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function displayQuestSummary() {
-    const summaryContainer = document.getElementById('quest-summary');
+    const summaryContainer = document.getElementById('world-quest-summary');
 
     // Calculate completion statistics by cross-referencing with metros and worldCities
     const completedCities = getCompletedForbesCities();
@@ -166,6 +166,14 @@ function initializeForbesMap() {
         fullscreenControl: true
     }).setView([20, 0], 2);
 
+    forbesMap.on('fullscreenchange', () => {
+        if (forbesMap.isFullscreen()) {
+            forbesMap.gestureHandling.disable();
+        } else {
+            forbesMap.gestureHandling.enable();
+        }
+    });
+
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
@@ -184,6 +192,14 @@ function initializeWondersMap() {
         gestureHandling: true,
         fullscreenControl: true
     }).setView([20, 0], 2);
+
+    wondersMap.on('fullscreenchange', () => {
+        if (wondersMap.isFullscreen()) {
+            wondersMap.gestureHandling.disable();
+        } else {
+            wondersMap.gestureHandling.enable();
+        }
+    });
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -359,16 +375,10 @@ function addForbesLegend() {
     const legend = L.control({ position: 'bottomright' });
 
     legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'legend');
+        const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
-            <div class="legend-item">
-                <span class="legend-marker visited"></span>
-                <span>Visited</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-marker not-visited"></span>
-                <span>Not Visited</span>
-            </div>
+            <div><span class="legend-swatch" style="background-color: #4CAF50;"></span> Visited</div>
+            <div><span class="legend-swatch" style="background-color: #f44336;"></span> Not Visited</div>
         `;
         return div;
     };
@@ -380,20 +390,11 @@ function addWondersLegend() {
     const legend = L.control({ position: 'bottomright' });
 
     legend.onAdd = function () {
-        const div = L.DomUtil.create('div', 'legend');
+        const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
-            <div class="legend-item">
-                <span class="legend-marker seven-wonder"></span>
-                <span>Seven Wonder</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-marker natural-wonder"></span>
-                <span>Natural Wonder</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-marker wonder-nominee"></span>
-                <span>Wonder Nominee</span>
-            </div>
+            <div><span class="legend-swatch" style="background-color: #FFD700; border-color: #FF8F00;"></span> Seven Wonder</div>
+            <div><span class="legend-swatch" style="background-color: #2196F3; border-color: #0D47A1;"></span> Natural Wonder</div>
+            <div><span class="legend-swatch" style="background-color: #9C27B0; border-color: #4A148C;"></span> Wonder Nominee</div>
         `;
         return div;
     };

@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Side Quests</title>
+    <title>Quests</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
     <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
         rel='stylesheet' />
@@ -24,13 +24,14 @@
 
     <div class="content">
         <div class="hero">
-            <h1>Side Quests</h1>
+            <h1>Quests</h1>
         </div>
 
         <!-- Progress Summary Cards -->
         <div class="section">
             <h2>Progress Summary</h2>
-            <div id="quest-summary"></div>
+            <div id="us-quest-summary"></div>
+            <div id="world-quest-summary"></div>
         </div>
 
         <div class="section">
@@ -50,13 +51,47 @@
             <p>The highest peaks in England, Scotland, Wales, Ireland, and Northern Ireland</p>
             <div id="british-isles-map" class="map-container"></div>
         </div>
+
+        <div class="section">
+            <h2>Forbes 100 Cities</h2>
+            <p>The world's top 100 cities for business and travel according to Forbes</p>
+            <div id="forbes-cities-map" class="map-container"></div>
+        </div>
+
+        <div class="section">
+            <h2>Seven Wonders Progress</h2>
+            <div id="wonders-summary"></div>
+        </div>
+
+        <div class="section">
+            <h2>Seven Wonders Map</h2>
+            <p>Explore the Seven Wonders of the World, Seven Natural Wonders, and all nominees</p>
+            <div class="map-controls">
+                <div class="toggle-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="toggle-seven-wonders" checked>
+                        <span class="toggle-text">Seven Wonders of the World</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="toggle-natural-wonders" checked>
+                        <span class="toggle-text">Seven Natural Wonders</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="toggle-wonder-nominees">
+                        <span class="toggle-text">Natural Wonder Nominees</span>
+                    </label>
+                </div>
+            </div>
+            <div id="wonders-map" class="map-container"></div>
+        </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script src="js/leaflet.js"></script>
     <script src="js/us-quests.js"></script>
+    <script src="js/world-quests.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 

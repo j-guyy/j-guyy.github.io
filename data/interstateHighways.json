@@ -18,14 +18,14 @@
                         -117.0311
                     ],
                     "to": [
-                        32.7157,
-                        -117.1611
+                        32.6401,
+                        -117.0842
                     ],
-                    "description": "San Ysidro to San Diego (CA-CA)",
+                    "description": "San Ysidro to Chula Vista (CA-CA)",
                     "driven": false,
-                    "miles": 14,
+                    "miles": 7,
                     "fromCity": "San Ysidro",
-                    "toCity": "San Diego",
+                    "toCity": "Chula Vista",
                     "states": [
                         "CA"
                     ],
@@ -35,6 +35,62 @@
                             -117.0311
                         ],
                         [
+                            32.6401,
+                            -117.0842
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.6401,
+                        -117.0842
+                    ],
+                    "to": [
+                        32.6781,
+                        -117.0992
+                    ],
+                    "description": "Chula Vista to National City (CA-CA)",
+                    "driven": true,
+                    "miles": 3,
+                    "fromCity": "Chula Vista",
+                    "toCity": "National City",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            32.6401,
+                            -117.0842
+                        ],
+                        [
+                            32.6781,
+                            -117.0992
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.6781,
+                        -117.0992
+                    ],
+                    "to": [
+                        32.7157,
+                        -117.1611
+                    ],
+                    "description": "National City to San Diego (CA-CA)",
+                    "driven": true,
+                    "miles": 4,
+                    "fromCity": "National City",
+                    "toCity": "San Diego",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            32.6781,
+                            -117.0992
+                        ],
+                        [
                             32.7157,
                             -117.1611
                         ]
@@ -46,14 +102,14 @@
                         -117.1611
                     ],
                     "to": [
-                        32.6781,
-                        -117.0992
+                        33.1959,
+                        -117.3795
                     ],
-                    "description": "San Diego to National City (CA-CA)",
+                    "description": "San Diego to Oceanside (CA-CA)",
                     "driven": true,
-                    "miles": 4,
+                    "miles": 35,
                     "fromCity": "San Diego",
-                    "toCity": "National City",
+                    "toCity": "Oceanside",
                     "states": [
                         "CA"
                     ],
@@ -63,60 +119,64 @@
                             -117.1611
                         ],
                         [
-                            32.6781,
-                            -117.0992
+                            32.95,
+                            -117.25
+                        ],
+                        [
+                            33.1959,
+                            -117.3795
                         ]
                     ]
                 },
                 {
                     "from": [
-                        32.6781,
-                        -117.0992
+                        33.1959,
+                        -117.3795
                     ],
                     "to": [
-                        32.6401,
-                        -117.0842
+                        33.4269,
+                        -117.6117
                     ],
-                    "description": "National City to Chula Vista (CA-CA)",
+                    "description": "Oceanside to San Clemente (CA-CA)",
                     "driven": true,
-                    "miles": 3,
-                    "fromCity": "National City",
-                    "toCity": "Chula Vista",
+                    "miles": 20,
+                    "fromCity": "Oceanside",
+                    "toCity": "San Clemente",
                     "states": [
                         "CA"
                     ],
                     "waypoints": [
                         [
-                            32.6781,
-                            -117.0992
+                            33.1959,
+                            -117.3795
                         ],
                         [
-                            32.6401,
-                            -117.0842
+                            33.4269,
+                            -117.6117
                         ]
                     ]
                 },
                 {
                     "from": [
-                        32.6401,
-                        -117.0842
+                        33.4269,
+                        -117.6117
                     ],
                     "to": [
                         33.6,
                         -117.672
                     ],
-                    "description": "Chula Vista to Mission Viejo (CA-CA)",
+                    "description": "San Clemente to Mission Viejo (CA-CA)",
                     "driven": true,
-                    "miles": 74,
-                    "fromCity": "Chula Vista",
+                    "miles": 13,
+                    "fromCity": "San Clemente",
                     "toCity": "Mission Viejo",
                     "states": [
                         "CA"
                     ],
                     "waypoints": [
                         [
-                            32.6401,
-                            -117.0842
+                            33.4269,
+                            -117.6117
                         ],
                         [
                             33.6,
@@ -326,14 +386,14 @@
                         -118.5426
                     ],
                     "to": [
-                        34.0522,
-                        -118.2437
+                        35.3733,
+                        -118.9414
                     ],
-                    "description": "Santa Clarita to Los Angeles (CA-CA)",
-                    "driven": true,
-                    "miles": 29,
+                    "description": "Santa Clarita to Bakersfield (CA-CA)",
+                    "driven": false,
+                    "miles": 80,
                     "fromCity": "Santa Clarita",
-                    "toCity": "Los Angeles",
+                    "toCity": "Bakersfield",
                     "states": [
                         "CA"
                     ],
@@ -343,32 +403,152 @@
                             -118.5426
                         ],
                         [
-                            34.0522,
-                            -118.2437
+                            34.75,
+                            -118.72
+                        ],
+                        [
+                            35.3733,
+                            -118.9414
                         ]
                     ]
                 },
                 {
                     "from": [
-                        34.0522,
-                        -118.2437
+                        35.3733,
+                        -118.9414
+                    ],
+                    "to": [
+                        36.2077,
+                        -119.3473
+                    ],
+                    "description": "Bakersfield to Tulare (CA-CA)",
+                    "driven": false,
+                    "miles": 62,
+                    "fromCity": "Bakersfield",
+                    "toCity": "Tulare",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            35.3733,
+                            -118.9414
+                        ],
+                        [
+                            36.2077,
+                            -119.3473
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        36.2077,
+                        -119.3473
+                    ],
+                    "to": [
+                        36.7378,
+                        -119.7871
+                    ],
+                    "description": "Tulare to Fresno (CA-CA)",
+                    "driven": false,
+                    "miles": 42,
+                    "fromCity": "Tulare",
+                    "toCity": "Fresno",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            36.2077,
+                            -119.3473
+                        ],
+                        [
+                            36.7378,
+                            -119.7871
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        36.7378,
+                        -119.7871
+                    ],
+                    "to": [
+                        37.0625,
+                        -120.8499
+                    ],
+                    "description": "Fresno to Los Banos (CA-CA)",
+                    "driven": false,
+                    "miles": 68,
+                    "fromCity": "Fresno",
+                    "toCity": "Los Banos",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            36.7378,
+                            -119.7871
+                        ],
+                        [
+                            36.85,
+                            -120.35
+                        ],
+                        [
+                            37.0625,
+                            -120.8499
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.0625,
+                        -120.8499
+                    ],
+                    "to": [
+                        37.4716,
+                        -121.1325
+                    ],
+                    "description": "Los Banos to Patterson (CA-CA)",
+                    "driven": false,
+                    "miles": 30,
+                    "fromCity": "Los Banos",
+                    "toCity": "Patterson",
+                    "states": [
+                        "CA"
+                    ],
+                    "waypoints": [
+                        [
+                            37.0625,
+                            -120.8499
+                        ],
+                        [
+                            37.4716,
+                            -121.1325
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.4716,
+                        -121.1325
                     ],
                     "to": [
                         37.9577,
                         -121.2908
                     ],
-                    "description": "Los Angeles to Stockton (CA-CA)",
+                    "description": "Patterson to Stockton (CA-CA)",
                     "driven": false,
-                    "miles": 319,
-                    "fromCity": "Los Angeles",
+                    "miles": 35,
+                    "fromCity": "Patterson",
                     "toCity": "Stockton",
                     "states": [
                         "CA"
                     ],
                     "waypoints": [
                         [
-                            34.0522,
-                            -118.2437
+                            37.4716,
+                            -121.1325
                         ],
                         [
                             37.9577,
@@ -382,14 +562,14 @@
                         -121.2908
                     ],
                     "to": [
-                        37.8227,
-                        -121.278
+                        38.4088,
+                        -121.3716
                     ],
-                    "description": "Stockton to Lathrop (CA-CA)",
+                    "description": "Stockton to Elk Grove (CA-CA)",
                     "driven": false,
-                    "miles": 9,
+                    "miles": 32,
                     "fromCity": "Stockton",
-                    "toCity": "Lathrop",
+                    "toCity": "Elk Grove",
                     "states": [
                         "CA"
                     ],
@@ -397,62 +577,6 @@
                         [
                             37.9577,
                             -121.2908
-                        ],
-                        [
-                            37.8227,
-                            -121.278
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        37.8227,
-                        -121.278
-                    ],
-                    "to": [
-                        37.7397,
-                        -121.4252
-                    ],
-                    "description": "Lathrop to Tracy (CA-CA)",
-                    "driven": false,
-                    "miles": 10,
-                    "fromCity": "Lathrop",
-                    "toCity": "Tracy",
-                    "states": [
-                        "CA"
-                    ],
-                    "waypoints": [
-                        [
-                            37.8227,
-                            -121.278
-                        ],
-                        [
-                            37.7397,
-                            -121.4252
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        37.7397,
-                        -121.4252
-                    ],
-                    "to": [
-                        38.4088,
-                        -121.3716
-                    ],
-                    "description": "Tracy to Elk Grove (CA-CA)",
-                    "driven": false,
-                    "miles": 46,
-                    "fromCity": "Tracy",
-                    "toCity": "Elk Grove",
-                    "states": [
-                        "CA"
-                    ],
-                    "waypoints": [
-                        [
-                            37.7397,
-                            -121.4252
                         ],
                         [
                             38.4088,
@@ -1660,7 +1784,7 @@
         {
             "number": "I-10",
             "name": "Interstate 10",
-            "description": "Southern transcontinental highway",
+            "description": "Southernmost transcontinental highway from Santa Monica, CA to Jacksonville, FL",
             "states": [
                 "CA",
                 "AZ",
@@ -1671,7 +1795,7 @@
                 "AL",
                 "FL"
             ],
-            "length": 2755.8999999999996,
+            "length": 2460,
             "driven": false,
             "routeSegments": [
                 {
@@ -2041,579 +2165,18 @@
                 },
                 {
                     "from": [
-                        30.0803,
-                        -94.1266
-                    ],
-                    "to": [
-                        29.8219,
-                        -94.3827
-                    ],
-                    "description": "Beaumont to Winnie (TX-TX)",
-                    "driven": true,
-                    "miles": 23.5,
-                    "fromCity": "Beaumont",
-                    "toCity": "Winnie",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            30.0803,
-                            -94.1266
-                        ],
-                        [
-                            29.8219,
-                            -94.3827
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.8219,
-                        -94.3827
-                    ],
-                    "to": [
-                        29.8455,
-                        -94.8883
-                    ],
-                    "description": "Winnie to Mont Belvieu (TX-TX)",
-                    "driven": true,
-                    "miles": 30.3,
-                    "fromCity": "Winnie",
-                    "toCity": "Mont Belvieu",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            29.8219,
-                            -94.3827
-                        ],
-                        [
-                            29.8455,
-                            -94.8883
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.8455,
-                        -94.8883
-                    ],
-                    "to": [
-                        29.7604,
-                        -95.3698
-                    ],
-                    "description": "Mont Belvieu to Houston (TX-TX)",
-                    "driven": true,
-                    "miles": 29.5,
-                    "fromCity": "Mont Belvieu",
-                    "toCity": "Houston",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            29.8455,
-                            -94.8883
-                        ],
-                        [
-                            29.7604,
-                            -95.3698
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.7604,
-                        -95.3698
-                    ],
-                    "to": [
-                        29.7858,
-                        -95.8244
-                    ],
-                    "description": "Houston to Katy (TX-TX)",
-                    "driven": false,
-                    "miles": 27.3,
-                    "fromCity": "Houston",
-                    "toCity": "Katy",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            29.7604,
-                            -95.3698
-                        ],
-                        [
-                            29.7858,
-                            -95.8244
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.7858,
-                        -95.8244
-                    ],
-                    "to": [
-                        29.7811,
-                        -96.1586
-                    ],
-                    "description": "Katy to Sealy (TX-TX)",
-                    "driven": true,
-                    "miles": 20.0,
-                    "fromCity": "Katy",
-                    "toCity": "Sealy",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            29.7858,
-                            -95.8244
-                        ],
-                        [
-                            29.7811,
-                            -96.1586
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.7811,
-                        -96.1586
-                    ],
-                    "to": [
-                        29.7066,
-                        -96.5403
-                    ],
-                    "description": "Sealy to Columbus (TX-TX)",
-                    "driven": true,
-                    "miles": 23.5,
-                    "fromCity": "Sealy",
-                    "toCity": "Columbus",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            29.7811,
-                            -96.1586
-                        ],
-                        [
-                            29.7066,
-                            -96.5403
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.2366,
-                        -93.3774
-                    ],
-                    "to": [
-                        30.2741,
-                        -92.8629
-                    ],
-                    "description": "Sulphur to Ramah (LA-LA)",
-                    "driven": true,
-                    "miles": 30.8,
-                    "fromCity": "Sulphur",
-                    "toCity": "Ramah",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.2366,
-                            -93.3774
-                        ],
-                        [
-                            30.2741,
-                            -92.8629
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.2741,
-                        -92.8629
-                    ],
-                    "to": [
-                        30.2241,
-                        -92.0198
-                    ],
-                    "description": "Ramah to Lafayette (LA-LA)",
-                    "driven": true,
-                    "miles": 50.4,
-                    "fromCity": "Ramah",
-                    "toCity": "Lafayette",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.2741,
-                            -92.8629
-                        ],
-                        [
-                            30.2241,
-                            -92.0198
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.2241,
-                        -92.0198
-                    ],
-                    "to": [
-                        29.6994,
-                        -91.2065
-                    ],
-                    "description": "Lafayette to Morgan City (LA-LA)",
-                    "driven": true,
-                    "miles": 60.7,
-                    "fromCity": "Lafayette",
-                    "toCity": "Morgan City",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.2241,
-                            -92.0198
-                        ],
-                        [
-                            29.6994,
-                            -91.2065
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.6994,
-                        -91.2065
-                    ],
-                    "to": [
-                        30.0669,
-                        -90.4812
-                    ],
-                    "description": "Morgan City to LaPlace (LA-LA)",
-                    "driven": true,
-                    "miles": 50.3,
-                    "fromCity": "Morgan City",
-                    "toCity": "LaPlace",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            29.6994,
-                            -91.2065
-                        ],
-                        [
-                            30.0669,
-                            -90.4812
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.0669,
-                        -90.4812
-                    ],
-                    "to": [
-                        29.9941,
-                        -90.2417
-                    ],
-                    "description": "LaPlace to Kenner (LA-LA)",
-                    "driven": true,
-                    "miles": 15.2,
-                    "fromCity": "LaPlace",
-                    "toCity": "Kenner",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.0669,
-                            -90.4812
-                        ],
-                        [
-                            29.9941,
-                            -90.2417
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.9941,
-                        -90.2417
-                    ],
-                    "to": [
-                        29.9511,
-                        -90.0715
-                    ],
-                    "description": "Kenner to New Orleans (LA-LA)",
-                    "driven": true,
-                    "miles": 10.6,
-                    "fromCity": "Kenner",
-                    "toCity": "New Orleans",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            29.9941,
-                            -90.2417
-                        ],
-                        [
-                            29.9511,
-                            -90.0715
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        29.9511,
-                        -90.0715
-                    ],
-                    "to": [
-                        30.2752,
-                        -89.7812
-                    ],
-                    "description": "New Orleans to Slidell (LA-LA)",
-                    "driven": false,
-                    "miles": 28.3,
-                    "fromCity": "New Orleans",
-                    "toCity": "Slidell",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            29.9511,
-                            -90.0715
-                        ],
-                        [
-                            30.2752,
-                            -89.7812
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.2752,
-                        -89.7812
-                    ],
-                    "to": [
-                        30.3088,
-                        -89.3301
-                    ],
-                    "description": "Slidell to Bay St. Louis (LA-MS)",
-                    "driven": false,
-                    "miles": 27.0,
-                    "fromCity": "Slidell",
-                    "toCity": "Bay St. Louis",
-                    "states": [
-                        "LA",
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.2752,
-                            -89.7812
-                        ],
-                        [
-                            30.3088,
-                            -89.3301
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.3088,
-                        -89.3301
-                    ],
-                    "to": [
-                        30.3696,
-                        -89.367
-                    ],
-                    "description": "Bay St. Louis to Diamondhead (MS-MS)",
-                    "driven": false,
-                    "miles": 4.7,
-                    "fromCity": "Bay St. Louis",
-                    "toCity": "Diamondhead",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.3088,
-                            -89.3301
-                        ],
-                        [
-                            30.3696,
-                            -89.367
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.3696,
-                        -89.367
-                    ],
-                    "to": [
-                        30.3674,
-                        -89.0928
-                    ],
-                    "description": "Diamondhead to Gulfport (MS-MS)",
-                    "driven": false,
-                    "miles": 16.3,
-                    "fromCity": "Diamondhead",
-                    "toCity": "Gulfport",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.3696,
-                            -89.367
-                        ],
-                        [
-                            30.3674,
-                            -89.0928
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.3674,
-                        -89.0928
-                    ],
-                    "to": [
-                        30.396,
-                        -88.8853
-                    ],
-                    "description": "Gulfport to Biloxi (MS-MS)",
-                    "driven": false,
-                    "miles": 12.5,
-                    "fromCity": "Gulfport",
-                    "toCity": "Biloxi",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.3674,
-                            -89.0928
-                        ],
-                        [
-                            30.396,
-                            -88.8853
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.396,
-                        -88.8853
-                    ],
-                    "to": [
-                        30.4407,
-                        -88.8998
-                    ],
-                    "description": "Biloxi to D'Iberville (MS-MS)",
-                    "driven": false,
-                    "miles": 3.2,
-                    "fromCity": "Biloxi",
-                    "toCity": "D'Iberville",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.396,
-                            -88.8853
-                        ],
-                        [
-                            30.4407,
-                            -88.8998
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.4407,
-                        -88.8998
-                    ],
-                    "to": [
-                        30.3657,
-                        -88.5561
-                    ],
-                    "description": "D'Iberville to Pascagoula (MS-MS)",
-                    "driven": false,
-                    "miles": 21.1,
-                    "fromCity": "D'Iberville",
-                    "toCity": "Pascagoula",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.4407,
-                            -88.8998
-                        ],
-                        [
-                            30.3657,
-                            -88.5561
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.3657,
-                        -88.5561
-                    ],
-                    "to": [
-                        30.4118,
-                        -88.5317
-                    ],
-                    "description": "Pascagoula to Moss Point (MS-MS)",
-                    "driven": false,
-                    "miles": 3.5,
-                    "fromCity": "Pascagoula",
-                    "toCity": "Moss Point",
-                    "states": [
-                        "MS"
-                    ],
-                    "waypoints": [
-                        [
-                            30.3657,
-                            -88.5561
-                        ],
-                        [
-                            30.4118,
-                            -88.5317
-                        ]
-                    ]
-                },
-                {
-                    "from": [
                         33.4353,
                         -112.3576
                     ],
                     "to": [
-                        33.4356,
-                        -112.3496
+                        33.4503,
+                        -112.2593
                     ],
-                    "description": "Goodyear to Avondale (AZ-AZ)",
+                    "description": "Goodyear to Tolleson (AZ-AZ)",
                     "driven": false,
-                    "miles": 0,
+                    "miles": 5,
                     "fromCity": "Goodyear",
-                    "toCity": "Avondale",
+                    "toCity": "Tolleson",
                     "states": [
                         "AZ"
                     ],
@@ -2621,34 +2184,6 @@
                         [
                             33.4353,
                             -112.3576
-                        ],
-                        [
-                            33.4356,
-                            -112.3496
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        33.4356,
-                        -112.3496
-                    ],
-                    "to": [
-                        33.4503,
-                        -112.2593
-                    ],
-                    "description": "Avondale to Tolleson (AZ-AZ)",
-                    "driven": false,
-                    "miles": 5,
-                    "fromCity": "Avondale",
-                    "toCity": "Tolleson",
-                    "states": [
-                        "AZ"
-                    ],
-                    "waypoints": [
-                        [
-                            33.4356,
-                            -112.3496
                         ],
                         [
                             33.4503,
@@ -2718,14 +2253,14 @@
                         -111.8413
                     ],
                     "to": [
-                        32.2226,
-                        -110.9747
+                        32.8795,
+                        -111.7574
                     ],
-                    "description": "Chandler to Tucson (AZ-AZ)",
+                    "description": "Chandler to Casa Grande (AZ-AZ)",
                     "driven": true,
-                    "miles": 90,
+                    "miles": 45,
                     "fromCity": "Chandler",
-                    "toCity": "Tucson",
+                    "toCity": "Casa Grande",
                     "states": [
                         "AZ"
                     ],
@@ -2733,6 +2268,42 @@
                         [
                             33.3062,
                             -111.8413
+                        ],
+                        [
+                            33.15,
+                            -111.82
+                        ],
+                        [
+                            32.8795,
+                            -111.7574
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.8795,
+                        -111.7574
+                    ],
+                    "to": [
+                        32.2226,
+                        -110.9747
+                    ],
+                    "description": "Casa Grande to Tucson (AZ-AZ)",
+                    "driven": true,
+                    "miles": 45,
+                    "fromCity": "Casa Grande",
+                    "toCity": "Tucson",
+                    "states": [
+                        "AZ"
+                    ],
+                    "waypoints": [
+                        [
+                            32.8795,
+                            -111.7574
+                        ],
+                        [
+                            32.43,
+                            -111.15
                         ],
                         [
                             32.2226,
@@ -3276,6 +2847,98 @@
                 },
                 {
                     "from": [
+                        29.7604,
+                        -95.3698
+                    ],
+                    "to": [
+                        29.7881,
+                        -94.9774
+                    ],
+                    "description": "Houston to Baytown (TX-TX)",
+                    "driven": true,
+                    "miles": 26,
+                    "fromCity": "Houston",
+                    "toCity": "Baytown",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            29.7604,
+                            -95.3698
+                        ],
+                        [
+                            29.7532,
+                            -95.2103
+                        ],
+                        [
+                            29.7881,
+                            -94.9774
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        29.7881,
+                        -94.9774
+                    ],
+                    "to": [
+                        29.8219,
+                        -94.3827
+                    ],
+                    "description": "Baytown to Winnie (TX-TX)",
+                    "driven": true,
+                    "miles": 37,
+                    "fromCity": "Baytown",
+                    "toCity": "Winnie",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            29.7881,
+                            -94.9774
+                        ],
+                        [
+                            29.8455,
+                            -94.8883
+                        ],
+                        [
+                            29.8219,
+                            -94.3827
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        29.8219,
+                        -94.3827
+                    ],
+                    "to": [
+                        30.086,
+                        -94.1018
+                    ],
+                    "description": "Winnie to Beaumont (TX-TX)",
+                    "driven": true,
+                    "miles": 24,
+                    "fromCity": "Winnie",
+                    "toCity": "Beaumont",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            29.8219,
+                            -94.3827
+                        ],
+                        [
+                            30.086,
+                            -94.1018
+                        ]
+                    ]
+                },
+                {
+                    "from": [
                         30.086,
                         -94.1018
                     ],
@@ -3327,6 +2990,408 @@
                         [
                             30.0933,
                             -93.7365
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.0933,
+                        -93.7365
+                    ],
+                    "to": [
+                        30.2366,
+                        -93.3774
+                    ],
+                    "description": "Orange to Sulphur (TX-LA)",
+                    "driven": true,
+                    "miles": 24,
+                    "fromCity": "Orange",
+                    "toCity": "Sulphur",
+                    "states": [
+                        "TX",
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.0933,
+                            -93.7365
+                        ],
+                        [
+                            30.1257,
+                            -93.7061
+                        ],
+                        [
+                            30.2108,
+                            -93.5957
+                        ],
+                        [
+                            30.2366,
+                            -93.3774
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.2366,
+                        -93.3774
+                    ],
+                    "to": [
+                        30.2741,
+                        -92.8629
+                    ],
+                    "description": "Sulphur to Ramah (LA-LA)",
+                    "driven": true,
+                    "miles": 30.8,
+                    "fromCity": "Sulphur",
+                    "toCity": "Ramah",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.2366,
+                            -93.3774
+                        ],
+                        [
+                            30.2741,
+                            -92.8629
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.2741,
+                        -92.8629
+                    ],
+                    "to": [
+                        30.2241,
+                        -92.0198
+                    ],
+                    "description": "Ramah to Lafayette (LA-LA)",
+                    "driven": true,
+                    "miles": 50.4,
+                    "fromCity": "Ramah",
+                    "toCity": "Lafayette",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.2741,
+                            -92.8629
+                        ],
+                        [
+                            30.2241,
+                            -92.0198
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.2241,
+                        -92.0198
+                    ],
+                    "to": [
+                        30.2735,
+                        -91.8993
+                    ],
+                    "description": "Lafayette to Breaux Bridge (LA-LA)",
+                    "driven": true,
+                    "miles": 8,
+                    "fromCity": "Lafayette",
+                    "toCity": "Breaux Bridge",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.2241,
+                            -92.0198
+                        ],
+                        [
+                            30.2735,
+                            -91.8993
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.2735,
+                        -91.8993
+                    ],
+                    "to": [
+                        30.3174,
+                        -91.7891
+                    ],
+                    "description": "Breaux Bridge to Henderson (LA-LA)",
+                    "driven": true,
+                    "miles": 8,
+                    "fromCity": "Breaux Bridge",
+                    "toCity": "Henderson",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.2735,
+                            -91.8993
+                        ],
+                        [
+                            30.3174,
+                            -91.7891
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.3174,
+                        -91.7891
+                    ],
+                    "to": [
+                        30.4515,
+                        -91.1871
+                    ],
+                    "description": "Henderson to Baton Rouge (LA-LA)",
+                    "driven": true,
+                    "miles": 55,
+                    "fromCity": "Henderson",
+                    "toCity": "Baton Rouge",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.3174,
+                            -91.7891
+                        ],
+                        [
+                            30.34,
+                            -91.65
+                        ],
+                        [
+                            30.38,
+                            -91.45
+                        ],
+                        [
+                            30.4515,
+                            -91.1871
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.4515,
+                        -91.1871
+                    ],
+                    "to": [
+                        30.0669,
+                        -90.4812
+                    ],
+                    "description": "Baton Rouge to LaPlace (LA-LA)",
+                    "driven": true,
+                    "miles": 45,
+                    "fromCity": "Baton Rouge",
+                    "toCity": "LaPlace",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.4515,
+                            -91.1871
+                        ],
+                        [
+                            30.35,
+                            -90.95
+                        ],
+                        [
+                            30.2,
+                            -90.7
+                        ],
+                        [
+                            30.0669,
+                            -90.4812
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.0669,
+                        -90.4812
+                    ],
+                    "to": [
+                        29.9941,
+                        -90.2417
+                    ],
+                    "description": "LaPlace to Kenner (LA-LA)",
+                    "driven": true,
+                    "miles": 15.2,
+                    "fromCity": "LaPlace",
+                    "toCity": "Kenner",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.0669,
+                            -90.4812
+                        ],
+                        [
+                            29.9941,
+                            -90.2417
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        29.9941,
+                        -90.2417
+                    ],
+                    "to": [
+                        29.9511,
+                        -90.0715
+                    ],
+                    "description": "Kenner to New Orleans (LA-LA)",
+                    "driven": true,
+                    "miles": 10.6,
+                    "fromCity": "Kenner",
+                    "toCity": "New Orleans",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            29.9941,
+                            -90.2417
+                        ],
+                        [
+                            29.9511,
+                            -90.0715
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        29.9511,
+                        -90.0715
+                    ],
+                    "to": [
+                        30.2752,
+                        -89.7812
+                    ],
+                    "description": "New Orleans to Slidell (LA-LA)",
+                    "driven": false,
+                    "miles": 28.3,
+                    "fromCity": "New Orleans",
+                    "toCity": "Slidell",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            29.9511,
+                            -90.0715
+                        ],
+                        [
+                            30.2752,
+                            -89.7812
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.2752,
+                        -89.7812
+                    ],
+                    "to": [
+                        30.3696,
+                        -89.367
+                    ],
+                    "description": "Slidell to Diamondhead (LA-MS)",
+                    "driven": false,
+                    "miles": 30,
+                    "fromCity": "Slidell",
+                    "toCity": "Diamondhead",
+                    "states": [
+                        "LA",
+                        "MS"
+                    ],
+                    "waypoints": [
+                        [
+                            30.2752,
+                            -89.7812
+                        ],
+                        [
+                            30.32,
+                            -89.6
+                        ],
+                        [
+                            30.3696,
+                            -89.367
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.3696,
+                        -89.367
+                    ],
+                    "to": [
+                        30.4407,
+                        -88.8998
+                    ],
+                    "description": "Diamondhead to D'Iberville (MS-MS)",
+                    "driven": false,
+                    "miles": 30,
+                    "fromCity": "Diamondhead",
+                    "toCity": "D'Iberville",
+                    "states": [
+                        "MS"
+                    ],
+                    "waypoints": [
+                        [
+                            30.3696,
+                            -89.367
+                        ],
+                        [
+                            30.39,
+                            -89.15
+                        ],
+                        [
+                            30.4407,
+                            -88.8998
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.4407,
+                        -88.8998
+                    ],
+                    "to": [
+                        30.4118,
+                        -88.5317
+                    ],
+                    "description": "D'Iberville to Moss Point (MS-MS)",
+                    "driven": false,
+                    "miles": 24,
+                    "fromCity": "D'Iberville",
+                    "toCity": "Moss Point",
+                    "states": [
+                        "MS"
+                    ],
+                    "waypoints": [
+                        [
+                            30.4407,
+                            -88.8998
+                        ],
+                        [
+                            30.43,
+                            -88.7
+                        ],
+                        [
+                            30.4118,
+                            -88.5317
                         ]
                     ]
                 },
@@ -5039,174 +5104,6 @@
             "routeSegments": [
                 {
                     "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        31.8268,
-                        -104.7619
-                    ],
-                    "to": [
-                        31.4215,
-                        -103.4932
-                    ],
-                    "description": "Kent to Pecos (TX-TX)",
-                    "driven": false,
-                    "miles": 79.7,
-                    "fromCity": "Kent",
-                    "toCity": "Pecos",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            31.8268,
-                            -104.7619
-                        ],
-                        [
-                            31.4215,
-                            -103.4932
-                        ]
-                    ]
-                },
-                {
-                    "from": [
                         31.090412154552773,
                         -104.0524405579568
                     ],
@@ -5236,7 +5133,7 @@
                 {
                     "from": [
                         31.5943,
-                        -102.8927
+                        -102.8932
                     ],
                     "to": [
                         31.8457,
@@ -5253,7 +5150,7 @@
                     "waypoints": [
                         [
                             31.5943,
-                            -102.8927
+                            -102.8932
                         ],
                         [
                             31.8457,
@@ -5491,14 +5388,14 @@
                         -97.3308
                     ],
                     "to": [
-                        32.7767,
-                        -96.797
+                        32.7357,
+                        -97.1081
                     ],
-                    "description": "Fort Worth to Dallas (TX-TX)",
+                    "description": "Fort Worth to Arlington (TX-TX)",
                     "driven": false,
-                    "miles": 31,
+                    "miles": 15,
                     "fromCity": "Fort Worth",
-                    "toCity": "Dallas",
+                    "toCity": "Arlington",
                     "states": [
                         "TX"
                     ],
@@ -5508,6 +5405,62 @@
                             -97.3308
                         ],
                         [
+                            32.7357,
+                            -97.1081
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.7357,
+                        -97.1081
+                    ],
+                    "to": [
+                        32.746,
+                        -96.9978
+                    ],
+                    "description": "Arlington to Grand Prairie (TX-TX)",
+                    "driven": false,
+                    "miles": 7,
+                    "fromCity": "Arlington",
+                    "toCity": "Grand Prairie",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            32.7357,
+                            -97.1081
+                        ],
+                        [
+                            32.746,
+                            -96.9978
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.746,
+                        -96.9978
+                    ],
+                    "to": [
+                        32.7767,
+                        -96.797
+                    ],
+                    "description": "Grand Prairie to Dallas (TX-TX)",
+                    "driven": false,
+                    "miles": 13,
+                    "fromCity": "Grand Prairie",
+                    "toCity": "Dallas",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            32.746,
+                            -96.9978
+                        ],
+                        [
                             32.7767,
                             -96.797
                         ]
@@ -5519,14 +5472,14 @@
                         -96.797
                     ],
                     "to": [
-                        32.746,
-                        -96.9978
+                        32.7668,
+                        -96.5992
                     ],
-                    "description": "Dallas to Grand Prairie (TX-TX)",
+                    "description": "Dallas to Mesquite (TX-TX)",
                     "driven": false,
-                    "miles": 12,
+                    "miles": 13,
                     "fromCity": "Dallas",
-                    "toCity": "Grand Prairie",
+                    "toCity": "Mesquite",
                     "states": [
                         "TX"
                     ],
@@ -5534,62 +5487,6 @@
                         [
                             32.7767,
                             -96.797
-                        ],
-                        [
-                            32.746,
-                            -96.9978
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        32.746,
-                        -96.9978
-                    ],
-                    "to": [
-                        32.7357,
-                        -97.1081
-                    ],
-                    "description": "Grand Prairie to Arlington (TX-TX)",
-                    "driven": false,
-                    "miles": 6,
-                    "fromCity": "Grand Prairie",
-                    "toCity": "Arlington",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            32.746,
-                            -96.9978
-                        ],
-                        [
-                            32.7357,
-                            -97.1081
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        32.7357,
-                        -97.1081
-                    ],
-                    "to": [
-                        32.7668,
-                        -96.5992
-                    ],
-                    "description": "Arlington to Mesquite (TX-TX)",
-                    "driven": false,
-                    "miles": 30,
-                    "fromCity": "Arlington",
-                    "toCity": "Mesquite",
-                    "states": [
-                        "TX"
-                    ],
-                    "waypoints": [
-                        [
-                            32.7357,
-                            -97.1081
                         ],
                         [
                             32.7668,
@@ -5912,14 +5809,14 @@
                         -92.6379
                     ],
                     "to": [
-                        32.5207,
-                        -92.7168
+                        32.5093,
+                        -92.1193
                     ],
-                    "description": "Ruston to Grambling (LA-LA)",
+                    "description": "Ruston to Monroe (LA-LA)",
                     "driven": false,
-                    "miles": 5,
+                    "miles": 33,
                     "fromCity": "Ruston",
-                    "toCity": "Grambling",
+                    "toCity": "Monroe",
                     "states": [
                         "LA"
                     ],
@@ -5927,34 +5824,6 @@
                         [
                             32.5232,
                             -92.6379
-                        ],
-                        [
-                            32.5207,
-                            -92.7168
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        32.5207,
-                        -92.7168
-                    ],
-                    "to": [
-                        32.5093,
-                        -92.1193
-                    ],
-                    "description": "Grambling to Monroe (LA-LA)",
-                    "driven": false,
-                    "miles": 35,
-                    "fromCity": "Grambling",
-                    "toCity": "Monroe",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            32.5207,
-                            -92.7168
                         ],
                         [
                             32.5093,
@@ -7615,14 +7484,14 @@
                         -104.9903
                     ],
                     "to": [
-                        40.4233,
-                        -104.7091
+                        40.5853,
+                        -105.0844
                     ],
-                    "description": "Denver to Greeley (CO-CO)",
+                    "description": "Denver to Fort Collins",
                     "driven": true,
-                    "miles": 49,
+                    "miles": 23,
                     "fromCity": "Denver",
-                    "toCity": "Greeley",
+                    "toCity": "Fort Collins",
                     "states": [
                         "CO"
                     ],
@@ -7630,34 +7499,6 @@
                         [
                             39.7392,
                             -104.9903
-                        ],
-                        [
-                            40.4233,
-                            -104.7091
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        40.4233,
-                        -104.7091
-                    ],
-                    "to": [
-                        40.5853,
-                        -105.0844
-                    ],
-                    "description": "Greeley to Fort Collins (CO-CO)",
-                    "driven": true,
-                    "miles": 23,
-                    "fromCity": "Greeley",
-                    "toCity": "Fort Collins",
-                    "states": [
-                        "CO"
-                    ],
-                    "waypoints": [
-                        [
-                            40.4233,
-                            -104.7091
                         ],
                         [
                             40.5853,
@@ -8830,7 +8671,7 @@
                         -103.0432
                     ],
                     "description": "San Jon to Glenrio (NM-NM)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 17.0,
                     "fromCity": "San Jon",
                     "toCity": "Glenrio",
@@ -11520,14 +11361,14 @@
                         -109.7231
                     ],
                     "to": [
-                        39.0639,
-                        -108.5506
+                        39.1586,
+                        -108.7287
                     ],
-                    "description": "Thompson Springs to Grand Junction (UT-CO)",
+                    "description": "Thompson Springs to Fruita (UT-CO)",
                     "driven": true,
-                    "miles": 63,
+                    "miles": 60,
                     "fromCity": "Thompson Springs",
-                    "toCity": "Grand Junction",
+                    "toCity": "Fruita",
                     "states": [
                         "UT",
                         "CO"
@@ -11538,6 +11379,38 @@
                             -109.7231
                         ],
                         [
+                            39.07,
+                            -109.02
+                        ],
+                        [
+                            39.1586,
+                            -108.7287
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        39.1586,
+                        -108.7287
+                    ],
+                    "to": [
+                        39.0639,
+                        -108.5506
+                    ],
+                    "description": "Fruita to Grand Junction (CO-CO)",
+                    "driven": true,
+                    "miles": 12,
+                    "fromCity": "Fruita",
+                    "toCity": "Grand Junction",
+                    "states": [
+                        "CO"
+                    ],
+                    "waypoints": [
+                        [
+                            39.1586,
+                            -108.7287
+                        ],
+                        [
                             39.0639,
                             -108.5506
                         ]
@@ -11549,14 +11422,14 @@
                         -108.5506
                     ],
                     "to": [
-                        39.1831,
-                        -108.7931
+                        39.4511,
+                        -108.0531
                     ],
-                    "description": "Grand Junction to Loma (CO-CO)",
+                    "description": "Grand Junction to Parachute (CO-CO)",
                     "driven": true,
-                    "miles": 15,
+                    "miles": 42,
                     "fromCity": "Grand Junction",
-                    "toCity": "Loma",
+                    "toCity": "Parachute",
                     "states": [
                         "CO"
                     ],
@@ -11566,60 +11439,36 @@
                             -108.5506
                         ],
                         [
-                            39.1831,
-                            -108.7931
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        39.1831,
-                        -108.7931
-                    ],
-                    "to": [
-                        39.1586,
-                        -108.7287
-                    ],
-                    "description": "Loma to Fruita (CO-CO)",
-                    "driven": true,
-                    "miles": 4,
-                    "fromCity": "Loma",
-                    "toCity": "Fruita",
-                    "states": [
-                        "CO"
-                    ],
-                    "waypoints": [
-                        [
-                            39.1831,
-                            -108.7931
+                            39.2,
+                            -108.2
                         ],
                         [
-                            39.1586,
-                            -108.7287
+                            39.4511,
+                            -108.0531
                         ]
                     ]
                 },
                 {
                     "from": [
-                        39.1586,
-                        -108.7287
+                        39.4511,
+                        -108.0531
                     ],
                     "to": [
                         39.5505,
                         -107.3248
                     ],
-                    "description": "Fruita to Glenwood Springs (CO-CO)",
+                    "description": "Parachute to Glenwood Springs (CO-CO)",
                     "driven": true,
-                    "miles": 80,
-                    "fromCity": "Fruita",
+                    "miles": 45,
+                    "fromCity": "Parachute",
                     "toCity": "Glenwood Springs",
                     "states": [
                         "CO"
                     ],
                     "waypoints": [
                         [
-                            39.1586,
-                            -108.7287
+                            39.4511,
+                            -108.0531
                         ],
                         [
                             39.5505,
@@ -11689,14 +11538,14 @@
                         -106.3742
                     ],
                     "to": [
-                        39.6097,
-                        -106.0431
+                        39.5022,
+                        -106.1511
                     ],
-                    "description": "Vail to Dillon (CO-CO)",
+                    "description": "Vail to Copper Mountain (CO-CO)",
                     "driven": true,
-                    "miles": 18,
+                    "miles": 12,
                     "fromCity": "Vail",
-                    "toCity": "Dillon",
+                    "toCity": "Copper Mountain",
                     "states": [
                         "CO"
                     ],
@@ -11706,88 +11555,32 @@
                             -106.3742
                         ],
                         [
-                            39.6097,
-                            -106.0431
+                            39.5022,
+                            -106.1511
                         ]
                     ]
                 },
                 {
                     "from": [
-                        39.6097,
-                        -106.0431
-                    ],
-                    "to": [
-                        39.5744,
-                        -106.0978
-                    ],
-                    "description": "Dillon to Frisco (CO-CO)",
-                    "driven": true,
-                    "miles": 4,
-                    "fromCity": "Dillon",
-                    "toCity": "Frisco",
-                    "states": [
-                        "CO"
-                    ],
-                    "waypoints": [
-                        [
-                            39.6097,
-                            -106.0431
-                        ],
-                        [
-                            39.5744,
-                            -106.0978
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        39.5744,
-                        -106.0978
-                    ],
-                    "to": [
-                        39.7058,
-                        -105.6975
-                    ],
-                    "description": "Frisco to Georgetown (CO-CO)",
-                    "driven": true,
-                    "miles": 23,
-                    "fromCity": "Frisco",
-                    "toCity": "Georgetown",
-                    "states": [
-                        "CO"
-                    ],
-                    "waypoints": [
-                        [
-                            39.5744,
-                            -106.0978
-                        ],
-                        [
-                            39.7058,
-                            -105.6975
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        39.7058,
-                        -105.6975
+                        39.5022,
+                        -106.1511
                     ],
                     "to": [
                         39.6297,
                         -106.0714
                     ],
-                    "description": "Georgetown to Silverthorne (CO-CO)",
+                    "description": "Copper Mountain to Silverthorne (CO-CO)",
                     "driven": true,
-                    "miles": 21,
-                    "fromCity": "Georgetown",
+                    "miles": 10,
+                    "fromCity": "Copper Mountain",
                     "toCity": "Silverthorne",
                     "states": [
                         "CO"
                     ],
                     "waypoints": [
                         [
-                            39.7058,
-                            -105.6975
+                            39.5022,
+                            -106.1511
                         ],
                         [
                             39.6297,
@@ -11801,14 +11594,14 @@
                         -106.0714
                     ],
                     "to": [
-                        39.7425,
-                        -105.5142
+                        39.7058,
+                        -105.6975
                     ],
-                    "description": "Silverthorne to Idaho Springs (CO-CO)",
+                    "description": "Silverthorne to Georgetown (CO-CO)",
                     "driven": true,
-                    "miles": 31,
+                    "miles": 24,
                     "fromCity": "Silverthorne",
-                    "toCity": "Idaho Springs",
+                    "toCity": "Georgetown",
                     "states": [
                         "CO"
                     ],
@@ -11816,6 +11609,38 @@
                         [
                             39.6297,
                             -106.0714
+                        ],
+                        [
+                            39.68,
+                            -105.91
+                        ],
+                        [
+                            39.7058,
+                            -105.6975
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        39.7058,
+                        -105.6975
+                    ],
+                    "to": [
+                        39.7425,
+                        -105.5142
+                    ],
+                    "description": "Georgetown to Idaho Springs (CO-CO)",
+                    "driven": true,
+                    "miles": 12,
+                    "fromCity": "Georgetown",
+                    "toCity": "Idaho Springs",
+                    "states": [
+                        "CO"
+                    ],
+                    "waypoints": [
+                        [
+                            39.7058,
+                            -105.6975
                         ],
                         [
                             39.7425,
@@ -14231,14 +14056,14 @@
                         -84.2335
                     ],
                     "to": [
-                        33.5826,
-                        -84.3397
+                        33.749,
+                        -84.388
                     ],
-                    "description": "Stockbridge to Morrow (GA-GA)",
+                    "description": "Stockbridge to Atlanta",
                     "driven": false,
                     "miles": 7,
                     "fromCity": "Stockbridge",
-                    "toCity": "Morrow",
+                    "toCity": "Atlanta",
                     "states": [
                         "GA"
                     ],
@@ -14248,88 +14073,8 @@
                             -84.2335
                         ],
                         [
-                            33.5826,
-                            -84.3397
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        33.5826,
-                        -84.3397
-                    ],
-                    "to": [
-                        33.5218,
-                        -84.3538
-                    ],
-                    "description": "Morrow to Jonesboro (GA-GA)",
-                    "driven": false,
-                    "miles": 4,
-                    "fromCity": "Morrow",
-                    "toCity": "Jonesboro",
-                    "states": [
-                        "GA"
-                    ],
-                    "waypoints": [
-                        [
-                            33.5826,
-                            -84.3397
-                        ],
-                        [
-                            33.5218,
-                            -84.3538
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        33.5218,
-                        -84.3538
-                    ],
-                    "to": [
-                        33.6218,
-                        -84.3697
-                    ],
-                    "description": "Jonesboro to Forest Park (GA-GA)",
-                    "driven": false,
-                    "miles": 7,
-                    "fromCity": "Jonesboro",
-                    "toCity": "Forest Park",
-                    "states": [
-                        "GA"
-                    ],
-                    "waypoints": [
-                        [
-                            33.5218,
-                            -84.3538
-                        ],
-                        [
-                            33.6218,
-                            -84.3697
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        33.6218,
-                        -84.3697
-                    ],
-                    "to": [
-                        33.749,
-                        -84.388
-                    ],
-                    "description": "Forest Park to Atlanta (GA-GA)",
-                    "driven": false,
-                    "miles": 9,
-                    "fromCity": "Forest Park",
-                    "toCity": "Atlanta",
-                    "states": [
-                        "GA"
-                    ],
-                    "waypoints": [
-                        [
-                            33.6218,
-                            -84.3697
+                            33.5889,
+                            -84.385
                         ],
                         [
                             33.749,
@@ -21557,14 +21302,14 @@
                         -90.4812
                     ],
                     "to": [
-                        30.5043,
-                        -90.4612
+                        30.4388,
+                        -90.4412
                     ],
-                    "description": "LaPlace to Hammond (LA-LA)",
+                    "description": "LaPlace to Ponchatoula (LA-LA)",
                     "driven": false,
-                    "miles": 30,
+                    "miles": 25,
                     "fromCity": "LaPlace",
-                    "toCity": "Hammond",
+                    "toCity": "Ponchatoula",
                     "states": [
                         "LA"
                     ],
@@ -21574,32 +21319,8 @@
                             -90.4812
                         ],
                         [
-                            30.5043,
-                            -90.4612
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.5043,
-                        -90.4612
-                    ],
-                    "to": [
-                        30.4388,
-                        -90.4412
-                    ],
-                    "description": "Hammond to Ponchatoula (LA-LA)",
-                    "driven": false,
-                    "miles": 5,
-                    "fromCity": "Hammond",
-                    "toCity": "Ponchatoula",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.5043,
-                            -90.4612
+                            30.25,
+                            -90.47
                         ],
                         [
                             30.4388,
@@ -21613,14 +21334,14 @@
                         -90.4412
                     ],
                     "to": [
-                        30.9335,
-                        -90.5118
+                        30.5043,
+                        -90.4612
                     ],
-                    "description": "Ponchatoula to Kentwood (LA-LA)",
+                    "description": "Ponchatoula to Hammond (LA-LA)",
                     "driven": false,
-                    "miles": 34,
+                    "miles": 5,
                     "fromCity": "Ponchatoula",
-                    "toCity": "Kentwood",
+                    "toCity": "Hammond",
                     "states": [
                         "LA"
                     ],
@@ -21628,6 +21349,34 @@
                         [
                             30.4388,
                             -90.4412
+                        ],
+                        [
+                            30.5043,
+                            -90.4612
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        30.5043,
+                        -90.4612
+                    ],
+                    "to": [
+                        30.9335,
+                        -90.5118
+                    ],
+                    "description": "Hammond to Kentwood (LA-LA)",
+                    "driven": false,
+                    "miles": 34,
+                    "fromCity": "Hammond",
+                    "toCity": "Kentwood",
+                    "states": [
+                        "LA"
+                    ],
+                    "waypoints": [
+                        [
+                            30.5043,
+                            -90.4612
                         ],
                         [
                             30.9335,
@@ -24437,6 +24186,10 @@
                             -116.9625
                         ],
                         [
+                            32.8533,
+                            -116.864
+                        ],
+                        [
                             32.8351,
                             -116.7664
                         ]
@@ -24504,14 +24257,14 @@
                         -116.1831
                     ],
                     "to": [
-                        32.8106,
-                        -115.3803
+                        32.792,
+                        -115.5631
                     ],
-                    "description": "Jacumba to Holtville (CA-CA)",
+                    "description": "Jacumba to El Centro",
                     "driven": true,
                     "miles": 48,
                     "fromCity": "Jacumba",
-                    "toCity": "Holtville",
+                    "toCity": "El Centro",
                     "states": [
                         "CA"
                     ],
@@ -24521,32 +24274,8 @@
                             -116.1831
                         ],
                         [
-                            32.8106,
-                            -115.3803
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        32.8106,
-                        -115.3803
-                    ],
-                    "to": [
-                        32.792,
-                        -115.5631
-                    ],
-                    "description": "Holtville to El Centro (CA-CA)",
-                    "driven": true,
-                    "miles": 11,
-                    "fromCity": "Holtville",
-                    "toCity": "El Centro",
-                    "states": [
-                        "CA"
-                    ],
-                    "waypoints": [
-                        [
-                            32.8106,
-                            -115.3803
+                            32.744,
+                            -115.9593
                         ],
                         [
                             32.792,
@@ -24558,52 +24287,23 @@
                     "from": [
                         32.792,
                         -115.5631
-                    ],
-                    "to": [
-                        32.7331,
-                        -114.6331
-                    ],
-                    "description": "El Centro to Winterhaven (CA-CA)",
-                    "driven": true,
-                    "miles": 54,
-                    "fromCity": "El Centro",
-                    "toCity": "Winterhaven",
-                    "states": [
-                        "CA"
-                    ],
-                    "waypoints": [
-                        [
-                            32.792,
-                            -115.5631
-                        ],
-                        [
-                            32.7331,
-                            -114.6331
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        32.7331,
-                        -114.6331
                     ],
                     "to": [
                         32.6927,
                         -114.6277
                     ],
-                    "description": "Winterhaven to Yuma (CA-AZ)",
+                    "description": "El Centro to Yuma",
                     "driven": true,
-                    "miles": 3,
-                    "fromCity": "Winterhaven",
+                    "miles": 54,
+                    "fromCity": "El Centro",
                     "toCity": "Yuma",
                     "states": [
-                        "CA",
-                        "AZ"
+                        "CA"
                     ],
                     "waypoints": [
                         [
-                            32.7331,
-                            -114.6331
+                            32.792,
+                            -115.5631
                         ],
                         [
                             32.6927,
@@ -24634,6 +24334,14 @@
                             -114.6277
                         ],
                         [
+                            32.6486,
+                            -114.1837
+                        ],
+                        [
+                            32.8127,
+                            -113.4915
+                        ],
+                        [
                             32.9481,
                             -112.7185
                         ]
@@ -24645,8 +24353,8 @@
                         -112.7185
                     ],
                     "to": [
-                        32.8795,
-                        -111.7574
+                        32.8415,
+                        -111.6994
                     ],
                     "description": "Gila Bend to Casa Grande (AZ-AZ)",
                     "driven": true,
@@ -24662,8 +24370,16 @@
                             -112.7185
                         ],
                         [
-                            32.8795,
-                            -111.7574
+                            32.8531,
+                            -112.3792
+                        ],
+                        [
+                            32.8288,
+                            -111.7474
+                        ],
+                        [
+                            32.8415,
+                            -111.6994
                         ]
                     ]
                 }
@@ -24781,14 +24497,14 @@
                         -90.4612
                     ],
                     "to": [
-                        30.4388,
-                        -90.4412
+                        30.4755,
+                        -90.1009
                     ],
-                    "description": "Hammond to Ponchatoula (LA-LA)",
+                    "description": "Hammond to Covington (LA-LA)",
                     "driven": false,
-                    "miles": 5,
+                    "miles": 24,
                     "fromCity": "Hammond",
-                    "toCity": "Ponchatoula",
+                    "toCity": "Covington",
                     "states": [
                         "LA"
                     ],
@@ -24796,34 +24512,6 @@
                         [
                             30.5043,
                             -90.4612
-                        ],
-                        [
-                            30.4388,
-                            -90.4412
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        30.4388,
-                        -90.4412
-                    ],
-                    "to": [
-                        30.4755,
-                        -90.1009
-                    ],
-                    "description": "Ponchatoula to Covington (LA-LA)",
-                    "driven": false,
-                    "miles": 20,
-                    "fromCity": "Ponchatoula",
-                    "toCity": "Covington",
-                    "states": [
-                        "LA"
-                    ],
-                    "waypoints": [
-                        [
-                            30.4388,
-                            -90.4412
                         ],
                         [
                             30.4755,
@@ -26909,62 +26597,6 @@
                             -76.2852
                         ]
                     ]
-                },
-                {
-                    "from": [
-                        36.8468,
-                        -76.2852
-                    ],
-                    "to": [
-                        36.8529,
-                        -75.978
-                    ],
-                    "description": "Norfolk to Virginia Beach (VA-VA)",
-                    "driven": false,
-                    "miles": 17,
-                    "fromCity": "Norfolk",
-                    "toCity": "Virginia Beach",
-                    "states": [
-                        "VA"
-                    ],
-                    "waypoints": [
-                        [
-                            36.8468,
-                            -76.2852
-                        ],
-                        [
-                            36.8529,
-                            -75.978
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        36.8529,
-                        -75.978
-                    ],
-                    "to": [
-                        36.7682,
-                        -76.2875
-                    ],
-                    "description": "Virginia Beach to Chesapeake (VA-VA)",
-                    "driven": false,
-                    "miles": 18,
-                    "fromCity": "Virginia Beach",
-                    "toCity": "Chesapeake",
-                    "states": [
-                        "VA"
-                    ],
-                    "waypoints": [
-                        [
-                            36.8529,
-                            -75.978
-                        ],
-                        [
-                            36.7682,
-                            -76.2875
-                        ]
-                    ]
                 }
             ],
             "segments": [
@@ -28009,25 +27641,33 @@
             "routeSegments": [
                 {
                     "from": [
-                        39.802,
-                        -105.087
+                        39.7392,
+                        -104.9903
                     ],
                     "to": [
                         40.254,
                         -103.801
                     ],
-                    "description": "Arvada to Fort Morgan (CO-CO)",
+                    "description": "Denver to Fort Morgan",
                     "driven": true,
                     "miles": 75,
-                    "fromCity": "Arvada",
+                    "fromCity": "Denver",
                     "toCity": "Fort Morgan",
                     "states": [
                         "CO"
                     ],
                     "waypoints": [
                         [
-                            39.802,
-                            -105.087
+                            39.7392,
+                            -104.9903
+                        ],
+                        [
+                            40.0907,
+                            -104.6338
+                        ],
+                        [
+                            40.2229,
+                            -104.1888
                         ],
                         [
                             40.254,
@@ -35551,12 +35191,12 @@
         {
             "number": "I-30",
             "name": "Interstate 30",
-            "description": "Highway from Little Rock, Arkansas to Dallas, Texas",
+            "description": "Interstate from Little Rock, AR to Dallas, TX",
             "states": [
                 "AR",
                 "TX"
             ],
-            "length": 356.29999999999995,
+            "length": 367,
             "driven": false,
             "segments": [
                 {
@@ -35636,7 +35276,7 @@
                     ],
                     "description": "Little Rock to Benton (AR-AR)",
                     "driven": false,
-                    "miles": 21.1,
+                    "miles": 21,
                     "fromCity": "Little Rock",
                     "toCity": "Benton",
                     "states": [
@@ -35664,7 +35304,7 @@
                     ],
                     "description": "Benton to Hot Springs (AR-AR)",
                     "driven": false,
-                    "miles": 27.0,
+                    "miles": 27,
                     "fromCity": "Benton",
                     "toCity": "Hot Springs",
                     "states": [
@@ -35692,7 +35332,7 @@
                     ],
                     "description": "Hot Springs to Arkadelphia (AR-AR)",
                     "driven": false,
-                    "miles": 26.5,
+                    "miles": 27,
                     "fromCity": "Hot Springs",
                     "toCity": "Arkadelphia",
                     "states": [
@@ -35720,7 +35360,7 @@
                     ],
                     "description": "Arkadelphia to Hope (AR-AR)",
                     "driven": false,
-                    "miles": 44.0,
+                    "miles": 44,
                     "fromCity": "Arkadelphia",
                     "toCity": "Hope",
                     "states": [
@@ -35743,14 +35383,14 @@
                         -93.5916
                     ],
                     "to": [
-                        32.5448,
-                        -94.3677
+                        33.4418,
+                        -94.0477
                     ],
-                    "description": "Hope to Marshall (AR-TX)",
+                    "description": "Hope to Texarkana (AR-AR/TX)",
                     "driven": false,
-                    "miles": 89.6,
+                    "miles": 32,
                     "fromCity": "Hope",
-                    "toCity": "Marshall",
+                    "toCity": "Texarkana",
                     "states": [
                         "AR",
                         "TX"
@@ -35761,88 +35401,180 @@
                             -93.5916
                         ],
                         [
-                            32.5448,
-                            -94.3677
+                            33.4418,
+                            -94.0477
                         ]
                     ]
                 },
                 {
                     "from": [
-                        32.5448,
-                        -94.3677
+                        33.4418,
+                        -94.0477
                     ],
                     "to": [
-                        32.5007,
-                        -94.7404
+                        33.4565,
+                        -94.4185
                     ],
-                    "description": "Marshall to Longview (TX-TX)",
+                    "description": "Texarkana to New Boston (TX-TX)",
                     "driven": false,
-                    "miles": 21.9,
-                    "fromCity": "Marshall",
-                    "toCity": "Longview",
+                    "miles": 24,
+                    "fromCity": "Texarkana",
+                    "toCity": "New Boston",
                     "states": [
                         "TX"
                     ],
                     "waypoints": [
                         [
-                            32.5448,
-                            -94.3677
+                            33.4418,
+                            -94.0477
                         ],
                         [
-                            32.5007,
-                            -94.7404
+                            33.4565,
+                            -94.4185
                         ]
                     ]
                 },
                 {
                     "from": [
-                        32.5007,
-                        -94.7404
+                        33.4565,
+                        -94.4185
                     ],
                     "to": [
-                        32.3513,
-                        -95.3011
+                        33.1568,
+                        -94.9685
                     ],
-                    "description": "Longview to Tyler (TX-TX)",
+                    "description": "New Boston to Mount Pleasant (TX-TX)",
                     "driven": false,
-                    "miles": 34.3,
-                    "fromCity": "Longview",
-                    "toCity": "Tyler",
+                    "miles": 38,
+                    "fromCity": "New Boston",
+                    "toCity": "Mount Pleasant",
                     "states": [
                         "TX"
                     ],
                     "waypoints": [
                         [
-                            32.5007,
-                            -94.7404
+                            33.4565,
+                            -94.4185
                         ],
                         [
-                            32.3513,
-                            -95.3011
+                            33.1568,
+                            -94.9685
                         ]
                     ]
                 },
                 {
                     "from": [
-                        32.3513,
-                        -95.3011
+                        33.1568,
+                        -94.9685
+                    ],
+                    "to": [
+                        33.1385,
+                        -95.601
+                    ],
+                    "description": "Mount Pleasant to Sulphur Springs (TX-TX)",
+                    "driven": false,
+                    "miles": 40,
+                    "fromCity": "Mount Pleasant",
+                    "toCity": "Sulphur Springs",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            33.1568,
+                            -94.9685
+                        ],
+                        [
+                            33.1385,
+                            -95.601
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        33.1385,
+                        -95.601
+                    ],
+                    "to": [
+                        33.1384,
+                        -96.1108
+                    ],
+                    "description": "Sulphur Springs to Greenville (TX-TX)",
+                    "driven": false,
+                    "miles": 32,
+                    "fromCity": "Sulphur Springs",
+                    "toCity": "Greenville",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            33.1385,
+                            -95.601
+                        ],
+                        [
+                            33.1384,
+                            -96.1108
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        33.1384,
+                        -96.1108
+                    ],
+                    "to": [
+                        32.9312,
+                        -96.4597
+                    ],
+                    "description": "Greenville to Rockwall (TX-TX)",
+                    "driven": false,
+                    "miles": 30,
+                    "fromCity": "Greenville",
+                    "toCity": "Rockwall",
+                    "states": [
+                        "TX"
+                    ],
+                    "waypoints": [
+                        [
+                            33.1384,
+                            -96.1108
+                        ],
+                        [
+                            33.05,
+                            -96.25
+                        ],
+                        [
+                            32.9312,
+                            -96.4597
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        32.9312,
+                        -96.4597
                     ],
                     "to": [
                         32.7767,
                         -96.797
                     ],
-                    "description": "Tyler to Dallas (TX-TX)",
+                    "description": "Rockwall to Dallas (TX-TX)",
                     "driven": false,
-                    "miles": 91.9,
-                    "fromCity": "Tyler",
+                    "miles": 25,
+                    "fromCity": "Rockwall",
                     "toCity": "Dallas",
                     "states": [
                         "TX"
                     ],
                     "waypoints": [
                         [
-                            32.3513,
-                            -95.3011
+                            32.9312,
+                            -96.4597
+                        ],
+                        [
+                            32.85,
+                            -96.6
                         ],
                         [
                             32.7767,

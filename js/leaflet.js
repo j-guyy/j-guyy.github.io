@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => console.error('Error loading the JSON files:', error));
 });
 
-function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom) {
+function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, tileStyle) {
     const map = L.map(mapId, {
         center: [centerLat, centerLng],
         zoom: zoom,
@@ -37,8 +37,9 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom) {
         }
     });
 
-    // Thunderforest Outdoors layer
-    L.tileLayer('https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f', {
+    // Thunderforest tile layer — defaults to 'outdoors'
+    const style = tileStyle || 'outdoors';
+    L.tileLayer(`https://tile.thunderforest.com/${style}/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f`, {
         attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 22
     }).addTo(map);
@@ -112,8 +113,8 @@ function createLegend(map) {
     legend.onAdd = function (map) {
         const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
-            <div><span style="color: #4CAF50;">▲</span> Climbed</div>
-            <div><span style="color: #f44336;">▲</span> Not yet climbed</div>
+            <div><span class="legend-symbol" style="color: #4CAF50;">▲</span> Climbed</div>
+            <div><span class="legend-symbol" style="color: #f44336;">▲</span> Not yet climbed</div>
         `;
         return div;
     };

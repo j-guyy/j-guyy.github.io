@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', function () {
             colorado14ers = colorado14ersData;
             adirondack46ers = adirondack46ersData;
             britishIslesHighFive = britishIslesData;
-            displayQuestSummary();
+            displayUSQuestSummary();
         })
         .catch(error => console.error('Error loading the JSON files:', error));
 });
 
-function displayQuestSummary() {
-    const summaryContainer = document.getElementById('quest-summary');
+function displayUSQuestSummary() {
+    const summaryContainer = document.getElementById('us-quest-summary');
 
     // Calculate completion statistics
     const colorado14ersCompleted = colorado14ers.filter(peak => peak.climbed).length;

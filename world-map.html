@@ -8,8 +8,13 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+        rel='stylesheet' />
 </head>
 
 <body class="page">
@@ -24,6 +29,13 @@
         </div>
 
         <div class="section">
+            <div id="travel-summary"></div>
+            <div class="cross-nav">
+                <a href="world-dashboard.html" class="cross-nav-link">View detailed tables →</a>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>Global Adventures</h2>
             <p class="map-description">Map of all of my visited countries and cities</p>
             <div class="map-legend-container">
@@ -34,7 +46,9 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script src="data/countries.json"></script>
     <script src="data/worldCities.json"></script>
     <script src="data/metros.json"></script>

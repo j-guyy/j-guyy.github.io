@@ -34,15 +34,37 @@
 }
 
 .info.legend {
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-    color: #333;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    color: white;
+    font-size: 12px;
+    line-height: 1.8;
 }
 
 .info.legend div {
-    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.info.legend .legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.info.legend .legend-symbol {
+    display: inline-block;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 14px;
 }
 
 /* Responsive design */

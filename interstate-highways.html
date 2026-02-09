@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
     <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
         rel='stylesheet' />
@@ -19,35 +19,169 @@
             background-color: #e8f5e8;
         }
 
-        .legend {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-        }
+        /* Waypoint Editor Styles */
 
-        .legend-item {
+        .editor-toolbar {
             display: flex;
             align-items: center;
-            margin-bottom: 5px;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
         }
 
-        .legend-color {
-            width: 20px;
-            height: 3px;
-            margin-right: 8px;
+        .editor-toolbar select {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            max-width: 260px;
         }
 
-        .driven-line {
-            background-color: #28a745;
+        .editor-toolbar select option {
+            background: #222;
+            color: white;
         }
 
-        .not-driven-line {
-            background-color: #dc3545;
+        .btn-edit {
+            padding: 8px 16px;
+            font-size: 0.85em;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        .btn-edit:hover {
+            opacity: 0.85;
+        }
+
+        .btn-edit.toggle-on {
+            background: #e67e22;
+        }
+
+        .btn-edit.toggle-off {
+            background: #555;
+        }
+
+        .btn-edit.export {
+            background: #3498db;
+        }
+
+        .btn-edit.add-wp {
+            background: #27ae60;
+        }
+
+        .btn-edit.del-wp {
+            background: #c0392b;
+        }
+
+        .editor-hint {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .export-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .export-modal-overlay.visible {
+            display: flex;
+        }
+
+        .export-modal {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 24px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .export-modal h3 {
+            margin: 0;
+            color: #4CAF50;
+        }
+
+        .export-modal textarea {
+            width: 100%;
+            height: 400px;
+            background: #111;
+            color: #0f0;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.8em;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .export-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .waypoint-marker-icon {
+            background: none;
+            border: none;
+        }
+
+        /* Snap indicator */
+        .snap-indicator {
+            width: 18px;
+            height: 18px;
+            background: rgba(52, 152, 219, 0.4);
+            border: 2px dashed #3498db;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Segment name editor */
+        .segment-name-row {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .segment-name-row.visible {
+            display: flex;
+        }
+
+        .segment-name-row label {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .segment-name-row input {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            width: 160px;
+        }
+
+        .segment-name-row input:focus {
+            outline: none;
+            border-color: #e67e22;
         }
     </style>
 </head>
@@ -99,25 +233,60 @@
                     <button class="btn btn-secondary" data-filter="transcontinental">Transcontinental</button>
                 </div>
             </div>
+            <div class="editor-toolbar">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                    <span>Edit Waypoints:</span>
+                    <button id="edit-toggle" class="btn-edit toggle-off" onclick="toggleEditMode()">OFF</button>
+                </label>
+                <select id="interstate-select" onchange="onInterstateSelect()" disabled>
+                    <option value="">Select an interstate...</option>
+                </select>
+                <select id="segment-select" onchange="onSegmentSelect()" disabled>
+                    <option value="">Select a segment...</option>
+                </select>
+                <button id="add-wp-btn" class="btn-edit add-wp" onclick="addWaypoint()" disabled
+                    title="Add waypoint at midpoint of selected segment">+ Waypoint</button>
+                <button id="del-wp-btn" class="btn-edit del-wp" onclick="deleteSelectedWaypoint()" disabled
+                    title="Delete selected waypoint">− Waypoint</button>
+                <button id="export-btn" class="btn-edit export" onclick="showExport()" disabled>Export JSON</button>
+            </div>
+            <p class="editor-hint" id="editor-hint" style="display:none;">
+                Drag markers to reposition waypoints (snaps to nearby waypoints). Click a marker to select it for
+                deletion. Click the polyline to
+                add a waypoint at that spot.
+            </p>
+            <div class="segment-name-row" id="segment-name-row">
+                <label>From:</label>
+                <input type="text" id="seg-from-city" placeholder="From city" onchange="onSegmentNameChange()">
+                <label>To:</label>
+                <input type="text" id="seg-to-city" placeholder="To city" onchange="onSegmentNameChange()">
+                <label>Desc:</label>
+                <input type="text" id="seg-description" placeholder="Description" style="width:280px;"
+                    onchange="onSegmentNameChange()">
+            </div>
             <div class="map-container">
                 <div id="interstate-map" style="height: 100%; width: 100%;"></div>
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-color driven-line"></div>
-                        <span>Driven</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color not-driven-line"></div>
-                        <span>Not Driven</span>
-                    </div>
-                </div>
             </div>
         </div>
 
 
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Export Modal -->
+    <div class="export-modal-overlay" id="export-modal">
+        <div class="export-modal">
+            <h3>Export Interstate JSON</h3>
+            <p style="margin:0;font-size:0.85em;opacity:0.7;">Copy this JSON and replace the corresponding interstate
+                entry in <code>data/interstateHighways.json</code></p>
+            <textarea id="export-textarea" readonly></textarea>
+            <div class="export-modal-buttons">
+                <button class="btn-edit" style="background:#555;" onclick="closeExport()">Close</button>
+                <button class="btn-edit" style="background:#3498db;" onclick="copyExport()">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
     <script>
@@ -132,11 +301,31 @@
                 fullscreenControl: true
             }).setView([39.8283, -98.5795], 4);
 
+            map.on('fullscreenchange', () => {
+                if (map.isFullscreen()) {
+                    map.gestureHandling.disable();
+                } else {
+                    map.gestureHandling.enable();
+                }
+            });
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
             interstateLayer = L.layerGroup().addTo(map);
+
+            // Add legend using standard Leaflet control pattern
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function () {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `
+                    <div><span class="legend-swatch" style="background-color: #28a745; border-radius: 2px; height: 4px;"></span> Driven</div>
+                    <div><span class="legend-swatch" style="background-color: #dc3545; border-radius: 2px; height: 4px;"></span> Not Driven</div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
         }
 
         // Load interstate data
@@ -263,11 +452,11 @@
 
 
 
-        // Initialize filter buttons
+        // Initialize filter buttons (scoped to .filter-controls to avoid editor buttons)
         function initFilters() {
-            document.querySelectorAll('.btn').forEach(btn => {
+            document.querySelectorAll('.filter-controls .btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.btn').forEach(b => {
+                    document.querySelectorAll('.filter-controls .btn').forEach(b => {
                         b.classList.remove('active', 'btn-primary');
                         b.classList.add('btn-secondary');
                     });
@@ -277,6 +466,10 @@
                     // Filter the map based on selection
                     const filter = btn.dataset.filter;
                     drawInterstateRoutes(filter);
+                    // Re-draw edit overlay on top if editing
+                    if (editMode && editingSegmentIndex !== null) {
+                        drawEditOverlay();
+                    }
                 });
             });
         }
@@ -289,6 +482,484 @@
             drawInterstateRoutes();
             initFilters();
         }
+
+        // ========== WAYPOINT EDITOR ==========
+        let editMode = false;
+        let editingInterstate = null;
+        let editingSegmentIndex = null;
+        let waypointMarkers = [];
+        let editPolyline = null;
+        let selectedMarkerIndex = null;
+        let snapIndicator = null;
+        const SNAP_THRESHOLD_PX = 15; // snap within 15 screen pixels
+
+        // Collect all waypoints from all interstates except the currently-editing segment
+        // Returns objects with { coord, city } where city is the name if this point is a segment endpoint
+        function getAllSnapTargets() {
+            const targets = [];
+            interstateData.interstates.forEach(interstate => {
+                if (!interstate.routeSegments) return;
+                interstate.routeSegments.forEach((seg, sIdx) => {
+                    if (interstate === editingInterstate && sIdx === editingSegmentIndex) return;
+                    const pts = seg.waypoints?.length ? seg.waypoints : [seg.from, seg.to];
+                    pts.forEach((p, pIdx) => {
+                        let city = null;
+                        if (pIdx === 0) city = seg.fromCity || null;
+                        else if (pIdx === pts.length - 1) city = seg.toCity || null;
+                        targets.push({ coord: p, city });
+                    });
+                });
+            });
+            return targets;
+        }
+
+        // Find nearest snap target within threshold (in screen pixels)
+        // Returns { coord, city } or null
+        function findSnapTarget(latlng) {
+            const targets = getAllSnapTargets();
+            const dragPt = map.latLngToContainerPoint(latlng);
+            let best = null;
+            let bestDist = Infinity;
+            targets.forEach(t => {
+                const tPt = map.latLngToContainerPoint(L.latLng(t.coord[0], t.coord[1]));
+                const dx = dragPt.x - tPt.x;
+                const dy = dragPt.y - tPt.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = t;
+                }
+            });
+            if (bestDist <= SNAP_THRESHOLD_PX && best) {
+                return best;
+            }
+            return null;
+        }
+
+        function showSnapIndicator(latlng) {
+            if (!snapIndicator) {
+                snapIndicator = L.marker(latlng, {
+                    interactive: false,
+                    icon: L.divIcon({
+                        className: 'snap-indicator',
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    })
+                }).addTo(map);
+            } else {
+                snapIndicator.setLatLng(latlng);
+                if (!map.hasLayer(snapIndicator)) snapIndicator.addTo(map);
+            }
+        }
+
+        function hideSnapIndicator() {
+            if (snapIndicator && map.hasLayer(snapIndicator)) {
+                map.removeLayer(snapIndicator);
+            }
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            const btn = document.getElementById('edit-toggle');
+            const intSelect = document.getElementById('interstate-select');
+            const hint = document.getElementById('editor-hint');
+            const exportBtn = document.getElementById('export-btn');
+
+            if (editMode) {
+                btn.textContent = 'ON';
+                btn.classList.remove('toggle-off');
+                btn.classList.add('toggle-on');
+                intSelect.disabled = false;
+                hint.style.display = 'block';
+                exportBtn.disabled = false;
+                populateInterstateSelect();
+            } else {
+                btn.textContent = 'OFF';
+                btn.classList.remove('toggle-on');
+                btn.classList.add('toggle-off');
+                intSelect.disabled = true;
+                document.getElementById('segment-select').disabled = true;
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                exportBtn.disabled = true;
+                hint.style.display = 'none';
+                clearEditOverlay();
+                hideSnapIndicator();
+                document.getElementById('segment-name-row').classList.remove('visible');
+                editingInterstate = null;
+                editingSegmentIndex = null;
+                drawInterstateRoutes();
+            }
+        }
+
+        function populateInterstateSelect() {
+            const select = document.getElementById('interstate-select');
+            select.innerHTML = '<option value="">Select an interstate...</option>';
+            const sorted = [...interstateData.interstates].sort((a, b) => {
+                const na = parseInt(a.number.replace(/[^0-9]/g, ''));
+                const nb = parseInt(b.number.replace(/[^0-9]/g, ''));
+                return na - nb || a.number.localeCompare(b.number);
+            });
+            sorted.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i.number;
+                opt.textContent = `${i.number} (${i.routeSegments?.length || 0} segments)`;
+                select.appendChild(opt);
+            });
+        }
+
+        function onInterstateSelect() {
+            const number = document.getElementById('interstate-select').value;
+            const segSelect = document.getElementById('segment-select');
+            clearEditOverlay();
+            editingSegmentIndex = null;
+
+            if (!number) {
+                editingInterstate = null;
+                segSelect.disabled = true;
+                segSelect.innerHTML = '<option value="">Select a segment...</option>';
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                document.getElementById('segment-name-row').classList.remove('visible');
+                drawInterstateRoutes();
+                return;
+            }
+
+            editingInterstate = interstateData.interstates.find(i => i.number === number);
+            segSelect.disabled = false;
+            segSelect.innerHTML = '<option value="">Select a segment...</option>';
+
+            if (editingInterstate?.routeSegments) {
+                editingInterstate.routeSegments.forEach((seg, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `[${idx}] ${seg.fromCity} → ${seg.toCity} (${seg.miles}mi, ${seg.waypoints?.length || 2} pts)`;
+                    segSelect.appendChild(opt);
+                });
+            }
+
+            // Zoom to this interstate
+            zoomToInterstate(editingInterstate);
+        }
+
+        function zoomToInterstate(interstate) {
+            if (!interstate?.routeSegments?.length) return;
+            const allPts = [];
+            interstate.routeSegments.forEach(seg => {
+                const pts = seg.waypoints?.length ? seg.waypoints : [seg.from, seg.to];
+                pts.forEach(p => allPts.push(p));
+            });
+            if (allPts.length) {
+                map.fitBounds(L.latLngBounds(allPts.map(p => L.latLng(p[0], p[1]))).pad(0.1));
+            }
+        }
+
+        function onSegmentSelect() {
+            const val = document.getElementById('segment-select').value;
+            clearEditOverlay();
+            selectedMarkerIndex = null;
+
+            if (val === '' || !editingInterstate) {
+                editingSegmentIndex = null;
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                document.getElementById('segment-name-row').classList.remove('visible');
+                return;
+            }
+
+            editingSegmentIndex = parseInt(val);
+            document.getElementById('add-wp-btn').disabled = false;
+            document.getElementById('del-wp-btn').disabled = true;
+
+            // Populate segment name fields
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            document.getElementById('seg-from-city').value = seg.fromCity || '';
+            document.getElementById('seg-to-city').value = seg.toCity || '';
+            document.getElementById('seg-description').value = seg.description || '';
+            document.getElementById('segment-name-row').classList.add('visible');
+
+            drawEditOverlay();
+        }
+
+        function clearEditOverlay() {
+            waypointMarkers.forEach(m => map.removeLayer(m));
+            waypointMarkers = [];
+            if (editPolyline) {
+                map.removeLayer(editPolyline);
+                editPolyline = null;
+            }
+        }
+
+        function getSegmentWaypoints(seg) {
+            if (seg.waypoints && seg.waypoints.length > 0) return seg.waypoints;
+            return [seg.from, seg.to];
+        }
+
+        function drawEditOverlay() {
+            clearEditOverlay();
+            if (editingSegmentIndex === null || !editingInterstate) return;
+
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+
+            // Draw the editable polyline
+            editPolyline = L.polyline(waypoints.map(w => [w[0], w[1]]), {
+                color: '#e67e22',
+                weight: 6,
+                opacity: 0.9,
+                dashArray: '8, 6'
+            }).addTo(map);
+
+            // Click on polyline to insert a waypoint
+            editPolyline.on('click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                insertWaypointAtClick(e.latlng, waypoints);
+            });
+
+            // Draw draggable markers for each waypoint
+            waypoints.forEach((wp, idx) => {
+                const isEndpoint = idx === 0 || idx === waypoints.length - 1;
+                const marker = L.marker([wp[0], wp[1]], {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: 'waypoint-marker-icon',
+                        html: `<div style="
+                            width: ${isEndpoint ? 14 : 10}px;
+                            height: ${isEndpoint ? 14 : 10}px;
+                            background: ${isEndpoint ? '#e74c3c' : '#f39c12'};
+                            border: 2px solid white;
+                            border-radius: 50%;
+                            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+                            cursor: ${isEndpoint ? 'not-allowed' : 'grab'};
+                        "></div>`,
+                        iconSize: [isEndpoint ? 14 : 10, isEndpoint ? 14 : 10],
+                        iconAnchor: [isEndpoint ? 7 : 5, isEndpoint ? 7 : 5]
+                    })
+                }).addTo(map);
+
+                marker.wpIndex = idx;
+
+                // Click to select for deletion
+                marker.on('click', function () {
+                    selectedMarkerIndex = idx;
+                    document.getElementById('del-wp-btn').disabled = isEndpoint;
+                    highlightSelectedMarker();
+                });
+
+                // Live snap preview while dragging
+                marker.on('drag', function (e) {
+                    const pos = e.target.getLatLng();
+                    const snap = findSnapTarget(pos);
+                    if (snap) {
+                        showSnapIndicator(L.latLng(snap.coord[0], snap.coord[1]));
+                    } else {
+                        hideSnapIndicator();
+                    }
+                    // Update polyline in real-time
+                    const currentPt = [pos.lat, pos.lng];
+                    const tempWaypoints = waypoints.map((w, i) => i === idx ? currentPt : w);
+                    if (editPolyline) {
+                        editPolyline.setLatLngs(tempWaypoints.map(w => [w[0], w[1]]));
+                    }
+                });
+
+                // Drag to reposition (with snap)
+                marker.on('dragend', function (e) {
+                    hideSnapIndicator();
+                    const pos = e.target.getLatLng();
+                    const snap = findSnapTarget(pos);
+                    const finalCoord = snap
+                        ? [snap.coord[0], snap.coord[1]]
+                        : [parseFloat(pos.lat.toFixed(4)), parseFloat(pos.lng.toFixed(4))];
+                    waypoints[idx] = finalCoord;
+                    syncWaypointsToSegment(seg, waypoints);
+
+                    // Auto-update city name if an endpoint snapped to a known place
+                    if (snap && snap.city) {
+                        const isFirst = idx === 0;
+                        const isLast = idx === waypoints.length - 1;
+                        if (isFirst) {
+                            seg.fromCity = snap.city;
+                            seg.description = `${seg.fromCity} to ${seg.toCity}`;
+                            document.getElementById('seg-from-city').value = snap.city;
+                            document.getElementById('seg-description').value = seg.description;
+                        } else if (isLast) {
+                            seg.toCity = snap.city;
+                            seg.description = `${seg.fromCity} to ${seg.toCity}`;
+                            document.getElementById('seg-to-city').value = snap.city;
+                            document.getElementById('seg-description').value = seg.description;
+                        }
+                    }
+
+                    refreshSegmentSelect();
+                    drawInterstateRoutes();
+                    drawEditOverlay();
+                });
+
+                marker.bindTooltip(`WP ${idx}: [${wp[0].toFixed(4)}, ${wp[1].toFixed(4)}]`, {
+                    direction: 'top', offset: [0, -8]
+                });
+
+                waypointMarkers.push(marker);
+            });
+
+            // Zoom to segment
+            map.fitBounds(editPolyline.getBounds().pad(0.2));
+        }
+
+        function highlightSelectedMarker() {
+            waypointMarkers.forEach((m, idx) => {
+                const isEndpoint = idx === 0 || idx === waypointMarkers.length - 1;
+                const isSelected = idx === selectedMarkerIndex;
+                const size = isEndpoint ? 14 : (isSelected ? 14 : 10);
+                const color = isSelected ? '#9b59b6' : (isEndpoint ? '#e74c3c' : '#f39c12');
+                m.setIcon(L.divIcon({
+                    className: 'waypoint-marker-icon',
+                    html: `<div style="
+                        width: ${size}px; height: ${size}px;
+                        background: ${color};
+                        border: 2px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+                        ${isSelected ? 'box-shadow: 0 0 8px #9b59b6;' : ''}
+                    "></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2]
+                }));
+            });
+        }
+
+        function insertWaypointAtClick(latlng, waypoints) {
+            // Find the closest segment of the polyline to insert between
+            let bestIdx = 1;
+            let bestDist = Infinity;
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                const a = L.latLng(waypoints[i][0], waypoints[i][1]);
+                const b = L.latLng(waypoints[i + 1][0], waypoints[i + 1][1]);
+                const d = distToSegment(latlng, a, b);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i + 1;
+                }
+            }
+            const newPt = [parseFloat(latlng.lat.toFixed(4)), parseFloat(latlng.lng.toFixed(4))];
+            waypoints.splice(bestIdx, 0, newPt);
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            syncWaypointsToSegment(seg, waypoints);
+            refreshSegmentSelect();
+            drawInterstateRoutes();
+            drawEditOverlay();
+        }
+
+        function distToSegment(p, a, b) {
+            const x = p.lat, y = p.lng;
+            const x1 = a.lat, y1 = a.lng, x2 = b.lat, y2 = b.lng;
+            const dx = x2 - x1, dy = y2 - y1;
+            if (dx === 0 && dy === 0) return p.distanceTo(a);
+            let t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+            t = Math.max(0, Math.min(1, t));
+            return p.distanceTo(L.latLng(x1 + t * dx, y1 + t * dy));
+        }
+
+        function addWaypoint() {
+            if (editingSegmentIndex === null || !editingInterstate) return;
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+
+            // Add midpoint between last two waypoints
+            const len = waypoints.length;
+            const a = waypoints[len - 2];
+            const b = waypoints[len - 1];
+            const mid = [
+                parseFloat(((a[0] + b[0]) / 2).toFixed(4)),
+                parseFloat(((a[1] + b[1]) / 2).toFixed(4))
+            ];
+            waypoints.splice(len - 1, 0, mid);
+            syncWaypointsToSegment(seg, waypoints);
+            refreshSegmentSelect();
+            drawInterstateRoutes();
+            drawEditOverlay();
+        }
+
+        function deleteSelectedWaypoint() {
+            if (selectedMarkerIndex === null || editingSegmentIndex === null) return;
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+
+            // Don't delete endpoints
+            if (selectedMarkerIndex === 0 || selectedMarkerIndex === waypoints.length - 1) return;
+            if (waypoints.length <= 2) return;
+
+            waypoints.splice(selectedMarkerIndex, 1);
+            syncWaypointsToSegment(seg, waypoints);
+            selectedMarkerIndex = null;
+            document.getElementById('del-wp-btn').disabled = true;
+            refreshSegmentSelect();
+            drawInterstateRoutes();
+            drawEditOverlay();
+        }
+
+        function syncWaypointsToSegment(seg, waypoints) {
+            seg.waypoints = waypoints.map(w => [w[0], w[1]]);
+            seg.from = waypoints[0];
+            seg.to = waypoints[waypoints.length - 1];
+        }
+
+        function onSegmentNameChange() {
+            if (editingSegmentIndex === null || !editingInterstate) return;
+            const seg = editingInterstate.routeSegments[editingSegmentIndex];
+            const fromCity = document.getElementById('seg-from-city').value.trim();
+            const toCity = document.getElementById('seg-to-city').value.trim();
+            const desc = document.getElementById('seg-description').value.trim();
+
+            if (fromCity) seg.fromCity = fromCity;
+            if (toCity) seg.toCity = toCity;
+            if (desc) seg.description = desc;
+
+            refreshSegmentSelect();
+        }
+
+        function refreshSegmentSelect() {
+            if (!editingInterstate) return;
+            const segSelect = document.getElementById('segment-select');
+            const currentVal = segSelect.value;
+            segSelect.innerHTML = '<option value="">Select a segment...</option>';
+            editingInterstate.routeSegments.forEach((seg, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `[${idx}] ${seg.fromCity} → ${seg.toCity} (${seg.miles}mi, ${seg.waypoints?.length || 2} pts)`;
+                segSelect.appendChild(opt);
+            });
+            segSelect.value = currentVal;
+        }
+
+        // ========== EXPORT ==========
+        function showExport() {
+            if (!editingInterstate) return;
+            const modal = document.getElementById('export-modal');
+            const textarea = document.getElementById('export-textarea');
+            textarea.value = JSON.stringify(editingInterstate, null, 4);
+            modal.classList.add('visible');
+        }
+
+        function closeExport() {
+            document.getElementById('export-modal').classList.remove('visible');
+        }
+
+        function copyExport() {
+            const textarea = document.getElementById('export-textarea');
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+            });
+        }
+
+        // Close modal on overlay click
+        document.getElementById('export-modal')?.addEventListener('click', function (e) {
+            if (e.target === this) closeExport();
+        });
 
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', init);
