@@ -12,11 +12,66 @@ document.addEventListener('DOMContentLoaded', function () {
             highPoints = highPointsData;
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
+            displayTravelSummary();
             createCombinedMap();
             setupToggleButtons();
         })
         .catch(error => console.error('Error loading the JSON files:', error));
 });
+
+function displayTravelSummary() {
+    const summaryContainer = document.getElementById('travel-summary');
+    if (!summaryContainer) return;
+
+    const stateCount = Object.values(visitedStates).filter(v => v).length;
+    const statePercentage = ((stateCount / 50) * 100).toFixed(0);
+    const top100Metros = metros.filter(c => c.rank <= 100);
+    const metroCount = top100Metros.filter(c => c.visited).length;
+    const metroPercentage = ((metroCount / 100) * 100).toFixed(0);
+    const highPointCount = highPoints.filter(p => p.visited).length;
+    const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
+    const parkCount = nationalParks.filter(p => p.visited).length;
+    const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
+
+    summaryContainer.innerHTML = `
+        <div class="summary-stats-container">
+            <div class="summary-stat states-summary">
+                <div class="stat-number-container">
+                    <span class="stat-number">${stateCount}</span>
+                    <span class="stat-total">/50</span>
+                    <span class="stat-percentage">(${statePercentage}%)</span>
+                </div>
+                <span class="stat-label">States Visited</span>
+            </div>
+            <div class="other-stats">
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${metroCount}</span>
+                        <span class="stat-total">/100</span>
+                        <span class="stat-percentage">(${metroPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">Largest Metros Visited</span>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${highPointCount}</span>
+                        <span class="stat-total">/50</span>
+                        <span class="stat-percentage">(${highPointPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">High Points Summited</span>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${parkCount}</span>
+                        <span class="stat-total">/${nationalParks.length}</span>
+                        <span class="stat-percentage">(${parkPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">National Parks Visited</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
 function createCombinedMap() {
     const width = 960;
