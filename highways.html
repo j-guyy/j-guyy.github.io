@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Highways Tracker</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+        rel='stylesheet' />
+    <style>
+        .list-item.driven {
+            background-color: #e8f5e8;
+        }
+
+        /* Editor overlay — hidden by default, shown inside map when editing */
+        .editor-overlay {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            right: 50px;
+            z-index: 1000;
+            background: rgba(15, 15, 15, 0.88);
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            max-height: 40vh;
+            overflow-y: auto;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .editor-overlay.editing {
+            display: block;
+        }
+
+        /* Waypoint Editor Styles */
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .editor-toolbar select {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            max-width: 260px;
+        }
+
+        .editor-toolbar select option {
+            background: #222;
+            color: white;
+        }
+
+        .btn-edit {
+            padding: 8px 16px;
+            font-size: 0.85em;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        .btn-edit:hover {
+            opacity: 0.85;
+        }
+
+        .btn-edit.toggle-on {
+            background: #e67e22;
+        }
+
+        .btn-edit.toggle-off {
+            background: #555;
+        }
+
+        .btn-edit.export {
+            background: #3498db;
+        }
+
+        .btn-edit.add-wp {
+            background: #27ae60;
+        }
+
+        .btn-edit.del-wp {
+            background: #c0392b;
+        }
+
+        .editor-hint {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .export-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .export-modal-overlay.visible {
+            display: flex;
+        }
+
+        .export-modal {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 24px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .export-modal h3 {
+            margin: 0;
+            color: #4CAF50;
+        }
+
+        .export-modal textarea {
+            width: 100%;
+            height: 400px;
+            background: #111;
+            color: #0f0;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.8em;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .export-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .waypoint-marker-icon {
+            background: none;
+            border: none;
+        }
+
+        .snap-indicator {
+            width: 18px;
+            height: 18px;
+            background: rgba(52, 152, 219, 0.4);
+            border: 2px dashed #3498db;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .segment-name-row {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .segment-name-row.visible {
+            display: flex;
+        }
+
+        .segment-name-row label {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .segment-name-row input {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            width: 160px;
+        }
+
+        .segment-name-row input:focus {
+            outline: none;
+            border-color: #e67e22;
+        }
+
+        /* Highway type tabs */
+        .highway-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+        }
+
+        .highway-tab {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .highway-tab:first-child {
+            border-radius: 6px 0 0 6px;
+        }
+
+        .highway-tab:last-child {
+            border-radius: 0 6px 6px 0;
+        }
+
+        .highway-tab.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            color: white;
+        }
+
+        .highway-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* New highway form */
+        .new-highway-form {
+            display: none;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .new-highway-form.visible {
+            display: flex;
+        }
+
+        .new-highway-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .new-highway-form label {
+            font-size: 0.75em;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .new-highway-form input,
+        .new-highway-form select {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.85em;
+        }
+
+        .new-highway-form input:focus,
+        .new-highway-form select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .new-highway-form select option {
+            background: #222;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>US Highways Tracker</h1>
+        </div>
+
+        <!-- Progress Summary Cards -->
+        <div class="section">
+            <h2>Progress Overview</h2>
+            <p>Track your progress driving highways across the United States</p>
+            <div class="highway-tabs">
+                <button class="highway-tab active" data-tab="interstates"
+                    onclick="switchTab('interstates')">Interstates</button>
+                <button class="highway-tab" data-tab="highways" onclick="switchTab('highways')">Highways</button>
+                <button class="highway-tab" data-tab="all" onclick="switchTab('all')">All</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-highways">0</div>
+                    <div class="stat-label">Total Routes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="driven-highways">0</div>
+                    <div class="stat-label">Driven</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completion-percentage">0%</div>
+                    <div class="stat-label">Completion</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-miles">0</div>
+                    <div class="stat-label">Total Miles</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Highway Map</h2>
+            <p>Interactive map showing US highways — interstates drawn thick, other highways drawn thin</p>
+            <div class="controls-panel">
+                <div class="filter-controls">
+                    <span>Filter:</span>
+                    <button class="btn btn-primary active" data-filter="all">All</button>
+                    <button class="btn btn-secondary" data-filter="driven">Driven</button>
+                    <button class="btn btn-secondary" data-filter="not-driven">Not Driven</button>
+                    <button class="btn btn-secondary" data-filter="interstates-only">Interstates Only</button>
+                    <button class="btn btn-secondary" data-filter="highways-only">Highways Only</button>
+                </div>
+            </div>
+            <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                <span>Edit Waypoints:</span>
+                <button id="edit-toggle" class="btn-edit toggle-off" onclick="toggleEditMode()">OFF</button>
+            </div>
+            <div class="map-container">
+                <div id="highway-map" style="height: 100%; width: 100%;">
+                    <!-- Editor controls overlay — inside map for fullscreen support, hidden until edit mode -->
+                    <div class="editor-overlay" id="editor-overlay">
+                        <div class="editor-toolbar">
+                            <select id="route-type-select" onchange="onRouteTypeSelect()" disabled>
+                                <option value="interstate">Interstate</option>
+                                <option value="highway">Highway</option>
+                            </select>
+                            <select id="route-select" onchange="onRouteSelect()" disabled>
+                                <option value="">Select a route...</option>
+                            </select>
+                            <select id="segment-select" onchange="onSegmentSelect()" disabled>
+                                <option value="">Select a segment...</option>
+                            </select>
+                            <button id="add-seg-btn" class="btn-edit add-wp" onclick="startAddSegment()" disabled
+                                title="Click two points on the map to create a new segment">+ Segment</button>
+                            <button id="add-wp-btn" class="btn-edit add-wp" onclick="addWaypoint()" disabled
+                                title="Add waypoint at midpoint of selected segment">+ Waypoint</button>
+                            <button id="del-wp-btn" class="btn-edit del-wp" onclick="deleteSelectedWaypoint()" disabled
+                                title="Delete selected waypoint">− Waypoint</button>
+                            <button id="export-btn" class="btn-edit export" onclick="showExport()" disabled>Export
+                                JSON</button>
+                        </div>
+                        <p class="editor-hint" id="editor-hint" style="display:none;">
+                            Drag markers to reposition waypoints (snaps to nearby waypoints). Click a marker to select
+                            it for deletion. Click the polyline to add a waypoint at that spot.
+                        </p>
+                        <p class="editor-hint" id="segment-place-hint" style="display:none; color: #27ae60;">
+                            Click on the map to place the <strong id="segment-place-step">start</strong> point of the
+                            new segment.
+                            <button class="btn-edit toggle-off" onclick="cancelAddSegment()"
+                                style="padding:4px 10px;font-size:0.8em;">Cancel</button>
+                        </p>
+                        <div class="editor-hint" id="route-plot-hint" style="display:none; color: #3498db;">
+                            <span id="route-plot-msg">Click on the map to place segment endpoints. Each click adds a
+                                node — segments auto-connect.</span>
+                            <span id="route-plot-count" style="margin-left:8px;opacity:0.7;"></span>
+                            <button class="btn-edit"
+                                style="background:#27ae60;padding:4px 12px;font-size:0.8em;margin-left:8px;"
+                                onclick="finishRoutePlotting()" id="finish-route-btn" disabled>Finish Route</button>
+                            <button class="btn-edit"
+                                style="background:#e67e22;padding:4px 10px;font-size:0.8em;margin-left:4px;"
+                                onclick="undoLastPlotPoint()">Undo</button>
+                            <button class="btn-edit toggle-off" onclick="cancelRoutePlotting()"
+                                style="padding:4px 10px;font-size:0.8em;margin-left:4px;">Cancel</button>
+                        </div>
+                        <div class="segment-name-row" id="segment-name-row">
+                            <label>From:</label>
+                            <input type="text" id="seg-from-city" placeholder="From city"
+                                onchange="onSegmentNameChange()">
+                            <label>To:</label>
+                            <input type="text" id="seg-to-city" placeholder="To city" onchange="onSegmentNameChange()">
+                            <label>Desc:</label>
+                            <input type="text" id="seg-description" placeholder="Description" style="width:280px;"
+                                onchange="onSegmentNameChange()">
+                        </div>
+                        <div class="new-highway-form" id="new-highway-form">
+                            <div class="form-group">
+                                <label>Number</label>
+                                <input type="text" id="new-hw-number" placeholder="US-101" style="width:100px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" id="new-hw-name" placeholder="US Route 101" style="width:180px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <input type="text" id="new-hw-desc" placeholder="Pacific Coast Highway"
+                                    style="width:220px;">
+                            </div>
+                            <div class="form-group">
+                                <label>States (comma-sep)</label>
+                                <input type="text" id="new-hw-states" placeholder="CA,OR,WA" style="width:140px;">
+                            </div>
+                            <div class="form-group">
+                                <label>Length (mi)</label>
+                                <input type="number" id="new-hw-length" placeholder="0" style="width:80px;">
+                            </div>
+                            <button class="btn-edit add-wp" onclick="createNewHighway()">Create Highway</button>
+                            <button class="btn-edit toggle-off" onclick="hideNewHighwayForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="export-modal-overlay" id="export-modal">
+        <div class="export-modal">
+            <h3>Export Highway JSON</h3>
+            <p style="margin:0;font-size:0.85em;opacity:0.7;">Copy this JSON and paste it into the appropriate data file
+            </p>
+            <textarea id="export-textarea" readonly></textarea>
+            <div class="export-modal-buttons">
+                <button class="btn-edit" style="background:#555;" onclick="closeExport()">Close</button>
+                <button class="btn-edit" style="background:#3498db;" onclick="copyExport()">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <script>
+        // ========== DATA & STATE ==========
+        let interstateData = {};   // from interstateHighways.json
+        let highwayData = {};      // from highways.json
+        let map;
+        let routeLayer;
+        let activeTab = 'interstates';
+
+        // ========== INIT ==========
+        function initMap() {
+            map = L.map('highway-map', {
+                gestureHandling: true,
+                fullscreenControl: true
+            }).setView([39.8283, -98.5795], 4);
+
+            map.on('fullscreenchange', () => {
+                if (map.isFullscreen()) {
+                    map.gestureHandling.disable();
+                } else {
+                    map.gestureHandling.enable();
+                }
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            routeLayer = L.layerGroup().addTo(map);
+
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function () {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `
+                    <div><span class="legend-swatch" style="background-color: #28a745; border-radius: 2px; height: 4px;"></span> Driven</div>
+                    <div><span class="legend-swatch" style="background-color: #dc3545; border-radius: 2px; height: 4px;"></span> Not Driven</div>
+                    <div style="margin-top:4px;font-size:0.8em;opacity:0.7;">Thick = Interstate · Thin = Highway</div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+
+            // Prevent map from capturing clicks/scrolls on the editor overlay
+            const overlay = document.getElementById('editor-overlay');
+            L.DomEvent.disableClickPropagation(overlay);
+            L.DomEvent.disableScrollPropagation(overlay);
+        }
+
+        async function loadData() {
+            try {
+                const [intResp, hwResp] = await Promise.all([
+                    fetch('data/interstateHighways.json'),
+                    fetch('data/highways.json')
+                ]);
+                interstateData = await intResp.json();
+                highwayData = await hwResp.json();
+                updateStats();
+                drawRoutes();
+            } catch (error) {
+                console.error('Error loading highway data:', error);
+            }
+        }
+
+        // ========== TABS ==========
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.highway-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.highway-tab[data-tab="${tab}"]`).classList.add('active');
+            updateStats();
+        }
+
+        // ========== STATS ==========
+        function getActiveRoutes() {
+            const interstates = interstateData.interstates || [];
+            const highways = highwayData.highways || [];
+            switch (activeTab) {
+                case 'interstates': return interstates;
+                case 'highways': return highways;
+                case 'all': return [...interstates, ...highways];
+                default: return interstates;
+            }
+        }
+
+        function updateStats() {
+            const routes = getActiveRoutes();
+            const total = routes.length;
+            const driven = routes.filter(r => r.driven).length;
+            const percentage = total > 0 ? Math.round((driven / total) * 100) : 0;
+            const totalMiles = routes.reduce((sum, r) => sum + (r.length || 0), 0);
+
+            document.getElementById('total-highways').textContent = total;
+            document.getElementById('driven-highways').textContent = driven;
+            document.getElementById('completion-percentage').textContent = percentage + '%';
+            document.getElementById('total-miles').textContent = totalMiles.toLocaleString();
+        }
+
+        // ========== DRAWING ==========
+        function drawRoutes(filter = 'all') {
+            routeLayer.clearLayers();
+
+            const interstates = interstateData.interstates || [];
+            const highways = highwayData.highways || [];
+
+            // Determine which sets to draw based on filter
+            let drawInterstates = true;
+            let drawHighways = true;
+            if (filter === 'interstates-only') drawHighways = false;
+            if (filter === 'highways-only') drawInterstates = false;
+
+            if (drawInterstates) {
+                let filtered = interstates;
+                if (filter === 'driven') filtered = interstates.filter(i => i.driven);
+                if (filter === 'not-driven') filtered = interstates.filter(i => !i.driven);
+                filtered.forEach(interstate => drawRoute(interstate, true));
+            }
+
+            if (drawHighways) {
+                let filtered = highways;
+                if (filter === 'driven') filtered = highways.filter(h => h.driven);
+                if (filter === 'not-driven') filtered = highways.filter(h => !h.driven);
+                filtered.forEach(highway => drawRoute(highway, false));
+            }
+        }
+
+        function drawRoute(route, isInterstate) {
+            const weight = isInterstate ? 4 : 2;
+            const opacity = isInterstate ? 0.8 : 0.65;
+
+            if (route.routeSegments && route.routeSegments.length > 0) {
+                route.routeSegments.forEach((segment, index) => {
+                    const color = segment.driven ? '#28a745' : '#dc3545';
+                    const coordinates = segment.waypoints && segment.waypoints.length > 0
+                        ? segment.waypoints
+                        : [segment.from, segment.to];
+                    const polyline = L.polyline(coordinates, {
+                        color: color,
+                        weight: weight,
+                        opacity: opacity
+                    }).addTo(routeLayer);
+
+                    const typeLabel = isInterstate ? 'Interstate' : 'Highway';
+                    polyline.bindPopup(`
+                        <div>
+                            <h4>${route.number} - ${segment.description}</h4>
+                            <p><strong>Type:</strong> ${typeLabel}</p>
+                            <p><strong>Distance:</strong> ${segment.miles} miles</p>
+                            <p><strong>Status:</strong> ${segment.driven ? 'Driven' : 'Not Driven'}</p>
+                            <button onclick="toggleSegment('${route.number}', ${index}, ${isInterstate})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                                ${segment.driven ? 'Mark as Not Driven' : 'Mark as Driven'}
+                            </button>
+                        </div>
+                    `);
+                });
+            } else if (route.coordinates && route.coordinates.length > 0) {
+                const color = route.driven ? '#28a745' : '#dc3545';
+                const polyline = L.polyline(route.coordinates, {
+                    color: color,
+                    weight: weight,
+                    opacity: opacity
+                }).addTo(routeLayer);
+
+                polyline.bindPopup(`
+                    <div>
+                        <h4>${route.name}</h4>
+                        <p>${route.description}</p>
+                        <p><strong>Length:</strong> ${route.length.toLocaleString()} miles</p>
+                        <p><strong>States:</strong> ${route.states.join(', ')}</p>
+                        <p><strong>Status:</strong> ${route.driven ? 'Driven' : 'Not Driven'}</p>
+                    </div>
+                `);
+            }
+        }
+
+        function toggleSegment(routeNumber, segmentIndex, isInterstate) {
+            const list = isInterstate ? interstateData.interstates : highwayData.highways;
+            const route = list.find(r => r.number === routeNumber);
+            if (route && route.routeSegments && route.routeSegments[segmentIndex]) {
+                route.routeSegments[segmentIndex].driven = !route.routeSegments[segmentIndex].driven;
+                updateRouteStatus(route);
+                updateStats();
+                drawRoutes();
+            }
+        }
+
+        function updateRouteStatus(route) {
+            if (route.routeSegments) {
+                const drivenSegments = route.routeSegments.filter(s => s.driven).length;
+                route.driven = drivenSegments === route.routeSegments.length;
+            }
+        }
+
+        // ========== FILTERS ==========
+        function initFilters() {
+            document.querySelectorAll('.filter-controls .btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-controls .btn').forEach(b => {
+                        b.classList.remove('active', 'btn-primary');
+                        b.classList.add('btn-secondary');
+                    });
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('active', 'btn-primary');
+                    drawRoutes(btn.dataset.filter);
+                    if (editMode && editingSegmentIndex !== null) {
+                        drawEditOverlay();
+                    }
+                });
+            });
+        }
+
+        // ========== NEW HIGHWAY CREATION ==========
+        function showNewHighwayForm() {
+            document.getElementById('new-highway-form').classList.add('visible');
+        }
+
+        function hideNewHighwayForm() {
+            document.getElementById('new-highway-form').classList.remove('visible');
+        }
+
+        function createNewHighway() {
+            const number = document.getElementById('new-hw-number').value.trim();
+            const name = document.getElementById('new-hw-name').value.trim();
+            const desc = document.getElementById('new-hw-desc').value.trim();
+            const statesStr = document.getElementById('new-hw-states').value.trim();
+            const length = parseInt(document.getElementById('new-hw-length').value) || 0;
+
+            if (!number || !name) {
+                alert('Number and Name are required.');
+                return;
+            }
+
+            const newHighway = {
+                number: number,
+                name: name,
+                description: desc || '',
+                states: statesStr ? statesStr.split(',').map(s => s.trim()) : [],
+                length: length,
+                driven: false,
+                routeSegments: []
+            };
+
+            if (!highwayData.highways) highwayData.highways = [];
+            highwayData.highways.push(newHighway);
+
+            // Clear form
+            document.getElementById('new-hw-number').value = '';
+            document.getElementById('new-hw-name').value = '';
+            document.getElementById('new-hw-desc').value = '';
+            document.getElementById('new-hw-states').value = '';
+            document.getElementById('new-hw-length').value = '';
+            hideNewHighwayForm();
+
+            // Refresh the route dropdown and auto-select the new highway
+            populateRouteSelect();
+            document.getElementById('route-select').value = number;
+            editingRoute = newHighway;
+            editingIsInterstate = false;
+
+            updateStats();
+            drawRoutes();
+
+            // Automatically enter route plotting mode
+            startRoutePlotting();
+        }
+
+        // ========== WAYPOINT EDITOR ==========
+        let editMode = false;
+        let editingRoute = null;
+        let editingIsInterstate = true;
+        let editingSegmentIndex = null;
+        let waypointMarkers = [];
+        let editPolyline = null;
+        let selectedMarkerIndex = null;
+        let snapIndicator = null;
+        const SNAP_THRESHOLD_PX = 15;
+
+        // Segment placement state
+        let placingSegment = false;
+        let placingSegmentStart = null;
+        let placingStartMarker = null;
+
+        // Route plotting state
+        let plottingRoute = false;
+        let plotPoints = [];
+        let plotMarkers = [];
+        let plotPolyline = null;
+
+        function getAllSnapTargets() {
+            const targets = [];
+            const addTargets = (list) => {
+                if (!list) return;
+                list.forEach(route => {
+                    if (!route.routeSegments) return;
+                    route.routeSegments.forEach((seg, sIdx) => {
+                        if (route === editingRoute && sIdx === editingSegmentIndex) return;
+                        const pts = seg.waypoints?.length ? seg.waypoints : [seg.from, seg.to];
+                        pts.forEach((p, pIdx) => {
+                            let city = null;
+                            if (pIdx === 0) city = seg.fromCity || null;
+                            else if (pIdx === pts.length - 1) city = seg.toCity || null;
+                            targets.push({ coord: p, city });
+                        });
+                    });
+                });
+            };
+            addTargets(interstateData.interstates);
+            addTargets(highwayData.highways);
+            return targets;
+        }
+
+        function findSnapTarget(latlng) {
+            const targets = getAllSnapTargets();
+            const dragPt = map.latLngToContainerPoint(latlng);
+            let best = null;
+            let bestDist = Infinity;
+            targets.forEach(t => {
+                const tPt = map.latLngToContainerPoint(L.latLng(t.coord[0], t.coord[1]));
+                const dx = dragPt.x - tPt.x;
+                const dy = dragPt.y - tPt.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < bestDist) { bestDist = d; best = t; }
+            });
+            return (bestDist <= SNAP_THRESHOLD_PX && best) ? best : null;
+        }
+
+        function showSnapIndicator(latlng) {
+            if (!snapIndicator) {
+                snapIndicator = L.marker(latlng, {
+                    interactive: false,
+                    icon: L.divIcon({ className: 'snap-indicator', iconSize: [18, 18], iconAnchor: [9, 9] })
+                }).addTo(map);
+            } else {
+                snapIndicator.setLatLng(latlng);
+                if (!map.hasLayer(snapIndicator)) snapIndicator.addTo(map);
+            }
+        }
+
+        function hideSnapIndicator() {
+            if (snapIndicator && map.hasLayer(snapIndicator)) map.removeLayer(snapIndicator);
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            const btn = document.getElementById('edit-toggle');
+            const routeTypeSelect = document.getElementById('route-type-select');
+            const hint = document.getElementById('editor-hint');
+            const exportBtn = document.getElementById('export-btn');
+            const overlay = document.getElementById('editor-overlay');
+
+            if (editMode) {
+                btn.textContent = 'ON';
+                btn.classList.remove('toggle-off');
+                btn.classList.add('toggle-on');
+                overlay.classList.add('editing');
+                routeTypeSelect.disabled = false;
+                hint.style.display = 'block';
+                exportBtn.disabled = false;
+                populateRouteSelect();
+            } else {
+                btn.textContent = 'OFF';
+                btn.classList.remove('toggle-on');
+                btn.classList.add('toggle-off');
+                overlay.classList.remove('editing');
+                routeTypeSelect.disabled = true;
+                document.getElementById('route-select').disabled = true;
+                document.getElementById('segment-select').disabled = true;
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('add-seg-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                exportBtn.disabled = true;
+                hint.style.display = 'none';
+                clearEditOverlay();
+                hideSnapIndicator();
+                hideNewHighwayForm();
+                cancelAddSegment();
+                cancelRoutePlotting();
+                document.getElementById('segment-name-row').classList.remove('visible');
+                editingRoute = null;
+                editingSegmentIndex = null;
+                drawRoutes();
+            }
+        }
+
+        function onRouteTypeSelect() {
+            populateRouteSelect();
+            clearEditOverlay();
+            cancelAddSegment();
+            cancelRoutePlotting();
+            editingRoute = null;
+            editingSegmentIndex = null;
+            document.getElementById('segment-select').disabled = true;
+            document.getElementById('segment-select').innerHTML = '<option value="">Select a segment...</option>';
+            document.getElementById('add-wp-btn').disabled = true;
+            document.getElementById('add-seg-btn').disabled = true;
+            document.getElementById('del-wp-btn').disabled = true;
+            document.getElementById('segment-name-row').classList.remove('visible');
+        }
+
+        function populateRouteSelect() {
+            const type = document.getElementById('route-type-select').value;
+            const select = document.getElementById('route-select');
+            select.innerHTML = '<option value="">Select a route...</option>';
+            select.disabled = false;
+
+            editingIsInterstate = (type === 'interstate');
+            const list = editingIsInterstate ? (interstateData.interstates || []) : (highwayData.highways || []);
+
+            const sorted = [...list].sort((a, b) => {
+                const na = parseInt(a.number.replace(/[^0-9]/g, ''));
+                const nb = parseInt(b.number.replace(/[^0-9]/g, ''));
+                return na - nb || a.number.localeCompare(b.number);
+            });
+
+            sorted.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.number;
+                opt.textContent = `${r.number} (${r.routeSegments?.length || 0} segments)`;
+                select.appendChild(opt);
+            });
+
+            // Add "New Highway" option for non-interstates
+            if (!editingIsInterstate) {
+                const opt = document.createElement('option');
+                opt.value = '__new__';
+                opt.textContent = '+ Create New Highway...';
+                select.appendChild(opt);
+            }
+        }
+
+        function onRouteSelect() {
+            const val = document.getElementById('route-select').value;
+            const segSelect = document.getElementById('segment-select');
+            clearEditOverlay();
+            editingSegmentIndex = null;
+
+            if (val === '__new__') {
+                showNewHighwayForm();
+                editingRoute = null;
+                segSelect.disabled = true;
+                segSelect.innerHTML = '<option value="">Select a segment...</option>';
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('add-seg-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                document.getElementById('segment-name-row').classList.remove('visible');
+                return;
+            }
+
+            hideNewHighwayForm();
+
+            if (!val) {
+                editingRoute = null;
+                segSelect.disabled = true;
+                segSelect.innerHTML = '<option value="">Select a segment...</option>';
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('add-seg-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                document.getElementById('segment-name-row').classList.remove('visible');
+                drawRoutes();
+                return;
+            }
+
+            const list = editingIsInterstate ? interstateData.interstates : highwayData.highways;
+            editingRoute = list.find(r => r.number === val);
+            segSelect.disabled = false;
+            segSelect.innerHTML = '<option value="">Select a segment...</option>';
+
+            if (editingRoute?.routeSegments) {
+                editingRoute.routeSegments.forEach((seg, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `[${idx}] ${seg.fromCity || '?'} → ${seg.toCity || '?'} (${seg.miles}mi, ${seg.waypoints?.length || 2} pts)`;
+                    segSelect.appendChild(opt);
+                });
+            }
+
+            // Enable add-segment button whenever a route is selected
+            document.getElementById('add-seg-btn').disabled = false;
+
+            zoomToRoute(editingRoute);
+        }
+
+        function zoomToRoute(route) {
+            if (!route?.routeSegments?.length) return;
+            const allPts = [];
+            route.routeSegments.forEach(seg => {
+                const pts = seg.waypoints?.length ? seg.waypoints : [seg.from, seg.to];
+                pts.forEach(p => allPts.push(p));
+            });
+            if (allPts.length) {
+                map.fitBounds(L.latLngBounds(allPts.map(p => L.latLng(p[0], p[1]))).pad(0.1));
+            }
+        }
+
+        function onSegmentSelect() {
+            const val = document.getElementById('segment-select').value;
+            clearEditOverlay();
+            selectedMarkerIndex = null;
+
+            if (val === '' || !editingRoute) {
+                editingSegmentIndex = null;
+                document.getElementById('add-wp-btn').disabled = true;
+                document.getElementById('del-wp-btn').disabled = true;
+                document.getElementById('segment-name-row').classList.remove('visible');
+                return;
+            }
+
+            editingSegmentIndex = parseInt(val);
+            document.getElementById('add-wp-btn').disabled = false;
+            document.getElementById('del-wp-btn').disabled = true;
+
+            const seg = editingRoute.routeSegments[editingSegmentIndex];
+            document.getElementById('seg-from-city').value = seg.fromCity || '';
+            document.getElementById('seg-to-city').value = seg.toCity || '';
+            document.getElementById('seg-description').value = seg.description || '';
+            document.getElementById('segment-name-row').classList.add('visible');
+
+            drawEditOverlay();
+        }
+
+        function clearEditOverlay() {
+            waypointMarkers.forEach(m => map.removeLayer(m));
+            waypointMarkers = [];
+            if (editPolyline) { map.removeLayer(editPolyline); editPolyline = null; }
+        }
+
+        function getSegmentWaypoints(seg) {
+            if (seg.waypoints && seg.waypoints.length > 0) return seg.waypoints;
+            return [seg.from, seg.to];
+        }
+
+        function drawEditOverlay(fitView = true) {
+            clearEditOverlay();
+            if (editingSegmentIndex === null || !editingRoute) return;
+
+            const seg = editingRoute.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+
+            editPolyline = L.polyline(waypoints.map(w => [w[0], w[1]]), {
+                color: '#e67e22', weight: 6, opacity: 0.9, dashArray: '8, 6'
+            }).addTo(map);
+
+            editPolyline.on('click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                insertWaypointAtClick(e.latlng, waypoints);
+            });
+
+            waypoints.forEach((wp, idx) => {
+                const isEndpoint = idx === 0 || idx === waypoints.length - 1;
+                const marker = L.marker([wp[0], wp[1]], {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: 'waypoint-marker-icon',
+                        html: `<div style="
+                            width: ${isEndpoint ? 14 : 10}px;
+                            height: ${isEndpoint ? 14 : 10}px;
+                            background: ${isEndpoint ? '#e74c3c' : '#f39c12'};
+                            border: 2px solid white;
+                            border-radius: 50%;
+                            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+                            cursor: ${isEndpoint ? 'not-allowed' : 'grab'};
+                        "></div>`,
+                        iconSize: [isEndpoint ? 14 : 10, isEndpoint ? 14 : 10],
+                        iconAnchor: [isEndpoint ? 7 : 5, isEndpoint ? 7 : 5]
+                    })
+                }).addTo(map);
+
+                marker.wpIndex = idx;
+
+                marker.on('click', function () {
+                    selectedMarkerIndex = idx;
+                    document.getElementById('del-wp-btn').disabled = isEndpoint;
+                    highlightSelectedMarker();
+                });
+
+                marker.on('drag', function (e) {
+                    const pos = e.target.getLatLng();
+                    const snap = findSnapTarget(pos);
+                    if (snap) showSnapIndicator(L.latLng(snap.coord[0], snap.coord[1]));
+                    else hideSnapIndicator();
+                    const currentPt = [pos.lat, pos.lng];
+                    const tempWaypoints = waypoints.map((w, i) => i === idx ? currentPt : w);
+                    if (editPolyline) editPolyline.setLatLngs(tempWaypoints.map(w => [w[0], w[1]]));
+                });
+
+                marker.on('dragend', function (e) {
+                    hideSnapIndicator();
+                    const pos = e.target.getLatLng();
+                    const snap = findSnapTarget(pos);
+                    const finalCoord = snap
+                        ? [snap.coord[0], snap.coord[1]]
+                        : [parseFloat(pos.lat.toFixed(4)), parseFloat(pos.lng.toFixed(4))];
+                    waypoints[idx] = finalCoord;
+                    syncWaypointsToSegment(seg, waypoints);
+
+                    if (snap && snap.city) {
+                        if (idx === 0) {
+                            seg.fromCity = snap.city;
+                            seg.description = `${seg.fromCity} to ${seg.toCity}`;
+                            document.getElementById('seg-from-city').value = snap.city;
+                            document.getElementById('seg-description').value = seg.description;
+                        } else if (idx === waypoints.length - 1) {
+                            seg.toCity = snap.city;
+                            seg.description = `${seg.fromCity} to ${seg.toCity}`;
+                            document.getElementById('seg-to-city').value = snap.city;
+                            document.getElementById('seg-description').value = seg.description;
+                        }
+                    }
+
+                    refreshSegmentSelect();
+                    drawRoutes();
+                    drawEditOverlay(false);
+                });
+
+                marker.bindTooltip(`WP ${idx}: [${wp[0].toFixed(4)}, ${wp[1].toFixed(4)}]`, {
+                    direction: 'top', offset: [0, -8]
+                });
+
+                waypointMarkers.push(marker);
+            });
+
+            if (fitView) map.fitBounds(editPolyline.getBounds().pad(0.2));
+        }
+
+        function highlightSelectedMarker() {
+            waypointMarkers.forEach((m, idx) => {
+                const isEndpoint = idx === 0 || idx === waypointMarkers.length - 1;
+                const isSelected = idx === selectedMarkerIndex;
+                const size = isEndpoint ? 14 : (isSelected ? 14 : 10);
+                const color = isSelected ? '#9b59b6' : (isEndpoint ? '#e74c3c' : '#f39c12');
+                m.setIcon(L.divIcon({
+                    className: 'waypoint-marker-icon',
+                    html: `<div style="
+                        width: ${size}px; height: ${size}px;
+                        background: ${color};
+                        border: 2px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+                        ${isSelected ? 'box-shadow: 0 0 8px #9b59b6;' : ''}
+                    "></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2]
+                }));
+            });
+        }
+
+        function insertWaypointAtClick(latlng, waypoints) {
+            let bestIdx = 1;
+            let bestDist = Infinity;
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                const a = L.latLng(waypoints[i][0], waypoints[i][1]);
+                const b = L.latLng(waypoints[i + 1][0], waypoints[i + 1][1]);
+                const d = distToSegment(latlng, a, b);
+                if (d < bestDist) { bestDist = d; bestIdx = i + 1; }
+            }
+            const newPt = [parseFloat(latlng.lat.toFixed(4)), parseFloat(latlng.lng.toFixed(4))];
+            waypoints.splice(bestIdx, 0, newPt);
+            syncWaypointsToSegment(editingRoute.routeSegments[editingSegmentIndex], waypoints);
+            refreshSegmentSelect();
+            drawRoutes();
+            drawEditOverlay();
+        }
+
+        function distToSegment(p, a, b) {
+            const x = p.lat, y = p.lng;
+            const x1 = a.lat, y1 = a.lng, x2 = b.lat, y2 = b.lng;
+            const dx = x2 - x1, dy = y2 - y1;
+            if (dx === 0 && dy === 0) return p.distanceTo(a);
+            let t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+            t = Math.max(0, Math.min(1, t));
+            return p.distanceTo(L.latLng(x1 + t * dx, y1 + t * dy));
+        }
+
+        function addWaypoint() {
+            if (editingSegmentIndex === null || !editingRoute) return;
+            const seg = editingRoute.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+            const len = waypoints.length;
+            const a = waypoints[len - 2];
+            const b = waypoints[len - 1];
+            const mid = [
+                parseFloat(((a[0] + b[0]) / 2).toFixed(4)),
+                parseFloat(((a[1] + b[1]) / 2).toFixed(4))
+            ];
+            waypoints.splice(len - 1, 0, mid);
+            syncWaypointsToSegment(seg, waypoints);
+            refreshSegmentSelect();
+            drawRoutes();
+            drawEditOverlay();
+        }
+
+        function deleteSelectedWaypoint() {
+            if (selectedMarkerIndex === null || editingSegmentIndex === null) return;
+            const seg = editingRoute.routeSegments[editingSegmentIndex];
+            const waypoints = getSegmentWaypoints(seg);
+            if (selectedMarkerIndex === 0 || selectedMarkerIndex === waypoints.length - 1) return;
+            if (waypoints.length <= 2) return;
+            waypoints.splice(selectedMarkerIndex, 1);
+            syncWaypointsToSegment(seg, waypoints);
+            selectedMarkerIndex = null;
+            document.getElementById('del-wp-btn').disabled = true;
+            refreshSegmentSelect();
+            drawRoutes();
+            drawEditOverlay();
+        }
+
+        function syncWaypointsToSegment(seg, waypoints) {
+            seg.waypoints = waypoints.map(w => [w[0], w[1]]);
+            seg.from = waypoints[0];
+            seg.to = waypoints[waypoints.length - 1];
+        }
+
+        function onSegmentNameChange() {
+            if (editingSegmentIndex === null || !editingRoute) return;
+            const seg = editingRoute.routeSegments[editingSegmentIndex];
+            const fromCity = document.getElementById('seg-from-city').value.trim();
+            const toCity = document.getElementById('seg-to-city').value.trim();
+            const desc = document.getElementById('seg-description').value.trim();
+            if (fromCity) seg.fromCity = fromCity;
+            if (toCity) seg.toCity = toCity;
+            if (desc) seg.description = desc;
+            refreshSegmentSelect();
+        }
+
+        function refreshSegmentSelect() {
+            if (!editingRoute) return;
+            const segSelect = document.getElementById('segment-select');
+            const currentVal = segSelect.value;
+            segSelect.innerHTML = '<option value="">Select a segment...</option>';
+            editingRoute.routeSegments.forEach((seg, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `[${idx}] ${seg.fromCity || '?'} → ${seg.toCity || '?'} (${seg.miles}mi, ${seg.waypoints?.length || 2} pts)`;
+                segSelect.appendChild(opt);
+            });
+            segSelect.value = currentVal;
+        }
+
+        // ========== SEGMENT PLACEMENT (single segment for existing routes) ==========
+        function startAddSegment() {
+            if (!editingRoute) return;
+            placingSegment = true;
+            placingSegmentStart = null;
+            if (placingStartMarker) { map.removeLayer(placingStartMarker); placingStartMarker = null; }
+            clearEditOverlay();
+            editingSegmentIndex = null;
+
+            // If the route already has segments, auto-start from the last endpoint
+            const segs = editingRoute.routeSegments || [];
+            if (segs.length > 0) {
+                const lastSeg = segs[segs.length - 1];
+                const lastPt = lastSeg.waypoints?.length ? lastSeg.waypoints[lastSeg.waypoints.length - 1] : lastSeg.to;
+                placingSegmentStart = lastPt;
+                placingStartMarker = L.marker(lastPt, {
+                    icon: L.divIcon({
+                        className: 'waypoint-marker-icon',
+                        html: `<div style="width:14px;height:14px;background:#27ae60;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>`,
+                        iconSize: [14, 14], iconAnchor: [7, 7]
+                    })
+                }).addTo(map);
+                document.getElementById('segment-place-hint').style.display = 'block';
+                document.getElementById('segment-place-step').textContent = 'end';
+            } else {
+                document.getElementById('segment-place-hint').style.display = 'block';
+                document.getElementById('segment-place-step').textContent = 'start';
+            }
+
+            document.getElementById('editor-hint').style.display = 'none';
+            document.getElementById('segment-name-row').classList.remove('visible');
+            map.getContainer().style.cursor = 'crosshair';
+            map.on('click', onSegmentPlaceClick);
+        }
+
+        function cancelAddSegment() {
+            placingSegment = false;
+            placingSegmentStart = null;
+            if (placingStartMarker) { map.removeLayer(placingStartMarker); placingStartMarker = null; }
+            document.getElementById('segment-place-hint').style.display = 'none';
+            if (editMode) document.getElementById('editor-hint').style.display = 'block';
+            map.getContainer().style.cursor = '';
+            map.off('click', onSegmentPlaceClick);
+        }
+
+        function onSegmentPlaceClick(e) {
+            const coord = [parseFloat(e.latlng.lat.toFixed(4)), parseFloat(e.latlng.lng.toFixed(4))];
+
+            if (!placingSegmentStart) {
+                placingSegmentStart = coord;
+                document.getElementById('segment-place-step').textContent = 'end';
+                placingStartMarker = L.marker(coord, {
+                    icon: L.divIcon({
+                        className: 'waypoint-marker-icon',
+                        html: `<div style="width:14px;height:14px;background:#27ae60;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>`,
+                        iconSize: [14, 14], iconAnchor: [7, 7]
+                    })
+                }).addTo(map);
+            } else {
+                const startCoord = placingSegmentStart;
+                const endCoord = coord;
+                if (!editingRoute.routeSegments) editingRoute.routeSegments = [];
+
+                const newSegment = {
+                    from: startCoord, to: endCoord,
+                    description: `Segment ${editingRoute.routeSegments.length + 1}`,
+                    driven: false, miles: 0, fromCity: '', toCity: '', states: [],
+                    waypoints: [startCoord, endCoord]
+                };
+                editingRoute.routeSegments.push(newSegment);
+                cancelAddSegment();
+
+                const newIdx = editingRoute.routeSegments.length - 1;
+                refreshSegmentSelect();
+                document.getElementById('segment-select').value = newIdx;
+                editingSegmentIndex = newIdx;
+                document.getElementById('seg-from-city').value = '';
+                document.getElementById('seg-to-city').value = '';
+                document.getElementById('seg-description').value = newSegment.description;
+                document.getElementById('segment-name-row').classList.add('visible');
+                document.getElementById('add-wp-btn').disabled = false;
+                document.getElementById('del-wp-btn').disabled = true;
+
+                updateStats();
+                drawRoutes();
+                drawEditOverlay();
+            }
+        }
+
+        // ========== ROUTE PLOTTING (multi-segment for new highways) ==========
+        function startRoutePlotting() {
+            plottingRoute = true;
+            plotPoints = [];
+            clearPlotOverlay();
+            clearEditOverlay();
+            editingSegmentIndex = null;
+
+            document.getElementById('editor-hint').style.display = 'none';
+            document.getElementById('segment-name-row').classList.remove('visible');
+            document.getElementById('route-plot-hint').style.display = 'block';
+            document.getElementById('finish-route-btn').disabled = true;
+            updatePlotCount();
+
+            // Hide the main toolbar selects during plotting
+            document.getElementById('route-type-select').disabled = true;
+            document.getElementById('route-select').disabled = true;
+            document.getElementById('segment-select').disabled = true;
+            document.getElementById('add-seg-btn').disabled = true;
+            document.getElementById('add-wp-btn').disabled = true;
+
+            map.getContainer().style.cursor = 'crosshair';
+            map.on('click', onRoutePlotClick);
+        }
+
+        function cancelRoutePlotting() {
+            plottingRoute = false;
+            plotPoints = [];
+            clearPlotOverlay();
+            document.getElementById('route-plot-hint').style.display = 'none';
+            if (editMode) document.getElementById('editor-hint').style.display = 'block';
+            map.getContainer().style.cursor = '';
+            map.off('click', onRoutePlotClick);
+
+            // Re-enable controls
+            document.getElementById('route-type-select').disabled = false;
+            document.getElementById('route-select').disabled = false;
+
+            // If we have an editing route, re-enable its controls
+            if (editingRoute) {
+                document.getElementById('segment-select').disabled = false;
+                document.getElementById('add-seg-btn').disabled = false;
+            }
+        }
+
+        function clearPlotOverlay() {
+            plotMarkers.forEach(m => map.removeLayer(m));
+            plotMarkers = [];
+            if (plotPolyline) { map.removeLayer(plotPolyline); plotPolyline = null; }
+        }
+
+        function updatePlotCount() {
+            const n = plotPoints.length;
+            const segs = n > 1 ? n - 1 : 0;
+            document.getElementById('route-plot-count').textContent = `(${n} nodes, ${segs} segment${segs !== 1 ? 's' : ''})`;
+        }
+
+        function drawPlotOverlay() {
+            clearPlotOverlay();
+            if (plotPoints.length === 0) return;
+
+            // Draw polyline through all points
+            if (plotPoints.length > 1) {
+                plotPolyline = L.polyline(plotPoints.map(p => [p[0], p[1]]), {
+                    color: '#3498db', weight: 4, opacity: 0.8, dashArray: '10, 6'
+                }).addTo(map);
+            }
+
+            // Draw markers
+            plotPoints.forEach((pt, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === plotPoints.length - 1;
+                const color = isFirst ? '#e74c3c' : (isLast ? '#27ae60' : '#f39c12');
+                const size = (isFirst || isLast) ? 14 : 10;
+                const marker = L.marker([pt[0], pt[1]], {
+                    icon: L.divIcon({
+                        className: 'waypoint-marker-icon',
+                        html: `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>`,
+                        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+                    })
+                }).addTo(map);
+                marker.bindTooltip(`Node ${idx + 1}: [${pt[0].toFixed(4)}, ${pt[1].toFixed(4)}]`, {
+                    direction: 'top', offset: [0, -8]
+                });
+                plotMarkers.push(marker);
+            });
+        }
+
+        function onRoutePlotClick(e) {
+            const coord = [parseFloat(e.latlng.lat.toFixed(4)), parseFloat(e.latlng.lng.toFixed(4))];
+            plotPoints.push(coord);
+            updatePlotCount();
+            drawPlotOverlay();
+
+            // Enable finish once we have at least 2 points (1 segment)
+            document.getElementById('finish-route-btn').disabled = plotPoints.length < 2;
+        }
+
+        function undoLastPlotPoint() {
+            if (plotPoints.length === 0) return;
+            plotPoints.pop();
+            updatePlotCount();
+            drawPlotOverlay();
+            document.getElementById('finish-route-btn').disabled = plotPoints.length < 2;
+        }
+
+        function finishRoutePlotting() {
+            if (plotPoints.length < 2 || !editingRoute) return;
+
+            // Convert plotPoints into chained segments
+            if (!editingRoute.routeSegments) editingRoute.routeSegments = [];
+
+            for (let i = 0; i < plotPoints.length - 1; i++) {
+                const from = plotPoints[i];
+                const to = plotPoints[i + 1];
+                editingRoute.routeSegments.push({
+                    from: from,
+                    to: to,
+                    description: `Segment ${editingRoute.routeSegments.length + 1}`,
+                    driven: false,
+                    miles: 0,
+                    fromCity: '',
+                    toCity: '',
+                    states: [],
+                    waypoints: [from, to]
+                });
+            }
+
+            // Clean up plotting mode
+            cancelRoutePlotting();
+
+            // Refresh UI
+            refreshSegmentSelect();
+            updateStats();
+            drawRoutes();
+
+            // Select the first new segment for editing
+            if (editingRoute.routeSegments.length > 0) {
+                const firstIdx = 0;
+                document.getElementById('segment-select').value = firstIdx;
+                document.getElementById('segment-select').disabled = false;
+                document.getElementById('add-seg-btn').disabled = false;
+                editingSegmentIndex = firstIdx;
+                const seg = editingRoute.routeSegments[firstIdx];
+                document.getElementById('seg-from-city').value = seg.fromCity || '';
+                document.getElementById('seg-to-city').value = seg.toCity || '';
+                document.getElementById('seg-description').value = seg.description || '';
+                document.getElementById('segment-name-row').classList.add('visible');
+                document.getElementById('add-wp-btn').disabled = false;
+                document.getElementById('del-wp-btn').disabled = true;
+                drawEditOverlay();
+            }
+
+            zoomToRoute(editingRoute);
+        }
+
+        // ========== EXPORT ==========
+        function showExport() {
+            if (!editingRoute) return;
+            const modal = document.getElementById('export-modal');
+            const textarea = document.getElementById('export-textarea');
+            if (editingIsInterstate) {
+                textarea.value = JSON.stringify(editingRoute, null, 4);
+            } else {
+                // Export the full highways.json for non-interstates
+                textarea.value = JSON.stringify(highwayData, null, 4);
+            }
+            modal.classList.add('visible');
+        }
+
+        function closeExport() {
+            document.getElementById('export-modal').classList.remove('visible');
+        }
+
+        function copyExport() {
+            const textarea = document.getElementById('export-textarea');
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+            });
+        }
+
+        document.getElementById('export-modal')?.addEventListener('click', function (e) {
+            if (e.target === this) closeExport();
+        });
+
+        // ========== INIT ==========
+        async function init() {
+            initMap();
+            await loadData();
+            updateStats();
+            drawRoutes();
+            initFilters();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

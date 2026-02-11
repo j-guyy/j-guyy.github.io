@@ -435,6 +435,40 @@
     pointer-events: none;
 }
 
+/* Fog of War radius control */
+.fog-radius-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-color);
+    font-size: 0.9em;
+    width: 100%;
+    justify-content: center;
+}
+
+.fog-radius-control label {
+    white-space: nowrap;
+}
+
+#fog-radius-slider {
+    width: 180px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+/* Fog of War overlay */
+.fog-of-war-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 450;
+}
+
+.fog-of-war-svg {
+    display: block;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .controls-panel {

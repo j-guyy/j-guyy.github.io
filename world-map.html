@@ -38,6 +38,20 @@
         <div class="section">
             <h2>Global Adventures</h2>
             <p class="map-description">Map of all of my visited countries and cities</p>
+            <div class="map-view-toggle">
+                <div class="view-mode-selector">
+                    <button class="view-mode-btn active" data-mode="country">Country View</button>
+                    <button class="view-mode-btn" data-mode="radius">Radius View</button>
+                    <button class="view-mode-btn" data-mode="fog">Fog of War</button>
+                </div>
+                <div class="radius-control" id="radius-control" style="display: none;">
+                    <label for="radius-slider">Radius: <span id="radius-value">100</span> km</label>
+                    <input type="range" id="radius-slider" min="10" max="500" value="100" step="10">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <div class="map-legend-container">
                 <div class="map-container">
                     <div id="world-map"></div>

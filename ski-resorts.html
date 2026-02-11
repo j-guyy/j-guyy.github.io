@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Ski Resorts Map</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/ski-resorts.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css" />
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css'
+        rel='stylesheet' />
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>World Ski Resorts</h1>
+        </div>
+
+        <div class="section">
+            <div id="ski-summary"></div>
+        </div>
+
+        <div class="section">
+            <h2>Ski Resort Map</h2>
+            <p class="map-description">Tracking ski resorts around the world</p>
+            <div class="ski-filters">
+                <button class="ski-filter-btn active" data-filter="all">All</button>
+                <button class="ski-filter-btn" data-filter="visited">Visited</button>
+                <button class="ski-filter-btn" data-filter="not-visited">Not Visited</button>
+            </div>
+            <div class="vertical-drop-filter">
+                <label for="drop-slider">Min Vertical Drop: <span id="drop-value">0</span> ft</label>
+                <input type="range" id="drop-slider" min="0" max="5000" step="100" value="0">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="map-legend-container">
+                <div class="map-container">
+                    <div id="ski-map"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Resort List</h2>
+            <div class="ski-continent-filter">
+                <button class="continent-btn active" data-continent="all">All</button>
+                <button class="continent-btn" data-continent="North America">North America</button>
+                <button class="continent-btn" data-continent="Europe">Europe</button>
+                <button class="continent-btn" data-continent="Asia">Asia</button>
+                <button class="continent-btn" data-continent="South America">South America</button>
+                <button class="continent-btn" data-continent="Oceania">Oceania</button>
+                <button class="continent-btn" data-continent="Africa">Africa</button>
+            </div>
+            <div id="ski-resort-list"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <script src="js/ski-resorts.js"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

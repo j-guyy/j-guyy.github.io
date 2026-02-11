@@ -1,0 +1,1728 @@
+{
+    "highways": [
+        {
+            "number": "US-101",
+            "name": "US Route 101",
+            "description": "Pacific Coast Highway from California to Washington",
+            "states": [
+                "CA",
+                "OR",
+                "WA"
+            ],
+            "length": 1540,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        34.0111,
+                        -118.496
+                    ],
+                    "to": [
+                        40.9052,
+                        -124.0878
+                    ],
+                    "description": "Santa Monica to Eureka",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Santa Monica",
+                    "toCity": "Eureka",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            34.0111,
+                            -118.496
+                        ],
+                        [
+                            34.0391,
+                            -118.544
+                        ],
+                        [
+                            34.0185,
+                            -118.8213
+                        ],
+                        [
+                            34.1027,
+                            -119.0808
+                        ],
+                        [
+                            34.3412,
+                            -119.4159
+                        ],
+                        [
+                            34.4137,
+                            -119.5656
+                        ],
+                        [
+                            34.4726,
+                            -120.222
+                        ],
+                        [
+                            35.1738,
+                            -120.6807
+                        ],
+                        [
+                            35.4719,
+                            -120.9739
+                        ],
+                        [
+                            36.0224,
+                            -121.5637
+                        ],
+                        [
+                            36.3384,
+                            -121.8974
+                        ],
+                        [
+                            36.5361,
+                            -121.8713
+                        ],
+                        [
+                            36.8005,
+                            -121.8054
+                        ],
+                        [
+                            36.9148,
+                            -121.9153
+                        ],
+                        [
+                            37.0815,
+                            -122.3108
+                        ],
+                        [
+                            37.7749,
+                            -122.4194
+                        ],
+                        [
+                            38.2037,
+                            -123.0139
+                        ],
+                        [
+                            38.9423,
+                            -123.6731
+                        ],
+                        [
+                            39.4341,
+                            -123.8036
+                        ],
+                        [
+                            39.8581,
+                            -123.7267
+                        ],
+                        [
+                            40.6786,
+                            -124.2142
+                        ],
+                        [
+                            40.9052,
+                            -124.0878
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.9052,
+                        -124.0878
+                    ],
+                    "to": [
+                        42.439,
+                        -123.3307
+                    ],
+                    "description": "Eureka to Grants Pass",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Eureka",
+                    "toCity": "Grants Pass",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            40.9052,
+                            -124.0878
+                        ],
+                        [
+                            41.3521,
+                            -124.0686
+                        ],
+                        [
+                            41.8082,
+                            -124.1565
+                        ],
+                        [
+                            41.8961,
+                            -123.8077
+                        ],
+                        [
+                            42.322,
+                            -123.6072
+                        ],
+                        [
+                            42.439,
+                            -123.3307
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-285",
+            "name": "US Route 285",
+            "description": "",
+            "states": [
+                "CO"
+            ],
+            "length": 0,
+            "driven": true,
+            "routeSegments": [
+                {
+                    "from": [
+                        39.653,
+                        -104.9193
+                    ],
+                    "to": [
+                        37.5827,
+                        -106.1496
+                    ],
+                    "description": "Segment 1",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Denver",
+                    "toCity": "Monte Vista",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            39.653,
+                            -104.9193
+                        ],
+                        [
+                            39.6268,
+                            -105.2161
+                        ],
+                        [
+                            39.504,
+                            -105.3259
+                        ],
+                        [
+                            39.4022,
+                            -105.4935
+                        ],
+                        [
+                            39.4701,
+                            -105.7104
+                        ],
+                        [
+                            39.2237,
+                            -106.0043
+                        ],
+                        [
+                            38.9231,
+                            -105.9879
+                        ],
+                        [
+                            38.8418,
+                            -106.0098
+                        ],
+                        [
+                            38.8205,
+                            -106.1169
+                        ],
+                        [
+                            38.4385,
+                            -106.0977
+                        ],
+                        [
+                            38.1993,
+                            -105.9329
+                        ],
+                        [
+                            38.0784,
+                            -106.1417
+                        ],
+                        [
+                            37.5827,
+                            -106.1496
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-160",
+            "name": "US Route 160",
+            "description": "",
+            "states": [
+                "CO"
+            ],
+            "length": 0,
+            "driven": true,
+            "routeSegments": [
+                {
+                    "from": [
+                        37.6242,
+                        -104.7808
+                    ],
+                    "to": [
+                        36.9211,
+                        -109.0867
+                    ],
+                    "description": "Walsenburg to Four Corners",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Walsenburg",
+                    "toCity": "Four Corners",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.6242,
+                            -104.7808
+                        ],
+                        [
+                            37.5424,
+                            -105.0293
+                        ],
+                        [
+                            37.6142,
+                            -105.2133
+                        ],
+                        [
+                            37.4291,
+                            -105.3864
+                        ],
+                        [
+                            37.477,
+                            -105.878
+                        ],
+                        [
+                            37.6816,
+                            -106.312
+                        ],
+                        [
+                            37.673,
+                            -106.6415
+                        ],
+                        [
+                            37.2631,
+                            -107.0068
+                        ],
+                        [
+                            37.2216,
+                            -107.8363
+                        ],
+                        [
+                            37.2872,
+                            -107.8885
+                        ],
+                        [
+                            37.3505,
+                            -108.6053
+                        ],
+                        [
+                            37.0815,
+                            -108.7317
+                        ],
+                        [
+                            37.0398,
+                            -108.9597
+                        ],
+                        [
+                            36.9211,
+                            -109.0867
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        36.9211,
+                        -109.0867
+                    ],
+                    "to": [
+                        36.1201,
+                        -111.3739
+                    ],
+                    "description": "Four Corners to Tuba City",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Four Corners",
+                    "toCity": "Tuba City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            36.9211,
+                            -109.0867
+                        ],
+                        [
+                            36.9389,
+                            -109.7191
+                        ],
+                        [
+                            36.3848,
+                            -110.8754
+                        ],
+                        [
+                            36.1312,
+                            -111.1803
+                        ],
+                        [
+                            36.1201,
+                            -111.3739
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-24",
+            "name": "US Route 24",
+            "description": "",
+            "states": [
+                "CO"
+            ],
+            "length": 0,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        39.5022,
+                        -106.1511
+                    ],
+                    "to": [
+                        38.8205,
+                        -106.1169
+                    ],
+                    "description": "Copper Mountain to Buena Vista",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Copper Mountain",
+                    "toCity": "Buena Vista",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            39.5022,
+                            -106.1511
+                        ],
+                        [
+                            39.3619,
+                            -106.2007
+                        ],
+                        [
+                            39.2131,
+                            -106.3463
+                        ],
+                        [
+                            38.8205,
+                            -106.1169
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-40",
+            "name": "US Route 40",
+            "description": "",
+            "states": [
+                "CO",
+                "UT"
+            ],
+            "length": 0,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        39.7618,
+                        -105.6517
+                    ],
+                    "to": [
+                        40.4009,
+                        -106.5894
+                    ],
+                    "description": "Idaho Springs to Steamboat Springs",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Idaho Springs",
+                    "toCity": "Steamboat Springs",
+                    "states": [
+                        "CO"
+                    ],
+                    "waypoints": [
+                        [
+                            39.7618,
+                            -105.6517
+                        ],
+                        [
+                            39.7721,
+                            -105.8107
+                        ],
+                        [
+                            39.8718,
+                            -105.7599
+                        ],
+                        [
+                            40.0907,
+                            -105.9027
+                        ],
+                        [
+                            40.0486,
+                            -106.3806
+                        ],
+                        [
+                            40.4009,
+                            -106.5894
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.4009,
+                        -106.5894
+                    ],
+                    "to": [
+                        40.2292,
+                        -108.6218
+                    ],
+                    "description": "Steamboat Springs to Dinosaur",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Steamboat Springs",
+                    "toCity": "Dinosaur",
+                    "states": [
+                        "CO"
+                    ],
+                    "waypoints": [
+                        [
+                            40.4009,
+                            -106.5894
+                        ],
+                        [
+                            40.4846,
+                            -106.9464
+                        ],
+                        [
+                            40.5054,
+                            -108.1055
+                        ],
+                        [
+                            40.2292,
+                            -108.6218
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.2292,
+                        -108.6218
+                    ],
+                    "to": [
+                        40.4386,
+                        -109.5062
+                    ],
+                    "description": "Dinosaur to Vernal",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Dinosaur",
+                    "toCity": "Vernal",
+                    "states": [
+                        "CO",
+                        "UT"
+                    ],
+                    "waypoints": [
+                        [
+                            40.2292,
+                            -108.6218
+                        ],
+                        [
+                            40.4386,
+                            -109.5062
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.4386,
+                        -109.5062
+                    ],
+                    "to": [
+                        40.6461,
+                        -111.498
+                    ],
+                    "description": "Vernal to Park City",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Vernal",
+                    "toCity": "Park City",
+                    "states": [
+                        "UT"
+                    ],
+                    "waypoints": [
+                        [
+                            40.4386,
+                            -109.5062
+                        ],
+                        [
+                            40.3214,
+                            -109.7699
+                        ],
+                        [
+                            40.1537,
+                            -110.2533
+                        ],
+                        [
+                            40.1957,
+                            -111.1102
+                        ],
+                        [
+                            40.6461,
+                            -111.498
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-50",
+            "name": "US Route 50",
+            "description": "",
+            "states": [
+                "CO"
+            ],
+            "length": 0,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        39.0639,
+                        -108.5506
+                    ],
+                    "to": [
+                        38.7471,
+                        -108.0744
+                    ],
+                    "description": "Grand Junction to Delta",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Grand Junction",
+                    "toCity": "Delta",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            39.0639,
+                            -108.5506
+                        ],
+                        [
+                            38.8488,
+                            -108.3135
+                        ],
+                        [
+                            38.7605,
+                            -108.192
+                        ],
+                        [
+                            38.7471,
+                            -108.0744
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.7471,
+                        -108.0744
+                    ],
+                    "to": [
+                        38.479,
+                        -107.8775
+                    ],
+                    "description": "Delta to Montrose",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Delta",
+                    "toCity": "Montrose",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.7471,
+                            -108.0744
+                        ],
+                        [
+                            38.479,
+                            -107.8775
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.479,
+                        -107.8775
+                    ],
+                    "to": [
+                        38.5441,
+                        -106.9292
+                    ],
+                    "description": "Montrose to Gunnison",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Montrose",
+                    "toCity": "Gunnison",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.479,
+                            -107.8775
+                        ],
+                        [
+                            38.4853,
+                            -107.7237
+                        ],
+                        [
+                            38.3928,
+                            -107.4518
+                        ],
+                        [
+                            38.4649,
+                            -107.2884
+                        ],
+                        [
+                            38.4842,
+                            -107.0831
+                        ],
+                        [
+                            38.5441,
+                            -106.9292
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.5441,
+                        -106.9292
+                    ],
+                    "to": [
+                        38.524,
+                        -105.9858
+                    ],
+                    "description": "Gunnison to Salida",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Gunnison",
+                    "toCity": "Salida",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.5441,
+                            -106.9292
+                        ],
+                        [
+                            38.389,
+                            -106.4541
+                        ],
+                        [
+                            38.5541,
+                            -106.2975
+                        ],
+                        [
+                            38.524,
+                            -105.9858
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.524,
+                        -105.9858
+                    ],
+                    "to": [
+                        38.4418,
+                        -105.2394
+                    ],
+                    "description": "Salida to Canon City",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Salida",
+                    "toCity": "Canon City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.524,
+                            -105.9858
+                        ],
+                        [
+                            38.3562,
+                            -105.7386
+                        ],
+                        [
+                            38.4971,
+                            -105.35
+                        ],
+                        [
+                            38.4418,
+                            -105.2394
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.4418,
+                        -105.2394
+                    ],
+                    "to": [
+                        38.2595,
+                        -104.6036
+                    ],
+                    "description": "Canon City to",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Canon City",
+                    "toCity": "Pueblo",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.4418,
+                            -105.2394
+                        ],
+                        [
+                            38.4288,
+                            -105.076
+                        ],
+                        [
+                            38.3126,
+                            -104.653
+                        ],
+                        [
+                            38.2595,
+                            -104.6036
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.2595,
+                        -104.6036
+                    ],
+                    "to": [
+                        38.1321,
+                        -104.0261
+                    ],
+                    "description": "Pueblo to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Pueblo",
+                    "toCity": "Fowler",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.2595,
+                            -104.6036
+                        ],
+                        [
+                            38.267,
+                            -104.3718
+                        ],
+                        [
+                            38.1321,
+                            -104.0261
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.1321,
+                        -104.0261
+                    ],
+                    "to": [
+                        37.9886,
+                        -103.542
+                    ],
+                    "description": "Fowler to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Fowler",
+                    "toCity": "La Junta",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.1321,
+                            -104.0261
+                        ],
+                        [
+                            37.9886,
+                            -103.542
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.9886,
+                        -103.542
+                    ],
+                    "to": [
+                        38.0681,
+                        -103.2241
+                    ],
+                    "description": "La Junta to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "La Junta",
+                    "toCity": "Las Animas",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.9886,
+                            -103.542
+                        ],
+                        [
+                            38.0681,
+                            -103.2241
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.0681,
+                        -103.2241
+                    ],
+                    "to": [
+                        38.0892,
+                        -102.6192
+                    ],
+                    "description": "Las Animas to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Las Animas",
+                    "toCity": "Lamar",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.0681,
+                            -103.2241
+                        ],
+                        [
+                            38.0892,
+                            -102.6192
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.0892,
+                        -102.6192
+                    ],
+                    "to": [
+                        37.9805,
+                        -101.7485
+                    ],
+                    "description": "Lamar to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Lamar",
+                    "toCity": "Syracuse",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.0892,
+                            -102.6192
+                        ],
+                        [
+                            37.9805,
+                            -101.7485
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.9805,
+                        -101.7485
+                    ],
+                    "to": [
+                        37.9453,
+                        -101.2596
+                    ],
+                    "description": "Syracuse to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Syracuse",
+                    "toCity": "Lakin",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.9805,
+                            -101.7485
+                        ],
+                        [
+                            37.9453,
+                            -101.2596
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.9453,
+                        -101.2596
+                    ],
+                    "to": [
+                        37.9713,
+                        -100.8696
+                    ],
+                    "description": "Lakin to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Lakin",
+                    "toCity": "Garden City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.9453,
+                            -101.2596
+                        ],
+                        [
+                            37.9713,
+                            -100.8696
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.9713,
+                        -100.8696
+                    ],
+                    "to": [
+                        37.8054,
+                        -100.345
+                    ],
+                    "description": "Garden City to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Garden City",
+                    "toCity": "Cimarron",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.9713,
+                            -100.8696
+                        ],
+                        [
+                            37.8054,
+                            -100.345
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.8054,
+                        -100.345
+                    ],
+                    "to": [
+                        37.7533,
+                        -100.0195
+                    ],
+                    "description": "Cimarron to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Cimarron",
+                    "toCity": "Dodge City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.8054,
+                            -100.345
+                        ],
+                        [
+                            37.7533,
+                            -100.0195
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.7533,
+                        -100.0195
+                    ],
+                    "to": [
+                        37.851,
+                        -99.7552
+                    ],
+                    "description": "Dodge City to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Dodge City",
+                    "toCity": "Spearville",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.7533,
+                            -100.0195
+                        ],
+                        [
+                            37.851,
+                            -99.7552
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.851,
+                        -99.7552
+                    ],
+                    "to": [
+                        37.9236,
+                        -99.4098
+                    ],
+                    "description": "Spearville to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Spearville",
+                    "toCity": "Kinsley",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.851,
+                            -99.7552
+                        ],
+                        [
+                            37.8873,
+                            -99.5825
+                        ],
+                        [
+                            37.9236,
+                            -99.4098
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.9236,
+                        -99.4098
+                    ],
+                    "to": [
+                        38.0562,
+                        -97.9246
+                    ],
+                    "description": "Kinsley to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Kinsley",
+                    "toCity": "Hutchinson",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.9236,
+                            -99.4098
+                        ],
+                        [
+                            37.9637,
+                            -98.4265
+                        ],
+                        [
+                            37.9853,
+                            -98.0585
+                        ],
+                        [
+                            38.0562,
+                            -97.9246
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.0562,
+                        -97.9246
+                    ],
+                    "to": [
+                        38.0329,
+                        -97.3471
+                    ],
+                    "description": "Hutchinson to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Hutchinson",
+                    "toCity": "Newton",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.0562,
+                            -97.9246
+                        ],
+                        [
+                            38.0313,
+                            -97.8896
+                        ],
+                        [
+                            38.0329,
+                            -97.3471
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.0329,
+                        -97.3471
+                    ],
+                    "to": [
+                        38.1707,
+                        -97.1095
+                    ],
+                    "description": "Newton to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Newton",
+                    "toCity": "Peabody",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.0329,
+                            -97.3471
+                        ],
+                        [
+                            38.1751,
+                            -97.1902
+                        ],
+                        [
+                            38.1707,
+                            -97.1095
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.1707,
+                        -97.1095
+                    ],
+                    "to": [
+                        38.2441,
+                        -96.9221
+                    ],
+                    "description": "Peabody to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Peabody",
+                    "toCity": "Florence",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.1707,
+                            -97.1095
+                        ],
+                        [
+                            38.2441,
+                            -96.9221
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.2441,
+                        -96.9221
+                    ],
+                    "to": [
+                        38.3971,
+                        -96.541
+                    ],
+                    "description": "Florence to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Florence",
+                    "toCity": "Strong City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.2441,
+                            -96.9221
+                        ],
+                        [
+                            38.2754,
+                            -96.7854
+                        ],
+                        [
+                            38.3993,
+                            -96.6206
+                        ],
+                        [
+                            38.3971,
+                            -96.541
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        38.3971,
+                        -96.541
+                    ],
+                    "to": [
+                        38.4039,
+                        -96.1817
+                    ],
+                    "description": "Strong City to Emporia",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Strong City",
+                    "toCity": "Emporia",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            38.3971,
+                            -96.541
+                        ],
+                        [
+                            38.4039,
+                            -96.1817
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-287",
+            "name": "US Route 287",
+            "description": "",
+            "states": [
+                "TX"
+            ],
+            "length": 0,
+            "driven": true,
+            "routeSegments": [
+                {
+                    "from": [
+                        32.7555,
+                        -97.3308
+                    ],
+                    "to": [
+                        33.5597,
+                        -97.8511
+                    ],
+                    "description": "Fort Worth to",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Fort Worth",
+                    "toCity": "Bowie",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            32.7555,
+                            -97.3308
+                        ],
+                        [
+                            33.0363,
+                            -97.4474
+                        ],
+                        [
+                            33.5597,
+                            -97.8511
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        33.5597,
+                        -97.8511
+                    ],
+                    "to": [
+                        33.9023,
+                        -98.4966
+                    ],
+                    "description": "Bowie to",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Bowie",
+                    "toCity": "Wichita Falls",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            33.5597,
+                            -97.8511
+                        ],
+                        [
+                            33.6586,
+                            -98.0537
+                        ],
+                        [
+                            33.7723,
+                            -98.1381
+                        ],
+                        [
+                            33.9023,
+                            -98.4966
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        33.9137,
+                        -98.4934
+                    ],
+                    "to": [
+                        35.222,
+                        -101.8313
+                    ],
+                    "description": "Wichita Falls to Amarillo",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Wichita Falls",
+                    "toCity": "Amarillo",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            33.9137,
+                            -98.4934
+                        ],
+                        [
+                            34.4182,
+                            -100.231
+                        ],
+                        [
+                            34.8296,
+                            -100.5936
+                        ],
+                        [
+                            35.222,
+                            -101.8313
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-89",
+            "name": "US Route 89",
+            "description": "",
+            "states": [
+                "AZ",
+                "UT"
+            ],
+            "length": 0,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        35.1983,
+                        -111.6513
+                    ],
+                    "to": [
+                        36.1201,
+                        -111.3739
+                    ],
+                    "description": "Flagstaff to Tuba City",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Flagstaff",
+                    "toCity": "Tuba City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            35.1983,
+                            -111.6513
+                        ],
+                        [
+                            36.1201,
+                            -111.3739
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        36.1201,
+                        -111.3739
+                    ],
+                    "to": [
+                        36.906,
+                        -111.4673
+                    ],
+                    "description": "Tuba City to Page",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Tuba City",
+                    "toCity": "Page",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            36.1201,
+                            -111.3739
+                        ],
+                        [
+                            36.6089,
+                            -111.6541
+                        ],
+                        [
+                            36.906,
+                            -111.4673
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        36.906,
+                        -111.4673
+                    ],
+                    "to": [
+                        37.0574,
+                        -112.5302
+                    ],
+                    "description": "Page to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Page",
+                    "toCity": "Kanab",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            36.906,
+                            -111.4673
+                        ],
+                        [
+                            37.0837,
+                            -111.6616
+                        ],
+                        [
+                            37.1778,
+                            -112.0015
+                        ],
+                        [
+                            37.0349,
+                            -112.2198
+                        ],
+                        [
+                            37.0574,
+                            -112.5302
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        37.0574,
+                        -112.5302
+                    ],
+                    "to": [
+                        38.7722,
+                        -112.0841
+                    ],
+                    "description": "Kanab to Richfield",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Kanab",
+                    "toCity": "Richfield",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            37.0574,
+                            -112.5302
+                        ],
+                        [
+                            37.2041,
+                            -112.6813
+                        ],
+                        [
+                            37.7599,
+                            -112.3764
+                        ],
+                        [
+                            37.9529,
+                            -112.4313
+                        ],
+                        [
+                            38.236,
+                            -112.2061
+                        ],
+                        [
+                            38.5611,
+                            -112.2748
+                        ],
+                        [
+                            38.7722,
+                            -112.0841
+                        ]
+                    ]
+                }
+            ]
+        },
+        {
+            "number": "US-63",
+            "name": "US Route 63",
+            "description": "",
+            "states": [
+                "MN",
+                "WI"
+            ],
+            "length": 0,
+            "driven": false,
+            "routeSegments": [
+                {
+                    "from": [
+                        42.4981,
+                        -92.3451
+                    ],
+                    "to": [
+                        43.0603,
+                        -92.3363
+                    ],
+                    "description": "Segment 1",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Waterloo",
+                    "toCity": "New Hampton",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            42.4981,
+                            -92.3451
+                        ],
+                        [
+                            43.0603,
+                            -92.3363
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        43.0603,
+                        -92.3363
+                    ],
+                    "to": [
+                        44.014,
+                        -92.4819
+                    ],
+                    "description": "New Hampton to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "New Hampton",
+                    "toCity": "Rochester",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            43.0603,
+                            -92.3363
+                        ],
+                        [
+                            44.014,
+                            -92.4819
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        44.014,
+                        -92.4819
+                    ],
+                    "to": [
+                        44.4457,
+                        -92.2713
+                    ],
+                    "description": "Rochester to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Rochester",
+                    "toCity": "Lake City",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            44.014,
+                            -92.4819
+                        ],
+                        [
+                            44.4457,
+                            -92.2713
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        44.4457,
+                        -92.2713
+                    ],
+                    "to": [
+                        44.5682,
+                        -92.5329
+                    ],
+                    "description": "Lake City to",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Lake City",
+                    "toCity": "Red Wing",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            44.4457,
+                            -92.2713
+                        ],
+                        [
+                            44.5682,
+                            -92.5329
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        44.5682,
+                        -92.5329
+                    ],
+                    "to": [
+                        45.1353,
+                        -92.3842
+                    ],
+                    "description": "Segment 5",
+                    "driven": false,
+                    "miles": 0,
+                    "fromCity": "Red Wing",
+                    "toCity": "Cyclon",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            44.5682,
+                            -92.5329
+                        ],
+                        [
+                            45.1353,
+                            -92.3842
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        45.1353,
+                        -92.3842
+                    ],
+                    "to": [
+                        45.8254,
+                        -91.8893
+                    ],
+                    "description": "Cyclon to",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Cyclon",
+                    "toCity": "Spooner",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            45.1353,
+                            -92.3842
+                        ],
+                        [
+                            45.8254,
+                            -91.8893
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        45.8254,
+                        -91.8893
+                    ],
+                    "to": [
+                        46.5409,
+                        -91.0519
+                    ],
+                    "description": "Spooner to",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Spooner",
+                    "toCity": "Ashland",
+                    "states": [],
+                    "waypoints": [
+                        [
+                            45.8254,
+                            -91.8893
+                        ],
+                        [
+                            46.5409,
+                            -91.0519
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}

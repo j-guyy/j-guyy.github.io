@@ -510,14 +510,25 @@
             "visited": false
         },
         {
-            "name": "Great Barrier Reef",
+            "name": "Norman Reef",
             "countries": [
-                "Australia",
-                "Papua New Guinea"
+                "Australia"
             ],
             "coordinates": {
-                "lat": -18.2871,
-                "lng": 147.6992
+                "lat": -16.3667,
+                "lng": 146.0333
+            },
+            "primaryCountry": "Australia",
+            "visited": true
+        },
+        {
+            "name": "Saxon Reef",
+            "countries": [
+                "Australia"
+            ],
+            "coordinates": {
+                "lat": -16.4667,
+                "lng": 146.0167
             },
             "primaryCountry": "Australia",
             "visited": true

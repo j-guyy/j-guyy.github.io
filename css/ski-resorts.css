@@ -1,0 +1,178 @@
+.ski-filters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.ski-filter-btn,
+.continent-btn {
+    padding: 8px 18px;
+    font-size: 0.9em;
+    cursor: pointer;
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.ski-filter-btn.active,
+.continent-btn.active {
+    background-color: var(--primary-color);
+}
+
+.ski-filter-btn:hover,
+.continent-btn:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.ski-continent-filter {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Vertical drop slider */
+.vertical-drop-filter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 5px;
+}
+
+.vertical-drop-filter label {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.vertical-drop-filter label span {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.vertical-drop-filter input[type="range"] {
+    width: 280px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+/* Marker styles */
+.ski-marker {
+    background: none;
+    border: none;
+}
+
+.ski-marker-inner {
+    font-size: 18px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.ski-marker:hover .ski-marker-inner {
+    transform: scale(1.3);
+}
+
+.ski-popup {
+    font-family: Arial, sans-serif;
+    min-width: 180px;
+}
+
+.ski-popup h3 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 15px;
+}
+
+.ski-popup p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.ski-popup p strong {
+    color: #333;
+}
+
+/* Resort list grid */
+.resort-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.resort-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.resort-card:hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-2px);
+}
+
+.resort-card.visited {
+    border-left: 3px solid #4CAF50;
+}
+
+.resort-card.not-visited {
+    border-left: 3px solid #2196F3;
+}
+
+.resort-status {
+    font-size: 1.5em;
+    flex-shrink: 0;
+}
+
+.resort-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 1em;
+}
+
+.resort-location {
+    margin: 0 0 6px 0;
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.resort-stats {
+    display: flex;
+    gap: 14px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .resort-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ski-continent-filter {
+        gap: 5px;
+    }
+
+    .continent-btn {
+        padding: 6px 12px;
+        font-size: 0.8em;
+    }
+}
+
+
+#ski-map {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+}

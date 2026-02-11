@@ -38,6 +38,7 @@ class NavbarComponent extends HTMLElement {
                                 <a href="${basePath}adventures.html">List</a>
                                 <a href="${basePath}side-quests.html">Quests</a>
                                 <a href="${basePath}statshunters.html">StatsHunters</a>
+                                <a href="${basePath}ski-resorts.html">Ski Resorts</a>
                             </div>
                         </li>
                         <li class="dropdown tools-dropdown">
@@ -47,7 +48,7 @@ class NavbarComponent extends HTMLElement {
                                 <a href="${basePath}family-travels.html">Family Travels</a>
                                 <a href="${basePath}mountain-mapping.html">Mountain Mapping</a>
                                 <a href="${basePath}polygon-editor.html">Polygon Editor</a>
-                                <a href="${basePath}interstate-highways.html">Interstate Highways</a>
+                                <a href="${basePath}highways.html">Highways</a>
                                 <a href="${basePath}prehistoric-timeline.html">Prehistoric Timeline</a>
                             </div>
                         </li>

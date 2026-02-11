@@ -818,7 +818,7 @@
                         -122.1958
                     ],
                     "description": "Redding to Mt. Shasta (CA-CA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 58,
                     "fromCity": "Redding",
                     "toCity": "Mt. Shasta",
@@ -846,7 +846,7 @@
                         -122.3861
                     ],
                     "description": "Mt. Shasta to Weed (CA-CA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 10,
                     "fromCity": "Mt. Shasta",
                     "toCity": "Weed",
@@ -874,7 +874,7 @@
                         -122.635
                     ],
                     "description": "Weed to Yreka (CA-CA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 25,
                     "fromCity": "Weed",
                     "toCity": "Yreka",
@@ -902,7 +902,7 @@
                         -122.7095
                     ],
                     "description": "Yreka to Ashland (CA-OR)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 32,
                     "fromCity": "Yreka",
                     "toCity": "Ashland",
@@ -931,7 +931,7 @@
                         -122.8756
                     ],
                     "description": "Ashland to Medford (OR-OR)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 12,
                     "fromCity": "Ashland",
                     "toCity": "Medford",
@@ -959,7 +959,7 @@
                         -123.3307
                     ],
                     "description": "Medford to Grants Pass (OR-OR)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 24,
                     "fromCity": "Medford",
                     "toCity": "Grants Pass",
@@ -17615,6 +17615,18 @@
                             -78.8784
                         ],
                         [
+                            42.8397,
+                            -78.7898
+                        ],
+                        [
+                            42.7334,
+                            -78.8681
+                        ],
+                        [
+                            42.5192,
+                            -79.1483
+                        ],
+                        [
                             42.4795,
                             -79.3331
                         ]
@@ -17626,41 +17638,13 @@
                         -79.3331
                     ],
                     "to": [
-                        42.4401,
-                        -79.3331
-                    ],
-                    "description": "Dunkirk to Fredonia (NY-NY)",
-                    "driven": false,
-                    "miles": 3,
-                    "fromCity": "Dunkirk",
-                    "toCity": "Fredonia",
-                    "states": [
-                        "NY"
-                    ],
-                    "waypoints": [
-                        [
-                            42.4795,
-                            -79.3331
-                        ],
-                        [
-                            42.4401,
-                            -79.3331
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        42.4401,
-                        -79.3331
-                    ],
-                    "to": [
                         42.1292,
                         -80.0851
                     ],
-                    "description": "Fredonia to Erie (NY-PA)",
+                    "description": "Dunkirk to Erie",
                     "driven": false,
                     "miles": 44,
-                    "fromCity": "Fredonia",
+                    "fromCity": "Dunkirk",
                     "toCity": "Erie",
                     "states": [
                         "NY",
@@ -17668,8 +17652,12 @@
                     ],
                     "waypoints": [
                         [
-                            42.4401,
+                            42.4795,
                             -79.3331
+                        ],
+                        [
+                            42.3824,
+                            -79.4792
                         ],
                         [
                             42.1292,
@@ -18697,41 +18685,13 @@
                         -103.8593
                     ],
                     "to": [
-                        44.3767,
-                        -103.7296
-                    ],
-                    "description": "Spearfish to Deadwood (SD-SD)",
-                    "driven": true,
-                    "miles": 10,
-                    "fromCity": "Spearfish",
-                    "toCity": "Deadwood",
-                    "states": [
-                        "SD"
-                    ],
-                    "waypoints": [
-                        [
-                            44.4906,
-                            -103.8593
-                        ],
-                        [
-                            44.3767,
-                            -103.7296
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        44.3767,
-                        -103.7296
-                    ],
-                    "to": [
                         44.4064,
                         -104.3758
                     ],
-                    "description": "Deadwood to Sundance (SD-WY)",
+                    "description": "Spearfish to Sundance",
                     "driven": true,
                     "miles": 32,
-                    "fromCity": "Deadwood",
+                    "fromCity": "Spearfish",
                     "toCity": "Sundance",
                     "states": [
                         "SD",
@@ -18739,8 +18699,12 @@
                     ],
                     "waypoints": [
                         [
-                            44.3767,
-                            -103.7296
+                            44.4906,
+                            -103.8593
+                        ],
+                        [
+                            44.5445,
+                            -104.1209
                         ],
                         [
                             44.4064,
@@ -19035,14 +18999,14 @@
                         -113.994
                     ],
                     "to": [
-                        47.1031,
-                        -114.8831
+                        47.0031,
+                        -114.4731
                     ],
-                    "description": "Missoula to Superior (MT-MT)",
+                    "description": "Missoula to Alberton",
                     "driven": true,
                     "miles": 45,
                     "fromCity": "Missoula",
-                    "toCity": "Superior",
+                    "toCity": "Alberton",
                     "states": [
                         "MT"
                     ],
@@ -19050,34 +19014,6 @@
                         [
                             46.8721,
                             -113.994
-                        ],
-                        [
-                            47.1031,
-                            -114.8831
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        47.1031,
-                        -114.8831
-                    ],
-                    "to": [
-                        47.0031,
-                        -114.4731
-                    ],
-                    "description": "Superior to Alberton (MT-MT)",
-                    "driven": true,
-                    "miles": 20,
-                    "fromCity": "Superior",
-                    "toCity": "Alberton",
-                    "states": [
-                        "MT"
-                    ],
-                    "waypoints": [
-                        [
-                            47.1031,
-                            -114.8831
                         ],
                         [
                             47.0031,
@@ -27441,14 +27377,14 @@
                         -79.996
                     ],
                     "to": [
-                        39.952,
-                        -75.164
+                        40.219,
+                        -79.589
                     ],
-                    "description": "Pittsburgh to Philadelphia (PA-PA)",
+                    "description": "Pittsburgh to New Stanton (PA-PA)",
                     "driven": true,
-                    "miles": 257,
+                    "miles": 0,
                     "fromCity": "Pittsburgh",
-                    "toCity": "Philadelphia",
+                    "toCity": "New Stanton",
                     "states": [
                         "PA"
                     ],
@@ -27456,6 +27392,118 @@
                         [
                             40.441,
                             -79.996
+                        ],
+                        [
+                            40.219,
+                            -79.589
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.219,
+                        -79.589
+                    ],
+                    "to": [
+                        40.019,
+                        -78.504
+                    ],
+                    "description": "New Stanton to Bedford (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "New Stanton",
+                    "toCity": "Bedford",
+                    "states": [
+                        "PA"
+                    ],
+                    "waypoints": [
+                        [
+                            40.219,
+                            -79.589
+                        ],
+                        [
+                            40.019,
+                            -78.504
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.019,
+                        -78.504
+                    ],
+                    "to": [
+                        39.999,
+                        -78.239
+                    ],
+                    "description": "Bedford to Breezewood (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Bedford",
+                    "toCity": "Breezewood",
+                    "states": [
+                        "PA"
+                    ],
+                    "waypoints": [
+                        [
+                            40.019,
+                            -78.504
+                        ],
+                        [
+                            39.999,
+                            -78.239
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        39.999,
+                        -78.239
+                    ],
+                    "to": [
+                        40.274,
+                        -76.884
+                    ],
+                    "description": "Breezewood to Harrisburg (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Breezewood",
+                    "toCity": "Harrisburg",
+                    "states": [
+                        "PA"
+                    ],
+                    "waypoints": [
+                        [
+                            39.999,
+                            -78.239
+                        ],
+                        [
+                            40.274,
+                            -76.884
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.274,
+                        -76.884
+                    ],
+                    "to": [
+                        39.952,
+                        -75.164
+                    ],
+                    "description": "Harrisburg to Philadelphia (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Harrisburg",
+                    "toCity": "Philadelphia",
+                    "states": [
+                        "PA"
+                    ],
+                    "waypoints": [
+                        [
+                            40.274,
+                            -76.884
                         ],
                         [
                             39.952,

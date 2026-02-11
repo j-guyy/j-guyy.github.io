@@ -63,6 +63,14 @@
                         <input type="radio" name="map-mode" value="radius">
                         <span class="mode-label">Proximity Radius</span>
                     </label>
+                    <label class="mode-toggle">
+                        <input type="radio" name="map-mode" value="fog">
+                        <span class="mode-label">Fog of War</span>
+                    </label>
+                </div>
+                <div class="fog-radius-control" id="fog-radius-control" style="display: none;">
+                    <label for="fog-radius-slider">Radius: <span id="fog-radius-value">100</span> km</label>
+                    <input type="range" id="fog-radius-slider" min="10" max="500" value="100" step="10">
                 </div>
             </div>
 

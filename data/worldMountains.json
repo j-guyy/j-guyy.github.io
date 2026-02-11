@@ -1,0 +1,213 @@
+{
+    "countryHighPoints": [
+        {
+            "name": "Carrauntoohil",
+            "country": "Ireland",
+            "latitude": 52.0397,
+            "longitude": -9.7423,
+            "elevation": 1038,
+            "elevationUnit": "meters",
+            "description": "Ireland's highest peak, located in County Kerry's MacGillycuddy's Reeks mountain range."
+        },
+        {
+            "name": "Ben Nevis",
+            "country": "United Kingdom",
+            "latitude": 56.7969,
+            "longitude": -5.0036,
+            "elevation": 1345,
+            "elevationUnit": "meters",
+            "description": "The highest mountain in Scotland and the United Kingdom, located near Fort William in the Scottish Highlands."
+        },
+        {
+            "name": "Pico de Orizaba",
+            "country": "Mexico",
+            "latitude": 19.0300,
+            "longitude": -97.2687,
+            "elevation": 5636,
+            "elevationUnit": "meters",
+            "description": "Mexico's highest peak and the third-highest in North America, a dormant stratovolcano on the border of Veracruz and Puebla."
+        },
+        {
+            "name": "Hallasan",
+            "country": "South Korea",
+            "latitude": 33.3617,
+            "longitude": 126.5292,
+            "elevation": 1947,
+            "elevationUnit": "meters",
+            "description": "South Korea's highest mountain, a shield volcano on Jeju Island with a crater lake at its summit."
+        },
+        {
+            "name": "Mulhacén",
+            "country": "Spain",
+            "latitude": 37.0533,
+            "longitude": -3.3119,
+            "elevation": 3482,
+            "elevationUnit": "meters",
+            "description": "Spain's highest peak, located in the Sierra Nevada mountain range in Andalusia."
+        },
+        {
+            "name": "Mount Kosciuszko",
+            "country": "Australia",
+            "latitude": -36.4560,
+            "longitude": 148.2634,
+            "elevation": 2228,
+            "elevationUnit": "meters",
+            "description": "Australia's highest mountain, located in Kosciuszko National Park in New South Wales."
+        },
+        {
+            "name": "Mount Fuji",
+            "country": "Japan",
+            "latitude": 35.3606,
+            "longitude": 138.7274,
+            "elevation": 3776,
+            "elevationUnit": "meters",
+            "description": "Japan's highest peak and iconic sacred mountain, an active stratovolcano located southwest of Tokyo."
+        }
+    ],
+    "otherMountains": [
+        {
+            "name": "Sincholagua",
+            "country": "Ecuador",
+            "latitude": -0.4833,
+            "longitude": -78.3500,
+            "elevation": 4873,
+            "elevationUnit": "meters",
+            "description": "A stratovolcano in the Cordillera Real of Ecuador, known for its challenging climbing routes and stunning views of the surrounding Andes."
+        },
+        {
+            "name": "Iztaccíhuatl",
+            "country": "Mexico",
+            "latitude": 19.1786,
+            "longitude": -98.6422,
+            "elevation": 5213,
+            "elevationUnit": "meters",
+            "description": "Mexico's third-highest peak, a dormant stratovolcano whose ridgeline resembles a sleeping woman, located in central Mexico near Puebla."
+        },
+        {
+            "name": "Rucu Pichincha",
+            "country": "Ecuador",
+            "latitude": -0.1697,
+            "longitude": -78.5350,
+            "elevation": 4680,
+            "elevationUnit": "meters",
+            "description": "A volcanic peak towering above Quito, accessible via the TelefériQo cable car followed by a steep hike through páramo grasslands."
+        },
+        {
+            "name": "Kristínartindar",
+            "country": "Iceland",
+            "latitude": 64.0167,
+            "longitude": -16.9667,
+            "elevation": 1119,
+            "elevationUnit": "meters",
+            "description": "A dramatic ridge near Skaftafell in Vatnajökull National Park, offering panoramic views of glaciers and black sand plains."
+        },
+        {
+            "name": "Montserrat",
+            "country": "Spain",
+            "latitude": 41.5933,
+            "longitude": 1.8367,
+            "elevation": 1236,
+            "elevationUnit": "meters",
+            "description": "An iconic serrated mountain near Barcelona, home to the Benedictine monastery of Santa Maria de Montserrat."
+        },
+        {
+            "name": "Medicine Bow Peak",
+            "country": "United States",
+            "latitude": 41.3603,
+            "longitude": -106.3178,
+            "elevation": 3662,
+            "elevationUnit": "meters",
+            "description": "The highest point in the Snowy Range of Wyoming's Medicine Bow Mountains, a popular hiking destination in Medicine Bow-Routt National Forest."
+        },
+        {
+            "name": "Mount Cargill",
+            "country": "New Zealand",
+            "latitude": -45.8167,
+            "longitude": 170.5667,
+            "elevation": 678,
+            "elevationUnit": "meters",
+            "description": "A prominent peak overlooking Dunedin on New Zealand's South Island, featuring the Organ Pipes rock formation near its summit."
+        },
+        {
+            "name": "Buttars Peak",
+            "country": "New Zealand",
+            "latitude": -45.8333,
+            "longitude": 170.5500,
+            "elevation": 615,
+            "elevationUnit": "meters",
+            "description": "A peak near Dunedin on New Zealand's South Island, accessible via trails connecting to Mount Cargill."
+        },
+        {
+            "name": "Mount Holmes",
+            "country": "New Zealand",
+            "latitude": -45.8250,
+            "longitude": 170.5583,
+            "elevation": 572,
+            "elevationUnit": "meters",
+            "description": "A summit in the hills above Dunedin, New Zealand, part of the Mount Cargill ridge system."
+        },
+        {
+            "name": "Collina del Vomero",
+            "country": "Italy",
+            "latitude": 40.8450,
+            "longitude": 14.2283,
+            "elevation": 249,
+            "elevationUnit": "meters",
+            "description": "A hilltop neighborhood in Naples offering sweeping views of the Bay of Naples, Mount Vesuvius, and the city below."
+        },
+        {
+            "name": "The Acropolis",
+            "country": "Greece",
+            "latitude": 37.9715,
+            "longitude": 23.7257,
+            "elevation": 156,
+            "elevationUnit": "meters",
+            "description": "The ancient citadel hill of Athens, crowned by the Parthenon and other classical monuments, a UNESCO World Heritage Site."
+        },
+        {
+            "name": "Camaderry Mountain",
+            "country": "Ireland",
+            "latitude": 53.0167,
+            "longitude": -6.3667,
+            "elevation": 698,
+            "elevationUnit": "meters",
+            "description": "A mountain in the Wicklow Mountains of Ireland, offering views over Glendalough and its monastic settlement."
+        },
+        {
+            "name": "Tunnel Mountain",
+            "country": "Canada",
+            "latitude": 51.1792,
+            "longitude": -115.5569,
+            "elevation": 1692,
+            "elevationUnit": "meters",
+            "description": "A small peak in the town of Banff, Alberta, offering accessible views of the Canadian Rockies, the Bow Valley, and surrounding peaks."
+        },
+        {
+            "name": "Pic White",
+            "country": "Canada",
+            "latitude": 46.2167,
+            "longitude": -74.6000,
+            "elevation": 877,
+            "elevationUnit": "meters",
+            "description": "A peak in the Laurentian Mountains near Mont Tremblant, Quebec, popular for hiking and backcountry skiing."
+        },
+        {
+            "name": "Skinnarviksberget",
+            "country": "Sweden",
+            "latitude": 59.3200,
+            "longitude": 18.0550,
+            "elevation": 53,
+            "elevationUnit": "meters",
+            "description": "The highest natural point on Södermalm island in Stockholm, a popular viewpoint overlooking the city skyline and Lake Mälaren."
+        },
+        {
+            "name": "Mitake-san",
+            "country": "Japan",
+            "latitude": 35.8017,
+            "longitude": 139.1500,
+            "elevation": 929,
+            "elevationUnit": "meters",
+            "description": "A sacred mountain west of Tokyo in the Chichibu-Tama-Kai National Park, home to the ancient Musashi-Mitake Shrine."
+        }
+    ]
+}

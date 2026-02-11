@@ -5,11 +5,13 @@ let markers = [];
 let currentFilter = 'all';
 let familyTravelsData = null;
 let countryLayer = null;
-let mapMode = 'country'; // 'country' or 'proximity' or 'radius'
+let mapMode = 'country'; // 'country' or 'proximity' or 'radius' or 'fog'
 let proximityCircles = [];
 let voronoiLayer = null;
 let landGeoJSON = null;
 let showPins = true;
+let fogOverlay = null;
+let fogMarkerCache = [];
 // Lazy cache for stripe patterns — only created when needed
 const createdPatterns = new Set();
 let patternDefs = null;
@@ -79,6 +81,10 @@ async function initMap() {
                 }
             }
         });
+
+        // Merge all additional person1 data sources so both pages share the same pins
+        await mergeAdditionalPerson1Data(familyTravelsData);
+
     } catch (error) {
         console.error('Error loading family travels data:', error);
         if (loadingEl) loadingEl.style.display = 'none';
@@ -438,6 +444,18 @@ function setupEventListeners() {
             refreshMap();
         });
     });
+
+    // Fog of War radius slider
+    const fogSlider = document.getElementById('fog-radius-slider');
+    const fogRadiusValue = document.getElementById('fog-radius-value');
+    if (fogSlider) {
+        fogSlider.addEventListener('input', function () {
+            fogRadiusValue.textContent = this.value;
+            if (mapMode === 'fog' && fogOverlay) {
+                fogOverlay.setRadius(parseInt(this.value));
+            }
+        });
+    }
 }
 
 // Location search functionality
@@ -515,20 +533,186 @@ function setupSearch() {
     });
 }
 
+// --- Fog of War ---
+
+function getFogPins() {
+    const visibleSiblings = getVisibleSiblings();
+    const pins = [];
+    const pinSet = new Set();
+    familyTravelsData.locations.forEach(loc => {
+        const visibleVisitors = loc.visitors.filter(v => visibleSiblings.includes(v));
+        if (visibleVisitors.length === 0) return;
+        if (currentFilter === 'shared' && visibleVisitors.length < 2) return;
+        const key = `${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`;
+        if (!pinSet.has(key)) {
+            pinSet.add(key);
+            pins.push({ lat: loc.lat, lng: loc.lng, name: loc.name });
+        }
+    });
+    return pins;
+}
+
+function createFamilyFogOverlay(radiusKm) {
+    removeFamilyFogOverlay();
+
+    const FogLayer = L.Layer.extend({
+        onAdd: function (m) {
+            this._map = m;
+            const pane = m.getPane('overlayPane');
+            this._container = L.DomUtil.create('div', 'fog-of-war-container', pane);
+            this._container.style.pointerEvents = 'none';
+            this._svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            this._svg.setAttribute('class', 'fog-of-war-svg');
+            this._container.appendChild(this._svg);
+            m.on('moveend zoomend resize', this._update, this);
+            this._radiusKm = radiusKm;
+            this._update();
+        },
+        onRemove: function (m) {
+            m.off('moveend zoomend resize', this._update, this);
+            if (this._container && this._container.parentNode) {
+                this._container.parentNode.removeChild(this._container);
+            }
+        },
+        setRadius: function (km) {
+            this._radiusKm = km;
+            this._update();
+        },
+        refreshPins: function () {
+            this._update();
+        },
+        _update: function () {
+            if (!this._map) return;
+            const m = this._map;
+            const size = m.getSize();
+            const pad = Math.max(size.x, size.y) * 2;
+            const topLeft = m.containerPointToLayerPoint([-pad, -pad]);
+            const w = size.x + pad * 2;
+            const h = size.y + pad * 2;
+
+            const svg = this._svg;
+            svg.setAttribute('width', w);
+            svg.setAttribute('height', h);
+            svg.style.width = w + 'px';
+            svg.style.height = h + 'px';
+            L.DomUtil.setPosition(this._container, topLeft);
+
+            const fogPins = getFogPins();
+            let circles = '';
+            let maxR = 0;
+            fogPins.forEach(pin => {
+                const pt = m.latLngToLayerPoint([pin.lat, pin.lng]);
+                const cx = pt.x - topLeft.x;
+                const cy = pt.y - topLeft.y;
+                const dest = L.latLng(pin.lat, pin.lng);
+                const bearing = dest.toBounds(this._radiusKm * 2000);
+                const east = L.latLng(pin.lat, bearing.getEast());
+                const ptEdge = m.latLngToLayerPoint(east);
+                const r = Math.abs(ptEdge.x - pt.x);
+                if (r > maxR) maxR = r;
+                circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="black"/>`;
+            });
+
+            const blurSigma = Math.max(2, Math.min(maxR * 0.08, 20));
+
+            svg.innerHTML = `
+                <defs>
+                    <filter id="ft-mask-blur">
+                        <feGaussianBlur stdDeviation="${blurSigma}"/>
+                    </filter>
+                    <mask id="ft-fog-mask">
+                        <g filter="url(#ft-mask-blur)">
+                            <rect x="0" y="0" width="${w}" height="${h}" fill="white"/>
+                            ${circles}
+                        </g>
+                    </mask>
+                    <filter id="ft-fog-smoke" x="-20%" y="-20%" width="140%" height="140%">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.015 0.012"
+                                      numOctaves="5" seed="3" stitchTiles="stitch" result="noise"/>
+                        <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+                        <feComponentTransfer in="grayNoise" result="contrastNoise">
+                            <feFuncR type="linear" slope="1.8" intercept="-0.3"/>
+                            <feFuncG type="linear" slope="1.8" intercept="-0.3"/>
+                            <feFuncB type="linear" slope="1.8" intercept="-0.3"/>
+                        </feComponentTransfer>
+                        <feGaussianBlur stdDeviation="3" in="contrastNoise" result="softNoise"/>
+                        <feFlood flood-color="#1a1a1e" flood-opacity="1" result="fogColor"/>
+                        <feBlend mode="multiply" in="fogColor" in2="softNoise" result="texturedFog"/>
+                        <feComposite operator="in" in="texturedFog" in2="SourceGraphic"/>
+                    </filter>
+                </defs>
+                <g mask="url(#ft-fog-mask)">
+                    <rect x="0" y="0" width="${w}" height="${h}"
+                          fill="rgba(15,15,18,0.92)" filter="url(#ft-fog-smoke)"/>
+                    <rect x="0" y="0" width="${w}" height="${h}"
+                          fill="rgba(140,145,155,0.08)" filter="url(#ft-fog-smoke)"
+                          style="mix-blend-mode: screen;"/>
+                </g>
+            `;
+        }
+    });
+
+    fogOverlay = new FogLayer();
+    fogOverlay.addTo(map);
+}
+
+function removeFamilyFogOverlay() {
+    if (fogOverlay) {
+        fogOverlay.remove();
+        fogOverlay = null;
+    }
+}
+
+function hideFamilyMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    fogMarkerCache = [...markers];
+    markers = [];
+}
+
+function restoreFamilyMarkers() {
+    fogMarkerCache.forEach(m => m.addTo(map));
+    markers = [...fogMarkerCache];
+    fogMarkerCache = [];
+}
+
+function enableFamilyFogMode(radiusKm) {
+    if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
+    clearProximityCircles();
+    if (countryLayer) { countryLayer.setStyle({ fillOpacity: 0, opacity: 0.1, weight: 0.5 }); }
+    hideFamilyMarkers();
+    createFamilyFogOverlay(radiusKm);
+}
+
+function disableFamilyFogMode() {
+    removeFamilyFogOverlay();
+    restoreFamilyMarkers();
+}
+
 // Refresh the entire map based on current settings
 function refreshMap() {
-    if (mapMode === 'country') {
-        if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
-        if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
-        clearProximityCircles();
-    } else if (mapMode === 'proximity') {
-        if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
-        if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
-        applyProximityColoring();
-    } else if (mapMode === 'radius') {
-        applyRadiusColoring();
+    const fogRadiusControl = document.getElementById('fog-radius-control');
+
+    if (mapMode === 'fog') {
+        if (fogRadiusControl) fogRadiusControl.style.display = 'flex';
+        const radiusKm = parseInt(document.getElementById('fog-radius-slider').value);
+        enableFamilyFogMode(radiusKm);
+    } else {
+        if (fogRadiusControl) fogRadiusControl.style.display = 'none';
+        disableFamilyFogMode();
+
+        if (mapMode === 'country') {
+            if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
+            if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
+            clearProximityCircles();
+        } else if (mapMode === 'proximity') {
+            if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
+            if (countryLayer) { countryLayer.setStyle(feature => styleCountry(feature)); }
+            applyProximityColoring();
+        } else if (mapMode === 'radius') {
+            applyRadiusColoring();
+        }
+        renderMarkers();
     }
-    renderMarkers();
     updateStats();
 }
 
@@ -819,4 +1003,80 @@ function samplePolygon(coords) {
         points.push({ lat: (centroid.lat + coords[i][1]) / 2, lng: (centroid.lng + coords[i][0]) / 2 });
     }
     return points;
+}
+
+// Merge additional person1 data sources into familyTravelsData
+// This ensures both family-travels and world-map pages show the same pins
+async function mergeAdditionalPerson1Data(ftData) {
+    const coordKey = (lat, lng) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
+
+    // Build set of existing person1 coords for dedup
+    const existingCoords = new Set();
+    ftData.locations.forEach(loc => {
+        if (loc.visitors.includes('person1')) {
+            existingCoords.add(coordKey(loc.lat, loc.lng));
+        }
+    });
+
+    function addIfNew(lat, lng, name, country) {
+        const key = coordKey(lat, lng);
+        if (!existingCoords.has(key)) {
+            existingCoords.add(key);
+            ftData.locations.push({ name, country: country || 'Unknown', lat, lng, visitors: ['person1'] });
+        }
+    }
+
+    const [worldCities, highPoints, stateHighPoints, nationalParks, skiResorts, sevenWonders, britishIsles, adk46ers, colorado14ers] = await Promise.all([
+        fetch('data/worldCities.json').then(r => r.json()),
+        fetch('data/worldMountains.json').then(r => r.json()),
+        fetch('data/highPoints.json').then(r => r.json()),
+        fetch('data/nationalParks.json').then(r => r.json()),
+        fetch('data/skiResorts.json').then(r => r.json()),
+        fetch('data/sevenWonders.json').then(r => r.json()),
+        fetch('data/british-isles-high-five.json').then(r => r.json()),
+        fetch('data/adirondack46ers.json').then(r => r.json()),
+        fetch('data/colorado14ers.json').then(r => r.json())
+    ]);
+
+    // World cities (all are visited)
+    worldCities.visitedCities.forEach(c => addIfNew(c.latitude, c.longitude, c.name, c.country));
+
+    // World high points (all are visited/climbed)
+    highPoints.countryHighPoints.forEach(hp => addIfNew(hp.latitude, hp.longitude, hp.name, hp.country));
+
+    // US state high points (visited only)
+    stateHighPoints.filter(hp => hp.visited).forEach(hp => addIfNew(hp.coords[1], hp.coords[0], hp.name, 'United States'));
+
+    // National parks (visited only, with coord overrides for territories)
+    const parkCoordOverrides = {
+        'American Samoa': { lat: -14.2710, lng: -170.1322 },
+        'Virgin Islands': { lat: 18.3358, lng: -64.8963 }
+    };
+    nationalParks.filter(np => np.visited).forEach(np => {
+        const override = parkCoordOverrides[np.name];
+        if (override) {
+            addIfNew(override.lat, override.lng, np.name + ' NP', 'United States');
+        } else {
+            addIfNew(np.coords[1], np.coords[0], np.name + ' NP', 'United States');
+        }
+    });
+
+    // Ski resorts (visited only)
+    skiResorts.filter(sr => sr.visited).forEach(sr => addIfNew(sr.coords[1], sr.coords[0], sr.name, sr.country || 'United States'));
+
+    // Seven Wonders (all three arrays, visited only)
+    ['sevenWonders', 'sevenNaturalWonders', 'sevenNaturalWondersNominees'].forEach(key => {
+        (sevenWonders[key] || []).filter(w => w.visited).forEach(w => {
+            addIfNew(w.coordinates.lat, w.coordinates.lng, w.name, w.country || w.primaryCountry || 'Unknown');
+        });
+    });
+
+    // British Isles High Five (climbed only)
+    britishIsles.filter(p => p.climbed).forEach(p => addIfNew(p.coords[1], p.coords[0], p.name, p.country));
+
+    // ADK 46ers (climbed only)
+    adk46ers.filter(p => p.climbed).forEach(p => addIfNew(p.coords[1], p.coords[0], p.name, 'United States'));
+
+    // Colorado 14ers (climbed only)
+    colorado14ers.filter(p => p.climbed).forEach(p => addIfNew(p.coords[1], p.coords[0], p.name, 'United States'));
 }

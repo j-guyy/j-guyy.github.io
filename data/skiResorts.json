@@ -1,0 +1,3603 @@
+[
+    {
+        "name": "Alyeska",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -149.0981,
+            60.9669
+        ],
+        "verticalDrop": 2500,
+        "trails": 76,
+        "visited": false
+    },
+    {
+        "name": "Arctic Valley",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -149.7369,
+            61.2464
+        ],
+        "verticalDrop": 1000,
+        "trails": 16,
+        "visited": false
+    },
+    {
+        "name": "Eaglecrest",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -134.5139,
+            58.31
+        ],
+        "verticalDrop": 1620,
+        "trails": 36,
+        "visited": false
+    },
+    {
+        "name": "Hilltop Ski Area",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -149.83,
+            61.17
+        ],
+        "verticalDrop": 294,
+        "trails": 12,
+        "visited": false
+    },
+    {
+        "name": "Moose Mountain",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -149.02,
+            61.52
+        ],
+        "verticalDrop": 1000,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Mt. Aurora Skiland",
+        "location": "Alaska, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -147.45,
+            64.87
+        ],
+        "verticalDrop": 500,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Cloudmont",
+        "location": "Alabama, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -85.81,
+            34.67
+        ],
+        "verticalDrop": 150,
+        "trails": 4,
+        "visited": false
+    },
+    {
+        "name": "Arizona Snowbowl",
+        "location": "Arizona, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.71,
+            35.33
+        ],
+        "verticalDrop": 2300,
+        "trails": 55,
+        "visited": false
+    },
+    {
+        "name": "Elk Ridge",
+        "location": "Arizona, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -109.98,
+            34.13
+        ],
+        "verticalDrop": 300,
+        "trails": 5,
+        "visited": false
+    },
+    {
+        "name": "Mt. Lemmon",
+        "location": "Arizona, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.73,
+            32.44
+        ],
+        "verticalDrop": 900,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Sunrise Park",
+        "location": "Arizona, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -109.57,
+            33.97
+        ],
+        "verticalDrop": 1800,
+        "trails": 65,
+        "visited": false
+    },
+    {
+        "name": "Bear Valley",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.04,
+            38.46
+        ],
+        "verticalDrop": 1900,
+        "trails": 75,
+        "visited": false
+    },
+    {
+        "name": "Big Bear Mountain",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.86,
+            34.23
+        ],
+        "verticalDrop": 1665,
+        "trails": 55,
+        "visited": false
+    },
+    {
+        "name": "Boreal",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.35,
+            39.33
+        ],
+        "verticalDrop": 500,
+        "trails": 33,
+        "visited": false
+    },
+    {
+        "name": "China Peak",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.16,
+            37.23
+        ],
+        "verticalDrop": 1679,
+        "trails": 45,
+        "visited": false
+    },
+    {
+        "name": "Dodge Ridge",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.96,
+            38.19
+        ],
+        "verticalDrop": 1600,
+        "trails": 67,
+        "visited": false
+    },
+    {
+        "name": "Donner Ski Ranch",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.33,
+            39.32
+        ],
+        "verticalDrop": 750,
+        "trails": 52,
+        "visited": false
+    },
+    {
+        "name": "Heavenly",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.94,
+            38.93
+        ],
+        "verticalDrop": 3500,
+        "trails": 97,
+        "visited": false
+    },
+    {
+        "name": "Homewood",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.16,
+            39.08
+        ],
+        "verticalDrop": 1650,
+        "trails": 67,
+        "visited": false
+    },
+    {
+        "name": "June Mountain",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.09,
+            37.77
+        ],
+        "verticalDrop": 2590,
+        "trails": 41,
+        "visited": false
+    },
+    {
+        "name": "Kirkwood",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.07,
+            38.68
+        ],
+        "verticalDrop": 2000,
+        "trails": 86,
+        "visited": false
+    },
+    {
+        "name": "Mammoth Mountain",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.0326,
+            37.6308
+        ],
+        "verticalDrop": 3100,
+        "trails": 175,
+        "visited": true
+    },
+    {
+        "name": "Mount Shasta Ski Park",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -122.2,
+            41.32
+        ],
+        "verticalDrop": 1435,
+        "trails": 32,
+        "visited": false
+    },
+    {
+        "name": "Mountain High",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.69,
+            34.37
+        ],
+        "verticalDrop": 1600,
+        "trails": 59,
+        "visited": false
+    },
+    {
+        "name": "Mt. Waterman",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.94,
+            34.35
+        ],
+        "verticalDrop": 1100,
+        "trails": 27,
+        "visited": false
+    },
+    {
+        "name": "Northstar",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.12,
+            39.27
+        ],
+        "verticalDrop": 2280,
+        "trails": 100,
+        "visited": false
+    },
+    {
+        "name": "Palisades Tahoe",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.2354,
+            39.1968
+        ],
+        "verticalDrop": 2850,
+        "trails": 270,
+        "visited": false
+    },
+    {
+        "name": "Sierra-at-Tahoe",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.08,
+            38.8
+        ],
+        "verticalDrop": 2212,
+        "trails": 46,
+        "visited": false
+    },
+    {
+        "name": "Snow Summit",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.89,
+            34.23
+        ],
+        "verticalDrop": 1200,
+        "trails": 31,
+        "visited": false
+    },
+    {
+        "name": "Snow Valley",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.04,
+            34.22
+        ],
+        "verticalDrop": 1141,
+        "trails": 29,
+        "visited": false
+    },
+    {
+        "name": "Soda Springs",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.38,
+            39.32
+        ],
+        "verticalDrop": 652,
+        "trails": 15,
+        "visited": false
+    },
+    {
+        "name": "Sugar Bowl",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.31,
+            39.3
+        ],
+        "verticalDrop": 1500,
+        "trails": 103,
+        "visited": false
+    },
+    {
+        "name": "Tahoe Donner",
+        "location": "California, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.27,
+            39.35
+        ],
+        "verticalDrop": 600,
+        "trails": 14,
+        "visited": false
+    },
+    {
+        "name": "Arapahoe Basin",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.8719,
+            39.6426
+        ],
+        "verticalDrop": 2530,
+        "trails": 147,
+        "visited": true
+    },
+    {
+        "name": "Aspen Highlands",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.85,
+            39.18
+        ],
+        "verticalDrop": 3635,
+        "trails": 144,
+        "visited": false
+    },
+    {
+        "name": "Aspen Mountain",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.8187,
+            39.1869
+        ],
+        "verticalDrop": 3267,
+        "trails": 76,
+        "visited": true
+    },
+    {
+        "name": "Snowmass",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.95,
+            39.21
+        ],
+        "verticalDrop": 4406,
+        "trails": 236,
+        "visited": false
+    },
+    {
+        "name": "Beaver Creek",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.52,
+            39.6
+        ],
+        "verticalDrop": 4040,
+        "trails": 167,
+        "visited": false
+    },
+    {
+        "name": "Breckenridge",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.0384,
+            39.4817
+        ],
+        "verticalDrop": 3398,
+        "trails": 187,
+        "visited": false
+    },
+    {
+        "name": "Buttermilk",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.87,
+            39.2
+        ],
+        "verticalDrop": 2030,
+        "trails": 44,
+        "visited": false
+    },
+    {
+        "name": "Copper Mountain",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.1497,
+            39.5022
+        ],
+        "verticalDrop": 2738,
+        "trails": 140,
+        "visited": true
+    },
+    {
+        "name": "Crested Butte",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.96,
+            38.89
+        ],
+        "verticalDrop": 3062,
+        "trails": 121,
+        "visited": false
+    },
+    {
+        "name": "Echo Mountain",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.52,
+            39.68
+        ],
+        "verticalDrop": 600,
+        "trails": 12,
+        "visited": false
+    },
+    {
+        "name": "Eldora",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.5828,
+            39.9372
+        ],
+        "verticalDrop": 1600,
+        "trails": 53,
+        "visited": true
+    },
+    {
+        "name": "Hesperus",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -108.05,
+            37.28
+        ],
+        "verticalDrop": 700,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Howelsen Hill",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.84,
+            40.48
+        ],
+        "verticalDrop": 440,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Keystone",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.95,
+            39.6
+        ],
+        "verticalDrop": 3128,
+        "trails": 128,
+        "visited": false
+    },
+    {
+        "name": "Loveland",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.89,
+            39.68
+        ],
+        "verticalDrop": 2210,
+        "trails": 94,
+        "visited": false
+    },
+    {
+        "name": "Monarch",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.33,
+            38.51
+        ],
+        "verticalDrop": 1162,
+        "trails": 66,
+        "visited": false
+    },
+    {
+        "name": "Powderhorn",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -108.15,
+            39.07
+        ],
+        "verticalDrop": 1650,
+        "trails": 39,
+        "visited": false
+    },
+    {
+        "name": "Purgatory",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -107.81,
+            37.63
+        ],
+        "verticalDrop": 2029,
+        "trails": 105,
+        "visited": false
+    },
+    {
+        "name": "Silverton",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -107.66,
+            37.88
+        ],
+        "verticalDrop": 3100,
+        "trails": 69,
+        "visited": false
+    },
+    {
+        "name": "Ski Cooper",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.3,
+            39.36
+        ],
+        "verticalDrop": 1200,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Ski Granby Ranch",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.97,
+            40.03
+        ],
+        "verticalDrop": 1000,
+        "trails": 36,
+        "visited": false
+    },
+    {
+        "name": "Steamboat",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.8045,
+            40.4572
+        ],
+        "verticalDrop": 3668,
+        "trails": 169,
+        "visited": true
+    },
+    {
+        "name": "Sunlight Mountain",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -107.34,
+            39.4
+        ],
+        "verticalDrop": 2010,
+        "trails": 72,
+        "visited": false
+    },
+    {
+        "name": "Telluride",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -107.8123,
+            37.9375
+        ],
+        "verticalDrop": 4425,
+        "trails": 148,
+        "visited": false
+    },
+    {
+        "name": "Vail",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.3742,
+            39.6403
+        ],
+        "verticalDrop": 3450,
+        "trails": 195,
+        "visited": true
+    },
+    {
+        "name": "Winter Park",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.7631,
+            39.8841
+        ],
+        "verticalDrop": 3081,
+        "trails": 166,
+        "visited": true
+    },
+    {
+        "name": "Wolf Creek",
+        "location": "Colorado, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.79,
+            37.47
+        ],
+        "verticalDrop": 1604,
+        "trails": 77,
+        "visited": false
+    },
+    {
+        "name": "Mohawk Mountain",
+        "location": "Connecticut, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.32,
+            41.84
+        ],
+        "verticalDrop": 650,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Mt. Southington",
+        "location": "Connecticut, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.88,
+            41.57
+        ],
+        "verticalDrop": 425,
+        "trails": 14,
+        "visited": false
+    },
+    {
+        "name": "Ski Sundown",
+        "location": "Connecticut, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.96,
+            41.93
+        ],
+        "verticalDrop": 625,
+        "trails": 16,
+        "visited": false
+    },
+    {
+        "name": "Bogus Basin",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.1,
+            43.76
+        ],
+        "verticalDrop": 1800,
+        "trails": 82,
+        "visited": false
+    },
+    {
+        "name": "Brundage Mountain",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.15,
+            44.86
+        ],
+        "verticalDrop": 1800,
+        "trails": 52,
+        "visited": false
+    },
+    {
+        "name": "Kelly Canyon",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.64,
+            43.52
+        ],
+        "verticalDrop": 938,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Lookout Pass",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -115.69,
+            47.45
+        ],
+        "verticalDrop": 850,
+        "trails": 34,
+        "visited": false
+    },
+    {
+        "name": "Pebble Creek",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -112.09,
+            42.76
+        ],
+        "verticalDrop": 2147,
+        "trails": 54,
+        "visited": false
+    },
+    {
+        "name": "Schweitzer Mountain",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.62,
+            48.37
+        ],
+        "verticalDrop": 2400,
+        "trails": 92,
+        "visited": false
+    },
+    {
+        "name": "Silver Mountain",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.11,
+            47.54
+        ],
+        "verticalDrop": 2200,
+        "trails": 73,
+        "visited": false
+    },
+    {
+        "name": "Sun Valley",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -114.3514,
+            43.6977
+        ],
+        "verticalDrop": 3400,
+        "trails": 121,
+        "visited": false
+    },
+    {
+        "name": "Tamarack Resort",
+        "location": "Idaho, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -116.11,
+            44.67
+        ],
+        "verticalDrop": 2800,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Chestnut Mountain",
+        "location": "Illinois, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -90.38,
+            42.32
+        ],
+        "verticalDrop": 475,
+        "trails": 19,
+        "visited": false
+    },
+    {
+        "name": "Paoli Peaks",
+        "location": "Indiana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -86.47,
+            38.56
+        ],
+        "verticalDrop": 300,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Perfect North Slopes",
+        "location": "Indiana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -84.82,
+            39.15
+        ],
+        "verticalDrop": 400,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Mount Crescent",
+        "location": "Iowa, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -95.86,
+            41.32
+        ],
+        "verticalDrop": 300,
+        "trails": 14,
+        "visited": false
+    },
+    {
+        "name": "Sundown Mountain",
+        "location": "Iowa, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -90.8,
+            42.51
+        ],
+        "verticalDrop": 475,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Berkshire East",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.89,
+            42.63
+        ],
+        "verticalDrop": 1180,
+        "trails": 45,
+        "visited": false
+    },
+    {
+        "name": "Bousquet Mountain",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.27,
+            42.44
+        ],
+        "verticalDrop": 750,
+        "trails": 24,
+        "visited": false
+    },
+    {
+        "name": "Jiminy Peak",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.2668,
+            42.5498
+        ],
+        "verticalDrop": 1150,
+        "trails": 45,
+        "visited": true
+    },
+    {
+        "name": "Nashoba Valley",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.54,
+            42.52
+        ],
+        "verticalDrop": 240,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Ski Butternut",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.31,
+            42.18
+        ],
+        "verticalDrop": 1000,
+        "trails": 22,
+        "visited": false
+    },
+    {
+        "name": "Wachusett Mountain",
+        "location": "Massachusetts, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.89,
+            42.5
+        ],
+        "verticalDrop": 1000,
+        "trails": 27,
+        "visited": false
+    },
+    {
+        "name": "Wisp",
+        "location": "Maryland, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.36,
+            39.56
+        ],
+        "verticalDrop": 700,
+        "trails": 34,
+        "visited": false
+    },
+    {
+        "name": "Bigrock Mountain",
+        "location": "Maine, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -68.11,
+            46.78
+        ],
+        "verticalDrop": 980,
+        "trails": 34,
+        "visited": false
+    },
+    {
+        "name": "Saddleback",
+        "location": "Maine, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -70.51,
+            44.94
+        ],
+        "verticalDrop": 2000,
+        "trails": 68,
+        "visited": false
+    },
+    {
+        "name": "Shawnee Peak",
+        "location": "Maine, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -70.84,
+            44.06
+        ],
+        "verticalDrop": 1300,
+        "trails": 40,
+        "visited": false
+    },
+    {
+        "name": "Sugarloaf",
+        "location": "Maine, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -70.31,
+            45.03
+        ],
+        "verticalDrop": 2820,
+        "trails": 162,
+        "visited": false
+    },
+    {
+        "name": "Sunday River",
+        "location": "Maine, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -70.86,
+            44.47
+        ],
+        "verticalDrop": 2340,
+        "trails": 135,
+        "visited": false
+    },
+    {
+        "name": "Boyne Mountain",
+        "location": "Michigan, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -84.94,
+            45.16
+        ],
+        "verticalDrop": 500,
+        "trails": 60,
+        "visited": false
+    },
+    {
+        "name": "Crystal Mountain (MI)",
+        "location": "Michigan, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -85.97,
+            44.52
+        ],
+        "verticalDrop": 375,
+        "trails": 58,
+        "visited": false
+    },
+    {
+        "name": "Mount Bohemia",
+        "location": "Michigan, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -88.02,
+            47.39
+        ],
+        "verticalDrop": 900,
+        "trails": 101,
+        "visited": false
+    },
+    {
+        "name": "Nubs Nob",
+        "location": "Michigan, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -84.82,
+            45.47
+        ],
+        "verticalDrop": 427,
+        "trails": 53,
+        "visited": false
+    },
+    {
+        "name": "Afton Alps",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -92.78,
+            44.86
+        ],
+        "verticalDrop": 350,
+        "trails": 48,
+        "visited": false
+    },
+    {
+        "name": "Giants Ridge",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -92.36,
+            47.58
+        ],
+        "verticalDrop": 500,
+        "trails": 35,
+        "visited": false
+    },
+    {
+        "name": "Lutsen Mountains",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -90.71,
+            47.66
+        ],
+        "verticalDrop": 1088,
+        "trails": 95,
+        "visited": false
+    },
+    {
+        "name": "Spirit Mountain",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -92.22,
+            46.72
+        ],
+        "verticalDrop": 700,
+        "trails": 22,
+        "visited": false
+    },
+    {
+        "name": "Welch Village",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -92.73,
+            44.56
+        ],
+        "verticalDrop": 360,
+        "trails": 60,
+        "visited": false
+    },
+    {
+        "name": "Wild Mountain",
+        "location": "Minnesota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -92.74,
+            45.54
+        ],
+        "verticalDrop": 300,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Hidden Valley (MO)",
+        "location": "Missouri, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -90.62,
+            38.51
+        ],
+        "verticalDrop": 310,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Snow Creek",
+        "location": "Missouri, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -94.92,
+            39.48
+        ],
+        "verticalDrop": 300,
+        "trails": 12,
+        "visited": false
+    },
+    {
+        "name": "Big Sky",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.4013,
+            45.2833
+        ],
+        "verticalDrop": 4350,
+        "trails": 317,
+        "visited": true
+    },
+    {
+        "name": "Blacktail Mountain",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -114.36,
+            48.01
+        ],
+        "verticalDrop": 1440,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Bridger Bowl",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.89,
+            45.82
+        ],
+        "verticalDrop": 2700,
+        "trails": 75,
+        "visited": false
+    },
+    {
+        "name": "Discovery Basin",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -113.24,
+            46.25
+        ],
+        "verticalDrop": 2388,
+        "trails": 67,
+        "visited": false
+    },
+    {
+        "name": "Lost Trail Powder",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -113.95,
+            45.69
+        ],
+        "verticalDrop": 1200,
+        "trails": 60,
+        "visited": false
+    },
+    {
+        "name": "Montana Snowbowl",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -114.15,
+            46.93
+        ],
+        "verticalDrop": 2600,
+        "trails": 39,
+        "visited": false
+    },
+    {
+        "name": "Red Lodge Mountain",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -109.33,
+            45.19
+        ],
+        "verticalDrop": 2400,
+        "trails": 71,
+        "visited": false
+    },
+    {
+        "name": "Showdown Montana",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.72,
+            46.84
+        ],
+        "verticalDrop": 1400,
+        "trails": 36,
+        "visited": false
+    },
+    {
+        "name": "Whitefish Mountain",
+        "location": "Montana, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -114.35,
+            48.48
+        ],
+        "verticalDrop": 2353,
+        "trails": 105,
+        "visited": false
+    },
+    {
+        "name": "Appalachian Ski Mountain",
+        "location": "North Carolina, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -81.61,
+            36.09
+        ],
+        "verticalDrop": 365,
+        "trails": 12,
+        "visited": false
+    },
+    {
+        "name": "Beech Mountain",
+        "location": "North Carolina, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -81.88,
+            36.19
+        ],
+        "verticalDrop": 830,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Cataloochee",
+        "location": "North Carolina, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -83.09,
+            35.51
+        ],
+        "verticalDrop": 740,
+        "trails": 18,
+        "visited": false
+    },
+    {
+        "name": "Sugar Mountain",
+        "location": "North Carolina, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -81.87,
+            36.12
+        ],
+        "verticalDrop": 1200,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Huff Hills",
+        "location": "North Dakota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -100.68,
+            46.64
+        ],
+        "verticalDrop": 400,
+        "trails": 16,
+        "visited": false
+    },
+    {
+        "name": "Attitash",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.23,
+            44.08
+        ],
+        "verticalDrop": 1750,
+        "trails": 68,
+        "visited": false
+    },
+    {
+        "name": "Bretton Woods",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.46,
+            44.26
+        ],
+        "verticalDrop": 1500,
+        "trails": 63,
+        "visited": false
+    },
+    {
+        "name": "Cannon Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.68,
+            44.16
+        ],
+        "verticalDrop": 2180,
+        "trails": 97,
+        "visited": false
+    },
+    {
+        "name": "Cranmore Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.11,
+            44.06
+        ],
+        "verticalDrop": 1200,
+        "trails": 57,
+        "visited": false
+    },
+    {
+        "name": "Crotched Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.87,
+            43.02
+        ],
+        "verticalDrop": 1000,
+        "trails": 24,
+        "visited": false
+    },
+    {
+        "name": "Gunstock Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.36,
+            43.55
+        ],
+        "verticalDrop": 1400,
+        "trails": 55,
+        "visited": false
+    },
+    {
+        "name": "Loon Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.62,
+            44.04
+        ],
+        "verticalDrop": 2100,
+        "trails": 61,
+        "visited": false
+    },
+    {
+        "name": "Mount Sunapee",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.08,
+            43.33
+        ],
+        "verticalDrop": 1510,
+        "trails": 67,
+        "visited": false
+    },
+    {
+        "name": "Pats Peak",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.78,
+            43.17
+        ],
+        "verticalDrop": 770,
+        "trails": 28,
+        "visited": false
+    },
+    {
+        "name": "Ragged Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.85,
+            43.48
+        ],
+        "verticalDrop": 1250,
+        "trails": 57,
+        "visited": false
+    },
+    {
+        "name": "Waterville Valley",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.53,
+            43.96
+        ],
+        "verticalDrop": 2020,
+        "trails": 62,
+        "visited": false
+    },
+    {
+        "name": "Wildcat Mountain",
+        "location": "New Hampshire, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.24,
+            44.26
+        ],
+        "verticalDrop": 2112,
+        "trails": 49,
+        "visited": false
+    },
+    {
+        "name": "Mountain Creek",
+        "location": "New Jersey, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.51,
+            41.19
+        ],
+        "verticalDrop": 1040,
+        "trails": 46,
+        "visited": false
+    },
+    {
+        "name": "Angel Fire",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.28,
+            36.39
+        ],
+        "verticalDrop": 2077,
+        "trails": 81,
+        "visited": false
+    },
+    {
+        "name": "Pajarito",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.39,
+            35.89
+        ],
+        "verticalDrop": 1410,
+        "trails": 45,
+        "visited": false
+    },
+    {
+        "name": "Red River",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.41,
+            36.68
+        ],
+        "verticalDrop": 1600,
+        "trails": 63,
+        "visited": false
+    },
+    {
+        "name": "Sandia Peak",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.44,
+            35.21
+        ],
+        "verticalDrop": 1700,
+        "trails": 35,
+        "visited": false
+    },
+    {
+        "name": "Sipapu",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.56,
+            36.09
+        ],
+        "verticalDrop": 1055,
+        "trails": 43,
+        "visited": false
+    },
+    {
+        "name": "Ski Apache",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.79,
+            33.4
+        ],
+        "verticalDrop": 1900,
+        "trails": 55,
+        "visited": false
+    },
+    {
+        "name": "Ski Santa Fe",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.79,
+            35.79
+        ],
+        "verticalDrop": 1725,
+        "trails": 83,
+        "visited": false
+    },
+    {
+        "name": "Taos Ski Valley",
+        "location": "New Mexico, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -105.4544,
+            36.5964
+        ],
+        "verticalDrop": 3281,
+        "trails": 110,
+        "visited": false
+    },
+    {
+        "name": "Diamond Peak",
+        "location": "Nevada, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.92,
+            39.25
+        ],
+        "verticalDrop": 1840,
+        "trails": 30,
+        "visited": false
+    },
+    {
+        "name": "Lee Canyon",
+        "location": "Nevada, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -115.68,
+            36.3
+        ],
+        "verticalDrop": 1000,
+        "trails": 30,
+        "visited": false
+    },
+    {
+        "name": "Mount Rose",
+        "location": "Nevada, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.88,
+            39.33
+        ],
+        "verticalDrop": 1800,
+        "trails": 61,
+        "visited": false
+    },
+    {
+        "name": "Belleayre Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.51,
+            42.13
+        ],
+        "verticalDrop": 1404,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Bristol Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -77.41,
+            42.73
+        ],
+        "verticalDrop": 1200,
+        "trails": 38,
+        "visited": false
+    },
+    {
+        "name": "Gore Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.0062,
+            43.6753
+        ],
+        "verticalDrop": 2537,
+        "trails": 110,
+        "visited": true
+    },
+    {
+        "name": "Greek Peak",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -76.15,
+            42.51
+        ],
+        "verticalDrop": 952,
+        "trails": 55,
+        "visited": false
+    },
+    {
+        "name": "Holiday Valley",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.67,
+            42.27
+        ],
+        "verticalDrop": 750,
+        "trails": 60,
+        "visited": false
+    },
+    {
+        "name": "HoliMont",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.7,
+            42.26
+        ],
+        "verticalDrop": 700,
+        "trails": 52,
+        "visited": false
+    },
+    {
+        "name": "Hunter Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.2257,
+            42.2018
+        ],
+        "verticalDrop": 1600,
+        "trails": 67,
+        "visited": true
+    },
+    {
+        "name": "Kissing Bridge",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.69,
+            42.6
+        ],
+        "verticalDrop": 700,
+        "trails": 39,
+        "visited": false
+    },
+    {
+        "name": "Peek'n Peak",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.74,
+            42.06
+        ],
+        "verticalDrop": 400,
+        "trails": 27,
+        "visited": false
+    },
+    {
+        "name": "Plattekill Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.65,
+            42.28
+        ],
+        "verticalDrop": 1100,
+        "trails": 38,
+        "visited": false
+    },
+    {
+        "name": "Snow Ridge",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.37,
+            43.62
+        ],
+        "verticalDrop": 500,
+        "trails": 22,
+        "visited": false
+    },
+    {
+        "name": "Swain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -77.86,
+            42.48
+        ],
+        "verticalDrop": 650,
+        "trails": 35,
+        "visited": false
+    },
+    {
+        "name": "Thunder Ridge",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.68,
+            41.56
+        ],
+        "verticalDrop": 600,
+        "trails": 30,
+        "visited": false
+    },
+    {
+        "name": "Titus Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.26,
+            44.72
+        ],
+        "verticalDrop": 1200,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "West Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.8068,
+            43.287
+        ],
+        "verticalDrop": 1010,
+        "trails": 32,
+        "visited": true
+    },
+    {
+        "name": "Whiteface Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.9036,
+            44.3654
+        ],
+        "verticalDrop": 3430,
+        "trails": 89,
+        "visited": true
+    },
+    {
+        "name": "Willard Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -73.344,
+            43.087
+        ],
+        "verticalDrop": 505,
+        "trails": 14,
+        "visited": true
+    },
+    {
+        "name": "Windham Mountain",
+        "location": "New York, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -74.2598,
+            42.2965
+        ],
+        "verticalDrop": 1600,
+        "trails": 54,
+        "visited": true
+    },
+    {
+        "name": "Boston Mills",
+        "location": "Ohio, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -81.51,
+            41.26
+        ],
+        "verticalDrop": 264,
+        "trails": 18,
+        "visited": false
+    },
+    {
+        "name": "Brandywine",
+        "location": "Ohio, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -81.53,
+            41.28
+        ],
+        "verticalDrop": 264,
+        "trails": 11,
+        "visited": false
+    },
+    {
+        "name": "Mad River Mountain",
+        "location": "Ohio, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -83.68,
+            40.32
+        ],
+        "verticalDrop": 300,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Snow Trails",
+        "location": "Ohio, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -82.52,
+            40.68
+        ],
+        "verticalDrop": 300,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Anthony Lakes",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -118.23,
+            44.96
+        ],
+        "verticalDrop": 900,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Cooper Spur",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.58,
+            45.41
+        ],
+        "verticalDrop": 500,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Hoodoo",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.8731,
+            44.4081
+        ],
+        "verticalDrop": 1035,
+        "trails": 34,
+        "visited": true
+    },
+    {
+        "name": "Mount Ashland",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -122.72,
+            42.08
+        ],
+        "verticalDrop": 1150,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Mt. Bachelor",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.6886,
+            43.9792
+        ],
+        "verticalDrop": 3365,
+        "trails": 101,
+        "visited": true
+    },
+    {
+        "name": "Mt. Hood Meadows",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.67,
+            45.33
+        ],
+        "verticalDrop": 2777,
+        "trails": 87,
+        "visited": false
+    },
+    {
+        "name": "Mt. Hood Skibowl",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.77,
+            45.3
+        ],
+        "verticalDrop": 1500,
+        "trails": 65,
+        "visited": false
+    },
+    {
+        "name": "Timberline Lodge",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.71,
+            45.33
+        ],
+        "verticalDrop": 3690,
+        "trails": 41,
+        "visited": false
+    },
+    {
+        "name": "Willamette Pass",
+        "location": "Oregon, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -122.04,
+            43.6
+        ],
+        "verticalDrop": 1563,
+        "trails": 29,
+        "visited": false
+    },
+    {
+        "name": "Bear Creek Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.68,
+            40.49
+        ],
+        "verticalDrop": 510,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Big Boulder",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.58,
+            41.01
+        ],
+        "verticalDrop": 475,
+        "trails": 16,
+        "visited": false
+    },
+    {
+        "name": "Blue Knob",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.56,
+            40.28
+        ],
+        "verticalDrop": 1072,
+        "trails": 34,
+        "visited": false
+    },
+    {
+        "name": "Blue Mountain (PA)",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.5163,
+            40.8231
+        ],
+        "verticalDrop": 1082,
+        "trails": 40,
+        "visited": true
+    },
+    {
+        "name": "Camelback Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.36,
+            41.05
+        ],
+        "verticalDrop": 800,
+        "trails": 39,
+        "visited": false
+    },
+    {
+        "name": "Elk Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.58,
+            41.72
+        ],
+        "verticalDrop": 1000,
+        "trails": 27,
+        "visited": false
+    },
+    {
+        "name": "Hidden Valley (PA)",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.25,
+            40.05
+        ],
+        "verticalDrop": 610,
+        "trails": 31,
+        "visited": false
+    },
+    {
+        "name": "Jack Frost",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.58,
+            41.05
+        ],
+        "verticalDrop": 600,
+        "trails": 21,
+        "visited": false
+    },
+    {
+        "name": "Liberty Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -77.38,
+            39.77
+        ],
+        "verticalDrop": 620,
+        "trails": 16,
+        "visited": false
+    },
+    {
+        "name": "Montage Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.59,
+            41.37
+        ],
+        "verticalDrop": 1000,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "Seven Springs",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.3,
+            40.02
+        ],
+        "verticalDrop": 750,
+        "trails": 33,
+        "visited": false
+    },
+    {
+        "name": "Shawnee Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -75.1,
+            41.0
+        ],
+        "verticalDrop": 700,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Whitetail Mountain",
+        "location": "Pennsylvania, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -77.93,
+            39.73
+        ],
+        "verticalDrop": 935,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Yawgoo Valley",
+        "location": "Rhode Island, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.63,
+            41.51
+        ],
+        "verticalDrop": 245,
+        "trails": 12,
+        "visited": false
+    },
+    {
+        "name": "Great Bear",
+        "location": "South Dakota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -96.82,
+            43.49
+        ],
+        "verticalDrop": 250,
+        "trails": 14,
+        "visited": false
+    },
+    {
+        "name": "Terry Peak",
+        "location": "South Dakota, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -103.98,
+            44.37
+        ],
+        "verticalDrop": 1100,
+        "trails": 30,
+        "visited": false
+    },
+    {
+        "name": "Ober Gatlinburg",
+        "location": "Tennessee, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -83.52,
+            35.71
+        ],
+        "verticalDrop": 600,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Alta",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.6386,
+            40.5884
+        ],
+        "verticalDrop": 2538,
+        "trails": 119,
+        "visited": true
+    },
+    {
+        "name": "Beaver Mountain",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.54,
+            41.97
+        ],
+        "verticalDrop": 1600,
+        "trails": 48,
+        "visited": false
+    },
+    {
+        "name": "Brian Head",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -112.85,
+            37.69
+        ],
+        "verticalDrop": 1320,
+        "trails": 71,
+        "visited": false
+    },
+    {
+        "name": "Brighton",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.58,
+            40.6
+        ],
+        "verticalDrop": 1745,
+        "trails": 66,
+        "visited": false
+    },
+    {
+        "name": "Cherry Peak",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.73,
+            41.93
+        ],
+        "verticalDrop": 1200,
+        "trails": 20,
+        "visited": false
+    },
+    {
+        "name": "Deer Valley",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.4783,
+            40.6374
+        ],
+        "verticalDrop": 3000,
+        "trails": 103,
+        "visited": true
+    },
+    {
+        "name": "Eagle Point",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -112.38,
+            38.32
+        ],
+        "verticalDrop": 1500,
+        "trails": 40,
+        "visited": false
+    },
+    {
+        "name": "Nordic Valley",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.86,
+            41.31
+        ],
+        "verticalDrop": 1000,
+        "trails": 24,
+        "visited": false
+    },
+    {
+        "name": "Park City",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.4979,
+            40.6461
+        ],
+        "verticalDrop": 3226,
+        "trails": 330,
+        "visited": true
+    },
+    {
+        "name": "Powder Mountain",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.78,
+            41.38
+        ],
+        "verticalDrop": 2205,
+        "trails": 167,
+        "visited": false
+    },
+    {
+        "name": "Snowbasin",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.86,
+            41.22
+        ],
+        "verticalDrop": 3000,
+        "trails": 107,
+        "visited": false
+    },
+    {
+        "name": "Snowbird",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.6561,
+            40.583
+        ],
+        "verticalDrop": 3240,
+        "trails": 169,
+        "visited": true
+    },
+    {
+        "name": "Solitude Mountain",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.59,
+            40.62
+        ],
+        "verticalDrop": 2047,
+        "trails": 82,
+        "visited": false
+    },
+    {
+        "name": "Sundance",
+        "location": "Utah, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -111.59,
+            40.39
+        ],
+        "verticalDrop": 2150,
+        "trails": 44,
+        "visited": false
+    },
+    {
+        "name": "Bolton Valley",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.85,
+            44.42
+        ],
+        "verticalDrop": 1704,
+        "trails": 71,
+        "visited": false
+    },
+    {
+        "name": "Bromley Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.94,
+            43.22
+        ],
+        "verticalDrop": 1334,
+        "trails": 47,
+        "visited": false
+    },
+    {
+        "name": "Burke Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -71.9,
+            44.58
+        ],
+        "verticalDrop": 2011,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Jay Peak",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.53,
+            44.94
+        ],
+        "verticalDrop": 2153,
+        "trails": 81,
+        "visited": false
+    },
+    {
+        "name": "Killington",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.8032,
+            43.6045
+        ],
+        "verticalDrop": 3050,
+        "trails": 155,
+        "visited": true
+    },
+    {
+        "name": "Mad River Glen",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.92,
+            44.2
+        ],
+        "verticalDrop": 2037,
+        "trails": 52,
+        "visited": false
+    },
+    {
+        "name": "Magic Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.78,
+            43.19
+        ],
+        "verticalDrop": 1500,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Middlebury Snow Bowl",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.93,
+            43.95
+        ],
+        "verticalDrop": 1020,
+        "trails": 17,
+        "visited": false
+    },
+    {
+        "name": "Mount Snow",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.92,
+            42.96
+        ],
+        "verticalDrop": 1700,
+        "trails": 87,
+        "visited": false
+    },
+    {
+        "name": "Okemo Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.72,
+            43.4
+        ],
+        "verticalDrop": 2200,
+        "trails": 121,
+        "visited": false
+    },
+    {
+        "name": "Pico Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.84,
+            43.66
+        ],
+        "verticalDrop": 1967,
+        "trails": 58,
+        "visited": false
+    },
+    {
+        "name": "Smugglers' Notch",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.79,
+            44.59
+        ],
+        "verticalDrop": 2610,
+        "trails": 78,
+        "visited": false
+    },
+    {
+        "name": "Stowe",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.7814,
+            44.5303
+        ],
+        "verticalDrop": 2360,
+        "trails": 116,
+        "visited": false
+    },
+    {
+        "name": "Stratton Mountain",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.91,
+            43.11
+        ],
+        "verticalDrop": 2003,
+        "trails": 99,
+        "visited": false
+    },
+    {
+        "name": "Sugarbush",
+        "location": "Vermont, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -72.9034,
+            44.1358
+        ],
+        "verticalDrop": 2600,
+        "trails": 111,
+        "visited": true
+    },
+    {
+        "name": "Bryce Resort",
+        "location": "Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.76,
+            38.82
+        ],
+        "verticalDrop": 500,
+        "trails": 8,
+        "visited": false
+    },
+    {
+        "name": "Massanutten",
+        "location": "Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.74,
+            38.41
+        ],
+        "verticalDrop": 1110,
+        "trails": 14,
+        "visited": false
+    },
+    {
+        "name": "Wintergreen",
+        "location": "Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -78.94,
+            37.93
+        ],
+        "verticalDrop": 1003,
+        "trails": 26,
+        "visited": false
+    },
+    {
+        "name": "49 Degrees North",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.57,
+            48.3
+        ],
+        "verticalDrop": 1851,
+        "trails": 82,
+        "visited": false
+    },
+    {
+        "name": "Crystal Mountain",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.5045,
+            46.9282
+        ],
+        "verticalDrop": 3100,
+        "trails": 81,
+        "visited": true
+    },
+    {
+        "name": "Hurricane Ridge",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -123.5,
+            47.97
+        ],
+        "verticalDrop": 800,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Loup Loup Ski Bowl",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -119.91,
+            48.39
+        ],
+        "verticalDrop": 1240,
+        "trails": 10,
+        "visited": false
+    },
+    {
+        "name": "Mission Ridge",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -120.4,
+            47.29
+        ],
+        "verticalDrop": 2250,
+        "trails": 36,
+        "visited": false
+    },
+    {
+        "name": "Mt. Baker",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.67,
+            48.86
+        ],
+        "verticalDrop": 1500,
+        "trails": 38,
+        "visited": false
+    },
+    {
+        "name": "Mt. Spokane",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.1,
+            47.92
+        ],
+        "verticalDrop": 2000,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Ski Bluewood",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -117.85,
+            46.08
+        ],
+        "verticalDrop": 1125,
+        "trails": 24,
+        "visited": true
+    },
+    {
+        "name": "Stevens Pass",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.0891,
+            47.7454
+        ],
+        "verticalDrop": 1800,
+        "trails": 52,
+        "visited": true
+    },
+    {
+        "name": "The Summit at Snoqualmie",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.4264,
+            47.4443
+        ],
+        "verticalDrop": 2200,
+        "trails": 65,
+        "visited": true
+    },
+    {
+        "name": "White Pass",
+        "location": "Washington, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -121.39,
+            46.64
+        ],
+        "verticalDrop": 1500,
+        "trails": 47,
+        "visited": false
+    },
+    {
+        "name": "Canaan Valley",
+        "location": "West Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.45,
+            39.0
+        ],
+        "verticalDrop": 850,
+        "trails": 47,
+        "visited": false
+    },
+    {
+        "name": "Snowshoe Mountain",
+        "location": "West Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.99,
+            38.41
+        ],
+        "verticalDrop": 1500,
+        "trails": 60,
+        "visited": false
+    },
+    {
+        "name": "Timberline Four Seasons",
+        "location": "West Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -79.42,
+            39.0
+        ],
+        "verticalDrop": 1000,
+        "trails": 40,
+        "visited": false
+    },
+    {
+        "name": "Winterplace",
+        "location": "West Virginia, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -80.97,
+            37.59
+        ],
+        "verticalDrop": 603,
+        "trails": 27,
+        "visited": false
+    },
+    {
+        "name": "Cascade Mountain",
+        "location": "Wisconsin, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -89.68,
+            43.56
+        ],
+        "verticalDrop": 460,
+        "trails": 46,
+        "visited": false
+    },
+    {
+        "name": "Devil's Head",
+        "location": "Wisconsin, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -89.68,
+            43.38
+        ],
+        "verticalDrop": 500,
+        "trails": 30,
+        "visited": false
+    },
+    {
+        "name": "Granite Peak",
+        "location": "Wisconsin, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -89.68,
+            44.93
+        ],
+        "verticalDrop": 700,
+        "trails": 74,
+        "visited": false
+    },
+    {
+        "name": "Whitecap Mountains",
+        "location": "Wisconsin, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -90.18,
+            46.38
+        ],
+        "verticalDrop": 400,
+        "trails": 43,
+        "visited": false
+    },
+    {
+        "name": "Wilmot Mountain",
+        "location": "Wisconsin, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -88.19,
+            42.5
+        ],
+        "verticalDrop": 230,
+        "trails": 23,
+        "visited": false
+    },
+    {
+        "name": "Grand Targhee",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.96,
+            43.79
+        ],
+        "verticalDrop": 2270,
+        "trails": 79,
+        "visited": false
+    },
+    {
+        "name": "Hogadon Basin",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.32,
+            42.75
+        ],
+        "verticalDrop": 640,
+        "trails": 28,
+        "visited": false
+    },
+    {
+        "name": "Jackson Hole",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.8279,
+            43.5877
+        ],
+        "verticalDrop": 4139,
+        "trails": 133,
+        "visited": true
+    },
+    {
+        "name": "Snow King",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -110.76,
+            43.48
+        ],
+        "verticalDrop": 1571,
+        "trails": 32,
+        "visited": false
+    },
+    {
+        "name": "Snowy Range",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -106.17,
+            41.35
+        ],
+        "verticalDrop": 990,
+        "trails": 32,
+        "visited": false
+    },
+    {
+        "name": "White Pine",
+        "location": "Wyoming, USA",
+        "country": "United States",
+        "continent": "North America",
+        "coords": [
+            -109.75,
+            42.77
+        ],
+        "verticalDrop": 1000,
+        "trails": 25,
+        "visited": false
+    },
+    {
+        "name": "Whistler Blackcomb",
+        "location": "British Columbia, Canada",
+        "country": "Canada",
+        "continent": "North America",
+        "coords": [
+            -122.9544,
+            50.1163
+        ],
+        "verticalDrop": 5280,
+        "trails": 200,
+        "visited": true
+    },
+    {
+        "name": "Banff Sunshine",
+        "location": "Alberta, Canada",
+        "country": "Canada",
+        "continent": "North America",
+        "coords": [
+            -115.763,
+            51.0715
+        ],
+        "verticalDrop": 3514,
+        "trails": 137,
+        "visited": false
+    },
+    {
+        "name": "Lake Louise",
+        "location": "Alberta, Canada",
+        "country": "Canada",
+        "continent": "North America",
+        "coords": [
+            -116.1773,
+            51.4254
+        ],
+        "verticalDrop": 3251,
+        "trails": 164,
+        "visited": false
+    },
+    {
+        "name": "Mont Tremblant",
+        "location": "Quebec, Canada",
+        "country": "Canada",
+        "continent": "North America",
+        "coords": [
+            -74.5846,
+            46.2096
+        ],
+        "verticalDrop": 2116,
+        "trails": 102,
+        "visited": false
+    },
+    {
+        "name": "Revelstoke",
+        "location": "British Columbia, Canada",
+        "country": "Canada",
+        "continent": "North America",
+        "coords": [
+            -118.164,
+            50.9581
+        ],
+        "verticalDrop": 5620,
+        "trails": 69,
+        "visited": true
+    },
+    {
+        "name": "Chamonix Mont-Blanc",
+        "location": "Haute-Savoie, France",
+        "country": "France",
+        "continent": "Europe",
+        "coords": [
+            6.8694,
+            45.9237
+        ],
+        "verticalDrop": 9209,
+        "trails": 182,
+        "visited": true
+    },
+    {
+        "name": "Val d'Isère",
+        "location": "Savoie, France",
+        "country": "France",
+        "continent": "Europe",
+        "coords": [
+            6.9806,
+            45.4485
+        ],
+        "verticalDrop": 5905,
+        "trails": 154,
+        "visited": false
+    },
+    {
+        "name": "Courchevel",
+        "location": "Savoie, France",
+        "country": "France",
+        "continent": "Europe",
+        "coords": [
+            6.6347,
+            45.4153
+        ],
+        "verticalDrop": 4921,
+        "trails": 150,
+        "visited": false
+    },
+    {
+        "name": "Zermatt",
+        "location": "Valais, Switzerland",
+        "country": "Switzerland",
+        "continent": "Europe",
+        "coords": [
+            7.7491,
+            46.0207
+        ],
+        "verticalDrop": 7218,
+        "trails": 200,
+        "visited": true
+    },
+    {
+        "name": "St. Moritz",
+        "location": "Graubünden, Switzerland",
+        "country": "Switzerland",
+        "continent": "Europe",
+        "coords": [
+            9.8355,
+            46.4908
+        ],
+        "verticalDrop": 4757,
+        "trails": 88,
+        "visited": false
+    },
+    {
+        "name": "Verbier",
+        "location": "Valais, Switzerland",
+        "country": "Switzerland",
+        "continent": "Europe",
+        "coords": [
+            7.2286,
+            46.0964
+        ],
+        "verticalDrop": 6561,
+        "trails": 200,
+        "visited": false
+    },
+    {
+        "name": "St. Anton am Arlberg",
+        "location": "Tyrol, Austria",
+        "country": "Austria",
+        "continent": "Europe",
+        "coords": [
+            10.2683,
+            47.1292
+        ],
+        "verticalDrop": 4600,
+        "trails": 305,
+        "visited": false
+    },
+    {
+        "name": "Kitzbühel",
+        "location": "Tyrol, Austria",
+        "country": "Austria",
+        "continent": "Europe",
+        "coords": [
+            12.3913,
+            47.4492
+        ],
+        "verticalDrop": 3937,
+        "trails": 170,
+        "visited": false
+    },
+    {
+        "name": "Lech Zürs",
+        "location": "Vorarlberg, Austria",
+        "country": "Austria",
+        "continent": "Europe",
+        "coords": [
+            10.1419,
+            47.2075
+        ],
+        "verticalDrop": 4593,
+        "trails": 305,
+        "visited": false
+    },
+    {
+        "name": "Cortina d'Ampezzo",
+        "location": "Veneto, Italy",
+        "country": "Italy",
+        "continent": "Europe",
+        "coords": [
+            12.1357,
+            46.5369
+        ],
+        "verticalDrop": 4757,
+        "trails": 120,
+        "visited": false
+    },
+    {
+        "name": "Val Gardena",
+        "location": "South Tyrol, Italy",
+        "country": "Italy",
+        "continent": "Europe",
+        "coords": [
+            11.7358,
+            46.558
+        ],
+        "verticalDrop": 4429,
+        "trails": 175,
+        "visited": false
+    },
+    {
+        "name": "Niseko",
+        "location": "Hokkaido, Japan",
+        "country": "Japan",
+        "continent": "Asia",
+        "coords": [
+            140.6874,
+            42.8621
+        ],
+        "verticalDrop": 2756,
+        "trails": 61,
+        "visited": false
+    },
+    {
+        "name": "Hakuba Valley",
+        "location": "Nagano, Japan",
+        "country": "Japan",
+        "continent": "Asia",
+        "coords": [
+            137.8617,
+            36.6983
+        ],
+        "verticalDrop": 3281,
+        "trails": 137,
+        "visited": false
+    },
+    {
+        "name": "Yongpyong",
+        "location": "Gangwon, South Korea",
+        "country": "South Korea",
+        "continent": "Asia",
+        "coords": [
+            128.6803,
+            37.6439
+        ],
+        "verticalDrop": 2461,
+        "trails": 28,
+        "visited": false
+    },
+    {
+        "name": "Portillo",
+        "location": "Valparaíso, Chile",
+        "country": "Chile",
+        "continent": "South America",
+        "coords": [
+            -70.127,
+            -32.8383
+        ],
+        "verticalDrop": 2625,
+        "trails": 35,
+        "visited": false
+    },
+    {
+        "name": "Valle Nevado",
+        "location": "Santiago, Chile",
+        "country": "Chile",
+        "continent": "South America",
+        "coords": [
+            -70.2467,
+            -33.3558
+        ],
+        "verticalDrop": 2789,
+        "trails": 40,
+        "visited": false
+    },
+    {
+        "name": "Cerro Catedral",
+        "location": "Río Negro, Argentina",
+        "country": "Argentina",
+        "continent": "South America",
+        "coords": [
+            -71.4411,
+            -41.1647
+        ],
+        "verticalDrop": 3281,
+        "trails": 53,
+        "visited": false
+    },
+    {
+        "name": "Thredbo",
+        "location": "New South Wales, Australia",
+        "country": "Australia",
+        "continent": "Oceania",
+        "coords": [
+            148.3074,
+            -36.5025
+        ],
+        "verticalDrop": 2198,
+        "trails": 50,
+        "visited": false
+    },
+    {
+        "name": "Perisher",
+        "location": "New South Wales, Australia",
+        "country": "Australia",
+        "continent": "Oceania",
+        "coords": [
+            148.4094,
+            -36.3719
+        ],
+        "verticalDrop": 1148,
+        "trails": 113,
+        "visited": false
+    },
+    {
+        "name": "The Remarkables",
+        "location": "Otago, New Zealand",
+        "country": "New Zealand",
+        "continent": "Oceania",
+        "coords": [
+            168.8147,
+            -45.05
+        ],
+        "verticalDrop": 1811,
+        "trails": 36,
+        "visited": false
+    },
+    {
+        "name": "Åre",
+        "location": "Jämtland, Sweden",
+        "country": "Sweden",
+        "continent": "Europe",
+        "coords": [
+            13.0744,
+            63.3986
+        ],
+        "verticalDrop": 2953,
+        "trails": 89,
+        "visited": false
+    },
+    {
+        "name": "Levi",
+        "location": "Lapland, Finland",
+        "country": "Finland",
+        "continent": "Europe",
+        "coords": [
+            24.8078,
+            67.7944
+        ],
+        "verticalDrop": 1066,
+        "trails": 43,
+        "visited": false
+    },
+    {
+        "name": "Sierra Nevada",
+        "location": "Granada, Spain",
+        "country": "Spain",
+        "continent": "Europe",
+        "coords": [
+            -3.3961,
+            37.0956
+        ],
+        "verticalDrop": 3609,
+        "trails": 131,
+        "visited": false
+    },
+    {
+        "name": "Gulmarg",
+        "location": "Kashmir, India",
+        "country": "India",
+        "continent": "Asia",
+        "coords": [
+            74.3803,
+            34.0484
+        ],
+        "verticalDrop": 4715,
+        "trails": 20,
+        "visited": false
+    },
+    {
+        "name": "Gudauri",
+        "location": "Mtskheta-Mtianeti, Georgia",
+        "country": "Georgia",
+        "continent": "Asia",
+        "coords": [
+            44.4706,
+            42.4575
+        ],
+        "verticalDrop": 3937,
+        "trails": 57,
+        "visited": false
+    },
+    {
+        "name": "Afriski",
+        "location": "Butha-Buthe, Lesotho",
+        "country": "Lesotho",
+        "continent": "Africa",
+        "coords": [
+            28.7636,
+            -29.0667
+        ],
+        "verticalDrop": 656,
+        "trails": 7,
+        "visited": false
+    },
+    {
+        "name": "Tiffindell",
+        "location": "Eastern Cape, South Africa",
+        "country": "South Africa",
+        "continent": "Africa",
+        "coords": [
+            27.9333,
+            -30.65
+        ],
+        "verticalDrop": 492,
+        "trails": 5,
+        "visited": false
+    }
+]
