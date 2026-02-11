@@ -1,13 +1,14 @@
 document.addEventListener('DOMContentLoaded', function () {
     loadCountriesWithPopulation('data/countries.json', function (updatedData) {
-        // Re-render when live population data arrives
         worldData = updatedData;
         displayWorldTravelSummary();
+        renderPopulationSourceBadge();
         updateTable(document.getElementById('table-selector').value);
     })
         .then(data => {
             worldData = data;
             displayWorldTravelSummary();
+            renderPopulationSourceBadge();
             updateTable('northAmerica');
         })
         .catch(error => console.error('Error loading the JSON file:', error));

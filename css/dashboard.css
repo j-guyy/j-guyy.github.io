@@ -438,3 +438,33 @@ Controls Styling */
         justify-content: center;
     }
 }
+
+/* Population Source Badge */
+.population-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75em;
+    opacity: 0.8;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.badge-dot.local {
+    background-color: #FFC107;
+}
+
+.badge-dot.live {
+    background-color: #4CAF50;
+}

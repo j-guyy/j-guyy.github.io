@@ -28,6 +28,11 @@ const NAME_MAPPINGS = {
 };
 
 let _populationCache = null;
+let _populationSource = 'local';
+
+function getPopulationSource() {
+    return _populationSource;
+}
 
 async function fetchPopulationData() {
     if (_populationCache) return _populationCache;
@@ -46,6 +51,7 @@ async function fetchPopulationData() {
         });
 
         _populationCache = popMap;
+        _populationSource = 'live';
         return popMap;
     } catch (error) {
         console.warn('REST Countries API unavailable, using local population data', error);
@@ -109,4 +115,22 @@ async function loadCountriesWithPopulation(jsonPath, onPopulationUpdate) {
     });
 
     return countriesData;
+}
+
+function renderPopulationSourceBadge() {
+    const existing = document.getElementById('population-source-badge');
+    if (existing) existing.remove();
+
+    const isLive = _populationSource === 'live';
+    const badge = document.createElement('div');
+    badge.id = 'population-source-badge';
+    badge.className = 'population-source-badge ' + (isLive ? 'live' : 'local');
+    badge.innerHTML = isLive
+        ? '<span class="badge-dot live"></span> Live population data (REST Countries API)'
+        : '<span class="badge-dot local"></span> Local population data (cached)';
+
+    const summary = document.getElementById('travel-summary');
+    if (summary) {
+        summary.appendChild(badge);
+    }
 }
