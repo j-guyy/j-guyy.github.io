@@ -8,7 +8,10 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/about.css">
+    <link rel="stylesheet" href="css/life-journey.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
 </head>
 
@@ -22,6 +25,28 @@
         <section class="hero">
             <h1>About Me</h1>
         </section>
+        <section class="life-journey-section">
+            <div id="life-journey-globe">
+                <!-- Pre-animation hint -->
+                <div class="journey-scroll-hint">
+                    <p>Scroll down to begin animation</p>
+                </div>
+
+                <!-- Progress dots -->
+                <div class="journey-progress"></div>
+
+                <!-- Location info overlay -->
+                <div class="journey-overlay hidden">
+                    <p class="journey-location-name"></p>
+                    <p class="journey-location-detail"></p>
+                </div>
+
+                <!-- Skip / Replay buttons -->
+                <button class="journey-skip-btn">Skip</button>
+                <button class="journey-replay-btn">Replay</button>
+            </div>
+        </section>
+
         <section class="info fade-in-section">
             <div class="text">
                 <h2>Hello, I'm Justin.</h2>
@@ -70,6 +95,7 @@
         </section>
     </div>
     <script src="js/script.js"></script>
+    <script src="js/life-journey.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 

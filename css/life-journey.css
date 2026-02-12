@@ -1,0 +1,238 @@
+/* Life Journey 3D Globe */
+.life-journey-section {
+    position: relative;
+    width: 100%;
+    margin: 40px 0;
+    overflow: hidden;
+}
+
+.life-journey-section h2 {
+    text-align: center;
+    font-size: 2.2em;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.life-journey-section .section-subtitle {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+#life-journey-globe {
+    width: 100%;
+    height: 70vh;
+    min-height: 500px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+}
+
+.journey-scroll-hint {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    text-align: center;
+    pointer-events: none;
+    animation: pulse-text 2.5s ease-in-out infinite;
+}
+
+.journey-scroll-hint p {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.1em;
+    margin: 0;
+}
+
+/* Location info overlay */
+.journey-overlay {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 12px 24px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+}
+
+.journey-overlay.hidden {
+    opacity: 0;
+}
+
+.journey-location-name {
+    font-size: 2em;
+    font-weight: bold;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.journey-location-detail {
+    font-size: 1.1em;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 5px 0 0 0;
+}
+
+/* Progress dots */
+.journey-progress {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.journey-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.4s ease;
+}
+
+.journey-dot.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px var(--primary-color);
+    transform: scale(1.2);
+}
+
+.journey-dot.visited {
+    background: rgba(76, 175, 80, 0.5);
+    border-color: rgba(76, 175, 80, 0.7);
+}
+
+/* Interaction prompt */
+.journey-interact-prompt {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+.journey-interact-prompt.visible {
+    opacity: 1;
+}
+
+.journey-interact-prompt p {
+    font-size: 1.3em;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Skip button */
+.journey-skip-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    padding: 8px 18px;
+    font-size: 0.9em;
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+}
+
+.journey-skip-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+}
+
+.journey-skip-btn.hidden {
+    display: none;
+}
+
+/* Replay button */
+.journey-replay-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    padding: 8px 18px;
+    font-size: 0.9em;
+    background: rgba(76, 175, 80, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--primary-color);
+    border-radius: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    display: none;
+}
+
+.journey-replay-btn:hover {
+    background: rgba(76, 175, 80, 0.5);
+}
+
+/* Hide Cesium default UI clutter */
+#life-journey-globe .cesium-viewer-toolbar,
+#life-journey-globe .cesium-viewer-animationContainer,
+#life-journey-globe .cesium-viewer-timelineContainer,
+#life-journey-globe .cesium-viewer-fullscreenContainer,
+#life-journey-globe .cesium-viewer-bottom {
+    display: none !important;
+}
+
+#life-journey-globe .cesium-credit-logoContainer,
+#life-journey-globe .cesium-credit-textContainer {
+    display: none !important;
+}
+
+#life-journey-globe .cesium-widget-credits {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    #life-journey-globe {
+        height: 50vh;
+        min-height: 350px;
+    }
+
+    .journey-location-name {
+        font-size: 1.1em;
+    }
+
+    .journey-location-detail {
+        font-size: 0.8em;
+    }
+
+    .journey-dot {
+        width: 9px;
+        height: 9px;
+        gap: 8px;
+    }
+}

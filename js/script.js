@@ -118,9 +118,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 fader.classList.add('fade-out');
             });
 
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
             const appearOptions = {
-                threshold: 0.1,
-                rootMargin: "0px 0px -100px 0px"
+                threshold: 0.05,
+                rootMargin: isMobile ? "0px 0px 100px 0px" : "0px 0px -100px 0px"
             };
 
             const appearOnScroll = new IntersectionObserver(function (entries, appearOnScroll) {
