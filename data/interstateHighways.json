@@ -8564,7 +8564,7 @@
                         -93.09
                     ],
                     "description": "Minneapolis to Saint Paul (MN-MN)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 9,
                     "fromCity": "Minneapolis",
                     "toCity": "Saint Paul",
