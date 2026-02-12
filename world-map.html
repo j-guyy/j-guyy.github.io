@@ -45,8 +45,13 @@
                     <button class="view-mode-btn" data-mode="fog">Fog of War</button>
                 </div>
                 <div class="radius-control" id="radius-control" style="display: none;">
-                    <label for="radius-slider">Radius: <span id="radius-value">100</span> km</label>
+                    <label for="radius-slider">Point Radius: <span id="radius-value">100</span> km</label>
                     <input type="range" id="radius-slider" min="10" max="500" value="100" step="10">
+                </div>
+                <div class="radius-control" id="highway-radius-control" style="display: none;">
+                    <label for="highway-radius-slider">Highway Radius: <span id="highway-radius-value">50</span>
+                        km</label>
+                    <input type="range" id="highway-radius-slider" min="5" max="300" value="50" step="5">
                 </div>
             </div>
         </div>

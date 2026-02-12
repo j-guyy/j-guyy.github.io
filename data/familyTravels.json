@@ -4,7 +4,7 @@
             "name": "New York City",
             "country": "United States",
             "lat": 40.7128,
-            "lng": -74.0060,
+            "lng": -74.006,
             "visitors": [
                 "person1",
                 "person2",
@@ -43,7 +43,7 @@
             "name": "Dallas",
             "country": "United States",
             "lat": 32.7767,
-            "lng": -96.7970,
+            "lng": -96.797,
             "visitors": [
                 "person1",
                 "person2",
@@ -55,7 +55,7 @@
             "name": "El Paso",
             "country": "United States",
             "lat": 31.7619,
-            "lng": -106.4850,
+            "lng": -106.485,
             "visitors": [
                 "person3"
             ]
@@ -86,8 +86,8 @@
         {
             "name": "Atlanta",
             "country": "United States",
-            "lat": 33.7490,
-            "lng": -84.3880,
+            "lat": 33.749,
+            "lng": -84.388,
             "visitors": [
                 "person1",
                 "person2",
@@ -129,7 +129,7 @@
             "name": "Key West",
             "country": "United States",
             "lat": 24.5551,
-            "lng": -81.7800,
+            "lng": -81.78,
             "visitors": [
                 "person1"
             ]
@@ -217,7 +217,7 @@
             "name": "Phoenix",
             "country": "United States",
             "lat": 33.4484,
-            "lng": -112.0740,
+            "lng": -112.074,
             "visitors": [
                 "person1",
                 "person2",
@@ -250,7 +250,7 @@
             "name": "Sedona",
             "country": "United States",
             "lat": 34.8697,
-            "lng": -111.7610,
+            "lng": -111.761,
             "visitors": [
                 "person1",
                 "person2",
@@ -393,7 +393,7 @@
         {
             "name": "Minot",
             "country": "United States",
-            "lat": 48.2330,
+            "lat": 48.233,
             "lng": -101.2963,
             "visitors": [
                 "person1"
@@ -488,7 +488,7 @@
             "name": "Minneapolis",
             "country": "United States",
             "lat": 44.9778,
-            "lng": -93.2650,
+            "lng": -93.265,
             "visitors": [
                 "person1"
             ]
@@ -586,7 +586,7 @@
         {
             "name": "Boulder",
             "country": "United States",
-            "lat": 40.0150,
+            "lat": 40.015,
             "lng": -105.2705,
             "visitors": [
                 "person1",
@@ -640,7 +640,7 @@
         {
             "name": "Steamboat Springs",
             "country": "United States",
-            "lat": 40.4850,
+            "lat": 40.485,
             "lng": -106.8317,
             "visitors": [
                 "person1",
@@ -748,7 +748,7 @@
             "name": "Greenville",
             "country": "United States",
             "lat": 34.8526,
-            "lng": -82.3940,
+            "lng": -82.394,
             "visitors": [
                 "person5"
             ]
@@ -756,7 +756,7 @@
         {
             "name": "St Louis",
             "country": "United States",
-            "lat": 38.6270,
+            "lat": 38.627,
             "lng": -90.1994,
             "visitors": [
                 "person1"
@@ -859,7 +859,7 @@
             "name": "Walla Walla",
             "country": "United States",
             "lat": 46.0646,
-            "lng": -118.3430,
+            "lng": -118.343,
             "visitors": [
                 "person1"
             ]
@@ -909,7 +909,7 @@
             "name": "Cincinnati",
             "country": "United States",
             "lat": 39.1031,
-            "lng": -84.5120,
+            "lng": -84.512,
             "visitors": [
                 "person1"
             ]
@@ -1014,7 +1014,7 @@
         {
             "name": "Providence",
             "country": "United States",
-            "lat": 41.8240,
+            "lat": 41.824,
             "lng": -71.4128,
             "visitors": [
                 "person2",
@@ -1079,7 +1079,7 @@
             "name": "Richmond",
             "country": "United States",
             "lat": 37.5407,
-            "lng": -77.4360,
+            "lng": -77.436,
             "visitors": [
                 "person1",
                 "person2",
@@ -1102,7 +1102,7 @@
             "name": "Salt Lake City",
             "country": "United States",
             "lat": 40.7608,
-            "lng": -111.8910,
+            "lng": -111.891,
             "visitors": [
                 "person1",
                 "person2"
@@ -1121,7 +1121,7 @@
             "name": "Park City",
             "country": "United States",
             "lat": 40.6461,
-            "lng": -111.4980,
+            "lng": -111.498,
             "visitors": [
                 "person1",
                 "person6"
@@ -1160,7 +1160,7 @@
             "name": "Kihei",
             "country": "United States",
             "lat": 20.7647,
-            "lng": -156.4490,
+            "lng": -156.449,
             "visitors": [
                 "person1"
             ]
@@ -1168,7 +1168,7 @@
         {
             "name": "Kailua-Kona",
             "country": "United States",
-            "lat": 19.6400,
+            "lat": 19.64,
             "lng": -155.9969,
             "visitors": [
                 "person1"
@@ -1230,10 +1230,10 @@
             ]
         },
         {
-            "name": "Outer Banks",
+            "name": "Monterey Shores, Outer Banks",
             "country": "United States",
-            "lat": 35.5585,
-            "lng": -75.4665,
+            "lat": 36.3785,
+            "lng": -75.8301,
             "visitors": [
                 "person1",
                 "person2",
@@ -1255,7 +1255,7 @@
         {
             "name": "Cherokee",
             "country": "United States",
-            "lat": 35.4740,
+            "lat": 35.474,
             "lng": -83.3149,
             "visitors": [
                 "person2"
@@ -1265,7 +1265,7 @@
             "name": "Maggie Valley",
             "country": "United States",
             "lat": 35.5187,
-            "lng": -83.0960,
+            "lng": -83.096,
             "visitors": [
                 "person2"
             ]
@@ -1318,7 +1318,7 @@
         {
             "name": "Boise",
             "country": "United States",
-            "lat": 43.6150,
+            "lat": 43.615,
             "lng": -116.2023,
             "visitors": [
                 "person1",
@@ -1337,7 +1337,7 @@
         {
             "name": "Bozeman",
             "country": "United States",
-            "lat": 45.6770,
+            "lat": 45.677,
             "lng": -111.0429,
             "visitors": [
                 "person1",
@@ -1357,7 +1357,7 @@
             "name": "Glacier National Park",
             "country": "United States",
             "lat": 48.7596,
-            "lng": -113.7870,
+            "lng": -113.787,
             "visitors": [
                 "person3"
             ]
@@ -1393,7 +1393,7 @@
             "name": "South Bend",
             "country": "United States",
             "lat": 41.6764,
-            "lng": -86.2520,
+            "lng": -86.252,
             "visitors": [
                 "person1",
                 "person2",
@@ -1407,7 +1407,7 @@
             "name": "Michigan City",
             "country": "United States",
             "lat": 41.7075,
-            "lng": -86.8950,
+            "lng": -86.895,
             "visitors": [
                 "person3"
             ]
@@ -1600,7 +1600,7 @@
             "name": "Olympia",
             "country": "Greece",
             "lat": 37.6379,
-            "lng": 21.6300,
+            "lng": 21.63,
             "visitors": [
                 "person6"
             ]
@@ -1673,7 +1673,7 @@
             "name": "Seoul",
             "country": "South Korea",
             "lat": 37.5665,
-            "lng": 126.9780,
+            "lng": 126.978,
             "visitors": [
                 "person1"
             ]
@@ -1709,7 +1709,7 @@
             "name": "Canberra",
             "country": "Australia",
             "lat": -35.2809,
-            "lng": 149.1300,
+            "lng": 149.13,
             "visitors": [
                 "person1"
             ]
@@ -1776,7 +1776,7 @@
             "name": "Mont Tremblant",
             "country": "Canada",
             "lat": 46.1184,
-            "lng": -74.5960,
+            "lng": -74.596,
             "visitors": [
                 "person1",
                 "person5",
@@ -1859,7 +1859,7 @@
         {
             "name": "Ensenada",
             "country": "Mexico",
-            "lat": 31.8670,
+            "lat": 31.867,
             "lng": -116.5956,
             "visitors": [
                 "person1"
@@ -1877,7 +1877,7 @@
         {
             "name": "Cozumel",
             "country": "Mexico",
-            "lat": 20.4230,
+            "lat": 20.423,
             "lng": -86.9223,
             "visitors": [
                 "person1",
@@ -1891,7 +1891,7 @@
         {
             "name": "Kingston",
             "country": "Jamaica",
-            "lat": 17.9970,
+            "lat": 17.997,
             "lng": -76.7936,
             "visitors": [
                 "person1",
@@ -1920,7 +1920,7 @@
             "name": "Deauville",
             "country": "France",
             "lat": 49.3598,
-            "lng": 0.0750,
+            "lng": 0.075,
             "visitors": [
                 "person1"
             ]
@@ -1929,7 +1929,7 @@
             "name": "Milan",
             "country": "Italy",
             "lat": 45.4642,
-            "lng": 9.1900,
+            "lng": 9.19,
             "visitors": [
                 "person1",
                 "person3"
@@ -1945,7 +1945,7 @@
             ]
         },
         {
-            "name": "Salobreña",
+            "name": "Salobre\u00f1a",
             "country": "Spain",
             "lat": 36.7442,
             "lng": -3.5881,
@@ -2157,7 +2157,7 @@
         {
             "name": "Mumbai",
             "country": "India",
-            "lat": 19.0760,
+            "lat": 19.076,
             "lng": 72.8777,
             "visitors": [
                 "person1"
@@ -2166,7 +2166,7 @@
         {
             "name": "Hyderabad",
             "country": "India",
-            "lat": 17.3850,
+            "lat": 17.385,
             "lng": 78.4867,
             "visitors": [
                 "person5"
@@ -2292,7 +2292,7 @@
         {
             "name": "Kuala Lumpur",
             "country": "Malaysia",
-            "lat": 3.1390,
+            "lat": 3.139,
             "lng": 101.6869,
             "visitors": [
                 "person3"
@@ -2337,8 +2337,8 @@
         {
             "name": "Bilbao",
             "country": "Spain",
-            "lat": 43.2630,
-            "lng": -2.9350,
+            "lat": 43.263,
+            "lng": -2.935,
             "visitors": [
                 "person3",
                 "person5"
@@ -2348,7 +2348,7 @@
             "name": "Alicante",
             "country": "Spain",
             "lat": 38.3452,
-            "lng": -0.4810,
+            "lng": -0.481,
             "visitors": [
                 "person3"
             ]
@@ -2357,7 +2357,7 @@
             "name": "Alcoi",
             "country": "Spain",
             "lat": 38.7042,
-            "lng": -0.4750,
+            "lng": -0.475,
             "visitors": [
                 "person3"
             ]
@@ -2375,7 +2375,7 @@
             "name": "Hoi An",
             "country": "Vietnam",
             "lat": 15.8801,
-            "lng": 108.3380,
+            "lng": 108.338,
             "visitors": [
                 "person3"
             ]
@@ -2428,8 +2428,8 @@
         {
             "name": "Berlin",
             "country": "Germany",
-            "lat": 52.5200,
-            "lng": 13.4050,
+            "lat": 52.52,
+            "lng": 13.405,
             "visitors": [
                 "person3"
             ]
@@ -2466,7 +2466,7 @@
             "name": "Binghamton",
             "country": "United States",
             "lat": 42.0987,
-            "lng": -75.9180,
+            "lng": -75.918,
             "visitors": [
                 "person4"
             ]
@@ -2595,7 +2595,7 @@
             "name": "Harbin",
             "country": "China",
             "lat": 45.8038,
-            "lng": 126.5340,
+            "lng": 126.534,
             "visitors": [
                 "person5"
             ]
@@ -2613,7 +2613,7 @@
             "name": "Bali",
             "country": "Indonesia",
             "lat": -8.3405,
-            "lng": 115.0920,
+            "lng": 115.092,
             "visitors": [
                 "person5"
             ]
@@ -2687,7 +2687,7 @@
             "name": "State College",
             "country": "United States",
             "lat": 40.7934,
-            "lng": -77.8600,
+            "lng": -77.86,
             "visitors": [
                 "person1"
             ]
@@ -3056,7 +3056,7 @@
             "name": "Cahokia Mounds State Park",
             "country": "United States",
             "lat": 38.6553,
-            "lng": -90.0620,
+            "lng": -90.062,
             "visitors": [
                 "person1"
             ]
@@ -3083,7 +3083,7 @@
             "name": "Little Jerusalem Badlands",
             "country": "United States",
             "lat": 38.7167,
-            "lng": -100.8500,
+            "lng": -100.85,
             "visitors": [
                 "person1"
             ]
@@ -3172,7 +3172,7 @@
         {
             "name": "Santa Fe",
             "country": "United States",
-            "lat": 35.6870,
+            "lat": 35.687,
             "lng": -105.9378,
             "visitors": [
                 "person1"
@@ -3200,7 +3200,7 @@
             "name": "Roswell",
             "country": "United States",
             "lat": 33.3943,
-            "lng": -104.5230,
+            "lng": -104.523,
             "visitors": [
                 "person1"
             ]
@@ -3209,7 +3209,7 @@
             "name": "Alpine",
             "country": "United States",
             "lat": 30.3585,
-            "lng": -103.6610,
+            "lng": -103.661,
             "visitors": [
                 "person1"
             ]
@@ -3226,8 +3226,8 @@
         {
             "name": "Big Bend Ranch State Park",
             "country": "United States",
-            "lat": 29.4700,
-            "lng": -103.9500,
+            "lat": 29.47,
+            "lng": -103.95,
             "visitors": [
                 "person1"
             ]
@@ -3253,8 +3253,8 @@
         {
             "name": "Mt Tom",
             "country": "United States",
-            "lat": 37.3500,
-            "lng": -118.6500,
+            "lat": 37.35,
+            "lng": -118.65,
             "visitors": [
                 "person1"
             ]
@@ -3262,8 +3262,8 @@
         {
             "name": "Marble Pass",
             "country": "United States",
-            "lat": 44.7500,
-            "lng": -122.0500,
+            "lat": 44.75,
+            "lng": -122.05,
             "visitors": [
                 "person1"
             ]
@@ -3316,7 +3316,7 @@
         {
             "name": "Clewiston",
             "country": "United States",
-            "lat": 26.7540,
+            "lat": 26.754,
             "lng": -80.9337,
             "visitors": [
                 "person1"
@@ -3344,7 +3344,7 @@
             "name": "Porcupine Mountains Wilderness State Park",
             "country": "United States",
             "lat": 46.7558,
-            "lng": -89.7870,
+            "lng": -89.787,
             "visitors": [
                 "person1"
             ]
@@ -3352,8 +3352,8 @@
         {
             "name": "Pictured Rocks National Lakeshore",
             "country": "United States",
-            "lat": 46.5600,
-            "lng": -86.3500,
+            "lat": 46.56,
+            "lng": -86.35,
             "visitors": [
                 "person1"
             ]
@@ -3368,7 +3368,7 @@
             ]
         },
         {
-            "name": "Iztaccíhuatl",
+            "name": "Iztacc\u00edhuatl",
             "country": "Mexico",
             "lat": 19.1786,
             "lng": -98.6422,
@@ -3379,7 +3379,7 @@
         {
             "name": "Mindo Cloud Forest",
             "country": "Ecuador",
-            "lat": -0.0500,
+            "lat": -0.05,
             "lng": -78.7667,
             "visitors": [
                 "person1"
@@ -3389,7 +3389,7 @@
             "name": "Rucu Pichincha",
             "country": "Ecuador",
             "lat": -0.1697,
-            "lng": -78.5350,
+            "lng": -78.535,
             "visitors": [
                 "person1"
             ]
@@ -3461,7 +3461,7 @@
             "name": "Molokini",
             "country": "United States",
             "lat": 20.6318,
-            "lng": -156.4950,
+            "lng": -156.495,
             "visitors": [
                 "person1"
             ]
@@ -3470,7 +3470,7 @@
             "name": "Cairngorms National Park",
             "country": "United Kingdom",
             "lat": 57.0667,
-            "lng": -3.6000,
+            "lng": -3.6,
             "visitors": [
                 "person1"
             ]
@@ -3515,13 +3515,13 @@
             "name": "Borgarhraun",
             "country": "Iceland",
             "lat": 65.5833,
-            "lng": -18.1000,
+            "lng": -18.1,
             "visitors": [
                 "person1"
             ]
         },
         {
-            "name": "Kerið",
+            "name": "Keri\u00f0",
             "country": "Iceland",
             "lat": 64.0412,
             "lng": -20.8853,
@@ -3530,7 +3530,7 @@
             ]
         },
         {
-            "name": "Kristínartindar",
+            "name": "Krist\u00ednartindar",
             "country": "Iceland",
             "lat": 64.0167,
             "lng": -16.9667,
@@ -3542,7 +3542,7 @@
             "name": "Fellsfjall",
             "country": "Iceland",
             "lat": 64.0833,
-            "lng": -21.2500,
+            "lng": -21.25,
             "visitors": [
                 "person1"
             ]
@@ -3559,8 +3559,8 @@
         {
             "name": "Hocking Hills State Park",
             "country": "United States",
-            "lat": 39.4400,
-            "lng": -82.5400,
+            "lat": 39.44,
+            "lng": -82.54,
             "visitors": [
                 "person1"
             ]
@@ -3568,8 +3568,8 @@
         {
             "name": "Cathedral Gorge State Park",
             "country": "United States",
-            "lat": 37.8100,
-            "lng": -114.4100,
+            "lat": 37.81,
+            "lng": -114.41,
             "visitors": [
                 "person1"
             ]
@@ -3604,7 +3604,7 @@
         {
             "name": "Wicklow Mountains National Park",
             "country": "Ireland",
-            "lat": 53.0500,
+            "lat": 53.05,
             "lng": -6.3667,
             "visitors": [
                 "person1"
@@ -3614,7 +3614,7 @@
             "name": "Dunn's River Falls",
             "country": "Jamaica",
             "lat": 18.4108,
-            "lng": -77.1350,
+            "lng": -77.135,
             "visitors": [
                 "person1"
             ]
@@ -3622,8 +3622,8 @@
         {
             "name": "Sword Beach",
             "country": "France",
-            "lat": 49.2900,
-            "lng": -0.3400,
+            "lat": 49.29,
+            "lng": -0.34,
             "visitors": [
                 "person1"
             ]
@@ -3642,6 +3642,94 @@
             "country": "United States",
             "lat": 42.1425,
             "lng": -102.8558,
+            "visitors": [
+                "person1"
+            ]
+        },
+        {
+            "name": "Soda Springs",
+            "country": "United States",
+            "lat": 42.6544,
+            "lng": -111.6047,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Bandelier National Monument",
+            "country": "United States",
+            "lat": 35.7786,
+            "lng": -106.2711,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "St. George",
+            "country": "United States",
+            "lat": 37.0965,
+            "lng": -113.5684,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Bonneville Salt Flats",
+            "country": "United States",
+            "lat": 40.7997,
+            "lng": -113.8,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Black Pine Peak (Pole Canyon Road)",
+            "country": "United States",
+            "lat": 42.1203,
+            "lng": -113.1204,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Natchez",
+            "country": "United States",
+            "lat": 31.5604,
+            "lng": -91.4032,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Port Gibson",
+            "country": "United States",
+            "lat": 31.961,
+            "lng": -90.984,
+            "visitors": [
+                "person1",
+                "person3"
+            ]
+        },
+        {
+            "name": "Beach Haven",
+            "country": "United States",
+            "lat": 39.5593,
+            "lng": -74.2432,
+            "visitors": [
+                "person1"
+            ]
+        },
+        {
+            "name": "Giant's Causeway",
+            "country": "United Kingdom",
+            "lat": 55.2408,
+            "lng": -6.5117,
             "visitors": [
                 "person1"
             ]

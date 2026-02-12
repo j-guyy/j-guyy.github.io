@@ -18,16 +18,17 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/adirondack46ers.json').then(response => response.json()),
         fetch('data/colorado14ers.json').then(response => response.json()),
         fetch('data/forbes100cities.json').then(response => response.json()),
-        fetch('data/interstateHighways.json').then(response => response.json())
+        fetch('data/interstateHighways.json').then(response => response.json()),
+        fetch('data/highways.json').then(response => response.json())
     ])
-        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData]) => {
+        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData]) => {
             displayWorldTravelSummary(worldData);
             renderPopulationSourceBadge();
             const worldBounds = L.latLngBounds(
                 L.latLng(-60, -180),
                 L.latLng(85, 180)
             );
-            createWorldMap('world-map', worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, 20, 0, 2, worldBounds);
+            createWorldMap('world-map', worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData, 20, 0, 2, worldBounds);
         })
         .catch(error => console.error('Error loading data:', error));
 
@@ -84,7 +85,7 @@ function displayWorldTravelSummary(worldData) {
     `;
 }
 
-function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, centerLat, centerLng, zoom, bounds) {
+function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData, centerLat, centerLng, zoom, bounds) {
     const map = L.map(mapId, {
         center: [centerLat, centerLng],
         zoom: zoom,
@@ -222,12 +223,21 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
             });
         });
     }
+    if (highwaysData && highwaysData.highways) {
+        highwaysData.highways.forEach(highway => {
+            highway.routeSegments.forEach(seg => {
+                if (seg.driven && seg.waypoints && seg.waypoints.length >= 2) {
+                    drivenSegments.push(seg.waypoints);
+                }
+            });
+        });
+    }
 
     // Shared canvas renderer for radius circles — overlapping circles
     // blend naturally without expensive geometric union operations
     const radiusRenderer = L.canvas({ padding: 0.5, interactive: false });
 
-    function drawRadiusCircles(radiusKm) {
+    function drawRadiusCircles(radiusKm, highwayRadiusKm) {
         radiusLayer.clearLayers();
         visitedPins.forEach(pin => {
             L.circle([pin.lat, pin.lng], {
@@ -239,6 +249,32 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                 interactive: false,
                 renderer: radiusRenderer
             }).addTo(radiusLayer);
+        });
+
+        // Draw highway corridor circles along driven segments
+        const hwRadius = highwayRadiusKm || parseInt(highwaySlider ? highwaySlider.value : 50);
+        const stepKm = Math.max(hwRadius * 0.4, 5);
+        drivenSegments.forEach(waypoints => {
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                const from = L.latLng(waypoints[i][0], waypoints[i][1]);
+                const to = L.latLng(waypoints[i + 1][0], waypoints[i + 1][1]);
+                const segDist = from.distanceTo(to) / 1000;
+                const steps = Math.max(1, Math.ceil(segDist / stepKm));
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const lat = from.lat + (to.lat - from.lat) * t;
+                    const lng = from.lng + (to.lng - from.lng) * t;
+                    L.circle([lat, lng], {
+                        radius: hwRadius * 1000,
+                        color: 'transparent',
+                        fillColor: '#4CAF50',
+                        fillOpacity: 0.35,
+                        weight: 0,
+                        interactive: false,
+                        renderer: radiusRenderer
+                    }).addTo(radiusLayer);
+                }
+            }
         });
     }
 
@@ -300,7 +336,8 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
         if (countryLayer) map.removeLayer(countryLayer);
         removeFogOverlay();
         showAllMarkers();
-        drawRadiusCircles(radiusKm);
+        const hwKm = parseInt(highwaySlider ? highwaySlider.value : 50);
+        drawRadiusCircles(radiusKm, hwKm);
         radiusLayer.addTo(map);
         map.gestureHandling.disable();
         currentMode = 'radius';
@@ -317,7 +354,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     // Uses an SVG overlay that covers the world in a dark mask,
     // with circular cutouts at each visited pin location.
 
-    function createFogOverlay(radiusKm) {
+    function createFogOverlay(pointRadiusKm, highwayRadiusKm) {
         removeFogOverlay();
 
         const FogLayer = L.Layer.extend({
@@ -330,7 +367,8 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                 this._svg.setAttribute('class', 'fog-of-war-svg');
                 this._container.appendChild(this._svg);
                 map.on('moveend zoomend resize', this._update, this);
-                this._radiusKm = radiusKm;
+                this._pointRadiusKm = pointRadiusKm;
+                this._highwayRadiusKm = highwayRadiusKm;
                 this._update();
             },
             onRemove: function (map) {
@@ -339,8 +377,12 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                     this._container.parentNode.removeChild(this._container);
                 }
             },
-            setRadius: function (km) {
-                this._radiusKm = km;
+            setPointRadius: function (km) {
+                this._pointRadiusKm = km;
+                this._update();
+            },
+            setHighwayRadius: function (km) {
+                this._highwayRadiusKm = km;
                 this._update();
             },
             _update: function () {
@@ -371,7 +413,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                     const cx = pt.x - topLeft.x;
                     const cy = pt.y - topLeft.y;
                     const dest = L.latLng(pin.lat, pin.lng);
-                    const bearing = dest.toBounds(this._radiusKm * 2000);
+                    const bearing = dest.toBounds(this._pointRadiusKm * 2000);
                     const east = L.latLng(pin.lat, bearing.getEast());
                     const ptEdge = map.latLngToLayerPoint(east);
                     const r = Math.abs(ptEdge.x - pt.x);
@@ -380,7 +422,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                 });
 
                 // Draw driven highway segments as thick black paths in the mask
-                // Stroke width = radius diameter in pixels (same coverage as pin circles)
+                // Stroke width uses the highway-specific radius
                 drivenSegments.forEach(waypoints => {
                     let d = '';
                     waypoints.forEach((wp, i) => {
@@ -392,7 +434,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
                     // Use the midpoint latitude to calculate stroke width
                     const midWp = waypoints[Math.floor(waypoints.length / 2)];
                     const midLatLng = L.latLng(midWp[0], midWp[1]);
-                    const bounds = midLatLng.toBounds(this._radiusKm * 2000);
+                    const bounds = midLatLng.toBounds(this._highwayRadiusKm * 2000);
                     const midPt = map.latLngToLayerPoint(midLatLng);
                     const eastPt = map.latLngToLayerPoint(L.latLng(midWp[0], bounds.getEast()));
                     const strokeW = Math.abs(eastPt.x - midPt.x) * 2;
@@ -467,11 +509,11 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
         allMarkerLayers.length = 0;
     }
 
-    function enableFogMode(radiusKm) {
+    function enableFogMode(pointRadiusKm, highwayRadiusKm) {
         if (countryLayer) map.removeLayer(countryLayer);
         map.removeLayer(radiusLayer);
         hideAllMarkers();
-        createFogOverlay(radiusKm);
+        createFogOverlay(pointRadiusKm, highwayRadiusKm);
         map.gestureHandling.disable();
         currentMode = 'fog';
     }
@@ -485,11 +527,14 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
         currentMode = 'country';
     }
 
-    // Wire up mode buttons and slider
+    // Wire up mode buttons and sliders
     const modeButtons = document.querySelectorAll('.view-mode-btn');
     const slider = document.getElementById('radius-slider');
     const radiusValue = document.getElementById('radius-value');
     const radiusControl = document.getElementById('radius-control');
+    const highwaySlider = document.getElementById('highway-radius-slider');
+    const highwayRadiusValue = document.getElementById('highway-radius-value');
+    const highwayRadiusControl = document.getElementById('highway-radius-control');
 
     modeButtons.forEach(btn => {
         btn.addEventListener('click', function () {
@@ -500,13 +545,16 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
 
             if (mode === 'country') {
                 radiusControl.style.display = 'none';
+                highwayRadiusControl.style.display = 'none';
                 enableCountryMode();
             } else if (mode === 'radius') {
                 radiusControl.style.display = 'flex';
+                highwayRadiusControl.style.display = 'flex';
                 enableRadiusMode(parseInt(slider.value));
             } else if (mode === 'fog') {
                 radiusControl.style.display = 'flex';
-                enableFogMode(parseInt(slider.value));
+                highwayRadiusControl.style.display = 'flex';
+                enableFogMode(parseInt(slider.value), parseInt(highwaySlider.value));
             }
         });
     });
@@ -516,9 +564,22 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
             radiusValue.textContent = this.value;
             const km = parseInt(this.value);
             if (currentMode === 'radius') {
-                drawRadiusCircles(km);
+                const hwKm = parseInt(highwaySlider ? highwaySlider.value : 50);
+                drawRadiusCircles(km, hwKm);
             } else if (currentMode === 'fog' && fogOverlay) {
-                fogOverlay.setRadius(km);
+                fogOverlay.setPointRadius(km);
+            }
+        });
+    }
+
+    if (highwaySlider) {
+        highwaySlider.addEventListener('input', function () {
+            highwayRadiusValue.textContent = this.value;
+            const km = parseInt(this.value);
+            if (currentMode === 'fog' && fogOverlay) {
+                fogOverlay.setHighwayRadius(km);
+            } else if (currentMode === 'radius') {
+                drawRadiusCircles(parseInt(slider.value), km);
             }
         });
     }

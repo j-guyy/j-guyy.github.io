@@ -4641,7 +4641,7 @@
                         -112.5997
                     ],
                     "description": "Cedar City to Cove Fort (UT-UT)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 68,
                     "fromCity": "Cedar City",
                     "toCity": "Cove Fort",
@@ -4809,7 +4809,7 @@
                         -111.8977
                     ],
                     "description": "Ogden to Brigham City (UT-UT)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 20,
                     "fromCity": "Ogden",
                     "toCity": "Brigham City",
@@ -4837,7 +4837,7 @@
                         -112.4455
                     ],
                     "description": "Brigham City to Pocatello (UT-ID)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 98,
                     "fromCity": "Brigham City",
                     "toCity": "Pocatello",
@@ -8461,8 +8461,8 @@
                     ],
                     "waypoints": [
                         [
-                            43.1536,
-                            -93.201
+                            43.1378,
+                            -93.3799
                         ],
                         [
                             43.648,
@@ -12753,7 +12753,7 @@
                         -87.4139
                     ],
                     "description": "Effingham to Terre Haute (IL-IN)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 65,
                     "fromCity": "Effingham",
                     "toCity": "Terre Haute",
@@ -12782,7 +12782,7 @@
                         -86.3597
                     ],
                     "description": "Terre Haute to Plainfield (IN-IN)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 58,
                     "fromCity": "Terre Haute",
                     "toCity": "Plainfield",
@@ -13148,7 +13148,7 @@
                         -80.2462
                     ],
                     "description": "Wheeling to Washington (WV-PA)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 26,
                     "fromCity": "Wheeling",
                     "toCity": "Washington",
@@ -13173,11 +13173,11 @@
                         -80.2462
                     ],
                     "to": [
-                        40.2131,
-                        -79.6031
+                        40.219,
+                        -79.589
                     ],
                     "description": "Washington to New Stanton (PA-PA)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 34,
                     "fromCity": "Washington",
                     "toCity": "New Stanton",
@@ -13190,80 +13190,80 @@
                             -80.2462
                         ],
                         [
-                            40.2131,
-                            -79.6031
+                            40.219,
+                            -79.589
                         ]
                     ]
                 },
                 {
                     "from": [
-                        40.2131,
-                        -79.6031
+                        40.219,
+                        -79.589
                     ],
                     "to": [
-                        39.9931,
-                        -78.2431
+                        40.019,
+                        -78.504
                     ],
-                    "description": "New Stanton to Breezewood (PA-PA)",
-                    "driven": false,
-                    "miles": 73,
+                    "description": "New Stanton to Bedford (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
                     "fromCity": "New Stanton",
+                    "toCity": "Bedford",
+                    "states": [
+                        "PA"
+                    ],
+                    "waypoints": [
+                        [
+                            40.219,
+                            -79.589
+                        ],
+                        [
+                            40.019,
+                            -78.504
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        40.019,
+                        -78.504
+                    ],
+                    "to": [
+                        39.999,
+                        -78.239
+                    ],
+                    "description": "Bedford to Breezewood (PA-PA)",
+                    "driven": true,
+                    "miles": 0,
+                    "fromCity": "Bedford",
                     "toCity": "Breezewood",
                     "states": [
                         "PA"
                     ],
                     "waypoints": [
                         [
-                            40.2131,
-                            -79.6031
+                            40.019,
+                            -78.504
                         ],
                         [
-                            39.9931,
-                            -78.2431
+                            39.999,
+                            -78.239
                         ]
                     ]
                 },
                 {
                     "from": [
-                        39.9931,
-                        -78.2431
-                    ],
-                    "to": [
-                        39.9331,
-                        -77.9931
-                    ],
-                    "description": "Breezewood to McConnellsburg (PA-PA)",
-                    "driven": false,
-                    "miles": 14,
-                    "fromCity": "Breezewood",
-                    "toCity": "McConnellsburg",
-                    "states": [
-                        "PA"
-                    ],
-                    "waypoints": [
-                        [
-                            39.9931,
-                            -78.2431
-                        ],
-                        [
-                            39.9331,
-                            -77.9931
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        39.9331,
-                        -77.9931
+                        39.999,
+                        -78.239
                     ],
                     "to": [
                         39.6998,
                         -78.1831
                     ],
-                    "description": "McConnellsburg to Hancock (PA-MD)",
+                    "description": "Breezewood to Hancock (PA-MD)",
                     "driven": false,
-                    "miles": 19,
-                    "fromCity": "McConnellsburg",
+                    "miles": 0,
+                    "fromCity": "Breezewood",
                     "toCity": "Hancock",
                     "states": [
                         "PA",
@@ -13271,8 +13271,8 @@
                     ],
                     "waypoints": [
                         [
-                            39.9331,
-                            -77.9931
+                            39.999,
+                            -78.239
                         ],
                         [
                             39.6998,
@@ -14960,14 +14960,14 @@
                         -83.9508
                     ],
                     "to": [
-                        46.4953,
-                        -84.3453
+                        45.0275,
+                        -84.6747
                     ],
-                    "description": "Saginaw to Sault Ste. Marie (MI-MI)",
-                    "driven": true,
-                    "miles": 213,
+                    "description": "Saginaw to Gaylord",
+                    "driven": false,
+                    "miles": 120,
                     "fromCity": "Saginaw",
-                    "toCity": "Sault Ste. Marie",
+                    "toCity": "Gaylord",
                     "states": [
                         "MI"
                     ],
@@ -14975,6 +14975,98 @@
                         [
                             43.4194,
                             -83.9508
+                        ],
+                        [
+                            43.75,
+                            -84.15
+                        ],
+                        [
+                            44.05,
+                            -84.3
+                        ],
+                        [
+                            44.35,
+                            -84.45
+                        ],
+                        [
+                            44.65,
+                            -84.55
+                        ],
+                        [
+                            45.0275,
+                            -84.6747
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        45.0275,
+                        -84.6747
+                    ],
+                    "to": [
+                        45.8711,
+                        -84.7267
+                    ],
+                    "description": "Gaylord to St. Ignace",
+                    "driven": true,
+                    "miles": 60,
+                    "fromCity": "Gaylord",
+                    "toCity": "St. Ignace",
+                    "states": [
+                        "MI"
+                    ],
+                    "waypoints": [
+                        [
+                            45.0275,
+                            -84.6747
+                        ],
+                        [
+                            45.2,
+                            -84.65
+                        ],
+                        [
+                            45.41,
+                            -84.61
+                        ],
+                        [
+                            45.7772,
+                            -84.7278
+                        ],
+                        [
+                            45.8711,
+                            -84.7267
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        45.8711,
+                        -84.7267
+                    ],
+                    "to": [
+                        46.4953,
+                        -84.3453
+                    ],
+                    "description": "St. Ignace to Sault Ste. Marie",
+                    "driven": false,
+                    "miles": 55,
+                    "fromCity": "St. Ignace",
+                    "toCity": "Sault Ste. Marie",
+                    "states": [
+                        "MI"
+                    ],
+                    "waypoints": [
+                        [
+                            45.8711,
+                            -84.7267
+                        ],
+                        [
+                            46.05,
+                            -84.6
+                        ],
+                        [
+                            46.25,
+                            -84.5
                         ],
                         [
                             46.4953,
@@ -15551,7 +15643,7 @@
                         -114.0733
                     ],
                     "description": "Wells to West Wendover (NV-NV)",
-                    "driven": false,
+                    "driven": true,
                     "miles": 53,
                     "fromCity": "Wells",
                     "toCity": "West Wendover",
@@ -16126,6 +16218,14 @@
                         [
                             41.2619,
                             -95.8608
+                        ],
+                        [
+                            41.4901,
+                            -95.8887
+                        ],
+                        [
+                            41.5127,
+                            -94.1913
                         ],
                         [
                             41.5868,
@@ -19003,7 +19103,7 @@
                         -114.4731
                     ],
                     "description": "Missoula to Alberton",
-                    "driven": true,
+                    "driven": false,
                     "miles": 45,
                     "fromCity": "Missoula",
                     "toCity": "Alberton",
@@ -19031,7 +19131,7 @@
                         -115.9231
                     ],
                     "description": "Alberton to Wallace (MT-ID)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 75,
                     "fromCity": "Alberton",
                     "toCity": "Wallace",
@@ -19060,7 +19160,7 @@
                         -116.124
                     ],
                     "description": "Wallace to Kellogg (ID-ID)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 10,
                     "fromCity": "Wallace",
                     "toCity": "Kellogg",
@@ -19088,7 +19188,7 @@
                         -116.7804
                     ],
                     "description": "Kellogg to Coeur d'Alene (ID-ID)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 32,
                     "fromCity": "Kellogg",
                     "toCity": "Coeur d'Alene",
@@ -19116,7 +19216,7 @@
                         -116.9516
                     ],
                     "description": "Coeur d'Alene to Post Falls (ID-ID)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 8,
                     "fromCity": "Coeur d'Alene",
                     "toCity": "Post Falls",
@@ -19144,7 +19244,7 @@
                         -117.426
                     ],
                     "description": "Post Falls to Spokane (ID-WA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 22,
                     "fromCity": "Post Falls",
                     "toCity": "Spokane",
@@ -19173,7 +19273,7 @@
                         -119.2781
                     ],
                     "description": "Spokane to Moses Lake (WA-WA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 94,
                     "fromCity": "Spokane",
                     "toCity": "Moses Lake",
@@ -19201,7 +19301,7 @@
                         -120.5478
                     ],
                     "description": "Moses Lake to Ellensburg (WA-WA)",
-                    "driven": true,
+                    "driven": false,
                     "miles": 60,
                     "fromCity": "Moses Lake",
                     "toCity": "Ellensburg",
@@ -25977,17 +26077,18 @@
                         -88.9034
                     ],
                     "to": [
-                        38.2856,
-                        -85.8244
+                        38.2527,
+                        -85.7585
                     ],
-                    "description": "Mount Vernon to New Albany (IL-IN)",
+                    "description": "Mount Vernon to Louisville (IL-KY)",
                     "driven": true,
                     "miles": 167,
                     "fromCity": "Mount Vernon",
-                    "toCity": "New Albany",
+                    "toCity": "Louisville",
                     "states": [
                         "IL",
-                        "IN"
+                        "IN",
+                        "KY"
                     ],
                     "waypoints": [
                         [
@@ -25997,34 +26098,10 @@
                         [
                             38.2856,
                             -85.8244
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        38.2856,
-                        -85.8244
-                    ],
-                    "to": [
-                        38.2527,
-                        -85.7585
-                    ],
-                    "description": "New Albany to Louisville (IN-IN)",
-                    "driven": true,
-                    "miles": 97,
-                    "fromCity": "New Albany",
-                    "toCity": "Evansville",
-                    "states": [
-                        "IN"
-                    ],
-                    "waypoints": [
-                        [
-                            38.2856,
-                            -85.8244
                         ],
                         [
-                            37.9716,
-                            -87.5711
+                            38.2527,
+                            -85.7585
                         ]
                     ]
                 },
@@ -29107,7 +29184,7 @@
                     "to": "Wibaux",
                     "fromState": "MT",
                     "toState": "MT",
-                    "distance": 26.0,
+                    "distance": 26,
                     "driven": false
                 },
                 {
@@ -29115,7 +29192,7 @@
                     "to": "Beach",
                     "fromState": "MT",
                     "toState": "ND",
-                    "distance": 10.0,
+                    "distance": 10,
                     "driven": false
                 },
                 {
@@ -29179,7 +29256,7 @@
                     "to": "St. Cloud",
                     "fromState": "MN",
                     "toState": "MN",
-                    "distance": 40.0,
+                    "distance": 40,
                     "driven": false
                 },
                 {
@@ -29232,10 +29309,26 @@
                 },
                 {
                     "from": "Wisconsin Dells",
+                    "to": "Portage",
+                    "fromState": "WI",
+                    "toState": "WI",
+                    "distance": 17,
+                    "driven": false
+                },
+                {
+                    "from": "Portage",
+                    "to": "Madison",
+                    "fromState": "WI",
+                    "toState": "WI",
+                    "distance": 32,
+                    "driven": false
+                },
+                {
+                    "from": "Madison",
                     "to": "Lake Mills",
                     "fromState": "WI",
                     "toState": "WI",
-                    "distance": 57.7,
+                    "distance": 25,
                     "driven": false
                 },
                 {
@@ -29251,7 +29344,7 @@
                     "to": "Oconomowoc",
                     "fromState": "WI",
                     "toState": "WI",
-                    "distance": 15.0,
+                    "distance": 15,
                     "driven": false
                 },
                 {
@@ -29267,7 +29360,7 @@
                     "to": "Waukegan",
                     "fromState": "IL",
                     "toState": "IL",
-                    "distance": 3.0,
+                    "distance": 3,
                     "driven": false
                 },
                 {
@@ -29291,7 +29384,7 @@
                     "to": "Michigan City",
                     "fromState": "IN",
                     "toState": "IN",
-                    "distance": 11.0,
+                    "distance": 11,
                     "driven": false
                 },
                 {
@@ -29331,7 +29424,7 @@
                     "to": "Jackson",
                     "fromState": "MI",
                     "toState": "MI",
-                    "distance": 18.0,
+                    "distance": 18,
                     "driven": false
                 },
                 {
@@ -29463,7 +29556,7 @@
                     ],
                     "description": "Glendive to Wibaux (MT-MT)",
                     "driven": false,
-                    "miles": 26.0,
+                    "miles": 26,
                     "fromCity": "Glendive",
                     "toCity": "Wibaux",
                     "states": [
@@ -29491,7 +29584,7 @@
                     ],
                     "description": "Wibaux to Beach (MT-ND)",
                     "driven": false,
-                    "miles": 10.0,
+                    "miles": 10,
                     "fromCity": "Wibaux",
                     "toCity": "Beach",
                     "states": [
@@ -29717,7 +29810,7 @@
                     ],
                     "description": "Sauk Centre to St. Cloud (MN-MN)",
                     "driven": false,
-                    "miles": 40.0,
+                    "miles": 40,
                     "fromCity": "Sauk Centre",
                     "toCity": "St. Cloud",
                     "states": [
@@ -29909,14 +30002,14 @@
                         -89.7709
                     ],
                     "to": [
-                        43.0808,
-                        -88.904
+                        43.5391,
+                        -89.4626
                     ],
-                    "description": "Wisconsin Dells to Lake Mills (WI-WI)",
+                    "description": "Wisconsin Dells to Portage (WI-WI)",
                     "driven": false,
-                    "miles": 57.7,
+                    "miles": 17,
                     "fromCity": "Wisconsin Dells",
-                    "toCity": "Lake Mills",
+                    "toCity": "Portage",
                     "states": [
                         "WI"
                     ],
@@ -29926,165 +30019,109 @@
                             -89.7709
                         ],
                         [
-                            43.0808,
-                            -88.904
+                            43.5391,
+                            -89.4626
                         ]
                     ]
                 },
                 {
                     "from": [
-                        43.0808,
-                        -88.904
+                        43.5391,
+                        -89.4626
                     ],
                     "to": [
-                        43.0117,
-                        -88.2315
+                        43.0731,
+                        -89.4012
                     ],
-                    "description": "Lake Mills to Waukesha (WI-WI)",
+                    "description": "Portage to Madison (WI-WI)",
                     "driven": false,
-                    "miles": 34.3,
-                    "fromCity": "Lake Mills",
-                    "toCity": "Waukesha",
+                    "miles": 32,
+                    "fromCity": "Portage",
+                    "toCity": "Madison",
                     "states": [
                         "WI"
                     ],
                     "waypoints": [
                         [
-                            43.0808,
-                            -88.904
+                            43.5391,
+                            -89.4626
                         ],
                         [
-                            43.0117,
-                            -88.2315
+                            43.0731,
+                            -89.4012
                         ]
                     ]
                 },
                 {
                     "from": [
-                        43.0117,
-                        -88.2315
+                        43.0731,
+                        -89.4012
                     ],
                     "to": [
-                        43.1058,
-                        -88.4993
+                        43.0368,
+                        -87.9153
                     ],
-                    "description": "Waukesha to Oconomowoc (WI-WI)",
+                    "description": "Madison to Milwaukee (WI-WI)",
                     "driven": false,
-                    "miles": 15.0,
-                    "fromCity": "Waukesha",
-                    "toCity": "Oconomowoc",
+                    "miles": 25,
+                    "fromCity": "Madison",
+                    "toCity": "Milwaukee",
                     "states": [
                         "WI"
                     ],
                     "waypoints": [
                         [
-                            43.0117,
-                            -88.2315
+                            43.0731,
+                            -89.4012
                         ],
                         [
-                            43.1058,
-                            -88.4993
+                            43.0368,
+                            -87.9153
                         ]
                     ]
                 },
                 {
                     "from": [
-                        43.1058,
-                        -88.4993
+                        43.0368,
+                        -87.9153
                     ],
                     "to": [
-                        42.3703,
-                        -87.9023
+                        41.8781,
+                        -87.6298
                     ],
-                    "description": "Oconomowoc to Gurnee (WI-IL)",
+                    "description": "Milwaukee to Chicago suburbs",
                     "driven": false,
                     "miles": 59.2,
-                    "fromCity": "Oconomowoc",
-                    "toCity": "Gurnee",
+                    "fromCity": "Milwaukee",
+                    "toCity": "Chicago suburbs",
                     "states": [
                         "WI",
                         "IL"
                     ],
                     "waypoints": [
                         [
-                            43.1058,
-                            -88.4993
+                            43.0368,
+                            -87.9153
                         ],
                         [
-                            42.3703,
-                            -87.9023
+                            41.8781,
+                            -87.6298
                         ]
                     ]
                 },
                 {
                     "from": [
-                        42.3703,
-                        -87.9023
-                    ],
-                    "to": [
-                        42.3636,
-                        -87.8448
-                    ],
-                    "description": "Gurnee to Waukegan (IL-IL)",
-                    "driven": false,
-                    "miles": 3.0,
-                    "fromCity": "Gurnee",
-                    "toCity": "Waukegan",
-                    "states": [
-                        "IL"
-                    ],
-                    "waypoints": [
-                        [
-                            42.3703,
-                            -87.9023
-                        ],
-                        [
-                            42.3636,
-                            -87.8448
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        42.3636,
-                        -87.8448
-                    ],
-                    "to": [
-                        42.0406,
-                        -87.7823
-                    ],
-                    "description": "Waukegan to Morton Grove (IL-IL)",
-                    "driven": false,
-                    "miles": 22.5,
-                    "fromCity": "Waukegan",
-                    "toCity": "Morton Grove",
-                    "states": [
-                        "IL"
-                    ],
-                    "waypoints": [
-                        [
-                            42.3636,
-                            -87.8448
-                        ],
-                        [
-                            42.0406,
-                            -87.7823
-                        ]
-                    ]
-                },
-                {
-                    "from": [
-                        42.0406,
-                        -87.7823
+                        41.8781,
+                        -87.6298
                     ],
                     "to": [
                         41.6106,
                         -87.0642
                     ],
-                    "description": "Morton Grove to Chesterton (IL-IN)",
+                    "description": "Chicago suburbs to Chesterton",
                     "driven": false,
                     "miles": 47.4,
-                    "fromCity": "Morton Grove",
+                    "fromCity": "Chicago suburbs",
                     "toCity": "Chesterton",
                     "states": [
                         "IL",
@@ -30092,8 +30129,12 @@
                     ],
                     "waypoints": [
                         [
-                            42.0406,
-                            -87.7823
+                            41.8781,
+                            -87.6298
+                        ],
+                        [
+                            41.6392,
+                            -87.4548
                         ],
                         [
                             41.6106,
@@ -30112,7 +30153,7 @@
                     ],
                     "description": "Chesterton to Michigan City (IN-IN)",
                     "driven": false,
-                    "miles": 11.0,
+                    "miles": 11,
                     "fromCity": "Chesterton",
                     "toCity": "Michigan City",
                     "states": [
@@ -30253,7 +30294,7 @@
                     ],
                     "description": "Albion to Jackson (MI-MI)",
                     "driven": false,
-                    "miles": 18.0,
+                    "miles": 18,
                     "fromCity": "Albion",
                     "toCity": "Jackson",
                     "states": [
@@ -33349,10 +33390,18 @@
                 },
                 {
                     "from": "Madison",
+                    "to": "Portage",
+                    "fromState": "WI",
+                    "toState": "WI",
+                    "distance": 32,
+                    "driven": false
+                },
+                {
+                    "from": "Portage",
                     "to": "Wisconsin Dells",
                     "fromState": "WI",
                     "toState": "WI",
-                    "distance": 42.6,
+                    "distance": 17,
                     "driven": false
                 },
                 {
@@ -33492,14 +33541,14 @@
                         -89.4012
                     ],
                     "to": [
-                        43.6275,
-                        -89.7709
+                        43.5391,
+                        -89.4626
                     ],
-                    "description": "Madison to Wisconsin Dells (WI-WI)",
+                    "description": "Madison to Portage (WI-WI)",
                     "driven": false,
-                    "miles": 42.6,
+                    "miles": 32,
                     "fromCity": "Madison",
-                    "toCity": "Wisconsin Dells",
+                    "toCity": "Portage",
                     "states": [
                         "WI"
                     ],
@@ -33507,6 +33556,34 @@
                         [
                             43.0731,
                             -89.4012
+                        ],
+                        [
+                            43.5391,
+                            -89.4626
+                        ]
+                    ]
+                },
+                {
+                    "from": [
+                        43.5391,
+                        -89.4626
+                    ],
+                    "to": [
+                        43.6275,
+                        -89.7709
+                    ],
+                    "description": "Portage to Wisconsin Dells (WI-WI)",
+                    "driven": false,
+                    "miles": 17,
+                    "fromCity": "Portage",
+                    "toCity": "Wisconsin Dells",
+                    "states": [
+                        "WI"
+                    ],
+                    "waypoints": [
+                        [
+                            43.5391,
+                            -89.4626
                         ],
                         [
                             43.6275,
@@ -36101,58 +36178,6 @@
                         [
                             40.9134,
                             -77.7764
-                        ]
-                    ]
-                }
-            ]
-        },
-        {
-            "number": "I-74E",
-            "name": "Interstate 74 East",
-            "description": "Eastern I-74: Ohio/Indiana section",
-            "states": [
-                "OH",
-                "IN"
-            ],
-            "length": 40.4,
-            "driven": false,
-            "segments": [
-                {
-                    "from": "Cincinnati",
-                    "to": "Batesville",
-                    "fromState": "OH",
-                    "toState": "IN",
-                    "distance": 40.4,
-                    "driven": false
-                }
-            ],
-            "routeSegments": [
-                {
-                    "from": [
-                        39.1031,
-                        -84.512
-                    ],
-                    "to": [
-                        39.3,
-                        -85.2225
-                    ],
-                    "description": "Cincinnati to Batesville (OH-IN)",
-                    "driven": false,
-                    "miles": 40.4,
-                    "fromCity": "Cincinnati",
-                    "toCity": "Batesville",
-                    "states": [
-                        "OH",
-                        "IN"
-                    ],
-                    "waypoints": [
-                        [
-                            39.1031,
-                            -84.512
-                        ],
-                        [
-                            39.3,
-                            -85.2225
                         ]
                     ]
                 }
