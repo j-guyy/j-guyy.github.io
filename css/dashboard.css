@@ -25,20 +25,25 @@
     justify-content: center;
 }
 
-.states-summary {
+.states-summary,
+.world-summary {
     padding: 30px;
 }
 
-.states-summary .stat-number {
+.states-summary .stat-number,
+.world-summary .stat-number {
     font-size: 3.5em;
 }
 
 .states-summary .stat-total,
-.states-summary .stat-percentage {
+.states-summary .stat-percentage,
+.world-summary .stat-total,
+.world-summary .stat-percentage {
     font-size: 1.8em;
 }
 
-.states-summary .stat-label {
+.states-summary .stat-label,
+.world-summary .stat-label {
     font-size: 1.2em;
     margin-top: 10px;
 }
@@ -145,24 +150,81 @@
 @media (max-width: 768px) {
     .summary-stats-container {
         margin-top: 30px;
-        /* Add spacing between h2 and travel summary on mobile */
+        gap: 15px;
+        margin-bottom: 20px;
     }
 
-    .states-summary .stat-number {
-        font-size: 2.8em;
+    .states-summary,
+    .world-summary {
+        padding: 15px;
+    }
+
+    .states-summary .stat-number,
+    .world-summary .stat-number {
+        font-size: 2.2em;
     }
 
     .states-summary .stat-total,
-    .states-summary .stat-percentage {
-        font-size: 1.4em;
+    .states-summary .stat-percentage,
+    .world-summary .stat-total,
+    .world-summary .stat-percentage {
+        font-size: 1.1em;
     }
 
-    .states-summary .stat-label {
-        font-size: 1em;
+    .states-summary .stat-label,
+    .world-summary .stat-label {
+        font-size: 0.9em;
+        margin-top: 4px;
+    }
+
+    .other-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-left: 12px;
+        margin-right: 12px;
+    }
+
+    .other-stats.other-stats-trio {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .other-stats.other-stats-trio .summary-stat {
+        padding: 10px 4px;
+    }
+
+    .other-stats.other-stats-trio .stat-number {
+        font-size: 1.3em;
+    }
+
+    .other-stats.other-stats-trio .stat-total,
+    .other-stats.other-stats-trio .stat-percentage {
+        font-size: 0.7em;
+    }
+
+    .other-stats.other-stats-trio .stat-label {
+        font-size: 0.65em;
+    }
+
+    .other-stats .summary-stat {
+        padding: 12px 8px;
+        margin-bottom: 0;
     }
 
     .stat-number {
-        font-size: 2em;
+        font-size: 1.5em;
+    }
+
+    .stat-total,
+    .stat-percentage {
+        font-size: 0.85em;
+    }
+
+    .stat-label {
+        font-size: 0.75em;
+    }
+
+    .stat-number-container {
+        margin-bottom: 4px;
     }
 
     .travel-table {
@@ -172,10 +234,6 @@
     .travel-table th,
     .travel-table td {
         padding: 8px;
-    }
-
-    .other-stats {
-        grid-template-columns: 1fr;
     }
 }
 

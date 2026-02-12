@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
         loadCountriesWithPopulation('data/countries.json', function (updatedData) {
             displayWorldTravelSummary(updatedData);
-            renderPopulationSourceBadge();
         }),
         fetch('data/worldCities.json').then(response => response.json()),
         fetch('data/metros.json').then(response => response.json()),
@@ -23,7 +22,6 @@ document.addEventListener('DOMContentLoaded', function () {
     ])
         .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData]) => {
             displayWorldTravelSummary(worldData);
-            renderPopulationSourceBadge();
             const worldBounds = L.latLngBounds(
                 L.latLng(-60, -180),
                 L.latLng(85, 180)

@@ -43,7 +43,7 @@ function displayTravelSummary() {
                 </div>
                 <span class="stat-label">States Visited</span>
             </div>
-            <div class="other-stats">
+            <div class="other-stats other-stats-trio">
                 <div class="summary-stat">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>

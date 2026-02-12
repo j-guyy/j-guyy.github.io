@@ -288,11 +288,12 @@
     }
 
     .other-stats {
-        flex-direction: column;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 
     .summary-stat {
-        margin-bottom: 20px;
+        margin-bottom: 0;
     }
 
     .summary-stats-container {
