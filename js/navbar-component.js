@@ -19,21 +19,21 @@ class NavbarComponent extends HTMLElement {
                     <ul class="nav-menu">
                         <li><a href="${basePath}index.html">Home</a></li>
                         <li class="dropdown">
-                            <a href="#" class="dropbtn">US Travel <span class="mobile-plus-icon">+</span></a>
+                            <a href="#" class="dropbtn">US Travel <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}us-dashboard.html">Dashboard</a>
                                 <a href="${basePath}us-map.html">Map</a>
                             </div>
                         </li>
                         <li class="dropdown">
-                            <a href="#" class="dropbtn">World Travel <span class="mobile-plus-icon">+</span></a>
+                            <a href="#" class="dropbtn">World Travel <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}world-dashboard.html">Dashboard</a>
                                 <a href="${basePath}world-map.html">Map</a>
                             </div>
                         </li>
                         <li class="dropdown">
-                            <a href="#" class="dropbtn">Adventures <span class="mobile-plus-icon">+</span></a>
+                            <a href="#" class="dropbtn">Adventures <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}adventures.html">List</a>
                                 <a href="${basePath}side-quests.html">Quests</a>
@@ -42,7 +42,7 @@ class NavbarComponent extends HTMLElement {
                             </div>
                         </li>
                         <li class="dropdown tools-dropdown">
-                            <a href="#" class="dropbtn">Tools <span class="mobile-plus-icon">+</span></a>
+                            <a href="#" class="dropbtn">Tools <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}training-plan.html">Training Plan</a>
                                 <a href="${basePath}family-travels.html">Family Travels</a>
@@ -84,18 +84,7 @@ class NavbarComponent extends HTMLElement {
         // Mobile menu handling - removed duplicate touch handling
         // This is now handled in setupMobileTouchHandlers for better mobile support
 
-        // Add hover effect to dropdowns
-        const dropdownLinks = this.querySelectorAll('.dropdown-content a');
-        dropdownLinks.forEach(link => {
-            link.addEventListener('mouseover', function () {
-                this.style.backgroundColor = 'rgba(0, 128, 0, 0.5)'; // semi-transparent green
-                this.style.color = '#fff'; // white text
-            });
-            link.addEventListener('mouseout', function () {
-                this.style.backgroundColor = ''; // reset background color
-                this.style.color = ''; // reset text color
-            });
-        });
+        // Hover effects are handled in setupHoverEffects() for non-touch devices only
 
         // Mobile-specific functionality
         this.initializeMobileNavigation();
@@ -130,6 +119,15 @@ class NavbarComponent extends HTMLElement {
         });
     }
 
+    // Returns the correct icon character based on viewport and open/closed state
+    getIconText(isOpen) {
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            return isOpen ? '−' : '+';
+        }
+        return '▾'; // Desktop always shows chevron; CSS rotation handles open/closed
+    }
+
     setupUniversalDropdownHandlers(dropdowns) {
         const isMobile = () => window.innerWidth <= 768;
 
@@ -140,14 +138,11 @@ class NavbarComponent extends HTMLElement {
                 const content = d.querySelector('.dropdown-content');
                 const plusIcon = d.querySelector('.mobile-plus-icon');
                 if (content) {
-                    // Don't manipulate display on mobile - CSS handles it with max-height
-                    if (!isMobile()) {
-                        content.style.display = 'none';
-                    }
+                    content.style.display = '';
                     content.setAttribute('aria-hidden', 'true');
                 }
                 if (plusIcon) {
-                    plusIcon.textContent = '+';
+                    plusIcon.textContent = this.getIconText(false);
                 }
             });
         };
@@ -211,7 +206,7 @@ class NavbarComponent extends HTMLElement {
                                     otherContent.setAttribute('aria-hidden', 'true');
                                 }
                                 if (otherPlusIcon) {
-                                    otherPlusIcon.textContent = '+';
+                                    otherPlusIcon.textContent = this.getIconText(false);
                                 }
                             }
                         });
@@ -224,7 +219,7 @@ class NavbarComponent extends HTMLElement {
                             d.setAttribute('aria-expanded', 'false');
                             const otherContent = d.querySelector('.dropdown-content');
                             if (otherContent) {
-                                otherContent.style.display = 'none';
+                                otherContent.style.display = '';
                                 otherContent.setAttribute('aria-hidden', 'true');
                             }
                         }
@@ -236,23 +231,17 @@ class NavbarComponent extends HTMLElement {
                     dropdown.classList.remove('active');
                     button.setAttribute('aria-expanded', 'false');
                     if (content) {
-                        // Only manipulate display on desktop
-                        if (!isMobile()) {
-                            content.style.display = 'none';
-                        }
+                        content.style.display = '';
                         content.setAttribute('aria-hidden', 'true');
                     }
                     if (plusIcon) {
-                        plusIcon.textContent = '+';
+                        plusIcon.textContent = this.getIconText(false);
                     }
                 } else {
                     dropdown.classList.add('active');
                     button.setAttribute('aria-expanded', 'true');
                     if (content) {
-                        // Only manipulate display on desktop
-                        if (!isMobile()) {
-                            content.style.display = 'block';
-                        }
+                        content.style.display = '';
                         content.setAttribute('aria-hidden', 'false');
 
                         // Focus first menu item for keyboard users
@@ -262,28 +251,15 @@ class NavbarComponent extends HTMLElement {
                         }
                     }
                     if (plusIcon) {
-                        plusIcon.textContent = '−';
+                        plusIcon.textContent = this.getIconText(true);
                     }
                 }
             };
 
-            // Use click events for all devices - iOS Safari handles this better
-            // Adding both touchend and click ensures compatibility across all devices
-            if (isTouchDevice) {
-                // For touch devices, use touchend instead of touchstart
-                // This allows the touch to complete naturally
-                button.addEventListener('touchend', (e) => {
-                    // Only handle if this wasn't a scroll/swipe
-                    if (e.cancelable) {
-                        toggleDropdownState(e);
-                    }
-                }, { passive: false });
-
-                // Also add click as fallback for iOS
-                button.addEventListener('click', toggleDropdownState);
-            } else {
-                button.addEventListener('click', toggleDropdownState);
-            }
+            // Use click for everything — it works reliably on all platforms
+            // including iOS Safari. Avoid doubling up with touchend which
+            // causes a double-toggle on iOS (touchend opens, synthetic click closes).
+            button.addEventListener('click', toggleDropdownState);
 
             // Enhanced handling for dropdown links
             if (content) {
@@ -401,19 +377,15 @@ class NavbarComponent extends HTMLElement {
         const button = dropdown.querySelector('.dropbtn');
         const content = dropdown.querySelector('.dropdown-content');
         const plusIcon = dropdown.querySelector('.mobile-plus-icon');
-        const isMobile = window.innerWidth <= 768;
 
         dropdown.classList.add('active');
         button.setAttribute('aria-expanded', 'true');
         if (content) {
-            // Only manipulate display on desktop - mobile uses CSS max-height
-            if (!isMobile) {
-                content.style.display = 'block';
-            }
+            content.style.display = '';
             content.setAttribute('aria-hidden', 'false');
         }
         if (plusIcon) {
-            plusIcon.textContent = '−';
+            plusIcon.textContent = this.getIconText(true);
         }
     }
 
@@ -432,19 +404,15 @@ class NavbarComponent extends HTMLElement {
         const button = dropdown.querySelector('.dropbtn');
         const content = dropdown.querySelector('.dropdown-content');
         const plusIcon = dropdown.querySelector('.mobile-plus-icon');
-        const isMobile = window.innerWidth <= 768;
 
         dropdown.classList.remove('active');
         button.setAttribute('aria-expanded', 'false');
         if (content) {
-            // Only manipulate display on desktop - mobile uses CSS max-height
-            if (!isMobile) {
-                content.style.display = 'none';
-            }
+            content.style.display = '';
             content.setAttribute('aria-hidden', 'true');
         }
         if (plusIcon) {
-            plusIcon.textContent = '+';
+            plusIcon.textContent = this.getIconText(false);
         }
     }
 
@@ -485,10 +453,6 @@ class NavbarComponent extends HTMLElement {
                     const dropdowns = this.querySelectorAll('.dropdown');
                     dropdowns.forEach(dropdown => {
                         this.closeDropdown(dropdown);
-                        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
-                        if (plusIcon) {
-                            plusIcon.textContent = '+';
-                        }
                     });
                 }
             });
@@ -504,10 +468,6 @@ class NavbarComponent extends HTMLElement {
                     const dropdowns = this.querySelectorAll('.dropdown');
                     dropdowns.forEach(dropdown => {
                         this.closeDropdown(dropdown);
-                        const plusIcon = dropdown.querySelector('.mobile-plus-icon');
-                        if (plusIcon) {
-                            plusIcon.textContent = '+';
-                        }
                     });
                 }
             });

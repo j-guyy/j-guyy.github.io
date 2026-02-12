@@ -95,8 +95,11 @@
     /* iOS tap feedback */
 }
 
-.nav-menu li a:hover {
-    color: var(--primary-color);
+/* Only apply hover color on devices that truly support hover (not touch) */
+@media (hover: hover) {
+    .nav-menu li a:hover {
+        color: var(--primary-color);
+    }
 }
 
 /* Dropdown styles */
@@ -125,9 +128,11 @@
     font-size: 0.9rem;
 }
 
-.dropdown-content a:hover {
-    background-color: var(--primary-color);
-    color: white;
+@media (hover: hover) {
+    .dropdown-content a:hover {
+        background-color: var(--primary-color);
+        color: white;
+    }
 }
 
 .dropdown:hover .dropdown-content {
@@ -317,9 +322,20 @@ html {
         display: none;
     }
 
-    /* Hide mobile plus icons on desktop */
+    /* Show dropdown chevron indicator on desktop */
     .mobile-plus-icon {
-        display: none;
+        display: inline-block;
+        font-size: 0.65rem;
+        margin-left: 0.3rem;
+        vertical-align: middle;
+        opacity: 0.6;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .dropdown:hover .mobile-plus-icon,
+    .dropdown.active .mobile-plus-icon {
+        opacity: 1;
+        transform: rotate(180deg);
     }
 }
 
@@ -468,18 +484,16 @@ html {
         border-bottom: none;
     }
 
-    .dropdown-content a:hover,
     .dropdown-content a:focus,
     .dropdown-content a:active {
         background-color: rgba(0, 128, 0, 0.3);
         padding-left: 3.5rem;
     }
 
-    /* Hide desktop hover effects on mobile */
+    /* Disable desktop hover on mobile — iOS makes :hover sticky on tap,
+       which would force max-height:0 and hide the active dropdown content */
     .dropdown:hover .dropdown-content {
-        display: block !important;
-        max-height: 0;
-        /* Keep collapsed on hover */
+        /* Let the .active class control visibility instead */
     }
 
     /* Plus icon animation - smooth plus to minus transition */

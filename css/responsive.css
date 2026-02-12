@@ -85,9 +85,11 @@
         font-size: 1.1em;
     }
 
-    /* Override hover effects for touch devices */
-    .dropdown:hover .dropdown-content {
-        display: none;
+    /* Disable desktop hover on mobile touch devices */
+    @media (hover: none) {
+        .dropdown:hover .dropdown-content {
+            display: none;
+        }
     }
 
     /* Animation fix for mobile dropdowns */
