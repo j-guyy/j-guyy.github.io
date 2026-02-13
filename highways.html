@@ -162,6 +162,27 @@
             border: none;
         }
 
+        .person-btn {
+            padding: 6px 14px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .person-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            color: white;
+        }
+
+        .person-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
         .snap-indicator {
             width: 18px;
             height: 18px;
@@ -306,6 +327,14 @@
         <div class="section">
             <h2>Progress Overview</h2>
             <p>Track your progress driving highways across the United States</p>
+            <div class="person-selector"
+                style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+                <span style="opacity:0.7;font-size:0.9em;">Viewing as:</span>
+                <button class="person-btn active" data-person="person1" onclick="switchPerson('person1')">Person
+                    1</button>
+                <button class="person-btn" data-person="person2" onclick="switchPerson('person2')">Person 2</button>
+                <button class="person-btn" data-person="person3" onclick="switchPerson('person3')">Person 3</button>
+            </div>
             <div class="highway-tabs">
                 <button class="highway-tab active" data-tab="interstates"
                     onclick="switchTab('interstates')">Interstates</button>
@@ -461,6 +490,28 @@
         let map;
         let routeLayer;
         let activeTab = 'interstates';
+        let activePerson = 'person1'; // which person's driven status to show
+
+        // ========== PERSON SWITCHING ==========
+        function switchPerson(personId) {
+            activePerson = personId;
+            document.querySelectorAll('.person-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.person-btn[data-person="${personId}"]`).classList.add('active');
+            updateStats();
+            drawRoutes();
+        }
+
+        function isSegmentDrivenByPerson(segment, personId) {
+            if (segment.drivenBy && Array.isArray(segment.drivenBy)) {
+                return segment.drivenBy.includes(personId);
+            }
+            return false;
+        }
+
+        function isRouteDrivenByPerson(route, personId) {
+            if (!route.routeSegments || route.routeSegments.length === 0) return false;
+            return route.routeSegments.every(seg => isSegmentDrivenByPerson(seg, personId));
+        }
 
         // ========== INIT ==========
         function initMap() {
@@ -503,12 +554,23 @@
 
         async function loadData() {
             try {
-                const [intResp, hwResp] = await Promise.all([
+                const [intResp, hwResp, ftResp] = await Promise.all([
                     fetch('data/interstateHighways.json'),
-                    fetch('data/highways.json')
+                    fetch('data/highways.json'),
+                    fetch('data/familyTravels.json')
                 ]);
                 interstateData = await intResp.json();
                 highwayData = await hwResp.json();
+                const ftData = await ftResp.json();
+
+                // Update person buttons with real names
+                if (ftData.persons) {
+                    document.querySelectorAll('.person-btn').forEach(btn => {
+                        const pid = btn.dataset.person;
+                        if (ftData.persons[pid]) btn.textContent = ftData.persons[pid];
+                    });
+                }
+
                 updateStats();
                 drawRoutes();
             } catch (error) {
@@ -539,7 +601,7 @@
         function updateStats() {
             const routes = getActiveRoutes();
             const total = routes.length;
-            const driven = routes.filter(r => r.driven).length;
+            const driven = routes.filter(r => isRouteDrivenByPerson(r, activePerson)).length;
             const percentage = total > 0 ? Math.round((driven / total) * 100) : 0;
             const totalMiles = routes.reduce((sum, r) => sum + (r.length || 0), 0);
 
@@ -564,15 +626,15 @@
 
             if (drawInterstates) {
                 let filtered = interstates;
-                if (filter === 'driven') filtered = interstates.filter(i => i.driven);
-                if (filter === 'not-driven') filtered = interstates.filter(i => !i.driven);
+                if (filter === 'driven') filtered = interstates.filter(i => isRouteDrivenByPerson(i, activePerson));
+                if (filter === 'not-driven') filtered = interstates.filter(i => !isRouteDrivenByPerson(i, activePerson));
                 filtered.forEach(interstate => drawRoute(interstate, true));
             }
 
             if (drawHighways) {
                 let filtered = highways;
-                if (filter === 'driven') filtered = highways.filter(h => h.driven);
-                if (filter === 'not-driven') filtered = highways.filter(h => !h.driven);
+                if (filter === 'driven') filtered = highways.filter(h => isRouteDrivenByPerson(h, activePerson));
+                if (filter === 'not-driven') filtered = highways.filter(h => !isRouteDrivenByPerson(h, activePerson));
                 filtered.forEach(highway => drawRoute(highway, false));
             }
         }
@@ -583,7 +645,8 @@
 
             if (route.routeSegments && route.routeSegments.length > 0) {
                 route.routeSegments.forEach((segment, index) => {
-                    const color = segment.driven ? '#28a745' : '#dc3545';
+                    const driven = isSegmentDrivenByPerson(segment, activePerson);
+                    const color = driven ? '#28a745' : '#dc3545';
                     const coordinates = segment.waypoints && segment.waypoints.length > 0
                         ? segment.waypoints
                         : [segment.from, segment.to];
@@ -599,15 +662,16 @@
                             <h4>${route.number} - ${segment.description}</h4>
                             <p><strong>Type:</strong> ${typeLabel}</p>
                             <p><strong>Distance:</strong> ${segment.miles} miles</p>
-                            <p><strong>Status:</strong> ${segment.driven ? 'Driven' : 'Not Driven'}</p>
+                            <p><strong>Status (${activePerson}):</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                             <button onclick="toggleSegment('${route.number}', ${index}, ${isInterstate})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                                ${segment.driven ? 'Mark as Not Driven' : 'Mark as Driven'}
+                                ${driven ? 'Mark as Not Driven' : 'Mark as Driven'}
                             </button>
                         </div>
                     `);
                 });
             } else if (route.coordinates && route.coordinates.length > 0) {
-                const color = route.driven ? '#28a745' : '#dc3545';
+                const driven = isRouteDrivenByPerson(route, activePerson);
+                const color = driven ? '#28a745' : '#dc3545';
                 const polyline = L.polyline(route.coordinates, {
                     color: color,
                     weight: weight,
@@ -620,7 +684,7 @@
                         <p>${route.description}</p>
                         <p><strong>Length:</strong> ${route.length.toLocaleString()} miles</p>
                         <p><strong>States:</strong> ${route.states.join(', ')}</p>
-                        <p><strong>Status:</strong> ${route.driven ? 'Driven' : 'Not Driven'}</p>
+                        <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                     </div>
                 `);
             }
@@ -630,7 +694,14 @@
             const list = isInterstate ? interstateData.interstates : highwayData.highways;
             const route = list.find(r => r.number === routeNumber);
             if (route && route.routeSegments && route.routeSegments[segmentIndex]) {
-                route.routeSegments[segmentIndex].driven = !route.routeSegments[segmentIndex].driven;
+                const seg = route.routeSegments[segmentIndex];
+                if (!seg.drivenBy) seg.drivenBy = [];
+                const idx = seg.drivenBy.indexOf(activePerson);
+                if (idx >= 0) {
+                    seg.drivenBy.splice(idx, 1);
+                } else {
+                    seg.drivenBy.push(activePerson);
+                }
                 updateRouteStatus(route);
                 updateStats();
                 drawRoutes();
@@ -638,10 +709,7 @@
         }
 
         function updateRouteStatus(route) {
-            if (route.routeSegments) {
-                const drivenSegments = route.routeSegments.filter(s => s.driven).length;
-                route.driven = drivenSegments === route.routeSegments.length;
-            }
+            // No-op: driven status is now determined by drivenBy
         }
 
         // ========== FILTERS ==========

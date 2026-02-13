@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highway Splitter</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+        }
+
+        .controls {
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #16213e;
+            border-bottom: 1px solid #333;
+        }
+
+        select,
+        input,
+        button {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #0f3460;
+            color: #eee;
+            font-size: 0.9em;
+        }
+
+        button {
+            cursor: pointer;
+            background: #e94560;
+            border-color: #e94560;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #c73e54;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.sec {
+            background: #0f3460;
+            border-color: #555;
+        }
+
+        button.green {
+            background: #27ae60;
+            border-color: #27ae60;
+        }
+
+        #map {
+            height: calc(100vh - 100px);
+            width: 100%;
+        }
+
+        .status {
+            padding: 8px 16px;
+            font-size: 0.85em;
+            background: #16213e;
+            border-bottom: 1px solid #333;
+        }
+
+        .split-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(15, 15, 30, 0.95);
+            border-radius: 8px;
+            padding: 12px;
+            z-index: 1000;
+            max-height: 70vh;
+            overflow-y: auto;
+            min-width: 280px;
+            font-size: 0.8em;
+            border: 1px solid #333;
+            display: none;
+        }
+
+        .split-panel.visible {
+            display: block;
+        }
+
+        .split-panel h4 {
+            margin: 0 0 8px;
+            color: #e94560;
+        }
+
+        .sp-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #222;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sp-item input {
+            width: 110px;
+            padding: 3px 6px;
+            font-size: 0.85em;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            color: #eee;
+            border-radius: 3px;
+        }
+
+        .sp-item .remove {
+            cursor: pointer;
+            color: #e94560;
+            font-size: 1.2em;
+            line-height: 1;
+        }
+
+        .sp-item .idx {
+            color: #f1c40f;
+            min-width: 20px;
+        }
+
+        .sp-item .coords {
+            opacity: 0.5;
+            font-size: 0.75em;
+        }
+
+        .modal-bg {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-bg.visible {
+            display: flex;
+        }
+
+        .modal {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal textarea {
+            width: 100%;
+            height: 400px;
+            background: #111;
+            color: #0f0;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.75em;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="controls">
+        <span style="font-size:0.85em;opacity:0.7;">Route:</span>
+        <select id="route-type">
+            <option value="interstate">Interstate</option>
+            <option value="us-highway">US Highway</option>
+        </select>
+        <input type="text" id="route-number" placeholder="90" style="width:70px;" value="90">
+        <button onclick="fetchReference()">Show Route</button>
+        <button class="green" id="split-btn" onclick="toggleSplitMode()">Start Splitting</button>
+        <button class="sec" id="route-btn" onclick="buildRoute()" disabled>Build Route</button>
+        <button class="sec" id="export-btn" onclick="showExport()" disabled>Export JSON</button>
+        <button class="sec" id="transfer-btn" onclick="transferDrivenBy()" disabled>Transfer drivenBy</button>
+        <button class="sec" onclick="clearAll()">Clear</button>
+        <span id="hint" style="font-size:0.8em;opacity:0.6;"></span>
+    </div>
+    <div class="status" id="status">Click on the map to place split points along a highway, then click "Build Route" to
+        generate segments using OSRM routing.</div>
+    <div style="position:relative;">
+        <div id="map"></div>
+        <div class="split-panel" id="split-panel">
+            <h4>Split Points <span id="sp-count" style="opacity:0.5;font-weight:normal;"></span></h4>
+            <div id="sp-list"></div>
+        </div>
+    </div>
+    <div class="modal-bg" id="modal">
+        <div class="modal">
+            <h3 style="color:#4CAF50;margin:0;">Export</h3>
+            <textarea id="export-text" readonly></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="sec"
+                    onclick="document.getElementById('modal').classList.remove('visible')">Close</button>
+                <button
+                    onclick="navigator.clipboard.writeText(document.getElementById('export-text').value).then(()=>this.textContent='Copied!')">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-bg" id="transfer-modal">
+        <div class="modal" style="max-width:1100px;">
+            <h3 style="color:#f1c40f;margin:0;">Transfer drivenBy</h3>
+            <p style="font-size:0.8em;opacity:0.7;margin:0;">Old segments matched to new. Review, then Apply to update
+                the export.</p>
+            <div id="transfer-table" style="max-height:55vh;overflow-y:auto;font-size:0.78em;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+                <button class="sec"
+                    onclick="document.getElementById('transfer-modal').classList.remove('visible')">Cancel</button>
+                <button class="green" onclick="applyTransfer()">Apply & Export</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([39.8, -98.6], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
+
+        const markerLayer = L.layerGroup().addTo(map);
+        const routeLayer = L.layerGroup().addTo(map);
+        const refLayer = L.layerGroup().addTo(map);
+        const existingLayer = L.layerGroup().addTo(map);
+
+        let splitting = false;
+        let splitPoints = [];
+        let builtSegments = null;
+        let usCities = null;
+        let refPoints = [];  // flat array of [lat,lng] from OSM reference, ordered along route
+        let routeLabel = '';
+
+        // ========== CITIES ==========
+        async function loadCities() {
+            if (usCities) return;
+            try { usCities = await (await fetch('data/uscities.json')).json(); }
+            catch (e) { usCities = []; }
+        }
+
+        function nearestCity(lat, lng, maxKm) {
+            if (!usCities) return null;
+            const limit = maxKm || 30;
+            // Tiered search: prefer bigger cities at tighter radius
+            const tiers = [
+                { count: 100,   radius: 10 },
+                { count: 300,   radius: 15 },
+                { count: 500,   radius: 18 },
+                { count: 750,   radius: 20 },
+                { count: 1000,  radius: 22 },
+                { count: 2000,  radius: 25 },
+                { count: usCities.length, radius: limit }
+            ];
+            for (const tier of tiers) {
+                let best = null, bestD = Math.min(tier.radius, limit);
+                const n = Math.min(tier.count, usCities.length);
+                for (let i = 0; i < n; i++) {
+                    const c = usCities[i];
+                    const dLat = (lat - c.lat) * 111;
+                    const dLng = (lng - c.lng) * 111 * Math.cos(lat * Math.PI / 180);
+                    const d = Math.sqrt(dLat * dLat + dLng * dLng);
+                    if (d < bestD) { bestD = d; best = c; }
+                }
+                if (best) return best;
+            }
+            return null;
+        }
+
+        // ========== REFERENCE LINE FROM OSM ==========
+        async function fetchReference() {
+            const type = document.getElementById('route-type').value;
+            const num = document.getElementById('route-number').value.trim();
+            if (!num) return;
+            routeLabel = type === 'interstate' ? `I-${num}` : `US-${num}`;
+
+            refLayer.clearLayers();
+            refPoints = [];
+            document.getElementById('status').textContent = `Fetching ${routeLabel} from OSM...`;
+
+            const network = type === 'interstate' ? 'US:I' : 'US:US';
+            const query = `[out:json][timeout:60];relation["type"="route"]["route"="road"]["network"="${network}"]["ref"="${num}"];(._;>;);out body;`;
+
+            try {
+                const resp = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST', body: 'data=' + encodeURIComponent(query)
+                });
+                const data = await resp.json();
+
+                const nodes = {};
+                data.elements.forEach(el => { if (el.type === 'node') nodes[el.id] = [el.lat, el.lon]; });
+
+                let totalPts = 0;
+                const ways = [];
+                data.elements.forEach(el => {
+                    if (el.type === 'way' && el.nodes) {
+                        const coords = el.nodes.map(id => nodes[id]).filter(Boolean);
+                        if (coords.length > 1) { ways.push(coords); totalPts += coords.length; }
+                    }
+                });
+
+                // Draw all ways as thin red reference
+                ways.forEach(way => {
+                    L.polyline(way, { color: '#e94560', weight: 3, opacity: 0.5 }).addTo(refLayer);
+                });
+
+                // Build flat reference point array for snapping
+                // Just dump all points — snapping will find the nearest one
+                ways.forEach(way => way.forEach(pt => refPoints.push(pt)));
+
+                // Fit bounds
+                if (refPoints.length > 0) {
+                    map.fitBounds(L.latLngBounds(refPoints.map(p => L.latLng(p[0], p[1]))).pad(0.05));
+                }
+
+                document.getElementById('status').textContent = `${routeLabel}: ${ways.length} ways, ${totalPts.toLocaleString()} reference points. Now place split points on the red line.`;
+            } catch (err) {
+                document.getElementById('status').textContent = `Error: ${err.message}`;
+            }
+
+            // Also draw existing segments for reference
+            await drawExistingSegments();
+        }
+
+        async function drawExistingSegments() {
+            existingLayer.clearLayers();
+            try {
+                const [intResp, hwResp] = await Promise.all([
+                    fetch('data/interstateHighways.json'), fetch('data/highways.json')
+                ]);
+                const intData = await intResp.json();
+                const hwData = await hwResp.json();
+                const all = [...(intData.interstates || []), ...(hwData.highways || [])];
+                const route = all.find(r => r.number === routeLabel);
+                if (!route || !route.routeSegments) return;
+
+                route.routeSegments.forEach((seg, i) => {
+                    const coords = seg.waypoints && seg.waypoints.length > 0
+                        ? seg.waypoints : [seg.from, seg.to];
+                    const driven = (seg.drivenBy || []).length > 0;
+                    L.polyline(coords, { color: driven ? '#4CAF50' : '#666', weight: 4, opacity: 0.4, dashArray: '8,6' })
+                        .bindPopup(`<b>Existing [${i}]</b><br>${seg.fromCity || '?'} → ${seg.toCity || '?'}<br>${seg.miles} mi<br>drivenBy: ${(seg.drivenBy || []).join(', ') || 'none'}`)
+                        .addTo(existingLayer);
+
+                    // Endpoint markers (small, subtle)
+                    const from = seg.from || coords[0];
+                    const to = seg.to || coords[coords.length - 1];
+                    L.circleMarker(from, { radius: 4, color: '#4CAF50', fillColor: '#4CAF50', fillOpacity: 0.6, weight: 1 })
+                        .bindTooltip(`${seg.fromCity || '?'}`, { direction: 'bottom', offset: [0, 5] })
+                        .addTo(existingLayer);
+                    L.circleMarker(to, { radius: 4, color: '#4CAF50', fillColor: '#4CAF50', fillOpacity: 0.6, weight: 1 })
+                        .bindTooltip(`${seg.toCity || '?'}`, { direction: 'bottom', offset: [0, 5] })
+                        .addTo(existingLayer);
+                });
+
+                document.getElementById('status').textContent += ` | Existing: ${route.routeSegments.length} segments (green dashed).`;
+            } catch (e) {
+                console.warn('Could not load existing segments:', e);
+            }
+        }
+
+        // ========== AUTO-SPLIT AT INTERSTATE INTERCHANGES ==========
+        async function autoSplitAtInterchanges() {
+            if (refPoints.length === 0) {
+                document.getElementById('status').textContent = 'Fetch a route first with "Show Route".';
+                return;
+            }
+
+            await loadCities();
+            if (!splitting) await toggleSplitMode();
+
+            document.getElementById('status').textContent = 'Finding interstate interchanges from local data...';
+
+            // Load our own interstate data — no need to hit OSM
+            let allInterstates = [];
+            try {
+                const resp = await fetch('data/interstateHighways.json');
+                const data = await resp.json();
+                allInterstates = data.interstates || [];
+            } catch (e) {
+                document.getElementById('status').textContent = 'Could not load interstateHighways.json';
+                return;
+            }
+
+            const currentNum = routeLabel; // e.g. "I-90"
+
+            // Build a spatial index of our reference line for fast lookup
+            // Bucket refPoints by rounded lat/lng (0.1° grid ≈ 11km)
+            const refGrid = {};
+            refPoints.forEach((pt, idx) => {
+                const key = `${Math.round(pt[0] * 10)},${Math.round(pt[1] * 10)}`;
+                if (!refGrid[key]) refGrid[key] = [];
+                refGrid[key].push({ pt, idx });
+            });
+
+            function findNearestRefPoint(lat, lng) {
+                // Check the grid cell and neighbors
+                const gLat = Math.round(lat * 10);
+                const gLng = Math.round(lng * 10);
+                let bestDist = Infinity, bestPt = null, bestIdx = -1;
+                for (let dLat = -1; dLat <= 1; dLat++) {
+                    for (let dLng = -1; dLng <= 1; dLng++) {
+                        const key = `${gLat + dLat},${gLng + dLng}`;
+                        const bucket = refGrid[key];
+                        if (!bucket) continue;
+                        for (const { pt, idx } of bucket) {
+                            const dlat = (pt[0] - lat) * 111;
+                            const dlng = (pt[1] - lng) * 111 * Math.cos(lat * Math.PI / 180);
+                            const d = Math.sqrt(dlat * dlat + dlng * dlng);
+                            if (d < bestDist) { bestDist = d; bestPt = pt; bestIdx = idx; }
+                        }
+                    }
+                }
+                return { pt: bestPt, dist: bestDist, refIdx: bestIdx };
+            }
+
+            // For each other interstate, check if any of its waypoints are near our route
+            const interchanges = [];
+
+            for (const interstate of allInterstates) {
+                if (interstate.number === currentNum) continue;
+                if (!interstate.routeSegments) continue;
+
+                let bestMatch = null;
+
+                for (const seg of interstate.routeSegments) {
+                    const pts = seg.waypoints && seg.waypoints.length > 0
+                        ? seg.waypoints : [seg.from, seg.to];
+                    for (const wp of pts) {
+                        if (!wp) continue;
+                        const match = findNearestRefPoint(wp[0], wp[1]);
+                        if (match.dist < 3 && (!bestMatch || match.dist < bestMatch.dist)) {
+                            bestMatch = { lat: match.pt[0], lng: match.pt[1], dist: match.dist, refIdx: match.refIdx, name: interstate.number };
+                        }
+                    }
+                }
+
+                if (bestMatch) {
+                    interchanges.push(bestMatch);
+                }
+            }
+
+            // Sort by position along the route
+            interchanges.sort((a, b) => a.refIdx - b.refIdx);
+
+            // Deduplicate nearby interchanges (within 5km)
+            const deduped = [];
+            for (const ic of interchanges) {
+                const last = deduped[deduped.length - 1];
+                if (last) {
+                    const dLat = (ic.lat - last.lat) * 111;
+                    const dLng = (ic.lng - last.lng) * 111 * Math.cos(ic.lat * Math.PI / 180);
+                    if (Math.sqrt(dLat * dLat + dLng * dLng) < 5) {
+                        if (!last.name.includes(ic.name)) last.name += '/' + ic.name;
+                        continue;
+                    }
+                }
+                deduped.push({ ...ic });
+            }
+
+            // Clear existing splits
+            splitPoints.forEach(sp => markerLayer.removeLayer(sp.marker));
+            splitPoints = [];
+
+            // Add start endpoint
+            addSplitAt([refPoints[0][0], refPoints[0][1]]);
+
+            // Add interchange points
+            for (const ic of deduped) {
+                const city = nearestCity(ic.lat, ic.lng, 30);
+                const cityName = city ? city.name : '';
+                const label = cityName ? `${cityName} (${ic.name})` : ic.name;
+                addSplitAtWithName([ic.lat, ic.lng], label);
+            }
+
+            // Add end endpoint
+            const endPt = refPoints[refPoints.length - 1];
+            addSplitAt([endPt[0], endPt[1]]);
+
+            renderList();
+            document.getElementById('status').textContent = `Auto-placed ${deduped.length} interchange points + 2 endpoints = ${splitPoints.length} total. Add/remove as needed.`;
+            document.getElementById('route-btn').disabled = splitPoints.length < 2;
+        }
+
+        function addSplitAtWithName(latLng, name) {
+            addDraggableSplit(latLng, name);
+        }
+
+        // ========== SPLIT MODE ==========
+        async function toggleSplitMode() {
+            splitting = !splitting;
+            const btn = document.getElementById('split-btn');
+            if (splitting) {
+                await loadCities();
+                btn.textContent = 'Stop Splitting';
+                btn.style.background = '#c0392b';
+                document.getElementById('hint').textContent = 'Click the map to place points along the highway in order.';
+                document.getElementById('split-panel').classList.add('visible');
+                map.getContainer().style.cursor = 'crosshair';
+                map.on('click', onMapClick);
+            } else {
+                btn.textContent = 'Start Splitting';
+                btn.style.background = '#27ae60';
+                document.getElementById('hint').textContent = '';
+                map.getContainer().style.cursor = '';
+                map.off('click', onMapClick);
+            }
+        }
+
+        function onMapClick(e) {
+            let lat = parseFloat(e.latlng.lat.toFixed(5));
+            let lng = parseFloat(e.latlng.lng.toFixed(5));
+
+            // Snap to reference line if available
+            if (refPoints.length > 0) {
+                let bestDist = Infinity, bestPt = null;
+                for (const pt of refPoints) {
+                    const d = (pt[0] - lat) ** 2 + (pt[1] - lng) ** 2;
+                    if (d < bestDist) { bestDist = d; bestPt = pt; }
+                }
+                if (bestPt) {
+                    const distKm = Math.sqrt(bestDist) * 111;
+                    if (distKm < 20) {
+                        lat = parseFloat(bestPt[0].toFixed(5));
+                        lng = parseFloat(bestPt[1].toFixed(5));
+                    } else {
+                        document.getElementById('status').textContent = `Click closer to the route (${distKm.toFixed(0)}km away)`;
+                        return;
+                    }
+                }
+            }
+
+            const city = nearestCity(lat, lng, 30);
+            const name = city ? city.name : '';
+
+            addDraggableSplit([lat, lng], name);
+            const snapped = refPoints.length > 0 ? ' (snapped)' : '';
+            document.getElementById('status').textContent = `Point ${splitPoints.length}: ${name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${snapped}`;
+        }
+
+        function addDraggableSplit(latLng, name) {
+            const idx = splitPoints.length;
+            const marker = L.marker(latLng, {
+                draggable: true,
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="width:16px;height:16px;background:#f1c40f;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [16, 16], iconAnchor: [8, 8]
+                })
+            }).addTo(markerLayer);
+            marker.bindTooltip(name || `#${idx + 1}`, { permanent: true, direction: 'top', offset: [0, -12] });
+
+            const sp = { latLng: [...latLng], name, marker };
+            splitPoints.push(sp);
+
+            marker.on('dragend', function(e) {
+                let lat = e.target.getLatLng().lat;
+                let lng = e.target.getLatLng().lng;
+
+                // Snap to reference line
+                if (refPoints.length > 0) {
+                    let bestDist = Infinity, bestPt = null;
+                    for (const pt of refPoints) {
+                        const d = (pt[0] - lat) ** 2 + (pt[1] - lng) ** 2;
+                        if (d < bestDist) { bestDist = d; bestPt = pt; }
+                    }
+                    if (bestPt && Math.sqrt(bestDist) * 111 < 20) {
+                        lat = bestPt[0]; lng = bestPt[1];
+                        marker.setLatLng([lat, lng]);
+                    }
+                }
+
+                // Find this split point in the array
+                const spIdx = splitPoints.indexOf(sp);
+                if (spIdx >= 0) {
+                    sp.latLng = [parseFloat(lat.toFixed(5)), parseFloat(lng.toFixed(5))];
+                    // Re-name from nearest city
+                    const city = nearestCity(lat, lng, 30);
+                    sp.name = city ? city.name : '';
+                    marker.unbindTooltip();
+                    marker.bindTooltip(sp.name || `#${spIdx + 1}`, { permanent: true, direction: 'top', offset: [0, -12] });
+                    renderList();
+                    document.getElementById('status').textContent = `Moved point ${spIdx + 1} to ${sp.name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+                }
+            });
+
+            renderList();
+            document.getElementById('route-btn').disabled = splitPoints.length < 2;
+        }
+
+        function moveSplitUp(idx) {
+            if (idx <= 0) return;
+            [splitPoints[idx], splitPoints[idx - 1]] = [splitPoints[idx - 1], splitPoints[idx]];
+            refreshTooltips();
+            renderList();
+        }
+
+        function moveSplitDown(idx) {
+            if (idx >= splitPoints.length - 1) return;
+            [splitPoints[idx], splitPoints[idx + 1]] = [splitPoints[idx + 1], splitPoints[idx]];
+            refreshTooltips();
+            renderList();
+        }
+
+        function refreshTooltips() {
+            splitPoints.forEach((sp, i) => {
+                sp.marker.unbindTooltip();
+                sp.marker.bindTooltip(sp.name || `#${i + 1}`, { permanent: true, direction: 'top', offset: [0, -12] });
+            });
+        }
+
+        function renderList() {
+            const el = document.getElementById('sp-list');
+            document.getElementById('sp-count').textContent = `(${splitPoints.length})`;
+            el.innerHTML = splitPoints.map((sp, i) => `
+                <div class="sp-item">
+                    <span class="idx">${i + 1}.</span>
+                    <input value="${sp.name}" onchange="renameSplit(${i}, this.value)" placeholder="City name">
+                    <span class="coords">[${sp.latLng[0].toFixed(3)}, ${sp.latLng[1].toFixed(3)}]</span>
+                    <span class="remove" onclick="removeSplit(${i})">×</span>
+                </div>
+            `).join('');
+        }
+
+        function renameSplit(idx, name) {
+            splitPoints[idx].name = name;
+            splitPoints[idx].marker.unbindTooltip();
+            splitPoints[idx].marker.bindTooltip(name || `#${idx + 1}`, { permanent: true, direction: 'top', offset: [0, -10] });
+        }
+
+        function removeSplit(idx) {
+            markerLayer.removeLayer(splitPoints[idx].marker);
+            splitPoints.splice(idx, 1);
+            refreshTooltips();
+            renderList();
+            document.getElementById('route-btn').disabled = splitPoints.length < 2;
+        }
+
+        // ========== BUILD ROUTE VIA OSRM ==========
+        async function buildRoute() {
+            if (splitPoints.length < 2) return;
+            routeLayer.clearLayers();
+            builtSegments = [];
+
+            document.getElementById('status').textContent = 'Building route via OSRM...';
+            const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4', '#FF5722', '#8BC34A', '#E91E63', '#3F51B5', '#009688'];
+
+            for (let i = 0; i < splitPoints.length - 1; i++) {
+                const from = splitPoints[i];
+                const to = splitPoints[i + 1];
+
+                document.getElementById('status').textContent = `Routing segment ${i + 1}/${splitPoints.length - 1}: ${from.name || '?'} → ${to.name || '?'}...`;
+
+                try {
+                    // OSRM expects lng,lat (not lat,lng)
+                    const url = `https://router.project-osrm.org/route/v1/driving/${from.latLng[1]},${from.latLng[0]};${to.latLng[1]},${to.latLng[0]}?overview=full&geometries=geojson`;
+                    const resp = await fetch(url);
+                    const data = await resp.json();
+
+                    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                        console.warn(`OSRM failed for segment ${i + 1}:`, data);
+                        builtSegments.push(null);
+                        continue;
+                    }
+
+                    const route = data.routes[0];
+                    const coords = route.geometry.coordinates; // [lng, lat] pairs
+                    const latLngs = coords.map(c => [parseFloat(c[1].toFixed(4)), parseFloat(c[0].toFixed(4))]); // convert to [lat, lng]
+
+                    // Simplify
+                    const simplified = douglasPeucker(latLngs, 0.001);
+
+                    const miles = Math.round(route.distance * 0.000621371); // meters to miles
+
+                    const segment = {
+                        from: simplified[0],
+                        to: simplified[simplified.length - 1],
+                        description: `${from.name || 'Point ' + (i + 1)} to ${to.name || 'Point ' + (i + 2)}`,
+                        miles,
+                        fromCity: from.name || '',
+                        toCity: to.name || '',
+                        states: [],
+                        waypoints: simplified,
+                        drivenBy: []
+                    };
+                    builtSegments.push(segment);
+
+                    // Draw
+                    const color = colors[i % colors.length];
+                    L.polyline(simplified, { color, weight: 5, opacity: 0.8 })
+                        .bindPopup(`<b>[${i}] ${segment.fromCity} → ${segment.toCity}</b><br>${miles} mi | ${simplified.length} pts`)
+                        .addTo(routeLayer);
+
+                } catch (err) {
+                    console.error(`Error routing segment ${i + 1}:`, err);
+                    builtSegments.push(null);
+                }
+
+                // Small delay to be nice to OSRM
+                if (i < splitPoints.length - 2) await new Promise(r => setTimeout(r, 300));
+            }
+
+            const validSegs = builtSegments.filter(Boolean);
+            const totalMiles = validSegs.reduce((s, seg) => s + seg.miles, 0);
+            document.getElementById('status').textContent = `Built ${validSegs.length} segments, ${totalMiles.toLocaleString()} miles total.`;
+            document.getElementById('export-btn').disabled = validSegs.length === 0;
+            document.getElementById('transfer-btn').disabled = validSegs.length === 0;
+        }
+
+        // ========== EXPORT ==========
+        function showExport() {
+            if (!builtSegments) return;
+            const label = routeLabel || document.getElementById('route-number').value.trim() || 'Unknown';
+            const validSegs = builtSegments.filter(Boolean);
+
+            const obj = {
+                number: label,
+                name: label.startsWith('I-') ? `Interstate ${label.slice(2)}` : label,
+                description: '',
+                states: [],
+                length: validSegs.reduce((s, seg) => s + seg.miles, 0),
+                routeSegments: validSegs
+            };
+
+            document.getElementById('export-text').value = JSON.stringify(obj, null, 4);
+            document.getElementById('modal').classList.add('visible');
+        }
+
+        // ========== TRANSFER DRIVENBY ==========
+        let transferMappings = []; // stored for applyTransfer
+
+        async function transferDrivenBy() {
+            if (!builtSegments || builtSegments.filter(Boolean).length === 0) return;
+            const label = routeLabel || 'Unknown';
+
+            // Load existing route data
+            let existingRoute = null;
+            try {
+                const [intResp, hwResp] = await Promise.all([
+                    fetch('data/interstateHighways.json'), fetch('data/highways.json')
+                ]);
+                const intData = await intResp.json();
+                const hwData = await hwResp.json();
+                const all = [...(intData.interstates || []), ...(hwData.highways || [])];
+                existingRoute = all.find(r => r.number === label);
+            } catch (e) {
+                document.getElementById('status').textContent = 'Could not load existing data.';
+                return;
+            }
+
+            if (!existingRoute || !existingRoute.routeSegments || existingRoute.routeSegments.length === 0) {
+                document.getElementById('status').textContent = `No existing segments found for ${label}. drivenBy will be empty.`;
+                return;
+            }
+
+            const oldSegs = existingRoute.routeSegments;
+            const newSegs = builtSegments.filter(Boolean);
+
+            // For each new segment, find which old segments overlap it.
+            // Method: check if the midpoint of each old segment falls within
+            // the bounding box of the new segment (with some padding).
+            // Also check endpoint proximity.
+            transferMappings = newSegs.map((newSeg, ni) => {
+                const newFrom = newSeg.from;
+                const newTo = newSeg.to;
+                const newMinLat = Math.min(newFrom[0], newTo[0]) - 0.2;
+                const newMaxLat = Math.max(newFrom[0], newTo[0]) + 0.2;
+                const newMinLng = Math.min(newFrom[1], newTo[1]) - 0.2;
+                const newMaxLng = Math.max(newFrom[1], newTo[1]) + 0.2;
+
+                // Collect all drivenBy from overlapping old segments
+                const matchedOld = [];
+                const allDrivers = new Set();
+
+                for (let oi = 0; oi < oldSegs.length; oi++) {
+                    const old = oldSegs[oi];
+                    const oldFrom = old.from || (old.waypoints && old.waypoints[0]);
+                    const oldTo = old.to || (old.waypoints && old.waypoints[old.waypoints.length - 1]);
+                    if (!oldFrom || !oldTo) continue;
+
+                    const oldMidLat = (oldFrom[0] + oldTo[0]) / 2;
+                    const oldMidLng = (oldFrom[1] + oldTo[1]) / 2;
+
+                    // Check if old segment's midpoint or endpoints fall in new segment's bbox
+                    const midInBox = oldMidLat >= newMinLat && oldMidLat <= newMaxLat &&
+                        oldMidLng >= newMinLng && oldMidLng <= newMaxLng;
+                    const fromInBox = oldFrom[0] >= newMinLat && oldFrom[0] <= newMaxLat &&
+                        oldFrom[1] >= newMinLng && oldFrom[1] <= newMaxLng;
+                    const toInBox = oldTo[0] >= newMinLat && oldTo[0] <= newMaxLat &&
+                        oldTo[1] >= newMinLng && oldTo[1] <= newMaxLng;
+
+                    if (midInBox || fromInBox || toInBox) {
+                        matchedOld.push(oi);
+                        (old.drivenBy || []).forEach(d => allDrivers.add(d));
+                    }
+                }
+
+                return {
+                    newIdx: ni,
+                    newDesc: `${newSeg.fromCity} → ${newSeg.toCity}`,
+                    matchedOldIndices: matchedOld,
+                    matchedOldDescs: matchedOld.map(oi => `[${oi}] ${oldSegs[oi].fromCity || '?'} → ${oldSegs[oi].toCity || '?'}`),
+                    matchedOldDrivers: matchedOld.map(oi => (oldSegs[oi].drivenBy || []).join(', ') || '(none)'),
+                    resultDrivers: [...allDrivers]
+                };
+            });
+
+            // Render comparison table
+            const table = document.getElementById('transfer-table');
+            table.innerHTML = `
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #444;text-align:left;">
+                            <th style="padding:6px;color:#4CAF50;">New Segment</th>
+                            <th style="padding:6px;color:#FF9800;">Matched Old Segments</th>
+                            <th style="padding:6px;color:#f1c40f;">Result drivenBy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transferMappings.map((m, i) => `
+                            <tr style="border-bottom:1px solid #333;">
+                                <td style="padding:6px;vertical-align:top;">
+                                    <b>[${m.newIdx}]</b> ${m.newDesc}
+                                </td>
+                                <td style="padding:6px;vertical-align:top;">
+                                    ${m.matchedOldDescs.length > 0
+                    ? m.matchedOldDescs.map((d, j) => `<div>${d} <span style="opacity:0.6;">${m.matchedOldDrivers[j]}</span></div>`).join('')
+                    : '<span style="opacity:0.5;">No match</span>'}
+                                </td>
+                                <td style="padding:6px;vertical-align:top;">
+                                    <input type="text" value="${m.resultDrivers.join(', ')}"
+                                        onchange="transferMappings[${i}].resultDrivers = this.value.split(',').map(s=>s.trim()).filter(Boolean)"
+                                        style="width:140px;padding:3px 6px;background:rgba(255,255,255,0.1);border:1px solid #444;color:#eee;border-radius:3px;font-size:0.9em;">
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('transfer-modal').classList.add('visible');
+        }
+
+        function applyTransfer() {
+            if (!builtSegments || !transferMappings) return;
+            const validSegs = builtSegments.filter(Boolean);
+
+            // Apply the drivenBy from mappings
+            transferMappings.forEach(m => {
+                if (m.newIdx < validSegs.length) {
+                    validSegs[m.newIdx].drivenBy = m.resultDrivers;
+                }
+            });
+
+            document.getElementById('transfer-modal').classList.remove('visible');
+
+            // Now show the export with updated drivenBy
+            showExport();
+            document.getElementById('status').textContent = `Applied drivenBy to ${validSegs.length} segments. Export is ready.`;
+        }
+
+        // ========== UTILS ==========
+        function douglasPeucker(pts, tol) {
+            if (pts.length <= 2) return pts;
+            let mx = 0, mi = 0;
+            const a = pts[0], b = pts[pts.length - 1];
+            for (let i = 1; i < pts.length - 1; i++) {
+                const d = perpD(pts[i], a, b);
+                if (d > mx) { mx = d; mi = i; }
+            }
+            if (mx > tol) {
+                const l = douglasPeucker(pts.slice(0, mi + 1), tol);
+                const r = douglasPeucker(pts.slice(mi), tol);
+                return l.slice(0, -1).concat(r);
+            }
+            return [a, b];
+        }
+
+        function perpD(p, a, b) {
+            const dx = b[0] - a[0], dy = b[1] - a[1], ls = dx * dx + dy * dy;
+            if (ls === 0) return Math.sqrt((p[0] - a[0]) ** 2 + (p[1] - a[1]) ** 2);
+            let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / ls;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((p[0] - (a[0] + t * dx)) ** 2 + (p[1] - (a[1] + t * dy)) ** 2);
+        }
+
+        function clearAll() {
+            markerLayer.clearLayers();
+            routeLayer.clearLayers();
+            refLayer.clearLayers();
+            existingLayer.clearLayers();
+            splitPoints = [];
+            builtSegments = null;
+            refPoints = [];
+            routeLabel = '';
+            splitting = false;
+            document.getElementById('split-btn').textContent = 'Start Splitting';
+            document.getElementById('split-btn').style.background = '#27ae60';
+            document.getElementById('route-btn').disabled = true;
+            document.getElementById('export-btn').disabled = true;
+            document.getElementById('transfer-btn').disabled = true;
+            document.getElementById('hint').textContent = '';
+            document.getElementById('split-panel').classList.remove('visible');
+            document.getElementById('sp-list').innerHTML = '';
+            document.getElementById('sp-count').textContent = '';
+            map.getContainer().style.cursor = '';
+            map.off('click', onMapClick);
+            document.getElementById('status').textContent = 'Cleared.';
+        }
+    </script>
+</body>
+
+</html>

@@ -212,10 +212,16 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
 
     // Collect driven highway segments for fog of war
     const drivenSegments = [];
+    function isSegmentDrivenByPerson1(seg) {
+        if (seg.drivenBy && Array.isArray(seg.drivenBy)) {
+            return seg.drivenBy.includes('person1');
+        }
+        return false;
+    }
     if (interstateData && interstateData.interstates) {
         interstateData.interstates.forEach(interstate => {
             interstate.routeSegments.forEach(seg => {
-                if (seg.driven && seg.waypoints && seg.waypoints.length >= 2) {
+                if (isSegmentDrivenByPerson1(seg) && seg.waypoints && seg.waypoints.length >= 2) {
                     drivenSegments.push(seg.waypoints);
                 }
             });
@@ -224,7 +230,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     if (highwaysData && highwaysData.highways) {
         highwaysData.highways.forEach(highway => {
             highway.routeSegments.forEach(seg => {
-                if (seg.driven && seg.waypoints && seg.waypoints.length >= 2) {
+                if (isSegmentDrivenByPerson1(seg) && seg.waypoints && seg.waypoints.length >= 2) {
                     drivenSegments.push(seg.waypoints);
                 }
             });

@@ -533,6 +533,46 @@ function setupSearch() {
     });
 }
 
+// --- Highway data for fog of war ---
+let fogHighwayData = null;
+let fogInterstateData = null;
+
+async function loadHighwayDataForFog() {
+    if (fogHighwayData && fogInterstateData) return;
+    try {
+        const [hwResp, intResp] = await Promise.all([
+            fetch('data/highways.json'),
+            fetch('data/interstateHighways.json')
+        ]);
+        fogHighwayData = await hwResp.json();
+        fogInterstateData = await intResp.json();
+    } catch (e) {
+        console.error('Error loading highway data for fog:', e);
+    }
+}
+
+function getDrivenSegmentsForPersons(personIds) {
+    const segments = [];
+    const collectFrom = (routes) => {
+        if (!routes) return;
+        routes.forEach(route => {
+            if (!route.routeSegments) return;
+            route.routeSegments.forEach(seg => {
+                if (!seg.waypoints || seg.waypoints.length < 2) return;
+                // Check drivenBy array first, fall back to legacy 'driven' for person1
+                let isDriven = false;
+                if (seg.drivenBy && Array.isArray(seg.drivenBy)) {
+                    isDriven = personIds.some(p => seg.drivenBy.includes(p));
+                }
+                if (isDriven) segments.push(seg.waypoints);
+            });
+        });
+    };
+    if (fogInterstateData) collectFrom(fogInterstateData.interstates);
+    if (fogHighwayData) collectFrom(fogHighwayData.highways);
+    return segments;
+}
+
 // --- Fog of War ---
 
 function getFogPins() {
@@ -555,6 +595,9 @@ function getFogPins() {
 function createFamilyFogOverlay(radiusKm) {
     removeFamilyFogOverlay();
 
+    const visiblePersons = getVisibleSiblings();
+    const drivenSegments = getDrivenSegmentsForPersons(visiblePersons);
+
     const FogLayer = L.Layer.extend({
         onAdd: function (m) {
             this._map = m;
@@ -566,6 +609,7 @@ function createFamilyFogOverlay(radiusKm) {
             this._container.appendChild(this._svg);
             m.on('moveend zoomend resize', this._update, this);
             this._radiusKm = radiusKm;
+            this._drivenSegments = drivenSegments;
             this._update();
         },
         onRemove: function (m) {
@@ -579,6 +623,7 @@ function createFamilyFogOverlay(radiusKm) {
             this._update();
         },
         refreshPins: function () {
+            this._drivenSegments = getDrivenSegmentsForPersons(getVisibleSiblings());
             this._update();
         },
         _update: function () {
@@ -598,7 +643,7 @@ function createFamilyFogOverlay(radiusKm) {
             L.DomUtil.setPosition(this._container, topLeft);
 
             const fogPins = getFogPins();
-            let circles = '';
+            let cutouts = '';
             let maxR = 0;
             fogPins.forEach(pin => {
                 const pt = m.latLngToLayerPoint([pin.lat, pin.lng]);
@@ -610,7 +655,26 @@ function createFamilyFogOverlay(radiusKm) {
                 const ptEdge = m.latLngToLayerPoint(east);
                 const r = Math.abs(ptEdge.x - pt.x);
                 if (r > maxR) maxR = r;
-                circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="black"/>`;
+                cutouts += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="black"/>`;
+            });
+
+            // Draw driven highway corridors as thick paths in the mask
+            const hwRadiusKm = Math.max(this._radiusKm * 0.5, 30);
+            (this._drivenSegments || []).forEach(waypoints => {
+                let d = '';
+                waypoints.forEach((wp, i) => {
+                    const pt = m.latLngToLayerPoint([wp[0], wp[1]]);
+                    const px = pt.x - topLeft.x;
+                    const py = pt.y - topLeft.y;
+                    d += (i === 0 ? `M${px},${py}` : ` L${px},${py}`);
+                });
+                const midWp = waypoints[Math.floor(waypoints.length / 2)];
+                const midLatLng = L.latLng(midWp[0], midWp[1]);
+                const bounds = midLatLng.toBounds(hwRadiusKm * 2000);
+                const midPt = m.latLngToLayerPoint(midLatLng);
+                const eastPt = m.latLngToLayerPoint(L.latLng(midWp[0], bounds.getEast()));
+                const strokeW = Math.abs(eastPt.x - midPt.x) * 2;
+                cutouts += `<path d="${d}" fill="none" stroke="black" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"/>`;
             });
 
             const blurSigma = Math.max(2, Math.min(maxR * 0.08, 20));
@@ -623,7 +687,7 @@ function createFamilyFogOverlay(radiusKm) {
                     <mask id="ft-fog-mask">
                         <g filter="url(#ft-mask-blur)">
                             <rect x="0" y="0" width="${w}" height="${h}" fill="white"/>
-                            ${circles}
+                            ${cutouts}
                         </g>
                     </mask>
                     <filter id="ft-fog-smoke" x="-20%" y="-20%" width="140%" height="140%">
@@ -675,11 +739,12 @@ function restoreFamilyMarkers() {
     fogMarkerCache = [];
 }
 
-function enableFamilyFogMode(radiusKm) {
+async function enableFamilyFogMode(radiusKm) {
     if (voronoiLayer) { map.removeLayer(voronoiLayer); voronoiLayer = null; }
     clearProximityCircles();
     if (countryLayer) { countryLayer.setStyle({ fillOpacity: 0, opacity: 0.1, weight: 0.5 }); }
     hideFamilyMarkers();
+    await loadHighwayDataForFog();
     createFamilyFogOverlay(radiusKm);
 }
 
@@ -689,13 +754,13 @@ function disableFamilyFogMode() {
 }
 
 // Refresh the entire map based on current settings
-function refreshMap() {
+async function refreshMap() {
     const fogRadiusControl = document.getElementById('fog-radius-control');
 
     if (mapMode === 'fog') {
         if (fogRadiusControl) fogRadiusControl.style.display = 'flex';
         const radiusKm = parseInt(document.getElementById('fog-radius-slider').value);
-        enableFamilyFogMode(radiusKm);
+        await enableFamilyFogMode(radiusKm);
     } else {
         if (fogRadiusControl) fogRadiusControl.style.display = 'none';
         disableFamilyFogMode();

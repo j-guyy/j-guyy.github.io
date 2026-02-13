@@ -340,6 +340,18 @@
             }
         }
 
+        function isSegmentDrivenByPerson(segment, personId) {
+            if (segment.drivenBy && Array.isArray(segment.drivenBy)) {
+                return segment.drivenBy.includes(personId);
+            }
+            return false;
+        }
+
+        function isRouteDrivenByPerson(route, personId) {
+            if (!route.routeSegments || route.routeSegments.length === 0) return false;
+            return route.routeSegments.every(seg => isSegmentDrivenByPerson(seg, personId));
+        }
+
         // Draw interstate routes on the map
         function drawInterstateRoutes(filter = 'all') {
             interstateLayer.clearLayers();
@@ -349,10 +361,10 @@
             // Apply filters
             switch (filter) {
                 case 'driven':
-                    filteredInterstates = interstateData.interstates.filter(i => i.driven);
+                    filteredInterstates = interstateData.interstates.filter(i => isRouteDrivenByPerson(i, 'person1'));
                     break;
                 case 'not-driven':
-                    filteredInterstates = interstateData.interstates.filter(i => !i.driven);
+                    filteredInterstates = interstateData.interstates.filter(i => !isRouteDrivenByPerson(i, 'person1'));
                     break;
                 case 'transcontinental':
                     filteredInterstates = interstateData.interstates.filter(i =>
@@ -365,7 +377,8 @@
                 if (interstate.routeSegments && interstate.routeSegments.length > 0) {
                     // Draw each segment individually
                     interstate.routeSegments.forEach((segment, index) => {
-                        const color = segment.driven ? '#28a745' : '#dc3545';
+                        const driven = isSegmentDrivenByPerson(segment, 'person1');
+                        const color = driven ? '#28a745' : '#dc3545';
                         // Use waypoints if available, otherwise fall back to from/to
                         const coordinates = segment.waypoints && segment.waypoints.length > 0
                             ? segment.waypoints
@@ -381,16 +394,17 @@
                             <div>
                                 <h4>${interstate.number} - ${segment.description}</h4>
                                 <p><strong>Distance:</strong> ${segment.miles} miles</p>
-                                <p><strong>Status:</strong> ${segment.driven ? 'Driven' : 'Not Driven'}</p>
+                                <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                                 <button onclick="toggleSegment('${interstate.number}', ${index})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                                    ${segment.driven ? 'Mark as Not Driven' : 'Mark as Driven'}
+                                    ${driven ? 'Mark as Not Driven' : 'Mark as Driven'}
                                 </button>
                             </div>
                         `);
                     });
                 } else if (interstate.coordinates && interstate.coordinates.length > 0) {
                     // Fallback for interstates that haven't been converted to segments yet
-                    const color = interstate.driven ? '#28a745' : '#dc3545';
+                    const driven = isRouteDrivenByPerson(interstate, 'person1');
+                    const color = driven ? '#28a745' : '#dc3545';
                     const polyline = L.polyline(interstate.coordinates, {
                         color: color,
                         weight: 4,
@@ -403,7 +417,7 @@
                             <p>${interstate.description}</p>
                             <p><strong>Length:</strong> ${interstate.length.toLocaleString()} miles</p>
                             <p><strong>States:</strong> ${interstate.states.join(', ')}</p>
-                            <p><strong>Status:</strong> ${interstate.driven ? 'Driven' : 'Not Driven'}</p>
+                            <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                         </div>
                     `);
                 }
@@ -414,31 +428,23 @@
         function toggleSegment(interstateNumber, segmentIndex) {
             const interstate = interstateData.interstates.find(i => i.number === interstateNumber);
             if (interstate && interstate.routeSegments && interstate.routeSegments[segmentIndex]) {
-                interstate.routeSegments[segmentIndex].driven = !interstate.routeSegments[segmentIndex].driven;
-
-                // Update overall interstate driven status based on segments
-                updateInterstateStatus(interstate);
-
+                const seg = interstate.routeSegments[segmentIndex];
+                if (!seg.drivenBy) seg.drivenBy = [];
+                const idx = seg.drivenBy.indexOf('person1');
+                if (idx >= 0) {
+                    seg.drivenBy.splice(idx, 1);
+                } else {
+                    seg.drivenBy.push('person1');
+                }
                 updateStats();
                 drawInterstateRoutes();
-            }
-        }
-
-        // Update overall interstate driven status based on segments
-        function updateInterstateStatus(interstate) {
-            if (interstate.routeSegments) {
-                const drivenSegments = interstate.routeSegments.filter(s => s.driven).length;
-                const totalSegments = interstate.routeSegments.length;
-
-                // Mark interstate as driven if all segments are driven
-                interstate.driven = drivenSegments === totalSegments;
             }
         }
 
         // Update statistics
         function updateStats() {
             const total = interstateData.interstates.length;
-            const driven = interstateData.interstates.filter(i => i.driven).length;
+            const driven = interstateData.interstates.filter(i => isRouteDrivenByPerson(i, 'person1')).length;
             const percentage = total > 0 ? Math.round((driven / total) * 100) : 0;
             const totalMiles = interstateData.interstates.reduce((sum, i) => sum + i.length, 0);
 
