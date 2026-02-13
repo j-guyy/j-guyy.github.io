@@ -21,7 +21,7 @@
         {
             "name": "Pico de Orizaba",
             "country": "Mexico",
-            "latitude": 19.0300,
+            "latitude": 19.03,
             "longitude": -97.2687,
             "elevation": 5636,
             "elevationUnit": "meters",
@@ -37,7 +37,7 @@
             "description": "South Korea's highest mountain, a shield volcano on Jeju Island with a crater lake at its summit."
         },
         {
-            "name": "Mulhacén",
+            "name": "Mulhac\u00e9n",
             "country": "Spain",
             "latitude": 37.0533,
             "longitude": -3.3119,
@@ -48,7 +48,7 @@
         {
             "name": "Mount Kosciuszko",
             "country": "Australia",
-            "latitude": -36.4560,
+            "latitude": -36.456,
             "longitude": 148.2634,
             "elevation": 2228,
             "elevationUnit": "meters",
@@ -69,13 +69,13 @@
             "name": "Sincholagua",
             "country": "Ecuador",
             "latitude": -0.4833,
-            "longitude": -78.3500,
+            "longitude": -78.35,
             "elevation": 4873,
             "elevationUnit": "meters",
             "description": "A stratovolcano in the Cordillera Real of Ecuador, known for its challenging climbing routes and stunning views of the surrounding Andes."
         },
         {
-            "name": "Iztaccíhuatl",
+            "name": "Iztacc\u00edhuatl",
             "country": "Mexico",
             "latitude": 19.1786,
             "longitude": -98.6422,
@@ -87,19 +87,19 @@
             "name": "Rucu Pichincha",
             "country": "Ecuador",
             "latitude": -0.1697,
-            "longitude": -78.5350,
+            "longitude": -78.535,
             "elevation": 4680,
             "elevationUnit": "meters",
-            "description": "A volcanic peak towering above Quito, accessible via the TelefériQo cable car followed by a steep hike through páramo grasslands."
+            "description": "A volcanic peak towering above Quito, accessible via the Telef\u00e9riQo cable car followed by a steep hike through p\u00e1ramo grasslands."
         },
         {
-            "name": "Kristínartindar",
+            "name": "Krist\u00ednartindar",
             "country": "Iceland",
             "latitude": 64.0167,
             "longitude": -16.9667,
             "elevation": 1119,
             "elevationUnit": "meters",
-            "description": "A dramatic ridge near Skaftafell in Vatnajökull National Park, offering panoramic views of glaciers and black sand plains."
+            "description": "A dramatic ridge near Skaftafell in Vatnaj\u00f6kull National Park, offering panoramic views of glaciers and black sand plains."
         },
         {
             "name": "Montserrat",
@@ -132,7 +132,7 @@
             "name": "Buttars Peak",
             "country": "New Zealand",
             "latitude": -45.8333,
-            "longitude": 170.5500,
+            "longitude": 170.55,
             "elevation": 615,
             "elevationUnit": "meters",
             "description": "A peak near Dunedin on New Zealand's South Island, accessible via trails connecting to Mount Cargill."
@@ -140,7 +140,7 @@
         {
             "name": "Mount Holmes",
             "country": "New Zealand",
-            "latitude": -45.8250,
+            "latitude": -45.825,
             "longitude": 170.5583,
             "elevation": 572,
             "elevationUnit": "meters",
@@ -149,7 +149,7 @@
         {
             "name": "Collina del Vomero",
             "country": "Italy",
-            "latitude": 40.8450,
+            "latitude": 40.845,
             "longitude": 14.2283,
             "elevation": 249,
             "elevationUnit": "meters",
@@ -186,7 +186,7 @@
             "name": "Pic White",
             "country": "Canada",
             "latitude": 46.2167,
-            "longitude": -74.6000,
+            "longitude": -74.6,
             "elevation": 877,
             "elevationUnit": "meters",
             "description": "A peak in the Laurentian Mountains near Mont Tremblant, Quebec, popular for hiking and backcountry skiing."
@@ -194,20 +194,1010 @@
         {
             "name": "Skinnarviksberget",
             "country": "Sweden",
-            "latitude": 59.3200,
-            "longitude": 18.0550,
+            "latitude": 59.32,
+            "longitude": 18.055,
             "elevation": 53,
             "elevationUnit": "meters",
-            "description": "The highest natural point on Södermalm island in Stockholm, a popular viewpoint overlooking the city skyline and Lake Mälaren."
+            "description": "The highest natural point on S\u00f6dermalm island in Stockholm, a popular viewpoint overlooking the city skyline and Lake M\u00e4laren."
         },
         {
             "name": "Mitake-san",
             "country": "Japan",
             "latitude": 35.8017,
-            "longitude": 139.1500,
+            "longitude": 139.15,
             "elevation": 929,
             "elevationUnit": "meters",
             "description": "A sacred mountain west of Tokyo in the Chichibu-Tama-Kai National Park, home to the ancient Musashi-Mitake Shrine."
+        },
+        {
+            "name": "Rogers Rock",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6006,
+            "longitude": -73.4892,
+            "elevation": 313,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Defiance",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8389,
+            "longitude": -73.3889,
+            "elevation": 260,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Black Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.5478,
+            "longitude": -73.5564,
+            "elevation": 810,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Lee",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 34.1347,
+            "longitude": -118.3215,
+            "elevation": 519,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Geyser Hill",
+            "country": "United States",
+            "state": "WY",
+            "latitude": 44.4605,
+            "longitude": -110.8281,
+            "elevation": 2249,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Cook Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8167,
+            "longitude": -73.4333,
+            "elevation": 376,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "The Pinnacle (NY)",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8,
+            "longitude": -73.45,
+            "elevation": 408,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Eagles Crag",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.35,
+            "longitude": -68.19,
+            "elevation": 214,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Dike Peak",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.3389,
+            "longitude": -68.2028,
+            "elevation": 330,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Champlain Mountain",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.3531,
+            "longitude": -68.1928,
+            "elevation": 322,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Halfway Mountain",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.34,
+            "longitude": -68.21,
+            "elevation": 152,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "The Beehive",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.3397,
+            "longitude": -68.1867,
+            "elevation": 164,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Cadillac Mountain",
+            "country": "United States",
+            "state": "ME",
+            "latitude": 44.3525,
+            "longitude": -68.2253,
+            "elevation": 466,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Chisos Mountains - South Rim",
+            "country": "United States",
+            "state": "TX",
+            "latitude": 29.245,
+            "longitude": -103.3,
+            "elevation": 2256,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Helix",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 32.7642,
+            "longitude": -116.9714,
+            "elevation": 419,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Council Crest",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 45.4981,
+            "longitude": -122.7078,
+            "elevation": 328,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Jump Off Joe",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2833,
+            "longitude": -119.3167,
+            "elevation": 671,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Badger Mountain",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2194,
+            "longitude": -119.3028,
+            "elevation": 485,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Candy Mountain",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2361,
+            "longitude": -119.2833,
+            "elevation": 426,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "McBee Hill",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.25,
+            "longitude": -119.35,
+            "elevation": 590,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Chandler Butte",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2167,
+            "longitude": -119.3667,
+            "elevation": 624,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Hyak",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 47.3917,
+            "longitude": -121.3917,
+            "elevation": 1143,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Twin Sisters",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.25,
+            "longitude": -119.2667,
+            "elevation": 193,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Lees Peak",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 45.3333,
+            "longitude": -121.7,
+            "elevation": 2634,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mailbox Peak",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 47.4678,
+            "longitude": -121.6747,
+            "elevation": 1475,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Ruth",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.95,
+            "longitude": -118.2167,
+            "elevation": 2623,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Rock Creek Butte",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.95,
+            "longitude": -118.2333,
+            "elevation": 2777,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Crystal Mountain",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.935,
+            "longitude": -121.5014,
+            "elevation": 2136,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Grand View Hill",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 37.7558,
+            "longitude": -122.4711,
+            "elevation": 203,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Adams",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2025,
+            "longitude": -121.4907,
+            "elevation": 3743,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Perry Monument",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 46.2833,
+            "longitude": -119.2833,
+            "elevation": 364,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Crescent Mountain",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.4167,
+            "longitude": -118.95,
+            "elevation": 1753,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Middle Pyramid",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.4,
+            "longitude": -118.9333,
+            "elevation": 1715,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Scar Mountain",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.3833,
+            "longitude": -118.9167,
+            "elevation": 1538,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Trappers Butte",
+            "country": "United States",
+            "state": "OR",
+            "latitude": 44.3667,
+            "longitude": -118.9,
+            "elevation": 1511,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Sanitas",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 40.0189,
+            "longitude": -105.2978,
+            "elevation": 2083,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Green Mountain (Boulder)",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9928,
+            "longitude": -105.2975,
+            "elevation": 2480,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "South Boulder Peak",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9553,
+            "longitude": -105.2978,
+            "elevation": 2603,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Bear Peak",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9597,
+            "longitude": -105.2928,
+            "elevation": 2579,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Flagstaff Mountain",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 40.0,
+            "longitude": -105.2933,
+            "elevation": 2134,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Brace Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 42.0461,
+            "longitude": -73.49,
+            "elevation": 707,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Brace Mountain - North Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 42.0528,
+            "longitude": -73.4917,
+            "elevation": 678,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Brace Mountain - South Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 42.04,
+            "longitude": -73.4883,
+            "elevation": 702,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Table Mountain",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.75,
+            "longitude": -105.2167,
+            "elevation": 1890,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Hang Gliders Cliff",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8333,
+            "longitude": -73.3833,
+            "elevation": 402,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "High Point Cliff",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8333,
+            "longitude": -73.3833,
+            "elevation": 396,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Tom",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 37.35,
+            "longitude": -118.65,
+            "elevation": 4163,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Sheridan",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.2278,
+            "longitude": -106.1639,
+            "elevation": 4193,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Tigger Peak",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 38.7333,
+            "longitude": -106.25,
+            "elevation": 4045,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Fivemile Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6833,
+            "longitude": -73.6167,
+            "elevation": 687,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Huckleberry Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6833,
+            "longitude": -73.6333,
+            "elevation": 683,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Brown Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6667,
+            "longitude": -73.65,
+            "elevation": 606,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Fifth Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.65,
+            "longitude": -73.65,
+            "elevation": 553,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Fourth Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6417,
+            "longitude": -73.65,
+            "elevation": 427,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Third Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6333,
+            "longitude": -73.65,
+            "elevation": 486,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "French Point Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6167,
+            "longitude": -73.65,
+            "elevation": 535,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "First Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.6083,
+            "longitude": -73.65,
+            "elevation": 486,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Little Haystack",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 44.1083,
+            "longitude": -73.9083,
+            "elevation": 1434,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Hedgehog Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 44.1583,
+            "longitude": -73.975,
+            "elevation": 1031,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Bennett Hill",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8,
+            "longitude": -73.4167,
+            "elevation": 349,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "The Pinnacle (PA)",
+            "country": "United States",
+            "state": "PA",
+            "latitude": 40.5833,
+            "longitude": -76.0167,
+            "elevation": 496,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Linnean Hill",
+            "country": "United States",
+            "state": "DC",
+            "latitude": 38.95,
+            "longitude": -77.05,
+            "elevation": 49,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Panorama Peak",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 37.7167,
+            "longitude": -119.5333,
+            "elevation": 1583,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Warren Point",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 33.9833,
+            "longitude": -116.0333,
+            "elevation": 1556,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Jackson",
+            "country": "United States",
+            "state": "IN",
+            "latitude": 39.4833,
+            "longitude": -85.3833,
+            "elevation": 229,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Holden",
+            "country": "United States",
+            "state": "IN",
+            "latitude": 39.4833,
+            "longitude": -85.3833,
+            "elevation": 233,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Tom",
+            "country": "United States",
+            "state": "IN",
+            "latitude": 39.4833,
+            "longitude": -85.3833,
+            "elevation": 232,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Point Reno",
+            "country": "United States",
+            "state": "DC",
+            "latitude": 38.95,
+            "longitude": -77.0833,
+            "elevation": 126,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Backbone Mountain",
+            "country": "United States",
+            "state": "MD",
+            "latitude": 39.2383,
+            "longitude": -79.4876,
+            "elevation": 1024,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Hawksbill",
+            "country": "United States",
+            "state": "VA",
+            "latitude": 38.5556,
+            "longitude": -78.3806,
+            "elevation": 1234,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Breeze Hill",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 40.5833,
+            "longitude": -73.9667,
+            "elevation": 3,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Sullivan Hill",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 40.5833,
+            "longitude": -73.95,
+            "elevation": 5,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "San Bruno Mountain",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 37.6861,
+            "longitude": -122.4339,
+            "elevation": 400,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "San Bruno State and County Park High Point",
+            "country": "United States",
+            "state": "CA",
+            "latitude": 37.6833,
+            "longitude": -122.4333,
+            "elevation": 387,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Massai Point",
+            "country": "United States",
+            "state": "AZ",
+            "latitude": 32.0,
+            "longitude": -109.8667,
+            "elevation": 2097,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Camelback Mountain",
+            "country": "United States",
+            "state": "AZ",
+            "latitude": 33.5228,
+            "longitude": -111.9733,
+            "elevation": 825,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Overlook Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 42.0833,
+            "longitude": -74.0833,
+            "elevation": 958,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Mount Tammany",
+            "country": "United States",
+            "state": "NJ",
+            "latitude": 40.9694,
+            "longitude": -75.125,
+            "elevation": 464,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "West Tiger Mountain #3",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 47.5,
+            "longitude": -121.9833,
+            "elevation": 769,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "West Tiger Mountain #2",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 47.5028,
+            "longitude": -121.9917,
+            "elevation": 840,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "West Tiger Mountain",
+            "country": "United States",
+            "state": "WA",
+            "latitude": 47.5056,
+            "longitude": -122.0,
+            "elevation": 898,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Quarry Mountain",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9833,
+            "longitude": -105.3333,
+            "elevation": 2517,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Reflection Point",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 40.0,
+            "longitude": -105.2667,
+            "elevation": 1853,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Peak 7233",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9833,
+            "longitude": -105.3167,
+            "elevation": 2205,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Manitou Incline",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 38.8583,
+            "longitude": -104.9417,
+            "elevation": 2621,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Castle Rock",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.3722,
+            "longitude": -104.8561,
+            "elevation": 1926,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Lookout Mountain",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.7333,
+            "longitude": -105.25,
+            "elevation": 2248,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Colorow Hill",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9833,
+            "longitude": -105.2833,
+            "elevation": 2304,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Saint Vrain Mountain",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 40.15,
+            "longitude": -105.5667,
+            "elevation": 3711,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Second Flatiron",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9917,
+            "longitude": -105.2833,
+            "elevation": 2170,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Arthurs Rock",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 40.5833,
+            "longitude": -105.1833,
+            "elevation": 2067,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Capulin Mountain",
+            "country": "United States",
+            "state": "NM",
+            "latitude": 36.7833,
+            "longitude": -104.1,
+            "elevation": 2491,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Emory Peak",
+            "country": "United States",
+            "state": "TX",
+            "latitude": 29.2467,
+            "longitude": -103.3017,
+            "elevation": 2387,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Green Mountain (Lakewood)",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.6917,
+            "longitude": -105.1667,
+            "elevation": 2091,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "South Point - Big Island",
+            "country": "United States",
+            "state": "HI",
+            "latitude": 18.9117,
+            "longitude": -155.6833,
+            "elevation": 0,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Pu'u Mahana",
+            "country": "United States",
+            "state": "HI",
+            "latitude": 18.9333,
+            "longitude": -155.65,
+            "elevation": 24,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Great Dune",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 37.7833,
+            "longitude": -105.5167,
+            "elevation": 2642,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Lake of the Clouds Overlook",
+            "country": "United States",
+            "state": "MI",
+            "latitude": 46.7833,
+            "longitude": -89.7833,
+            "elevation": 425,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Thomas Rock Scenic Overlook",
+            "country": "United States",
+            "state": "MI",
+            "latitude": 46.5833,
+            "longitude": -87.8833,
+            "elevation": 309,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Shauger Hill",
+            "country": "United States",
+            "state": "MI",
+            "latitude": 42.4167,
+            "longitude": -84.3667,
+            "elevation": 334,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Thomas Mountain - Cabin Site",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8,
+            "longitude": -73.8333,
+            "elevation": 580,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Schroon Peak",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8,
+            "longitude": -73.8167,
+            "elevation": 581,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Edgecomb Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8,
+            "longitude": -73.8,
+            "elevation": 561,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Cat Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.7833,
+            "longitude": -73.7833,
+            "elevation": 596,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Indian Head",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 44.0833,
+            "longitude": -73.85,
+            "elevation": 828,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Fish Hawk Cliffs",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 44.0833,
+            "longitude": -73.85,
+            "elevation": 750,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Prospect Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.3333,
+            "longitude": -73.7,
+            "elevation": 619,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Treadway Mountain",
+            "country": "United States",
+            "state": "NY",
+            "latitude": 43.8167,
+            "longitude": -73.5833,
+            "elevation": 690,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Monks Mound",
+            "country": "United States",
+            "state": "IL",
+            "latitude": 38.6608,
+            "longitude": -90.0622,
+            "elevation": 158,
+            "elevationUnit": "meters"
+        },
+        {
+            "name": "Nugget Hill",
+            "country": "United States",
+            "state": "CO",
+            "latitude": 39.9833,
+            "longitude": -105.35,
+            "elevation": 2619,
+            "elevationUnit": "meters"
         }
     ]
 }

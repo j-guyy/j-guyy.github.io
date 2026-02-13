@@ -187,8 +187,10 @@
         <select id="route-type">
             <option value="interstate">Interstate</option>
             <option value="us-highway">US Highway</option>
+            <option value="state">State Route</option>
         </select>
         <input type="text" id="route-number" placeholder="90" style="width:70px;" value="90">
+        <input type="text" id="route-state" placeholder="State (e.g. CO)" style="width:70px;display:none;">
         <button onclick="fetchReference()">Show Route</button>
         <button class="green" id="split-btn" onclick="toggleSplitMode()">Start Splitting</button>
         <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;cursor:pointer;">
@@ -288,20 +290,36 @@
             return null;
         }
 
+        // Show/hide state input based on route type
+        document.getElementById('route-type').addEventListener('change', function() {
+            document.getElementById('route-state').style.display = this.value === 'state' ? '' : 'none';
+        });
+
         // ========== REFERENCE LINE FROM OSM ==========
         async function fetchReference() {
             const type = document.getElementById('route-type').value;
             const num = document.getElementById('route-number').value.trim();
             if (!num) return;
-            routeLabel = type === 'interstate' ? `I-${num}` : `US-${num}`;
+
+            let network;
+            if (type === 'interstate') {
+                network = 'US:I';
+                routeLabel = `I-${num}`;
+            } else if (type === 'us-highway') {
+                network = 'US:US';
+                routeLabel = `US-${num}`;
+            } else {
+                const st = document.getElementById('route-state').value.trim().toUpperCase();
+                if (!st) { document.getElementById('status').textContent = 'Enter a state abbreviation (e.g. CO, NY)'; return; }
+                network = `US:${st}`;
+                routeLabel = `${st}-${num}`;
+            }
 
             refLayer.clearLayers();
             refPoints = [];
             document.getElementById('status').textContent = `Fetching ${routeLabel} from OSM...`;
 
-            const network = type === 'interstate' ? 'US:I' : 'US:US';
-            // Use 'out geom' to get geometry inline — much faster than (._;>;) node expansion
-            // Query both national and state-level relations (OSM often splits by state)
+            // Query both exact network and state-level sub-networks
             const query = `[out:json][timeout:180];(relation["type"="route"]["route"="road"]["network"="${network}"]["ref"="${num}"];relation["type"="route"]["route"="road"]["network"~"^${network}:"]["ref"="${num}"];);out geom;`;
 
             const endpoints = [

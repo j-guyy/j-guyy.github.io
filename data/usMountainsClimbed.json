@@ -1,0 +1,1506 @@
+[
+    {
+        "name": "Rogers Rock",
+        "state": "NY",
+        "elevationFeet": 1027,
+        "elevationMeters": 313,
+        "latitude": 43.6006,
+        "longitude": -73.4892,
+        "firstAscent": "2015-07-03"
+    },
+    {
+        "name": "Mount Defiance",
+        "state": "NY",
+        "elevationFeet": 854,
+        "elevationMeters": 260,
+        "latitude": 43.8389,
+        "longitude": -73.3889,
+        "firstAscent": "2016-07-05"
+    },
+    {
+        "name": "Black Mountain",
+        "state": "NY",
+        "elevationFeet": 2659,
+        "elevationMeters": 810,
+        "latitude": 43.5478,
+        "longitude": -73.5564,
+        "firstAscent": "2018-08-11"
+    },
+    {
+        "name": "Mount Lee",
+        "state": "CA",
+        "elevationFeet": 1703,
+        "elevationMeters": 519,
+        "latitude": 34.1347,
+        "longitude": -118.3215,
+        "firstAscent": "2019-12-28"
+    },
+    {
+        "name": "Ebright Azimuth",
+        "state": "DE",
+        "elevationFeet": 450,
+        "elevationMeters": 137,
+        "latitude": 39.8362,
+        "longitude": -75.5220,
+        "firstAscent": "2020-06-08"
+    },
+    {
+        "name": "Geyser Hill",
+        "state": "WY",
+        "elevationFeet": 7379,
+        "elevationMeters": 2249,
+        "latitude": 44.4605,
+        "longitude": -110.8281,
+        "firstAscent": "2021-06-02"
+    },
+    {
+        "name": "Cook Mountain",
+        "state": "NY",
+        "elevationFeet": 1234,
+        "elevationMeters": 376,
+        "latitude": 43.8167,
+        "longitude": -73.4333,
+        "firstAscent": "2021-07-01"
+    },
+    {
+        "name": "The Pinnacle (NY)",
+        "state": "NY",
+        "elevationFeet": 1338,
+        "elevationMeters": 408,
+        "latitude": 43.8000,
+        "longitude": -73.4500,
+        "firstAscent": "2021-07-04"
+    },
+    {
+        "name": "Eagles Crag",
+        "state": "ME",
+        "elevationFeet": 702,
+        "elevationMeters": 214,
+        "latitude": 44.3500,
+        "longitude": -68.1900,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "Dike Peak",
+        "state": "ME",
+        "elevationFeet": 1082,
+        "elevationMeters": 330,
+        "latitude": 44.3389,
+        "longitude": -68.2028,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "Champlain Mountain",
+        "state": "ME",
+        "elevationFeet": 1057,
+        "elevationMeters": 322,
+        "latitude": 44.3531,
+        "longitude": -68.1928,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "Halfway Mountain",
+        "state": "ME",
+        "elevationFeet": 500,
+        "elevationMeters": 152,
+        "latitude": 44.3400,
+        "longitude": -68.2100,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "The Beehive",
+        "state": "ME",
+        "elevationFeet": 539,
+        "elevationMeters": 164,
+        "latitude": 44.3397,
+        "longitude": -68.1867,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "Cadillac Mountain",
+        "state": "ME",
+        "elevationFeet": 1529,
+        "elevationMeters": 466,
+        "latitude": 44.3525,
+        "longitude": -68.2253,
+        "firstAscent": "2021-08-06"
+    },
+    {
+        "name": "Chisos Mountains - South Rim",
+        "state": "TX",
+        "elevationFeet": 7403,
+        "elevationMeters": 2256,
+        "latitude": 29.2450,
+        "longitude": -103.3000,
+        "firstAscent": "2021-10-18"
+    },
+    {
+        "name": "Guadalupe Peak",
+        "state": "TX",
+        "elevationFeet": 8750,
+        "elevationMeters": 2667,
+        "latitude": 31.8914,
+        "longitude": -104.8606,
+        "firstAscent": "2021-10-20"
+    },
+    {
+        "name": "Mount Helix",
+        "state": "CA",
+        "elevationFeet": 1375,
+        "elevationMeters": 419,
+        "latitude": 32.7642,
+        "longitude": -116.9714,
+        "firstAscent": "2021-11-30"
+    },
+    {
+        "name": "Council Crest",
+        "state": "OR",
+        "elevationFeet": 1077,
+        "elevationMeters": 328,
+        "latitude": 45.4981,
+        "longitude": -122.7078,
+        "firstAscent": "2021-12-04"
+    },
+    {
+        "name": "Jump Off Joe",
+        "state": "WA",
+        "elevationFeet": 2201,
+        "elevationMeters": 671,
+        "latitude": 46.2833,
+        "longitude": -119.3167,
+        "firstAscent": "2021-12-17"
+    },
+    {
+        "name": "Badger Mountain",
+        "state": "WA",
+        "elevationFeet": 1591,
+        "elevationMeters": 485,
+        "latitude": 46.2194,
+        "longitude": -119.3028,
+        "firstAscent": "2021-12-18"
+    },
+    {
+        "name": "Candy Mountain",
+        "state": "WA",
+        "elevationFeet": 1396,
+        "elevationMeters": 426,
+        "latitude": 46.2361,
+        "longitude": -119.2833,
+        "firstAscent": "2021-12-23"
+    },
+    {
+        "name": "McBee Hill",
+        "state": "WA",
+        "elevationFeet": 1937,
+        "elevationMeters": 590,
+        "latitude": 46.2500,
+        "longitude": -119.3500,
+        "firstAscent": "2022-01-29"
+    },
+    {
+        "name": "Chandler Butte",
+        "state": "WA",
+        "elevationFeet": 2048,
+        "elevationMeters": 624,
+        "latitude": 46.2167,
+        "longitude": -119.3667,
+        "firstAscent": "2022-02-19"
+    },
+    {
+        "name": "Mount Hyak",
+        "state": "WA",
+        "elevationFeet": 3750,
+        "elevationMeters": 1143,
+        "latitude": 47.3917,
+        "longitude": -121.3917,
+        "firstAscent": "2022-03-12"
+    },
+    {
+        "name": "Twin Sisters",
+        "state": "WA",
+        "elevationFeet": 633,
+        "elevationMeters": 193,
+        "latitude": 46.2500,
+        "longitude": -119.2667,
+        "firstAscent": "2022-04-10"
+    },
+    {
+        "name": "Lees Peak",
+        "state": "OR",
+        "elevationFeet": 8641,
+        "elevationMeters": 2634,
+        "latitude": 45.3333,
+        "longitude": -121.7000,
+        "firstAscent": "2022-05-14"
+    },
+    {
+        "name": "Mount Hood",
+        "state": "OR",
+        "elevationFeet": 11244,
+        "elevationMeters": 3427,
+        "latitude": 45.3735,
+        "longitude": -121.6959,
+        "firstAscent": "2022-06-21"
+    },
+    {
+        "name": "Mailbox Peak",
+        "state": "WA",
+        "elevationFeet": 4840,
+        "elevationMeters": 1475,
+        "latitude": 47.4678,
+        "longitude": -121.6747,
+        "firstAscent": "2022-06-25"
+    },
+    {
+        "name": "Mount Ruth",
+        "state": "OR",
+        "elevationFeet": 8605,
+        "elevationMeters": 2623,
+        "latitude": 44.9500,
+        "longitude": -118.2167,
+        "firstAscent": "2022-07-23"
+    },
+    {
+        "name": "Rock Creek Butte",
+        "state": "OR",
+        "elevationFeet": 9110,
+        "elevationMeters": 2777,
+        "latitude": 44.9500,
+        "longitude": -118.2333,
+        "firstAscent": "2022-07-23"
+    },
+    {
+        "name": "Crystal Mountain",
+        "state": "WA",
+        "elevationFeet": 7007,
+        "elevationMeters": 2136,
+        "latitude": 46.9350,
+        "longitude": -121.5014,
+        "firstAscent": "2022-07-31"
+    },
+    {
+        "name": "Grand View Hill",
+        "state": "CA",
+        "elevationFeet": 666,
+        "elevationMeters": 203,
+        "latitude": 37.7558,
+        "longitude": -122.4711,
+        "firstAscent": "2022-08-07"
+    },
+    {
+        "name": "Mount Adams",
+        "state": "WA",
+        "elevationFeet": 12280,
+        "elevationMeters": 3743,
+        "latitude": 46.2025,
+        "longitude": -121.4907,
+        "firstAscent": "2022-08-28"
+    },
+    {
+        "name": "Perry Monument",
+        "state": "WA",
+        "elevationFeet": 1196,
+        "elevationMeters": 364,
+        "latitude": 46.2833,
+        "longitude": -119.2833,
+        "firstAscent": "2022-10-02"
+    },
+    {
+        "name": "Crescent Mountain",
+        "state": "OR",
+        "elevationFeet": 5752,
+        "elevationMeters": 1753,
+        "latitude": 44.4167,
+        "longitude": -118.9500,
+        "firstAscent": "2022-10-15"
+    },
+    {
+        "name": "Middle Pyramid",
+        "state": "OR",
+        "elevationFeet": 5626,
+        "elevationMeters": 1715,
+        "latitude": 44.4000,
+        "longitude": -118.9333,
+        "firstAscent": "2022-10-15"
+    },
+    {
+        "name": "Scar Mountain",
+        "state": "OR",
+        "elevationFeet": 5046,
+        "elevationMeters": 1538,
+        "latitude": 44.3833,
+        "longitude": -118.9167,
+        "firstAscent": "2022-10-15"
+    },
+    {
+        "name": "Trappers Butte",
+        "state": "OR",
+        "elevationFeet": 4958,
+        "elevationMeters": 1511,
+        "latitude": 44.3667,
+        "longitude": -118.9000,
+        "firstAscent": "2022-10-15"
+    },
+    {
+        "name": "Mount Sanitas",
+        "state": "CO",
+        "elevationFeet": 6835,
+        "elevationMeters": 2083,
+        "latitude": 40.0189,
+        "longitude": -105.2978,
+        "firstAscent": "2022-11-06"
+    },
+    {
+        "name": "Green Mountain (Boulder)",
+        "state": "CO",
+        "elevationFeet": 8136,
+        "elevationMeters": 2480,
+        "latitude": 39.9928,
+        "longitude": -105.2975,
+        "firstAscent": "2022-11-07"
+    },
+    {
+        "name": "South Boulder Peak",
+        "state": "CO",
+        "elevationFeet": 8541,
+        "elevationMeters": 2603,
+        "latitude": 39.9553,
+        "longitude": -105.2978,
+        "firstAscent": "2022-11-12"
+    },
+    {
+        "name": "Bear Peak",
+        "state": "CO",
+        "elevationFeet": 8460,
+        "elevationMeters": 2579,
+        "latitude": 39.9597,
+        "longitude": -105.2928,
+        "firstAscent": "2022-11-12"
+    },
+    {
+        "name": "Flagstaff Mountain",
+        "state": "CO",
+        "elevationFeet": 7000,
+        "elevationMeters": 2134,
+        "latitude": 40.0000,
+        "longitude": -105.2933,
+        "firstAscent": "2022-11-12"
+    },
+    {
+        "name": "Mount Frissell - South Slope",
+        "state": "CT",
+        "elevationFeet": 2382,
+        "elevationMeters": 726,
+        "latitude": 42.0497,
+        "longitude": -73.4834,
+        "firstAscent": "2022-11-26"
+    },
+    {
+        "name": "Brace Mountain",
+        "state": "NY",
+        "elevationFeet": 2318,
+        "elevationMeters": 707,
+        "latitude": 42.0461,
+        "longitude": -73.4900,
+        "firstAscent": "2022-11-26"
+    },
+    {
+        "name": "Brace Mountain - North Peak",
+        "state": "NY",
+        "elevationFeet": 2224,
+        "elevationMeters": 678,
+        "latitude": 42.0528,
+        "longitude": -73.4917,
+        "firstAscent": "2022-11-26"
+    },
+    {
+        "name": "Brace Mountain - South Peak",
+        "state": "NY",
+        "elevationFeet": 2303,
+        "elevationMeters": 702,
+        "latitude": 42.0400,
+        "longitude": -73.4883,
+        "firstAscent": "2022-11-26"
+    },
+    {
+        "name": "Table Mountain",
+        "state": "CO",
+        "elevationFeet": 6200,
+        "elevationMeters": 1890,
+        "latitude": 39.7500,
+        "longitude": -105.2167,
+        "firstAscent": "2022-12-09"
+    },
+    {
+        "name": "Hang Gliders Cliff",
+        "state": "NY",
+        "elevationFeet": 1320,
+        "elevationMeters": 402,
+        "latitude": 43.8333,
+        "longitude": -73.3833,
+        "firstAscent": "2023-02-07"
+    },
+    {
+        "name": "High Point Cliff",
+        "state": "NY",
+        "elevationFeet": 1299,
+        "elevationMeters": 396,
+        "latitude": 43.8333,
+        "longitude": -73.3833,
+        "firstAscent": "2023-02-07"
+    },
+    {
+        "name": "Mount Tom",
+        "state": "CA",
+        "elevationFeet": 13658,
+        "elevationMeters": 4163,
+        "latitude": 37.3500,
+        "longitude": -118.6500,
+        "firstAscent": "2023-04-23"
+    },
+    {
+        "name": "Mount Bierstadt",
+        "state": "CO",
+        "elevationFeet": 14066,
+        "elevationMeters": 4287,
+        "latitude": 39.5828,
+        "longitude": -105.6686,
+        "firstAscent": "2023-04-29"
+    },
+    {
+        "name": "Mount Sherman",
+        "state": "CO",
+        "elevationFeet": 14042,
+        "elevationMeters": 4280,
+        "latitude": 39.2250,
+        "longitude": -106.1697,
+        "firstAscent": "2023-06-03"
+    },
+    {
+        "name": "Mount Sheridan",
+        "state": "CO",
+        "elevationFeet": 13756,
+        "elevationMeters": 4193,
+        "latitude": 39.2278,
+        "longitude": -106.1639,
+        "firstAscent": "2023-06-03"
+    },
+    {
+        "name": "Quandary Peak",
+        "state": "CO",
+        "elevationFeet": 14271,
+        "elevationMeters": 4350,
+        "latitude": 39.3972,
+        "longitude": -106.1064,
+        "firstAscent": "2023-06-10"
+    },
+    {
+        "name": "Mount Princeton",
+        "state": "CO",
+        "elevationFeet": 14200,
+        "elevationMeters": 4328,
+        "latitude": 38.7492,
+        "longitude": -106.2422,
+        "firstAscent": "2023-06-18"
+    },
+    {
+        "name": "Tigger Peak",
+        "state": "CO",
+        "elevationFeet": 13270,
+        "elevationMeters": 4045,
+        "latitude": 38.7333,
+        "longitude": -106.2500,
+        "firstAscent": "2023-06-18"
+    },
+    {
+        "name": "Fivemile Mountain",
+        "state": "NY",
+        "elevationFeet": 2255,
+        "elevationMeters": 687,
+        "latitude": 43.6833,
+        "longitude": -73.6167,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Huckleberry Mountain",
+        "state": "NY",
+        "elevationFeet": 2242,
+        "elevationMeters": 683,
+        "latitude": 43.6833,
+        "longitude": -73.6333,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Brown Mountain",
+        "state": "NY",
+        "elevationFeet": 1987,
+        "elevationMeters": 606,
+        "latitude": 43.6667,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Fifth Peak",
+        "state": "NY",
+        "elevationFeet": 1814,
+        "elevationMeters": 553,
+        "latitude": 43.6500,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Fourth Peak",
+        "state": "NY",
+        "elevationFeet": 1400,
+        "elevationMeters": 427,
+        "latitude": 43.6417,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Third Peak",
+        "state": "NY",
+        "elevationFeet": 1595,
+        "elevationMeters": 486,
+        "latitude": 43.6333,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "French Point Mountain",
+        "state": "NY",
+        "elevationFeet": 1756,
+        "elevationMeters": 535,
+        "latitude": 43.6167,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "First Peak",
+        "state": "NY",
+        "elevationFeet": 1593,
+        "elevationMeters": 486,
+        "latitude": 43.6083,
+        "longitude": -73.6500,
+        "firstAscent": "2023-06-24"
+    },
+    {
+        "name": "Mount Haystack",
+        "state": "NY",
+        "elevationFeet": 4948,
+        "elevationMeters": 1508,
+        "latitude": 44.1056,
+        "longitude": -73.9000,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Little Haystack",
+        "state": "NY",
+        "elevationFeet": 4705,
+        "elevationMeters": 1434,
+        "latitude": 44.1083,
+        "longitude": -73.9083,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Basin Mountain",
+        "state": "NY",
+        "elevationFeet": 4857,
+        "elevationMeters": 1480,
+        "latitude": 44.1208,
+        "longitude": -73.9264,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Saddleback Mountain",
+        "state": "NY",
+        "elevationFeet": 4540,
+        "elevationMeters": 1384,
+        "latitude": 44.1264,
+        "longitude": -73.9361,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Gothics",
+        "state": "NY",
+        "elevationFeet": 4742,
+        "elevationMeters": 1445,
+        "latitude": 44.1278,
+        "longitude": -73.9472,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Armstrong Mountain",
+        "state": "NY",
+        "elevationFeet": 4453,
+        "elevationMeters": 1357,
+        "latitude": 44.1333,
+        "longitude": -73.9583,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Upper Wolfjaw Mountain",
+        "state": "NY",
+        "elevationFeet": 4224,
+        "elevationMeters": 1287,
+        "latitude": 44.1389,
+        "longitude": -73.9639,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Lower Wolfjaw Mountain",
+        "state": "NY",
+        "elevationFeet": 4193,
+        "elevationMeters": 1278,
+        "latitude": 44.1472,
+        "longitude": -73.9667,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Hedgehog Mountain",
+        "state": "NY",
+        "elevationFeet": 3382,
+        "elevationMeters": 1031,
+        "latitude": 44.1583,
+        "longitude": -73.9750,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Mount Marcy",
+        "state": "NY",
+        "elevationFeet": 5344,
+        "elevationMeters": 1629,
+        "latitude": 44.1121,
+        "longitude": -73.9237,
+        "firstAscent": "2023-07-03"
+    },
+    {
+        "name": "Bennett Hill",
+        "state": "NY",
+        "elevationFeet": 1144,
+        "elevationMeters": 349,
+        "latitude": 43.8000,
+        "longitude": -73.4167,
+        "firstAscent": "2023-07-21"
+    },
+    {
+        "name": "The Pinnacle (PA)",
+        "state": "PA",
+        "elevationFeet": 1629,
+        "elevationMeters": 496,
+        "latitude": 40.5833,
+        "longitude": -76.0167,
+        "firstAscent": "2023-07-22"
+    },
+    {
+        "name": "Grays Peak",
+        "state": "CO",
+        "elevationFeet": 14276,
+        "elevationMeters": 4351,
+        "latitude": 39.6339,
+        "longitude": -105.8178,
+        "firstAscent": "2023-08-13"
+    },
+    {
+        "name": "Torreys Peak",
+        "state": "CO",
+        "elevationFeet": 14272,
+        "elevationMeters": 4350,
+        "latitude": 39.6436,
+        "longitude": -105.8211,
+        "firstAscent": "2023-08-13"
+    },
+    {
+        "name": "Mount Democrat",
+        "state": "CO",
+        "elevationFeet": 14154,
+        "elevationMeters": 4314,
+        "latitude": 39.3394,
+        "longitude": -106.1397,
+        "firstAscent": "2023-09-16"
+    },
+    {
+        "name": "Mount Cameron",
+        "state": "CO",
+        "elevationFeet": 14248,
+        "elevationMeters": 4343,
+        "latitude": 39.3469,
+        "longitude": -106.1186,
+        "firstAscent": "2023-09-16"
+    },
+    {
+        "name": "Mount Lincoln",
+        "state": "CO",
+        "elevationFeet": 14292,
+        "elevationMeters": 4356,
+        "latitude": 39.3514,
+        "longitude": -106.1114,
+        "firstAscent": "2023-09-16"
+    },
+    {
+        "name": "Mount Bross",
+        "state": "CO",
+        "elevationFeet": 14178,
+        "elevationMeters": 4321,
+        "latitude": 39.3353,
+        "longitude": -106.1075,
+        "firstAscent": "2023-09-16"
+    },
+    {
+        "name": "Black Elk Peak",
+        "state": "SD",
+        "elevationFeet": 7231,
+        "elevationMeters": 2204,
+        "latitude": 43.8662,
+        "longitude": -103.7516,
+        "firstAscent": "2023-10-21"
+    },
+    {
+        "name": "Linnean Hill",
+        "state": "DC",
+        "elevationFeet": 160,
+        "elevationMeters": 49,
+        "latitude": 38.9500,
+        "longitude": -77.0500,
+        "firstAscent": "2023-11-05"
+    },
+    {
+        "name": "Giant Mountain",
+        "state": "NY",
+        "elevationFeet": 4629,
+        "elevationMeters": 1411,
+        "latitude": 44.1611,
+        "longitude": -73.7208,
+        "firstAscent": "2023-11-22"
+    },
+    {
+        "name": "Mount Greylock",
+        "state": "MA",
+        "elevationFeet": 3492,
+        "elevationMeters": 1064,
+        "latitude": 42.6376,
+        "longitude": -73.1662,
+        "firstAscent": "2023-11-25"
+    },
+    {
+        "name": "Panorama Peak",
+        "state": "CA",
+        "elevationFeet": 5195,
+        "elevationMeters": 1583,
+        "latitude": 37.7167,
+        "longitude": -119.5333,
+        "firstAscent": "2023-12-16"
+    },
+    {
+        "name": "Warren Point",
+        "state": "CA",
+        "elevationFeet": 5103,
+        "elevationMeters": 1556,
+        "latitude": 33.9833,
+        "longitude": -116.0333,
+        "firstAscent": "2023-12-16"
+    },
+    {
+        "name": "Rocky Peak Ridge",
+        "state": "NY",
+        "elevationFeet": 4406,
+        "elevationMeters": 1343,
+        "latitude": 44.1528,
+        "longitude": -73.7000,
+        "firstAscent": "2023-12-26"
+    },
+    {
+        "name": "Mount Jackson",
+        "state": "IN",
+        "elevationFeet": 750,
+        "elevationMeters": 229,
+        "latitude": 39.4833,
+        "longitude": -85.3833,
+        "firstAscent": "2024-03-24"
+    },
+    {
+        "name": "Mount Holden",
+        "state": "IN",
+        "elevationFeet": 763,
+        "elevationMeters": 233,
+        "latitude": 39.4833,
+        "longitude": -85.3833,
+        "firstAscent": "2024-03-24"
+    },
+    {
+        "name": "Mount Tom",
+        "state": "IN",
+        "elevationFeet": 760,
+        "elevationMeters": 232,
+        "latitude": 39.4833,
+        "longitude": -85.3833,
+        "firstAscent": "2024-03-24"
+    },
+    {
+        "name": "Culebra Peak",
+        "state": "CO",
+        "elevationFeet": 14054,
+        "elevationMeters": 4284,
+        "latitude": 37.1222,
+        "longitude": -105.1856,
+        "firstAscent": "2024-04-13"
+    },
+    {
+        "name": "Point Reno",
+        "state": "DC",
+        "elevationFeet": 415,
+        "elevationMeters": 126,
+        "latitude": 38.9500,
+        "longitude": -77.0833,
+        "firstAscent": "2024-04-18"
+    },
+    {
+        "name": "Mount Davis",
+        "state": "PA",
+        "elevationFeet": 3213,
+        "elevationMeters": 979,
+        "latitude": 39.7861,
+        "longitude": -79.1347,
+        "firstAscent": "2024-04-20"
+    },
+    {
+        "name": "Backbone Mountain",
+        "state": "MD",
+        "elevationFeet": 3360,
+        "elevationMeters": 1024,
+        "latitude": 39.2383,
+        "longitude": -79.4876,
+        "firstAscent": "2024-04-20"
+    },
+    {
+        "name": "Spruce Knob",
+        "state": "WV",
+        "elevationFeet": 4864,
+        "elevationMeters": 1483,
+        "latitude": 38.6998,
+        "longitude": -79.5312,
+        "firstAscent": "2024-04-20"
+    },
+    {
+        "name": "Hawksbill",
+        "state": "VA",
+        "elevationFeet": 4048,
+        "elevationMeters": 1234,
+        "latitude": 38.5556,
+        "longitude": -78.3806,
+        "firstAscent": "2024-04-21"
+    },
+    {
+        "name": "Huron Peak",
+        "state": "CO",
+        "elevationFeet": 14006,
+        "elevationMeters": 4269,
+        "latitude": 38.9453,
+        "longitude": -106.4375,
+        "firstAscent": "2024-05-27"
+    },
+    {
+        "name": "Breeze Hill",
+        "state": "NY",
+        "elevationFeet": 11,
+        "elevationMeters": 3,
+        "latitude": 40.5833,
+        "longitude": -73.9667,
+        "firstAscent": "2024-06-23"
+    },
+    {
+        "name": "Sullivan Hill",
+        "state": "NY",
+        "elevationFeet": 17,
+        "elevationMeters": 5,
+        "latitude": 40.5833,
+        "longitude": -73.9500,
+        "firstAscent": "2024-06-24"
+    },
+    {
+        "name": "Wright Peak",
+        "state": "NY",
+        "elevationFeet": 4582,
+        "elevationMeters": 1396,
+        "latitude": 44.1500,
+        "longitude": -73.9833,
+        "firstAscent": "2024-07-05"
+    },
+    {
+        "name": "Algonquin Peak",
+        "state": "NY",
+        "elevationFeet": 5115,
+        "elevationMeters": 1559,
+        "latitude": 44.1436,
+        "longitude": -73.9867,
+        "firstAscent": "2024-07-05"
+    },
+    {
+        "name": "Mount Mansfield",
+        "state": "VT",
+        "elevationFeet": 4395,
+        "elevationMeters": 1340,
+        "latitude": 44.5437,
+        "longitude": -72.8143,
+        "firstAscent": "2024-07-06"
+    },
+    {
+        "name": "Mount Oxford",
+        "state": "CO",
+        "elevationFeet": 14157,
+        "elevationMeters": 4315,
+        "latitude": 38.9647,
+        "longitude": -106.3383,
+        "firstAscent": "2024-07-13"
+    },
+    {
+        "name": "Mount Belford",
+        "state": "CO",
+        "elevationFeet": 14202,
+        "elevationMeters": 4329,
+        "latitude": 38.9608,
+        "longitude": -106.3608,
+        "firstAscent": "2024-07-13"
+    },
+    {
+        "name": "Mount Blue Sky",
+        "state": "CO",
+        "elevationFeet": 14267,
+        "elevationMeters": 4349,
+        "latitude": 39.5883,
+        "longitude": -105.6436,
+        "firstAscent": "2024-07-14"
+    },
+    {
+        "name": "Campbell Hill",
+        "state": "OH",
+        "elevationFeet": 1548,
+        "elevationMeters": 472,
+        "latitude": 40.3698,
+        "longitude": -83.7201,
+        "firstAscent": "2024-07-26"
+    },
+    {
+        "name": "Hoosier Hill",
+        "state": "IN",
+        "elevationFeet": 1257,
+        "elevationMeters": 383,
+        "latitude": 39.9478,
+        "longitude": -84.8519,
+        "firstAscent": "2024-07-26"
+    },
+    {
+        "name": "San Bruno Mountain",
+        "state": "CA",
+        "elevationFeet": 1313,
+        "elevationMeters": 400,
+        "latitude": 37.6861,
+        "longitude": -122.4339,
+        "firstAscent": "2024-08-03"
+    },
+    {
+        "name": "San Bruno State and County Park High Point",
+        "state": "CA",
+        "elevationFeet": 1270,
+        "elevationMeters": 387,
+        "latitude": 37.6833,
+        "longitude": -122.4333,
+        "firstAscent": "2024-08-03"
+    },
+    {
+        "name": "Mount Rainier",
+        "state": "WA",
+        "elevationFeet": 12632,
+        "elevationMeters": 3850,
+        "latitude": 46.8523,
+        "longitude": -121.7603,
+        "firstAscent": null,
+        "note": "Unsuccessful attempt 2024-08-16"
+    },
+    {
+        "name": "Sassafras Mountain",
+        "state": "SC",
+        "elevationFeet": 3553,
+        "elevationMeters": 1083,
+        "latitude": 35.0647,
+        "longitude": -82.7770,
+        "firstAscent": "2024-09-21"
+    },
+    {
+        "name": "Mount Mitchell",
+        "state": "NC",
+        "elevationFeet": 6684,
+        "elevationMeters": 2037,
+        "latitude": 35.7648,
+        "longitude": -82.2656,
+        "firstAscent": "2024-09-21"
+    },
+    {
+        "name": "Kuwohi",
+        "state": "NC/TN",
+        "elevationFeet": 6644,
+        "elevationMeters": 2025,
+        "latitude": 35.5629,
+        "longitude": -83.4985,
+        "firstAscent": "2024-09-22"
+    },
+    {
+        "name": "Black Mountain",
+        "state": "KY",
+        "elevationFeet": 4139,
+        "elevationMeters": 1262,
+        "latitude": 36.9143,
+        "longitude": -82.8940,
+        "firstAscent": "2024-09-22"
+    },
+    {
+        "name": "Mount Rogers",
+        "state": "VA",
+        "elevationFeet": 5711,
+        "elevationMeters": 1741,
+        "latitude": 36.6597,
+        "longitude": -81.5447,
+        "firstAscent": "2024-09-22"
+    },
+    {
+        "name": "Panorama Point",
+        "state": "NE",
+        "elevationFeet": 5429,
+        "elevationMeters": 1655,
+        "latitude": 41.0037,
+        "longitude": -104.0317,
+        "firstAscent": "2024-09-28"
+    },
+    {
+        "name": "Black Mesa",
+        "state": "OK",
+        "elevationFeet": 4973,
+        "elevationMeters": 1516,
+        "latitude": 36.9317,
+        "longitude": -102.9972,
+        "firstAscent": "2024-10-09"
+    },
+    {
+        "name": "Wheeler Peak",
+        "state": "NM",
+        "elevationFeet": 13162,
+        "elevationMeters": 4012,
+        "latitude": 36.5568,
+        "longitude": -105.4172,
+        "firstAscent": "2024-10-11"
+    },
+    {
+        "name": "Humphreys Peak",
+        "state": "AZ",
+        "elevationFeet": 12636,
+        "elevationMeters": 3851,
+        "latitude": 35.3464,
+        "longitude": -111.6781,
+        "firstAscent": "2024-10-13"
+    },
+    {
+        "name": "Massai Point",
+        "state": "AZ",
+        "elevationFeet": 6880,
+        "elevationMeters": 2097,
+        "latitude": 32.0000,
+        "longitude": -109.8667,
+        "firstAscent": "2024-10-14"
+    },
+    {
+        "name": "Camelback Mountain",
+        "state": "AZ",
+        "elevationFeet": 2706,
+        "elevationMeters": 825,
+        "latitude": 33.5228,
+        "longitude": -111.9733,
+        "firstAscent": "2024-10-19"
+    },
+    {
+        "name": "Overlook Mountain",
+        "state": "NY",
+        "elevationFeet": 3141,
+        "elevationMeters": 958,
+        "latitude": 42.0833,
+        "longitude": -74.0833,
+        "firstAscent": "2024-12-31"
+    },
+    {
+        "name": "Mount Tammany",
+        "state": "NJ",
+        "elevationFeet": 1522,
+        "elevationMeters": 464,
+        "latitude": 40.9694,
+        "longitude": -75.1250,
+        "firstAscent": "2025-01-02"
+    },
+    {
+        "name": "High Point",
+        "state": "NJ",
+        "elevationFeet": 1803,
+        "elevationMeters": 550,
+        "latitude": 41.3208,
+        "longitude": -74.6615,
+        "firstAscent": "2025-01-02"
+    },
+    {
+        "name": "West Tiger Mountain #3",
+        "state": "WA",
+        "elevationFeet": 2522,
+        "elevationMeters": 769,
+        "latitude": 47.5000,
+        "longitude": -121.9833,
+        "firstAscent": "2025-01-12"
+    },
+    {
+        "name": "West Tiger Mountain #2",
+        "state": "WA",
+        "elevationFeet": 2757,
+        "elevationMeters": 840,
+        "latitude": 47.5028,
+        "longitude": -121.9917,
+        "firstAscent": "2025-01-12"
+    },
+    {
+        "name": "West Tiger Mountain",
+        "state": "WA",
+        "elevationFeet": 2948,
+        "elevationMeters": 898,
+        "latitude": 47.5056,
+        "longitude": -122.0000,
+        "firstAscent": "2025-01-12"
+    },
+    {
+        "name": "Quarry Mountain",
+        "state": "CO",
+        "elevationFeet": 8258,
+        "elevationMeters": 2517,
+        "latitude": 39.9833,
+        "longitude": -105.3333,
+        "firstAscent": "2025-02-22"
+    },
+    {
+        "name": "Reflection Point",
+        "state": "CO",
+        "elevationFeet": 6080,
+        "elevationMeters": 1853,
+        "latitude": 40.0000,
+        "longitude": -105.2667,
+        "firstAscent": "2025-02-25"
+    },
+    {
+        "name": "Peak 7233",
+        "state": "CO",
+        "elevationFeet": 7233,
+        "elevationMeters": 2205,
+        "latitude": 39.9833,
+        "longitude": -105.3167,
+        "firstAscent": "2025-02-26"
+    },
+    {
+        "name": "Manitou Incline",
+        "state": "CO",
+        "elevationFeet": 8600,
+        "elevationMeters": 2621,
+        "latitude": 38.8583,
+        "longitude": -104.9417,
+        "firstAscent": "2025-03-02"
+    },
+    {
+        "name": "Castle Rock",
+        "state": "CO",
+        "elevationFeet": 6319,
+        "elevationMeters": 1926,
+        "latitude": 39.3722,
+        "longitude": -104.8561,
+        "firstAscent": "2025-03-03"
+    },
+    {
+        "name": "Lookout Mountain",
+        "state": "CO",
+        "elevationFeet": 7374,
+        "elevationMeters": 2248,
+        "latitude": 39.7333,
+        "longitude": -105.2500,
+        "firstAscent": "2025-03-05"
+    },
+    {
+        "name": "Colorow Hill",
+        "state": "CO",
+        "elevationFeet": 7560,
+        "elevationMeters": 2304,
+        "latitude": 39.9833,
+        "longitude": -105.2833,
+        "firstAscent": "2025-03-05"
+    },
+    {
+        "name": "Saint Vrain Mountain",
+        "state": "CO",
+        "elevationFeet": 12174,
+        "elevationMeters": 3711,
+        "latitude": 40.1500,
+        "longitude": -105.5667,
+        "firstAscent": "2025-03-08"
+    },
+    {
+        "name": "Second Flatiron",
+        "state": "CO",
+        "elevationFeet": 7120,
+        "elevationMeters": 2170,
+        "latitude": 39.9917,
+        "longitude": -105.2833,
+        "firstAscent": "2025-03-10"
+    },
+    {
+        "name": "Arthurs Rock",
+        "state": "CO",
+        "elevationFeet": 6780,
+        "elevationMeters": 2067,
+        "latitude": 40.5833,
+        "longitude": -105.1833,
+        "firstAscent": "2025-03-16"
+    },
+    {
+        "name": "Capulin Mountain",
+        "state": "NM",
+        "elevationFeet": 8172,
+        "elevationMeters": 2491,
+        "latitude": 36.7833,
+        "longitude": -104.1000,
+        "firstAscent": "2025-03-19"
+    },
+    {
+        "name": "Emory Peak",
+        "state": "TX",
+        "elevationFeet": 7833,
+        "elevationMeters": 2387,
+        "latitude": 29.2467,
+        "longitude": -103.3017,
+        "firstAscent": "2025-03-22"
+    },
+    {
+        "name": "Green Mountain (Lakewood)",
+        "state": "CO",
+        "elevationFeet": 6859,
+        "elevationMeters": 2091,
+        "latitude": 39.6917,
+        "longitude": -105.1667,
+        "firstAscent": "2025-04-06"
+    },
+    {
+        "name": "Mauna Kea",
+        "state": "HI",
+        "elevationFeet": 13796,
+        "elevationMeters": 4205,
+        "latitude": 19.8207,
+        "longitude": -155.4682,
+        "firstAscent": "2025-06-01"
+    },
+    {
+        "name": "South Point - Big Island",
+        "state": "HI",
+        "elevationFeet": 0,
+        "elevationMeters": 0,
+        "latitude": 18.9117,
+        "longitude": -155.6833,
+        "firstAscent": "2025-06-01"
+    },
+    {
+        "name": "Pu'u Mahana",
+        "state": "HI",
+        "elevationFeet": 80,
+        "elevationMeters": 24,
+        "latitude": 18.9333,
+        "longitude": -155.6500,
+        "firstAscent": "2025-06-01"
+    },
+    {
+        "name": "Charles Mound",
+        "state": "IL",
+        "elevationFeet": 1235,
+        "elevationMeters": 376,
+        "latitude": 42.5045,
+        "longitude": -90.2394,
+        "firstAscent": "2025-06-07"
+    },
+    {
+        "name": "Hawkeye Point",
+        "state": "IA",
+        "elevationFeet": 1670,
+        "elevationMeters": 509,
+        "latitude": 43.4602,
+        "longitude": -95.7083,
+        "firstAscent": "2025-06-08"
+    },
+    {
+        "name": "Great Dune",
+        "state": "CO",
+        "elevationFeet": 8669,
+        "elevationMeters": 2642,
+        "latitude": 37.7833,
+        "longitude": -105.5167,
+        "firstAscent": "2025-06-15"
+    },
+    {
+        "name": "Timms Hill",
+        "state": "WI",
+        "elevationFeet": 1952,
+        "elevationMeters": 595,
+        "latitude": 45.4519,
+        "longitude": -90.1953,
+        "firstAscent": "2025-06-26"
+    },
+    {
+        "name": "Lake of the Clouds Overlook",
+        "state": "MI",
+        "elevationFeet": 1394,
+        "elevationMeters": 425,
+        "latitude": 46.7833,
+        "longitude": -89.7833,
+        "firstAscent": "2025-06-27"
+    },
+    {
+        "name": "Mount Arvon",
+        "state": "MI",
+        "elevationFeet": 1979,
+        "elevationMeters": 603,
+        "latitude": 46.7564,
+        "longitude": -88.1553,
+        "firstAscent": "2025-06-27"
+    },
+    {
+        "name": "Thomas Rock Scenic Overlook",
+        "state": "MI",
+        "elevationFeet": 1013,
+        "elevationMeters": 309,
+        "latitude": 46.5833,
+        "longitude": -87.8833,
+        "firstAscent": "2025-06-27"
+    },
+    {
+        "name": "Shauger Hill",
+        "state": "MI",
+        "elevationFeet": 1097,
+        "elevationMeters": 334,
+        "latitude": 42.4167,
+        "longitude": -84.3667,
+        "firstAscent": "2025-06-29"
+    },
+    {
+        "name": "Thomas Mountain - Cabin Site",
+        "state": "NY",
+        "elevationFeet": 1904,
+        "elevationMeters": 580,
+        "latitude": 43.8000,
+        "longitude": -73.8333,
+        "firstAscent": "2025-07-05"
+    },
+    {
+        "name": "Schroon Peak",
+        "state": "NY",
+        "elevationFeet": 1905,
+        "elevationMeters": 581,
+        "latitude": 43.8000,
+        "longitude": -73.8167,
+        "firstAscent": "2025-07-05"
+    },
+    {
+        "name": "Edgecomb Mountain",
+        "state": "NY",
+        "elevationFeet": 1842,
+        "elevationMeters": 561,
+        "latitude": 43.8000,
+        "longitude": -73.8000,
+        "firstAscent": "2025-07-05"
+    },
+    {
+        "name": "Cat Mountain",
+        "state": "NY",
+        "elevationFeet": 1955,
+        "elevationMeters": 596,
+        "latitude": 43.7833,
+        "longitude": -73.7833,
+        "firstAscent": "2025-07-05"
+    },
+    {
+        "name": "Mount Colvin",
+        "state": "NY",
+        "elevationFeet": 4072,
+        "elevationMeters": 1241,
+        "latitude": 44.0972,
+        "longitude": -73.8333,
+        "firstAscent": "2025-07-07"
+    },
+    {
+        "name": "Indian Head",
+        "state": "NY",
+        "elevationFeet": 2717,
+        "elevationMeters": 828,
+        "latitude": 44.0833,
+        "longitude": -73.8500,
+        "firstAscent": "2025-07-07"
+    },
+    {
+        "name": "Fish Hawk Cliffs",
+        "state": "NY",
+        "elevationFeet": 2461,
+        "elevationMeters": 750,
+        "latitude": 44.0833,
+        "longitude": -73.8500,
+        "firstAscent": "2025-07-07"
+    },
+    {
+        "name": "Blake Peak",
+        "state": "NY",
+        "elevationFeet": 4001,
+        "elevationMeters": 1220,
+        "latitude": 44.0833,
+        "longitude": -73.8333,
+        "firstAscent": "2025-07-07"
+    },
+    {
+        "name": "Prospect Mountain",
+        "state": "NY",
+        "elevationFeet": 2031,
+        "elevationMeters": 619,
+        "latitude": 43.3333,
+        "longitude": -73.7000,
+        "firstAscent": "2025-07-09"
+    },
+    {
+        "name": "Treadway Mountain",
+        "state": "NY",
+        "elevationFeet": 2263,
+        "elevationMeters": 690,
+        "latitude": 43.8167,
+        "longitude": -73.5833,
+        "firstAscent": "2025-07-11"
+    },
+    {
+        "name": "Monks Mound",
+        "state": "IL",
+        "elevationFeet": 519,
+        "elevationMeters": 158,
+        "latitude": 38.6608,
+        "longitude": -90.0622,
+        "firstAscent": "2025-07-23"
+    },
+    {
+        "name": "Mount Sunflower",
+        "state": "KS",
+        "elevationFeet": 4039,
+        "elevationMeters": 1231,
+        "latitude": 39.0219,
+        "longitude": -102.0372,
+        "firstAscent": "2025-07-25"
+    },
+    {
+        "name": "Nugget Hill",
+        "state": "CO",
+        "elevationFeet": 8592,
+        "elevationMeters": 2619,
+        "latitude": 39.9833,
+        "longitude": -105.3500,
+        "firstAscent": "2025-07-27"
+    }
+]
