@@ -191,6 +191,9 @@
         <input type="text" id="route-number" placeholder="90" style="width:70px;" value="90">
         <button onclick="fetchReference()">Show Route</button>
         <button class="green" id="split-btn" onclick="toggleSplitMode()">Start Splitting</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;cursor:pointer;">
+            <input type="checkbox" id="snap-check" checked> Snap to route
+        </label>
         <button class="sec" id="route-btn" onclick="buildRoute()" disabled>Build Route</button>
         <button class="sec" id="export-btn" onclick="showExport()" disabled>Export JSON</button>
         <button class="sec" id="transfer-btn" onclick="transferDrivenBy()" disabled>Transfer drivenBy</button>
@@ -262,12 +265,12 @@
             const limit = maxKm || 30;
             // Tiered search: prefer bigger cities at tighter radius
             const tiers = [
-                { count: 100,   radius: 10 },
-                { count: 300,   radius: 15 },
-                { count: 500,   radius: 18 },
-                { count: 750,   radius: 20 },
-                { count: 1000,  radius: 22 },
-                { count: 2000,  radius: 25 },
+                { count: 100, radius: 10 },
+                { count: 300, radius: 15 },
+                { count: 500, radius: 18 },
+                { count: 750, radius: 20 },
+                { count: 1000, radius: 22 },
+                { count: 2000, radius: 25 },
                 { count: usCities.length, radius: limit }
             ];
             for (const tier of tiers) {
@@ -297,25 +300,47 @@
             document.getElementById('status').textContent = `Fetching ${routeLabel} from OSM...`;
 
             const network = type === 'interstate' ? 'US:I' : 'US:US';
-            const query = `[out:json][timeout:60];relation["type"="route"]["route"="road"]["network"="${network}"]["ref"="${num}"];(._;>;);out body;`;
+            // Use 'out geom' to get geometry inline — much faster than (._;>;) node expansion
+            // Query both national and state-level relations (OSM often splits by state)
+            const query = `[out:json][timeout:180];(relation["type"="route"]["route"="road"]["network"="${network}"]["ref"="${num}"];relation["type"="route"]["route"="road"]["network"~"^${network}:"]["ref"="${num}"];);out geom;`;
+
+            const endpoints = [
+                'https://overpass-api.de/api/interpreter',
+                'https://overpass.kumi.systems/api/interpreter'
+            ];
 
             try {
-                const resp = await fetch('https://overpass-api.de/api/interpreter', {
-                    method: 'POST', body: 'data=' + encodeURIComponent(query)
-                });
-                const data = await resp.json();
+                let data = null;
+                for (const endpoint of endpoints) {
+                    try {
+                        document.getElementById('status').textContent = `Fetching ${routeLabel} from ${endpoint.split('//')[1].split('/')[0]}...`;
+                        const resp = await fetch(endpoint, {
+                            method: 'POST', body: 'data=' + encodeURIComponent(query)
+                        });
+                        if (!resp.ok) continue;
+                        data = await resp.json();
+                        if (data.elements && data.elements.length > 0) break;
+                    } catch (e) {
+                        console.warn(`${endpoint} failed:`, e.message);
+                    }
+                }
+                if (!data || !data.elements) throw new Error('All Overpass endpoints failed');
 
-                const nodes = {};
-                data.elements.forEach(el => { if (el.type === 'node') nodes[el.id] = [el.lat, el.lon]; });
-
+                // Parse geometry from relations — 'out geom' puts coords directly on way members
                 let totalPts = 0;
                 const ways = [];
-                data.elements.forEach(el => {
-                    if (el.type === 'way' && el.nodes) {
-                        const coords = el.nodes.map(id => nodes[id]).filter(Boolean);
-                        if (coords.length > 1) { ways.push(coords); totalPts += coords.length; }
-                    }
+                const relNames = [];
+                data.elements.forEach(rel => {
+                    if (rel.type !== 'relation' || !rel.members) return;
+                    relNames.push(rel.tags?.name || rel.tags?.ref || `id:${rel.id}`);
+                    rel.members.forEach(member => {
+                        if (member.type === 'way' && member.geometry) {
+                            const coords = member.geometry.map(g => [g.lat, g.lon]);
+                            if (coords.length > 1) { ways.push(coords); totalPts += coords.length; }
+                        }
+                    });
                 });
+                console.log(`${routeLabel}: ${data.elements.length} elements, ${relNames.length} relations: ${relNames.join(', ')}`);
 
                 // Draw all ways as thin red reference
                 ways.forEach(way => {
@@ -332,6 +357,16 @@
                 }
 
                 document.getElementById('status').textContent = `${routeLabel}: ${ways.length} ways, ${totalPts.toLocaleString()} reference points. Now place split points on the red line.`;
+                // Log geographic extent
+                if (refPoints.length > 0) {
+                    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+                    refPoints.forEach(p => {
+                        if (p[0] < minLat) minLat = p[0]; if (p[0] > maxLat) maxLat = p[0];
+                        if (p[1] < minLng) minLng = p[1]; if (p[1] > maxLng) maxLng = p[1];
+                    });
+                    console.log(`${routeLabel} extent: lat [${minLat.toFixed(3)}, ${maxLat.toFixed(3)}], lng [${minLng.toFixed(3)}, ${maxLng.toFixed(3)}]`);
+                    document.getElementById('status').textContent += ` Extent: [${minLat.toFixed(2)},${minLng.toFixed(2)}] to [${maxLat.toFixed(2)},${maxLng.toFixed(2)}]`;
+                }
             } catch (err) {
                 document.getElementById('status').textContent = `Error: ${err.message}`;
             }
@@ -529,8 +564,10 @@
             let lat = parseFloat(e.latlng.lat.toFixed(5));
             let lng = parseFloat(e.latlng.lng.toFixed(5));
 
-            // Snap to reference line if available
-            if (refPoints.length > 0) {
+            // Snap to reference line if enabled and available
+            const snapEnabled = document.getElementById('snap-check').checked;
+            let snapped = false;
+            if (snapEnabled && refPoints.length > 0) {
                 let bestDist = Infinity, bestPt = null;
                 for (const pt of refPoints) {
                     const d = (pt[0] - lat) ** 2 + (pt[1] - lng) ** 2;
@@ -541,6 +578,7 @@
                     if (distKm < 20) {
                         lat = parseFloat(bestPt[0].toFixed(5));
                         lng = parseFloat(bestPt[1].toFixed(5));
+                        snapped = true;
                     } else {
                         document.getElementById('status').textContent = `Click closer to the route (${distKm.toFixed(0)}km away)`;
                         return;
@@ -552,8 +590,8 @@
             const name = city ? city.name : '';
 
             addDraggableSplit([lat, lng], name);
-            const snapped = refPoints.length > 0 ? ' (snapped)' : '';
-            document.getElementById('status').textContent = `Point ${splitPoints.length}: ${name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${snapped}`;
+            const snapLabel = snapped ? ' (snapped)' : '';
+            document.getElementById('status').textContent = `Point ${splitPoints.length}: ${name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${snapLabel}`;
         }
 
         function addDraggableSplit(latLng, name) {
@@ -571,12 +609,13 @@
             const sp = { latLng: [...latLng], name, marker };
             splitPoints.push(sp);
 
-            marker.on('dragend', function(e) {
+            marker.on('dragend', function (e) {
                 let lat = e.target.getLatLng().lat;
                 let lng = e.target.getLatLng().lng;
 
-                // Snap to reference line
-                if (refPoints.length > 0) {
+                // Snap to reference line if enabled
+                const snapOn = document.getElementById('snap-check').checked;
+                if (snapOn && refPoints.length > 0) {
                     let bestDist = Infinity, bestPt = null;
                     for (const pt of refPoints) {
                         const d = (pt[0] - lat) ** 2 + (pt[1] - lng) ** 2;
