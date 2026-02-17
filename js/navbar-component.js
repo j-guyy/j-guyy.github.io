@@ -49,7 +49,7 @@ class NavbarComponent extends HTMLElement {
                                 <a href="${basePath}mountain-mapping.html">Mountain Mapping</a>
                                 <a href="${basePath}polygon-editor.html">Polygon Editor</a>
                                 <a href="${basePath}highways.html">Highways</a>
-                                <a href="${basePath}prehistoric-timeline.html">Prehistoric Timeline</a>
+                                <!-- <a href="${basePath}prehistoric-timeline.html">Prehistoric Timeline</a> -->
                             </div>
                         </li>
                         <li><a href="${basePath}about.html">About</a></li>
