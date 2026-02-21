@@ -7,7 +7,7 @@ const adventureData = {
             title: 'Pico de Orizaba',
             subtitle: 'The tallest volcano in North America',
             image: 'images/mountaineering/pico/summit_cropped.jpg',
-            description: 'Successfully summited the highest peak in Mexico at 18,491 feet, conquering technical glacier travel and extreme altitude in this challenging mountaineering expedition.',
+            description: 'Successfully summited the highest peak in Mexico at 18,491 feet, conquering glacier travel and extreme altitude in this challenging mountaineering expedition.',
             category: 'Mountaineering',
             date: '2024',
             link: 'trip-reports/pico-de-orizaba.html',
