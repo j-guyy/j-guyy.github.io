@@ -37,7 +37,7 @@
         <div class="progress-section">
             <h2 style="color: var(--primary-color); margin-bottom: 10px;">Progress</h2>
             <div class="progress-bar-container">
-                <div class="progress-bar-fill" style="width: 100%;">5 / 5</div>
+                <div class="progress-bar-fill" id="progress-bar">Loading...</div>
             </div>
         </div>
 
@@ -105,6 +105,17 @@
     </div>
 
     <script src="../js/navbar-component.js"></script>
+    <script>
+        fetch('../data/british-isles-high-five.json')
+            .then(r => r.json())
+            .then(data => {
+                const climbed = data.filter(p => p.climbed).length;
+                const total = data.length;
+                const pct = ((climbed / total) * 100).toFixed(1);
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('progress-bar').textContent = climbed + ' / ' + total;
+            });
+    </script>
 </body>
 
 </html>

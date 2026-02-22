@@ -26,13 +26,9 @@
         <div class="progress-section">
             <h2 style="color: var(--primary-color); margin-bottom: 10px;">Progress</h2>
             <div class="progress-bar-container">
-                <div class="progress-bar-fill" style="width: 25.9%;">15 / 58</div>
+                <div class="progress-bar-fill" id="progress-bar">Loading...</div>
             </div>
-            <div class="progress-stats">
-                <div><span>15</span> Summited</div>
-                <div><span>1</span> Bailed</div>
-                <div><span>1</span> Partial</div>
-                <div><span>41</span> Remaining</div>
+            <div class="progress-stats" id="progress-stats">
             </div>
         </div>
 
@@ -573,6 +569,21 @@
     </div>
 
     <script src="../js/navbar-component.js"></script>
+    <script>
+        fetch('../data/colorado14ers.json')
+            .then(r => r.json())
+            .then(data => {
+                const climbed = data.filter(p => p.climbed).length;
+                const total = data.length;
+                const pct = ((climbed / total) * 100).toFixed(1);
+                const remaining = total - climbed;
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('progress-bar').textContent = climbed + ' / ' + total;
+                document.getElementById('progress-stats').innerHTML =
+                    '<div><span>' + climbed + '</span> Summited</div>' +
+                    '<div><span>' + remaining + '</span> Remaining</div>';
+            });
+    </script>
 </body>
 
 </html>

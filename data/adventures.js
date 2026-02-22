@@ -118,7 +118,8 @@ const adventureData = {
                 image: 'images/hiking/hallasan.jpg',
                 category: 'Hiking',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/halla-san.html'
             },
             {
                 id: 'fuji',
@@ -126,7 +127,8 @@ const adventureData = {
                 image: 'images/hiking/fuji.jpg',
                 category: 'Hiking',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/mount-fuji.html'
             },
             {
                 id: 'mulhacen',
@@ -134,7 +136,8 @@ const adventureData = {
                 image: 'images/hiking/mulhacen.jpg',
                 category: 'Hiking',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/mulhacen.html'
             },
             {
                 id: 'sincholagua',
@@ -142,7 +145,8 @@ const adventureData = {
                 image: 'images/hiking/sincholagua.jpg',
                 category: 'Hiking',
                 completed: true,
-                link: '#'
+                date: '2023',
+                link: 'trip-reports/sincholagua.html'
             },
             {
                 id: 'kosciuszko',
@@ -150,7 +154,8 @@ const adventureData = {
                 image: 'images/hiking/kosciuszko.jpg',
                 category: 'Hiking',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/mount-kosciuszko.html'
             }
         ],
 
