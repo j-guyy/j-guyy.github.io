@@ -166,7 +166,8 @@ const adventureData = {
                 image: 'images/cycling/bluesky.jpg',
                 category: 'Cycling',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/mt-blue-sky-bike.html'
             },
             {
                 id: 'normandy',
@@ -174,7 +175,8 @@ const adventureData = {
                 image: 'images/cycling/normandy.jpg',
                 category: 'Cycling',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/normandy.html'
             },
             {
                 id: 'natchez-trace',
@@ -182,7 +184,8 @@ const adventureData = {
                 image: 'images/cycling/natchez.jpg',
                 category: 'Cycling',
                 completed: true,
-                link: '#'
+                date: '2021',
+                link: 'trip-reports/natchez-trace.html'
             },
             {
                 id: 'badlands',
