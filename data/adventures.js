@@ -54,7 +54,7 @@ const adventureData = {
                 image: 'images/mountaineering/rainier.jpg',
                 category: 'Mountaineering',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/mount-rainier.html'
             },
             {
                 id: 'iztaccihuatl',
@@ -62,7 +62,7 @@ const adventureData = {
                 image: 'images/mountaineering/izta.jpg',
                 category: 'Mountaineering',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/iztaccihuatl.html'
             },
             {
                 id: 'hood',
@@ -70,7 +70,7 @@ const adventureData = {
                 image: 'images/mountaineering/hood.jpg',
                 category: 'Mountaineering',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/mount-hood.html'
             },
             {
                 id: 'adams',
@@ -78,7 +78,7 @@ const adventureData = {
                 image: 'images/mountaineering/adams.jpg',
                 category: 'Mountaineering',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/mount-adams.html'
             }
         ],
 
@@ -89,7 +89,7 @@ const adventureData = {
                 image: 'images/hiking/huron.jpg',
                 category: 'Hiking',
                 completed: false,
-                link: '#'
+                link: 'trip-reports/colorado-14ers.html'
             },
             {
                 id: 'adirondack-46ers',
@@ -97,7 +97,7 @@ const adventureData = {
                 image: 'images/hiking/algonquin_group.jpg',
                 category: 'Hiking',
                 completed: false,
-                link: '#'
+                link: 'trip-reports/adirondack-46ers.html'
             },
             {
                 id: 'british-isles-high-five',
@@ -105,7 +105,7 @@ const adventureData = {
                 image: 'images/hiking/carrauntoohil.jpg',
                 category: 'Hiking',
                 completed: false,
-                link: '#'
+                link: 'trip-reports/british-isles-high-five.html'
             },
             {
                 id: 'halla-san',
