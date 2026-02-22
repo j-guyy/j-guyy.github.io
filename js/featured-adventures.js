@@ -135,7 +135,7 @@ class FeaturedAdventuresPage {
                  onerror="this.src='images/placeholder-adventure.svg'">
             <div class="adventure-card-content">
                 <h4 class="adventure-card-title">${adventure.title}</h4>
-                <div class="adventure-card-category">${adventure.category}</div>
+                <div class="adventure-card-category">${adventure.category}${adventure.date ? ' · ' + adventure.date : ''}</div>
             </div>
         `;
 

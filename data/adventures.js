@@ -46,6 +46,7 @@ const adventureData = {
                 image: 'images/mountaineering/pico/summit.jpg',
                 category: 'Mountaineering',
                 completed: true,
+                date: '2024',
                 link: 'trip-reports/pico-de-orizaba.html'
             },
             {
@@ -54,6 +55,7 @@ const adventureData = {
                 image: 'images/mountaineering/rainier.jpg',
                 category: 'Mountaineering',
                 completed: true,
+                date: '2024',
                 link: 'trip-reports/mount-rainier.html'
             },
             {
@@ -62,6 +64,7 @@ const adventureData = {
                 image: 'images/mountaineering/izta.jpg',
                 category: 'Mountaineering',
                 completed: true,
+                date: '2024',
                 link: 'trip-reports/iztaccihuatl.html'
             },
             {
@@ -70,6 +73,7 @@ const adventureData = {
                 image: 'images/mountaineering/hood.jpg',
                 category: 'Mountaineering',
                 completed: true,
+                date: '2022',
                 link: 'trip-reports/mount-hood.html'
             },
             {
@@ -78,6 +82,7 @@ const adventureData = {
                 image: 'images/mountaineering/adams.jpg',
                 category: 'Mountaineering',
                 completed: true,
+                date: '2022',
                 link: 'trip-reports/mount-adams.html'
             }
         ],
@@ -226,6 +231,7 @@ const adventureData = {
                 image: 'images/ultrarunning/creede/finish_cropped.jpg',
                 category: 'Ultrarunning',
                 completed: true,
+                date: '2023',
                 link: 'trip-reports/creede-100.html'
             },
             {
@@ -269,6 +275,7 @@ const adventureData = {
                 image: 'images/triathlon/imlp/bikevert_cropped.jpg',
                 category: 'Triathlon',
                 completed: true,
+                date: '2019',
                 link: 'trip-reports/ironman-lake-placid.html'
             },
             {
