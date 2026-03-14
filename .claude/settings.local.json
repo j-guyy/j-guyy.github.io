@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Code_Repository\\\\Workspace\\\\j-guyy.github.io\" log --oneline -10)",
+      "Bash(wc -l \"C:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Code_Repository\\\\Workspace\\\\j-guyy.github.io\"/*.html \"C:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Code_Repository\\\\Workspace\\\\j-guyy.github.io\"/js/*.js \"C:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Code_Repository\\\\Workspace\\\\j-guyy.github.io\"/css/*.css 2>/dev/null | tail -1)",
+      "Bash(find \"C:\\\\Users\\\\justi\\\\OneDrive\\\\Documents\\\\Code_Repository\\\\Workspace\\\\j-guyy.github.io\" -type f \\\\\\( -name \"*.json\" -o -name \"*.md\" -o -name \"*.yml\" -o -name \"*.yaml\" -o -name \"Makefile\" -o -name \"*.sh\" \\\\\\) 2>/dev/null | grep -v \".git\")",
+      "Bash(grep -l \"meta name\" /c/Users/justi/OneDrive/Documents/Code_Repository/Workspace/j-guyy.github.io/*.html 2>/dev/null | head -5)",
+      "Bash(grep -h \"meta name=\\\\\"description\\\\\"\" /c/Users/justi/OneDrive/Documents/Code_Repository/Workspace/j-guyy.github.io/*.html 2>/dev/null)",
+      "Bash(grep -l \"404\\\\|sitemap\\\\|robots\" /c/Users/justi/OneDrive/Documents/Code_Repository/Workspace/j-guyy.github.io/*.html 2>/dev/null)"
+    ]
+  }
+}
