@@ -90,9 +90,11 @@ class NavbarComponent extends HTMLElement {
         // Initialize hamburger menu
         this.initializeHamburgerMenu();
 
-        // Add keyboard shortcut to toggle tools menu (Ctrl+Shift+T)
+        // Add keyboard shortcut to toggle tools menu (Ctrl+Shift+T on Mac, Alt+Shift+T on Windows)
         document.addEventListener('keydown', function (event) {
-            if (event.ctrlKey && event.shiftKey && event.key === 'T') {
+            const isMacShortcut = event.ctrlKey && event.shiftKey && event.key === 'T';
+            const isWinShortcut = event.altKey && event.shiftKey && event.key === 'T';
+            if (isMacShortcut || isWinShortcut) {
                 event.preventDefault();
                 document.body.classList.toggle('show-tools');
             }

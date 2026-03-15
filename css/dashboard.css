@@ -1,3 +1,47 @@
+/* Quest link cards */
+.quest-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.quest-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-decoration: none;
+    color: var(--text-color);
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.quest-link:hover {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: var(--primary-color);
+}
+
+.quest-link-title {
+    font-weight: 600;
+    font-size: 1rem;
+    min-width: 200px;
+}
+
+.quest-link-sub {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    flex: 1;
+}
+
+.quest-link-arrow {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    margin-left: auto;
+}
+
 /* Summary Stats Styling */
 .summary-stats-container {
     display: grid;
@@ -12,6 +56,10 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     text-align: center;
+}
+
+.other-stats.other-stats-quad {
+    grid-template-columns: repeat(4, 1fr);
 }
 
 .summary-stat {
@@ -184,6 +232,10 @@
         margin-right: 12px;
     }
 
+    .other-stats.other-stats-quad {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .other-stats.other-stats-trio {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -239,6 +291,10 @@
 
 @media (min-width: 769px) and (max-width: 1199px) {
     .other-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .other-stats.other-stats-quad {
         grid-template-columns: repeat(2, 1fr);
     }
 }

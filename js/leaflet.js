@@ -1,13 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
-        fetch('data/colorado14ers.json').then(response => response.json()),
-        fetch('data/adirondack46ers.json').then(response => response.json()),
-        fetch('data/british-isles-high-five.json').then(response => response.json())
+        fetch('/data/colorado14ers.json').then(response => response.json()),
+        fetch('/data/adirondack46ers.json').then(response => response.json()),
+        fetch('/data/british-isles-high-five.json').then(response => response.json())
     ])
         .then(([colorado14ers, adirondack46ers, britishIsles]) => {
-            createLeafletMap('colorado-map', colorado14ers, 39.1178, -106.4454, 7);
-            createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9.8);
-            createBritishIslesMap('british-isles-map', britishIsles);
+            if (document.getElementById('colorado-map'))
+                createLeafletMap('colorado-map', colorado14ers, 39.1178, -106.4454, 7);
+            if (document.getElementById('adirondack-map'))
+                createLeafletMap('adirondack-map', adirondack46ers, 44.1436, -73.9867, 9.8);
+            if (document.getElementById('british-isles-map'))
+                createBritishIslesMap('british-isles-map', britishIsles);
         })
         .catch(error => console.error('Error loading the JSON files:', error));
 });

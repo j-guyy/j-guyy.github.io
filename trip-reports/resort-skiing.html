@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resort Skiing - Trip Report</title>
+    <meta name="description" content="Resorts skied across the US and beyond — from Utah powder to the Alps.">
+    <meta property="og:title" content="Resort Skiing - Trip Report">
+    <meta property="og:description" content="Resorts skied across the US and beyond — from Utah powder to the Alps.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://j-guyy.github.io/trip-reports/resort-skiing.html">
+    <meta property="og:image" content="https://j-guyy.github.io/images/skiing/snowbird.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Resort Skiing - Trip Report">
+    <meta name="twitter:description" content="Resorts skied across the US and beyond — from Utah powder to the Alps.">
+    <meta name="twitter:image" content="https://j-guyy.github.io/images/skiing/snowbird.jpg">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <link rel="stylesheet" href="../css/tripreports.css">
+    <link rel="stylesheet" href="../css/multi-adventure.css">
+    <style>
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin: 2rem auto 0;
+            width: fit-content;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color, #333);
+        }
+        .view-toggle button {
+            background: transparent;
+            color: var(--text-secondary, #aaa);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .view-toggle button:first-child {
+            border-right: 1px solid var(--border-color, #333);
+        }
+        .view-toggle button.active {
+            background: var(--primary-color, #4CAF50);
+            color: #fff;
+        }
+        .view-toggle button:not(.active):hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary, #fff);
+        }
+
+        /* Blue accent for repeat visits */
+        .peak-card.repeat {
+            border-left-color: #2196F3;
+        }
+        .peak-badge.repeat {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.4);
+        }
+
+        /* Tally section */
+        .tally-section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+        .tally-stat {
+            background: rgba(45, 45, 45, 0.9);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+        }
+        .tally-stat strong {
+            color: var(--primary-color, #4CAF50);
+            font-size: 1.1rem;
+        }
+        .tally-most-visited {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .tally-mv-label {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+        }
+        .tally-mv-tag {
+            background: rgba(33, 150, 243, 0.15);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.35);
+            border-radius: 12px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Per-card visit indicators */
+        .peak-card-header {
+            position: relative;
+        }
+        .visit-token {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196F3;
+            border: 1px solid rgba(33, 150, 243, 0.5);
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .visit-total {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.3);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body class="page fourteeners-page tr-background">
+
+    <nav-bar base-path="../"></nav-bar>
+
+    <div class="content">
+        <div class="hero"
+            style="background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('../images/skiing/snowbird.jpg'); background-size: cover; background-position: center;">
+            <h1>Resort Skiing</h1>
+            <h2>Groomers, powder, and everything in between</h2>
+            <div class="view-toggle">
+                <button id="btn-date" class="active" onclick="setView('date')">By Date</button>
+                <button id="btn-location" onclick="setView('location')">By Location</button>
+            </div>
+        </div>
+
+        <div id="tally"></div>
+        <div id="resort-sections"></div>
+
+        <div class="section-divider">
+            <h2>Full Resort Map</h2>
+        </div>
+        <div style="text-align: center; padding: 2rem 1rem;">
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Explore all visited resorts and bucket list destinations on the interactive map.</p>
+            <a href="../ski-resorts.html" style="display: inline-block; background: var(--primary-color); color: white; padding: 0.75rem 2rem; border-radius: 4px; text-decoration: none; font-weight: 600; letter-spacing: 0.5px;">View Ski Resort Map →</a>
+        </div>
+    </div>
+
+    <script src="../js/navbar-component.js"></script>
+    <script>
+        // One entry per resort per year. days = ski days that year.
+        // repeat: true = this resort was visited in a prior year.
+        const resorts = [
+            { name: "West Mountain",      year: 2008, days: 5, location: "New York",                 region: "Northeast"         },
+            { name: "Willard Mountain",   year: 2009, days: 5, location: "New York",                 region: "Northeast"         },
+            { name: "Jiminy Peak",        year: 2010, days: 5, location: "Massachusetts",             region: "Northeast"         },
+            { name: "Gore Mountain",      year: 2011, days: 2, location: "New York",                 region: "Northeast"         },
+            { name: "Whiteface Mountain", year: 2011, days: 1, location: "New York",                 region: "Northeast"         },
+            { name: "Killington",         year: 2012, days: 1, location: "Vermont",                  region: "Northeast"         },
+            { name: "Gore Mountain",      year: 2012, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Whiteface Mountain", year: 2012, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2013, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Whiteface Mountain", year: 2013, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2014, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Whiteface Mountain", year: 2014, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2015, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Whiteface Mountain", year: 2015, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Whiteface Mountain", year: 2016, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Killington",         year: 2016, days: 1, location: "Vermont",                  region: "Northeast",        repeat: true },
+            { name: "Windham Mountain",   year: 2017, days: 1, location: "New York",                 region: "Northeast"         },
+            { name: "Whiteface Mountain", year: 2017, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2017, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2018, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Gore Mountain",      year: 2019, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Blue Mountain",      year: 2020, days: 1, location: "Pennsylvania",              region: "Northeast"         },
+            { name: "Park City",          year: 2021, days: 3, location: "Utah",                      region: "Utah"              },
+            { name: "Vail",               year: 2021, days: 2, location: "Colorado",                 region: "Colorado"          },
+            { name: "Stevens Pass",       year: 2022, days: 1, location: "Washington",               region: "Pacific Northwest" },
+            { name: "Whistler Blackcomb", year: 2022, days: 2, location: "British Columbia, Canada", region: "Canada"            },
+            { name: "Hoodoo",             year: 2022, days: 1, location: "Oregon",                   region: "Pacific Northwest" },
+            { name: "Copper Mountain",    year: 2022, days: 1, location: "Colorado",                 region: "Colorado"          },
+            { name: "Killington",         year: 2022, days: 1, location: "Vermont",                  region: "Northeast",        repeat: true },
+            { name: "Vail",               year: 2022, days: 3, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Steamboat",          year: 2023, days: 1, location: "Colorado",                 region: "Colorado"          },
+            { name: "Deer Valley",        year: 2023, days: 1, location: "Utah",                      region: "Utah"              },
+            { name: "Snowbird",           year: 2023, days: 1, location: "Utah",                      region: "Utah"              },
+            { name: "Solitude Mountain",  year: 2023, days: 1, location: "Utah",                      region: "Utah"              },
+            { name: "Alta",               year: 2023, days: 1, location: "Utah",                      region: "Utah"              },
+            { name: "Winter Park",        year: 2023, days: 3, location: "Colorado",                 region: "Colorado"          },
+            { name: "Aspen Mountain",     year: 2023, days: 1, location: "Colorado",                 region: "Colorado"          },
+            { name: "Revelstoke",         year: 2023, days: 1, location: "British Columbia, Canada", region: "Canada"            },
+            { name: "Jackson Hole",       year: 2023, days: 3, location: "Wyoming",                  region: "Montana & Wyoming" },
+            { name: "Arapahoe Basin",     year: 2023, days: 1, location: "Colorado",                 region: "Colorado"          },
+            { name: "Mammoth Mountain",   year: 2023, days: 1, location: "California",               region: "California"        },
+            { name: "Sugarbush",          year: 2023, days: 1, location: "Vermont",                  region: "Northeast"         },
+            { name: "Copper Mountain",    year: 2023, days: 2, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Big Sky",            year: 2024, days: 3, location: "Montana",                  region: "Montana & Wyoming" },
+            { name: "Eldora",             year: 2024, days: 1, location: "Colorado",                 region: "Colorado"          },
+            { name: "Chamonix Mont-Blanc",year: 2024, days: 1, location: "Haute-Savoie, France",     region: "Alps"              },
+            { name: "Arapahoe Basin",     year: 2024, days: 2, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Winter Park",        year: 2024, days: 4, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Copper Mountain",    year: 2024, days: 2, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Blue Mountain",      year: 2024, days: 1, location: "Pennsylvania",              region: "Northeast",        repeat: true },
+            { name: "Windham Mountain",   year: 2024, days: 1, location: "New York",                 region: "Northeast",        repeat: true },
+            { name: "Sugarbush",          year: 2024, days: 2, location: "Vermont",                  region: "Northeast",        repeat: true },
+            { name: "Crystal Mountain",   year: 2025, days: 1, location: "Washington",               region: "Pacific Northwest" },
+            { name: "Zermatt",            year: 2025, days: 5, location: "Valais, Switzerland",      region: "Alps"              },
+            { name: "Eldora",             year: 2025, days: 2, location: "Colorado",                 region: "Colorado",         repeat: true },
+            { name: "Arapahoe Basin",     year: 2025, days: 3, location: "Colorado",                 region: "Colorado",         repeat: true },
+        ];
+
+        // Region display order for location view
+        const regionOrder = [
+            "California",
+            "Colorado",
+            "Montana & Wyoming",
+            "Northeast",
+            "Pacific Northwest",
+            "Utah",
+            "Canada",
+            "Alps",
+        ];
+
+        // Total ski days per resort across all years
+        const visitCounts = {};
+        resorts.forEach(r => {
+            visitCounts[r.name] = (visitCounts[r.name] || 0) + r.days;
+        });
+
+        // tokenDays: days to display in the circular token (show badge instead if <= 1)
+        function makeCard(resort, subtitleText, tokenDays) {
+            const cardClass = resort.repeat ? 'repeat' : 'summited';
+            const totalDays = visitCounts[resort.name];
+
+            const tokenHtml = tokenDays > 1
+                ? `<span class="visit-token">${tokenDays}</span>`
+                : `<span class="peak-badge ${cardClass}">Visited</span>`;
+
+            const totalHtml = totalDays > 1
+                ? `<div class="visit-total">${totalDays} days total</div>`
+                : '';
+
+            return `
+                <div class="peak-card ${cardClass}">
+                    <div class="peak-card-header">
+                        <h3>${resort.name}</h3>
+                        ${tokenHtml}
+                    </div>
+                    <div class="peak-date">${subtitleText}</div>
+                    ${totalHtml}
+                </div>`;
+        }
+
+        function renderTally() {
+            const unique    = Object.keys(visitCounts).length;
+            const totalDays = Object.values(visitCounts).reduce((a, b) => a + b, 0);
+            const top3      = Object.entries(visitCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3);
+
+            return `<div class="tally-section">
+                <div class="tally-stat"><strong>${unique}</strong> unique resorts</div>
+                <div class="tally-stat"><strong>${totalDays}</strong> total days</div>
+                <div class="tally-most-visited">
+                    <span class="tally-mv-label">Most Visited:</span>
+                    ${top3.map(([name, n]) => `<span class="tally-mv-tag">${name} ×${n}</span>`).join('')}
+                </div>
+            </div>`;
+        }
+
+        function renderByDate() {
+            const byYear = {};
+            resorts.forEach(r => {
+                if (!byYear[r.year]) byYear[r.year] = [];
+                byYear[r.year].push(r);
+            });
+            const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+            return years.map(year => {
+                const items         = byYear[year];
+                const newResorts    = items.filter(r => !r.repeat);
+                const repeatResorts = items.filter(r =>  r.repeat);
+                const subtitle      = r => `${r.year} — ${r.location}`;
+                const cards         = group => group.map(r => makeCard(r, subtitle(r), r.days)).join('');
+
+                if (newResorts.length === 0) {
+                    return `
+                        <div class="section-divider"><h2>${year}</h2></div>
+                        <div class="section-divider" style="margin-top:0"><h3>Repeat</h3></div>
+                        <div class="peaks-grid">${cards(repeatResorts)}</div>`;
+                }
+                if (repeatResorts.length === 0) {
+                    return `
+                        <div class="section-divider"><h2>${year}</h2></div>
+                        <div class="peaks-grid">${cards(newResorts)}</div>`;
+                }
+                return `
+                    <div class="section-divider"><h2>${year}</h2></div>
+                    <div class="section-divider" style="margin-top:0"><h3>New</h3></div>
+                    <div class="peaks-grid">${cards(newResorts)}</div>
+                    <div class="section-divider" style="margin-top:0"><h3>Repeat</h3></div>
+                    <div class="peaks-grid">${cards(repeatResorts)}</div>`;
+            }).join('');
+        }
+
+        function renderByLocation() {
+            const byRegion = {};
+            resorts.forEach(r => {
+                if (!byRegion[r.region]) byRegion[r.region] = [];
+                const already = byRegion[r.region].find(x => x.name === r.name);
+                if (already) {
+                    already._years.push(r.year);
+                    already._totalDays += r.days;
+                    if (r.repeat) already.repeat = true;
+                } else {
+                    byRegion[r.region].push({ ...r, _years: [r.year], _totalDays: r.days });
+                }
+            });
+            return regionOrder
+                .filter(reg => byRegion[reg])
+                .map(reg => {
+                    const cards = byRegion[reg].map(r => {
+                        const subtitle = `${r._years.join(', ')} — ${r.location}`;
+                        return makeCard(r, subtitle, r._totalDays);
+                    }).join('');
+                    return `
+                        <div class="section-divider"><h2>${reg}</h2></div>
+                        <div class="peaks-grid">${cards}</div>`;
+                }).join('');
+        }
+
+        let currentView = 'date';
+
+        function setView(view) {
+            currentView = view;
+            document.getElementById('tally').innerHTML = renderTally();
+            document.getElementById('resort-sections').innerHTML =
+                view === 'date' ? renderByDate() : renderByLocation();
+            document.getElementById('btn-date').classList.toggle('active', view === 'date');
+            document.getElementById('btn-location').classList.toggle('active', view === 'location');
+        }
+
+        setView('date');
+    </script>
+</body>
+
+</html>

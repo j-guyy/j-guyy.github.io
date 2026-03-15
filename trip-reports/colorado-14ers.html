@@ -20,6 +20,10 @@
     <link rel="stylesheet" href="../css/responsive.css">
     <link rel="stylesheet" href="../css/tripreports.css">
     <link rel="stylesheet" href="../css/multi-adventure.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css"/>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css"/>
+    <link rel="stylesheet" href="../css/leaflet.css"/>
 </head>
 
 <body class="page fourteeners-page tr-background">
@@ -40,6 +44,12 @@
             </div>
             <div class="progress-stats" id="progress-stats">
             </div>
+        </div>
+
+        <!-- Peak Map -->
+        <div class="section">
+            <h2>Peak Map</h2>
+            <div id="colorado-map" class="map-container"></div>
         </div>
 
         <!-- Summited Peaks -->
@@ -578,6 +588,10 @@
 
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="../js/leaflet.js"></script>
     <script src="../js/navbar-component.js"></script>
     <script>
         fetch('../data/colorado14ers.json')

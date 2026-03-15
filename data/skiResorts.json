@@ -608,7 +608,7 @@
         ],
         "verticalDrop": 3128,
         "trails": 128,
-        "visited": false
+        "visited": true
     },
     {
         "name": "Loveland",
@@ -1895,7 +1895,7 @@
         ],
         "verticalDrop": 1600,
         "trails": 67,
-        "visited": true
+        "visited": false
     },
     {
         "name": "Kissing Bridge",
@@ -2597,7 +2597,7 @@
         ],
         "verticalDrop": 2047,
         "trails": 82,
-        "visited": false
+        "visited": true
     },
     {
         "name": "Sundance",

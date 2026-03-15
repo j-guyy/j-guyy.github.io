@@ -193,7 +193,8 @@ const adventureData = {
                 image: 'images/cycling/badlands.jpg',
                 category: 'Cycling',
                 completed: true,
-                link: '#'
+                date: '2023',
+                link: 'trip-reports/badlands.html'
             },
             {
                 id: 'jeju',
@@ -201,7 +202,8 @@ const adventureData = {
                 image: 'images/cycling/jeju.jpg',
                 category: 'Cycling',
                 completed: true,
-                link: '#'
+                date: '2024',
+                link: 'trip-reports/jeju-cycling.html'
             }
         ],
 
@@ -212,7 +214,7 @@ const adventureData = {
                 image: 'images/skiing/tom.jpg',
                 category: 'Skiing',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/backcountry-skiing.html'
             },
             {
                 id: 'resort',
@@ -220,7 +222,7 @@ const adventureData = {
                 image: 'images/skiing/snowbird.jpg',
                 category: 'Skiing',
                 completed: true,
-                link: '#'
+                link: 'trip-reports/resort-skiing.html'
             },
             {
                 id: 'nordic',

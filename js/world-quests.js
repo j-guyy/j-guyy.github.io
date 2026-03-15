@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function () {
             sevenWondersData = sevenWonders;
 
             displayQuestSummary();
-            displayWondersSummary();
             initializeForbesMap();
             initializeWondersMap();
             setupWondersToggleControls();
@@ -29,53 +28,41 @@ document.addEventListener('DOMContentLoaded', function () {
 function displayQuestSummary() {
     const summaryContainer = document.getElementById('world-quest-summary');
 
-    // Calculate completion statistics by cross-referencing with metros and worldCities
+    // Forbes statistics
     const completedCities = getCompletedForbesCities();
     const forbesTotal = forbes100Cities.length;
     const forbesPercentage = ((completedCities.length / forbesTotal) * 100).toFixed(0);
-    const isCompleted = completedCities.length === forbesTotal;
+    const forbesCompleted = completedCities.length === forbesTotal;
 
-    // Display completion cards using dashboard styling
-    summaryContainer.innerHTML = `
-        <div class="summary-stats-container">
-            <div class="other-stats">
-                <div class="summary-stat ${isCompleted ? 'completed-quest' : ''}">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${completedCities.length}</span>
-                        <span class="stat-total">/${forbesTotal}</span>
-                        <span class="stat-percentage">(${forbesPercentage}%)</span>
-                        ${isCompleted ? '<span class="completion-check">✅</span>' : ''}
-                    </div>
-                    <span class="stat-label">Forbes 100 Cities</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function displayWondersSummary() {
-    const summaryContainer = document.getElementById('wonders-summary');
-
-    // Calculate Seven Wonders statistics
+    // Seven Wonders statistics
     const visitedSevenWonders = sevenWondersData.sevenWonders.filter(w => w.visited).length;
     const totalSevenWonders = sevenWondersData.sevenWonders.length;
     const sevenWondersPercentage = ((visitedSevenWonders / totalSevenWonders) * 100).toFixed(0);
     const sevenWondersCompleted = visitedSevenWonders === totalSevenWonders;
 
-    // Calculate Natural Wonders statistics
+    // Natural Wonders statistics
     const visitedNaturalWonders = sevenWondersData.sevenNaturalWonders.filter(w => w.visited).length;
     const totalNaturalWonders = sevenWondersData.sevenNaturalWonders.length;
     const naturalWondersPercentage = ((visitedNaturalWonders / totalNaturalWonders) * 100).toFixed(0);
     const naturalWondersCompleted = visitedNaturalWonders === totalNaturalWonders;
 
-    // Calculate Nominees statistics
+    // Nominees statistics
     const visitedNominees = sevenWondersData.sevenNaturalWondersNominees.filter(w => w.visited).length;
     const totalNominees = sevenWondersData.sevenNaturalWondersNominees.length;
     const nomineesPercentage = ((visitedNominees / totalNominees) * 100).toFixed(0);
 
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
-            <div class="other-stats">
+            <div class="other-stats other-stats-quad">
+                <div class="summary-stat ${forbesCompleted ? 'completed-quest' : ''}">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${completedCities.length}</span>
+                        <span class="stat-total">/${forbesTotal}</span>
+                        <span class="stat-percentage">(${forbesPercentage}%)</span>
+                        ${forbesCompleted ? '<span class="completion-check">✅</span>' : ''}
+                    </div>
+                    <span class="stat-label">Forbes 100 Cities</span>
+                </div>
                 <div class="summary-stat ${sevenWondersCompleted ? 'completed-quest' : ''}">
                     <div class="stat-number-container">
                         <span class="stat-number">${visitedSevenWonders}</span>
