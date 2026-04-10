@@ -56,7 +56,7 @@ const adventureData = {
                 category: 'Mountaineering',
                 completed: true,
                 date: '2024',
-                link: 'trip-reports/mount-rainier.html'
+                link: ''
             },
             {
                 id: 'iztaccihuatl',
