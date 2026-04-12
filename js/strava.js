@@ -451,13 +451,33 @@ async function runPipeline(sync = false) {
         dbg(`Unique grid cells: ${cellKeys.length} (from ${slim.length} GPS activities)`);
 
         let cache = loadGeoCache();
-        const cachedCount = cellKeys.filter(k => {
+
+        // Break down what's in the cache for each cell key
+        let hits = 0, needGeo = 0, needSubdiv = 0;
+        const sampleMissing = [];
+        cellKeys.forEach(k => {
             const v = cache[k];
-            return v && v.c && v.c !== 'Unknown' && !(SUBDIVISION_BY_COUNTRY[v.c] && !v.s);
-        }).length;
-        dbg(`Geo cache: ${cachedCount} hits, ${cellKeys.length - cachedCount} need geocoding`);
+            if (!v || !v.c || v.c === 'Unknown') {
+                needGeo++;
+                if (sampleMissing.length < 3) sampleMissing.push({ key: k, entry: v ?? null });
+            } else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) {
+                needSubdiv++;
+                if (sampleMissing.length < 3) sampleMissing.push({ key: k, entry: v, reason: 'missing subdivision' });
+            } else {
+                hits++;
+            }
+        });
+        dbg(`Geo cache: ${hits} good, ${needGeo} missing country, ${needSubdiv} missing subdivision`, sampleMissing.length ? sampleMissing : null);
 
         cache = await geocodeAll(cellKeys, cache);
+
+        // After geocoding, sample a few subdivision-country entries to verify state data
+        const subdivSample = cellKeys
+            .map(k => ({ k, v: cache[k] }))
+            .filter(({ v }) => v && SUBDIVISION_BY_COUNTRY[v.c])
+            .slice(0, 5)
+            .map(({ k, v }) => ({ key: k, country: v.c, subdivision: v.s || '(empty)' }));
+        dbg(`Post-geocode subdivision sample`, subdivSample.length ? subdivSample : 'none found');
 
         hideLoader();
 
@@ -465,7 +485,8 @@ async function runPipeline(sync = false) {
         const subCounts = SUBDIVISION_CONFIG
             .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
             .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
-        dbg(`Built data — ${Object.keys(countries).length} countries, subdivisions: ${subCounts.join(', ') || 'none'}`);
+        dbg(`Countries found: ${Object.keys(countries).sort().join(', ')}`);
+        dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
 
         renderSummary(slim, countries, total);
         renderTable(countries);
