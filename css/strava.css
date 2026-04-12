@@ -191,6 +191,105 @@
     margin-left: 4px;
 }
 
+/* ── Activity Type Filters ───────────────────── */
+.filter-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.filter-all-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.5);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-all-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.filter-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex: 1;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-group-label {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    transition: color 0.2s ease;
+}
+
+.filter-group-label.active {
+    color: rgba(255,255,255,0.6);
+}
+
+.filter-group-label:hover {
+    color: var(--primary-color);
+}
+
+.filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.filter-pill {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.35);
+    border-radius: 999px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-pill.active {
+    background: rgba(76, 175, 80, 0.12);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.filter-pill:hover {
+    opacity: 0.75;
+}
+
+.filter-pill-count {
+    opacity: 0.55;
+    font-size: 0.7em;
+}
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
     .strava-page .hero h1 {

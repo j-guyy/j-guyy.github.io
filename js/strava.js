@@ -16,6 +16,21 @@ const GROUP_ICONS = {
 };
 const GROUP_KEYS = [...Object.keys(GROUPS), 'Other'];
 
+// Friendly display names for Strava sport types
+const TYPE_LABELS = {
+    TrailRun: 'Trail Run', VirtualRun: 'Virtual Run', EBikeRide: 'E-Bike',
+    VirtualRide: 'Virtual Ride', AlpineSki: 'Alpine Ski', BackcountrySki: 'Backcountry Ski',
+    NordicSki: 'Nordic Ski', OpenWaterSwim: 'Open Water', StandUpPaddling: 'SUP',
+};
+function typeLabel(t) { return TYPE_LABELS[t] || t; }
+
+// ── Filter state ──────────────────────────────────────────────────────────────
+// Uses a deactivated set — new types default to active without needing initialization
+const deactivatedTypes = new Set();
+let currentSlim = [];
+let currentTotal = 0;
+let currentCache = {};
+
 // Countries with regional breakdowns.
 // `names` covers variations BigDataCloud may return for the same country.
 const SUBDIVISION_CONFIG = [
@@ -276,13 +291,109 @@ function sortedEntries(data, state, nameCol) {
     });
 }
 
+// ── Filters ───────────────────────────────────────────────────────────────────
+
+function renderFilters() {
+    const container = document.getElementById('strava-filters');
+    if (!container) return;
+
+    // Tally types from the full (unfiltered) slim list
+    const typeCounts = {};
+    currentSlim.forEach(a => { typeCounts[a.t] = (typeCounts[a.t] || 0) + 1; });
+    const allTypes = Object.keys(typeCounts);
+    if (allTypes.length === 0) { container.innerHTML = ''; return; }
+
+    // Group types by sport category, preserving GROUP_KEYS order
+    const grouped = {};
+    allTypes.forEach(t => {
+        const g = getGroup(t);
+        if (!grouped[g]) grouped[g] = [];
+        grouped[g].push(t);
+    });
+
+    let html = `<div class="filter-bar">
+        <div class="filter-controls">
+            <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
+            <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
+        </div>
+        <div class="filter-groups">`;
+
+    GROUP_KEYS.forEach(groupName => {
+        const types = grouped[groupName];
+        if (!types || types.length === 0) return;
+        types.sort();
+        // Group header is active if ALL types in the group are active
+        const groupActive = types.every(t => !deactivatedTypes.has(t));
+        html += `<div class="filter-group">
+            <button class="filter-group-label${groupActive ? ' active' : ''}" onclick="toggleGroup('${groupName}')">${GROUP_ICONS[groupName]} ${groupName}</button>
+            <div class="filter-pills">`;
+        types.forEach(t => {
+            const active = !deactivatedTypes.has(t);
+            const label = typeLabel(t);
+            const count = typeCounts[t];
+            html += `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleSportType('${t}')">${label} <span class="filter-pill-count">${count}</span></button>`;
+        });
+        html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+    container.innerHTML = html;
+}
+
+function toggleGroup(groupName) {
+    // Collect all sport types in this group present in the current data
+    const typesInGroup = [...new Set(currentSlim.filter(a => getGroup(a.t) === groupName).map(a => a.t))];
+    // If all active → deactivate all; otherwise activate all
+    const allActive = typesInGroup.every(t => !deactivatedTypes.has(t));
+    typesInGroup.forEach(t => allActive ? deactivatedTypes.add(t) : deactivatedTypes.delete(t));
+    renderFilters();
+    applyFilters();
+}
+
+function toggleSportType(type) {
+    if (deactivatedTypes.has(type)) {
+        deactivatedTypes.delete(type);
+    } else {
+        deactivatedTypes.add(type);
+    }
+    renderFilters();
+    applyFilters();
+}
+
+function setAllFilters(enabled) {
+    const typeCounts = {};
+    currentSlim.forEach(a => { typeCounts[a.t] = 1; });
+    if (enabled) {
+        deactivatedTypes.clear();
+    } else {
+        Object.keys(typeCounts).forEach(t => deactivatedTypes.add(t));
+    }
+    renderFilters();
+    applyFilters();
+}
+
+function applyFilters() {
+    const filtered = deactivatedTypes.size === 0
+        ? currentSlim
+        : currentSlim.filter(a => !deactivatedTypes.has(a.t));
+
+    // When all types are active, show the true KV total (includes non-GPS activities).
+    // When filtering, show the filtered GPS count so the number matches what's displayed.
+    const displayTotal = deactivatedTypes.size === 0 ? currentTotal : filtered.length;
+
+    const { countries, subdivisions } = buildData(filtered, currentCache);
+    renderSummary(filtered, countries, displayTotal);
+    renderTable(countries);
+    renderSubdivisions(subdivisions);
+}
+
 // ── Render helpers ────────────────────────────────────────────────────────────
 
 function buildSortableTable(data, state, nameCol, onSort) {
     const headers = [
         { label: nameCol, col: nameCol.toLowerCase() },
+        { label: 'Total', col: 'total' },
         ...GROUP_KEYS.map(g => ({ label: `${GROUP_ICONS[g]} ${g}`, col: g })),
-        { label: 'Total', col: 'total' }
     ];
 
     const table = document.createElement('table');
@@ -321,8 +432,8 @@ function buildSortableTable(data, state, nameCol, onSort) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${name}</td>
-            ${GROUP_KEYS.map(g => `<td style="text-align:center">${d[g] || 0}</td>`).join('')}
             <td style="text-align:center"><strong>${d.total}</strong></td>
+            ${GROUP_KEYS.map(g => `<td style="text-align:center">${d[g] || 0}</td>`).join('')}
         `;
         tbody.appendChild(row);
     });
@@ -515,6 +626,11 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
 
     hideLoader();
 
+    // Save to globals so filter re-renders can access them without refetching
+    currentSlim = slim;
+    currentTotal = total;
+    currentCache = updatedCache;
+
     const { countries, subdivisions } = buildData(slim, updatedCache);
     const subCounts = SUBDIVISION_CONFIG
         .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
@@ -522,6 +638,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     dbg(`Countries: ${Object.keys(countries).sort().join(', ')}`);
     dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
 
+    renderFilters();
     renderSummary(slim, countries, total);
     renderTable(countries);
     renderSubdivisions(subdivisions);
