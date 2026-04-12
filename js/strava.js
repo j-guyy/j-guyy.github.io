@@ -1035,15 +1035,26 @@ const CITY_CONFIGS = {
         bbox: [39.92, -105.20, 39.98, -105.08],  // [south, west, north, east]
         center: [39.955, -105.135],
         zoom: 14,
+        boundaryName: 'Superior',           // OSM relation name for admin boundary
+        boundaryAdminLevel: '8',            // US municipality = 8
         // OSM highway types to include — excludes motorways, trunk roads, service roads
         highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary',
     },
 };
 const ACTIVE_CITY = 'superior-co';
 const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is within 25 m
+const OVERPASS_MIRRORS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
 
 let cityMap = null;
 let cityMapInitialized = false;
+let cityNodeLayer = null;       // L.LayerGroup of unvisited node markers
+let cityActivityLayer = null;   // L.LayerGroup of activity polylines
+let cityNodesVisible = false;
+let cityActivitiesVisible = false;
 
 function toggleCityMap() {
     const section = document.getElementById('city-section');
@@ -1096,6 +1107,21 @@ async function initCityMap() {
     renderCityMap(completedWays);
     renderCityStats(completedWays);
 
+    // Draw city boundary (non-blocking — renders when ready)
+    fetchCityBoundary(cfg).then(rings => {
+        if (!rings || !rings.length) return;
+        rings.forEach(ring => {
+            L.polyline(ring, {
+                color: '#ffffff',
+                weight: 3,
+                opacity: 0.85,
+                dashArray: null,
+                interactive: false,
+            }).addTo(cityMap);
+        });
+        dbg(`City boundary: ${rings.length} ring(s) drawn`);
+    }).catch(err => dbg(`City boundary fetch failed: ${err.message}`));
+
     cityMapInitialized = true;
     const done = completedWays.filter(w => w.pct === 1).length;
     setCityStatus('');
@@ -1122,12 +1148,6 @@ async function fetchCityRoads(cfg) {
         + `(way["highway"~"^(${cfg.highways})$"](${south},${west},${north},${east}););`
         + `out body;>;out skel qt;`;
 
-    const OVERPASS_MIRRORS = [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-    ];
-
     dbg('Overpass API: fetching ways…');
     let res = null;
     for (const mirror of OVERPASS_MIRRORS) {
@@ -1151,6 +1171,51 @@ async function fetchCityRoads(cfg) {
 
     try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ways })); } catch {}
     return ways;
+}
+
+async function fetchCityBoundary(cfg) {
+    if (!cfg.boundaryName) return null;
+    const cacheKey = `city_boundary_${ACTIVE_CITY}`;
+    const TTL = 30 * 24 * 60 * 60 * 1000; // 30 days — boundaries rarely change
+
+    try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        if (cached && Date.now() - cached.ts < TTL) return cached.rings;
+    } catch {}
+
+    const [south, west, north, east] = cfg.bbox;
+    const query = `[out:json][timeout:30];`
+        + `relation["name"="${cfg.boundaryName}"]["boundary"="administrative"]`
+        + `["admin_level"="${cfg.boundaryAdminLevel}"](${south},${west},${north},${east});`
+        + `out geom;`;
+
+    let res = null;
+    for (const mirror of OVERPASS_MIRRORS) {
+        try {
+            res = await fetch(mirror, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query),
+            });
+            if (res.ok) break;
+        } catch {}
+    }
+    if (!res || !res.ok) throw new Error('Boundary fetch failed');
+
+    const data = await res.json();
+    // Each relation member of type 'way' with role 'outer' carries geometry
+    const rings = [];
+    data.elements.forEach(el => {
+        if (el.type !== 'relation') return;
+        (el.members || []).forEach(m => {
+            if (m.type === 'way' && (m.role === 'outer' || m.role === '') && m.geometry) {
+                rings.push(m.geometry.map(pt => [pt.lat, pt.lon]));
+            }
+        });
+    });
+
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rings })); } catch {}
+    return rings;
 }
 
 function parseOverpassWays(data) {
@@ -1230,9 +1295,12 @@ function wayColor(pct) {
 }
 
 function renderCityMap(completedWays) {
+    const renderer = L.canvas();
+    const unvisitedMarkers = [];
+
     completedWays.forEach(way => {
-        const color    = wayColor(way.pct);
-        const complete = way.pct === 1;
+        const color       = wayColor(way.pct);
+        const complete    = way.pct === 1;
         const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
         const baseWeight  = complete ? 3 : 2;
 
@@ -1254,7 +1322,24 @@ function renderCityMap(completedWays) {
             </div>`, { className: 'activity-popup' });
         layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
         layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
+
+        // Collect nodes on incomplete ways for the "remaining" overlay
+        if (way.pct < 1) {
+            way.coords.forEach(coord => {
+                unvisitedMarkers.push(L.circleMarker(coord, {
+                    radius: 3,
+                    color: '#FF4444',
+                    fillColor: '#FF4444',
+                    fillOpacity: 0.85,
+                    weight: 0,
+                    renderer,
+                    interactive: false,
+                }));
+            });
+        }
     });
+
+    cityNodeLayer = L.layerGroup(unvisitedMarkers);
 }
 
 function renderCityStats(completedWays) {
@@ -1265,6 +1350,7 @@ function renderCityStats(completedWays) {
     const partial = completedWays.filter(w => w.pct > 0 && w.pct < 1).length;
     const totalNodes   = completedWays.reduce((s, w) => s + w.total,   0);
     const visitedNodes = completedWays.reduce((s, w) => s + w.visited, 0);
+    const remainingNodes = totalNodes - visitedNodes;
     const pct = totalNodes > 0 ? (visitedNodes / totalNodes * 100).toFixed(1) : '0.0';
 
     el.innerHTML = `
@@ -1283,13 +1369,74 @@ function renderCityStats(completedWays) {
         <div class="county-stat-item">
             <span class="county-stat-number">${pct}%</span>
             <span class="county-stat-label">Node Coverage</span>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="cache-refresh-btn" id="city-nodes-btn" onclick="toggleCityNodes()">
+                Show remaining nodes
+            </button>
+            <button class="cache-refresh-btn" id="city-activities-btn" onclick="toggleCityActivities()">
+                Show my activities
+            </button>
         </div>`;
+}
+
+function toggleCityNodes() {
+    if (!cityMap || !cityNodeLayer) return;
+    cityNodesVisible = !cityNodesVisible;
+    if (cityNodesVisible) {
+        cityNodeLayer.addTo(cityMap);
+    } else {
+        cityNodeLayer.removeFrom(cityMap);
+    }
+    const btn = document.getElementById('city-nodes-btn');
+    if (btn) btn.textContent = cityNodesVisible ? 'Hide remaining nodes' : 'Show remaining nodes';
+}
+
+async function toggleCityActivities() {
+    if (!cityMap) return;
+    cityActivitiesVisible = !cityActivitiesVisible;
+    const btn = document.getElementById('city-activities-btn');
+
+    if (!cityActivitiesVisible) {
+        if (cityActivityLayer) cityActivityLayer.removeFrom(cityMap);
+        if (btn) btn.textContent = 'Show my activities';
+        return;
+    }
+
+    if (btn) btn.textContent = 'Hide my activities';
+
+    // Build layer group on first show
+    if (!cityActivityLayer) {
+        const polylines = await loadPolylines();
+        const renderer = L.canvas();
+        const layers = [];
+        polylines.forEach((encoded, i) => {
+            if (!encoded) return;
+            const slim = currentSlim[i];
+            if (!slim) return;
+            const points = decodePolyline(encoded);
+            if (!points.length) return;
+            const color = GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
+            const layer = L.polyline(points, { color, weight: 1.5, opacity: 0.6, renderer });
+            layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
+            layer.on('mouseover', function () { this.setStyle({ opacity: 0.95, weight: 3 }); });
+            layer.on('mouseout',  function () { this.setStyle({ opacity: 0.6, weight: 1.5 }); });
+            layers.push(layer);
+        });
+        cityActivityLayer = L.layerGroup(layers);
+    }
+
+    cityActivityLayer.addTo(cityMap);
 }
 
 async function resetCityData() {
     if (!confirm('Clear cached road network data? OSM data will be re-fetched on next open.')) return;
     localStorage.removeItem(`city_hunter_${ACTIVE_CITY}`);
     cityMapInitialized = false;
+    cityNodeLayer = null;
+    cityActivityLayer = null;
+    cityNodesVisible = false;
+    cityActivitiesVisible = false;
     if (cityMap) { cityMap.remove(); cityMap = null; }
     dbg('City road cache cleared. Reopen City Hunter to re-fetch from OSM.');
 }
