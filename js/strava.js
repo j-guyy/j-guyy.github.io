@@ -341,13 +341,12 @@ function renderFilters() {
 }
 
 function toggleGroup(groupName) {
-    // Collect all sport types in this group present in the current data
     const typesInGroup = [...new Set(currentSlim.filter(a => getGroup(a.t) === groupName).map(a => a.t))];
-    // If all active → deactivate all; otherwise activate all
     const allActive = typesInGroup.every(t => !deactivatedTypes.has(t));
     typesInGroup.forEach(t => allActive ? deactivatedTypes.add(t) : deactivatedTypes.delete(t));
     renderFilters();
     applyFilters();
+    updateMapFilters();
 }
 
 function toggleSportType(type) {
@@ -358,6 +357,7 @@ function toggleSportType(type) {
     }
     renderFilters();
     applyFilters();
+    updateMapFilters();
 }
 
 function setAllFilters(enabled) {
@@ -370,6 +370,7 @@ function setAllFilters(enabled) {
     }
     renderFilters();
     applyFilters();
+    updateMapFilters();
 }
 
 function applyFilters() {
@@ -513,6 +514,163 @@ function renderSubdivisions(subdivisions) {
         section.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
         wrapper.appendChild(section);
     });
+}
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+
+const GROUP_COLORS = {
+    'Foot Sports':  '#4CAF50',
+    'Bike Sports':  '#FF9800',
+    'Snow Sports':  '#90CAF9',
+    'Water Sports': '#42A5F5',
+    'Other':        '#9E9E9E',
+};
+
+let stravaMap = null;
+let mapInitialized = false;
+// Each entry: { layer: L.polyline, type: string }
+let mapLayers = [];
+
+function toggleMap() {
+    const section = document.getElementById('map-section');
+    const btn = document.getElementById('map-toggle-btn');
+    if (!section) return;
+
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+
+    if (opening && !mapInitialized) {
+        initMap();
+    } else if (opening && stravaMap) {
+        // Leaflet loses track of its size when hidden; recalculate on reveal
+        setTimeout(() => stravaMap.invalidateSize(), 50);
+    }
+}
+
+async function initMap() {
+    const container = document.getElementById('strava-map');
+    const statusEl = document.getElementById('map-status');
+    if (!container) return;
+
+    setMapStatus('Initializing map…');
+
+    // Canvas renderer handles thousands of polylines far better than SVG
+    stravaMap = L.map('strava-map', {
+        renderer: L.canvas(),
+        preferCanvas: true,
+    }).setView([30, 0], 2);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+    }).addTo(stravaMap);
+
+    // Lazy-fetch polylines — separate from the stats payload
+    setMapStatus('Fetching routes…');
+    dbg('GET /polylines/all…');
+    let polylines = [];
+    try {
+        const res = await fetch(`${WORKER_URL}/polylines/all`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        polylines = await res.json();
+        dbg(`Polylines: ${polylines.length} total, ${polylines.filter(Boolean).length} with GPS`);
+    } catch (err) {
+        dbg(`Polylines fetch failed: ${err.message}`);
+        setMapStatus('Failed to load routes.');
+        return;
+    }
+
+    setMapStatus('Drawing routes…');
+
+    mapLayers = [];
+    const allPoints = [];
+
+    polylines.forEach((encoded, i) => {
+        if (!encoded) return;
+        const slim = currentSlim[i];
+        if (!slim) return;
+
+        const points = decodePolyline(encoded);
+        if (points.length === 0) return;
+
+        const group = getGroup(slim.t);
+        const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
+        const visible = !deactivatedTypes.has(slim.t);
+
+        const layer = L.polyline(points, {
+            color,
+            weight: 1.5,
+            opacity: visible ? 0.55 : 0,
+        }).addTo(stravaMap);
+
+        mapLayers.push({ layer, type: slim.t });
+        if (visible) points.forEach(p => allPoints.push(p));
+    });
+
+    if (allPoints.length > 0) {
+        stravaMap.fitBounds(allPoints, { padding: [20, 20] });
+    }
+
+    renderMapLegend();
+    mapInitialized = true;
+
+    const drawn = mapLayers.length;
+    setMapStatus(`${drawn.toLocaleString()} routes`);
+    dbg(`Map rendered: ${drawn} polylines`);
+}
+
+// Show/hide polylines to match the current deactivatedTypes filter state
+function updateMapFilters() {
+    if (!mapInitialized) return;
+    mapLayers.forEach(({ layer, type }) => {
+        layer.setStyle({ opacity: deactivatedTypes.has(type) ? 0 : 0.55 });
+    });
+}
+
+function renderMapLegend() {
+    const el = document.getElementById('map-legend');
+    if (!el) return;
+    // Only show groups that have at least one drawn polyline
+    const presentGroups = [...new Set(mapLayers.map(({ type }) => getGroup(type)))];
+    el.innerHTML = GROUP_KEYS
+        .filter(g => presentGroups.includes(g))
+        .map(g => `<span class="map-legend-item">
+            <span class="map-legend-dot" style="background:${GROUP_COLORS[g]}"></span>${g}
+        </span>`)
+        .join('');
+}
+
+function setMapStatus(msg) {
+    const el = document.getElementById('map-status');
+    if (el) el.textContent = msg;
+}
+
+// Google encoded polyline decoder (no library needed)
+function decodePolyline(encoded) {
+    const points = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        shift = 0; result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        points.push([lat / 1e5, lng / 1e5]);
+    }
+    return points;
 }
 
 // ── Debug log ─────────────────────────────────────────────────────────────────

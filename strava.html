@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/strava.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 
 <body class="page strava-page">
@@ -40,6 +41,16 @@
         <!-- Activity type filters -->
         <div id="strava-filters" class="section"></div>
 
+        <!-- Activity map (lazy-loaded) -->
+        <div class="section">
+            <h2>Activity Map <button class="cache-refresh-btn" id="map-toggle-btn" onclick="toggleMap()">Show map</button></h2>
+            <div id="map-section" style="display:none">
+                <div id="strava-map"></div>
+                <div id="map-legend" class="map-legend"></div>
+                <p id="map-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
+
         <!-- By Country table -->
         <div class="section">
             <h2>By Country</h2>
@@ -50,6 +61,7 @@
         <div id="strava-subdivisions"></div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/strava.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
