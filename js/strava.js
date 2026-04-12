@@ -1,5 +1,5 @@
 const WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
-const GEO_CACHE_KEY = 'strava_geo_cache_v2'; // v2: stores {c, s} instead of string
+const GEO_CACHE_KEY = 'strava_geo_cache_v3'; // v3: 0.01° grid precision (was 0.1°)
 
 const GROUPS = {
     'Foot Sports':  ['Run','TrailRun','VirtualRun','Hike','Walk','Snowshoe'],
@@ -39,7 +39,7 @@ function getGroup(type) {
 }
 
 function gridKey(latlng) {
-    return `${latlng[0].toFixed(1)},${latlng[1].toFixed(1)}`;
+    return `${latlng[0].toFixed(2)},${latlng[1].toFixed(2)}`;
 }
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
