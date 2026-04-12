@@ -1,7 +1,5 @@
 const WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 const GEO_CACHE_KEY = 'strava_geo_cache_v2'; // v2: stores {c, s} instead of string
-const ACTIVITIES_CACHE_KEY = 'strava_activities_cache_v2'; // v2: adds lastActivityTime
-const ACTIVITIES_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const GEO_BATCH = 10;
 
 const GROUPS = {
@@ -45,124 +43,28 @@ function gridKey(latlng) {
     return `${latlng[0].toFixed(1)},${latlng[1].toFixed(1)}`;
 }
 
-// ── Activity cache ────────────────────────────────────────────────────────────
-
-function loadActivityCache() {
-    try {
-        const raw = localStorage.getItem(ACTIVITIES_CACHE_KEY);
-        if (!raw) return null;
-        const { fetchedAt, slim, total, lastActivityTime } = JSON.parse(raw);
-        if (Date.now() - fetchedAt > ACTIVITIES_CACHE_TTL_MS) return null;
-        return { slim, fetchedAt, total: total ?? slim.length, lastActivityTime: lastActivityTime ?? null };
-    } catch { return null; }
-}
-
-function saveActivityCache(slim, total, lastActivityTime) {
-    const fetchedAt = Date.now();
-    try { localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ fetchedAt, slim, total, lastActivityTime })); } catch {}
-    return fetchedAt;
-}
-
-function clearActivityCache() {
-    try { localStorage.removeItem(ACTIVITIES_CACHE_KEY); } catch {}
-}
-
-// Convert full Strava activity objects → slim objects we actually need
-function slimActivities(activities) {
-    return activities
-        .filter(a => a.start_latlng?.length)
-        .map(a => ({ l: a.start_latlng, t: a.sport_type || a.type || 'Other' }));
-}
-
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
-// Extract the newest activity's unix timestamp from a raw batch (Strava returns newest first)
-function newestTimestamp(batch) {
-    for (const a of batch) {
-        if (a.start_date) return Math.floor(new Date(a.start_date).getTime() / 1000);
-    }
-    return null;
+// Load all stored activities from the worker (one fast KV read, no Strava call)
+async function loadFromWorker() {
+    setStatus('Loading activities…');
+    const res = await fetch(`${WORKER_URL}/activities/all`);
+    if (!res.ok) throw new Error(`Worker error: ${res.status}`);
+    return res.json(); // { slim, total, lastActivityTime }
 }
 
-async function fetchAllActivities(forceRefresh = false) {
-    const cached = loadActivityCache();
-
-    if (!forceRefresh && cached) {
-        const age = Math.round((Date.now() - cached.fetchedAt) / 60000);
-        setStatus(`Loaded from cache (${age}m ago)`);
-        setCacheInfo(cached.fetchedAt, cached.slim.length, cached.total);
-        return { slim: cached.slim, total: cached.total };
-    }
-
-    // Smart refresh: only fetch activities newer than what we already have
-    if (forceRefresh && cached?.lastActivityTime) {
-        return await fetchNewActivities(cached);
-    }
-
-    // Full fetch from scratch
-    return await fetchFullActivities();
-}
-
-async function fetchFullActivities() {
-    let slim = [];
-    let total = 0;
-    let page = 1;
-    let lastActivityTime = null;
-    setStatus('Fetching activities…');
-
-    while (true) {
-        const res = await fetch(`${WORKER_URL}/activities?per_page=200&page=${page}`);
-        const batch = await res.json();
-        if (!Array.isArray(batch) || batch.length === 0) break;
-        // Capture timestamp of the very first (newest) activity
-        if (page === 1) lastActivityTime = newestTimestamp(batch);
-        total += batch.length;
-        slim = slim.concat(slimActivities(batch));
-        setStatus(`Fetching activities… ${total} loaded (${slim.length} with GPS)`);
-        page++;
-    }
-
-    const fetchedAt = saveActivityCache(slim, total, lastActivityTime);
-    setCacheInfo(fetchedAt, slim.length, total);
-    return { slim, total };
-}
-
-async function fetchNewActivities(cached) {
-    let newSlim = [];
-    let newTotal = 0;
-    let page = 1;
-    let newestSeen = cached.lastActivityTime;
-    setStatus('Checking for new activities…');
-
-    while (true) {
-        const res = await fetch(`${WORKER_URL}/activities?per_page=200&page=${page}&after=${cached.lastActivityTime}`);
-        const batch = await res.json();
-        if (!Array.isArray(batch) || batch.length === 0) break;
-        // The first batch's first activity is the newest new one
-        if (page === 1) {
-            const ts = newestTimestamp(batch);
-            if (ts) newestSeen = ts;
-        }
-        newTotal += batch.length;
-        newSlim = newSlim.concat(slimActivities(batch));
-        setStatus(`Found ${newTotal} new activities…`);
-        page++;
-    }
-
-    if (newTotal === 0) {
-        // Nothing new — just bump fetchedAt so the TTL resets
-        const fetchedAt = saveActivityCache(cached.slim, cached.total, cached.lastActivityTime);
-        setCacheInfo(fetchedAt, cached.slim.length, cached.total);
+// Tell the worker to fetch new activities from Strava and merge them into KV
+async function syncWithWorker() {
+    setStatus('Syncing new activities…');
+    const res = await fetch(`${WORKER_URL}/activities/sync`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Sync error: ${res.status}`);
+    const data = await res.json(); // { slim, total, lastActivityTime, newActivities }
+    if (data.newActivities === 0) {
         setStatus('Up to date — no new activities');
-        return { slim: cached.slim, total: cached.total };
+    } else {
+        setStatus(`Synced ${data.newActivities} new ${data.newActivities === 1 ? 'activity' : 'activities'}`);
     }
-
-    const merged = [...newSlim, ...cached.slim];
-    const total = cached.total + newTotal;
-    const fetchedAt = saveActivityCache(merged, total, newestSeen);
-    setCacheInfo(fetchedAt, merged.length, total);
-    setStatus(`Added ${newTotal} new ${newTotal === 1 ? 'activity' : 'activities'}`);
-    return { slim: merged, total };
+    return data;
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -222,10 +124,12 @@ function loadGeoCache() {
 }
 
 async function geocodeAll(keys, cache) {
-    // Treat missing entries AND 'Unknown' entries as needing a (re-)geocode
+    // Re-geocode if: missing, Unknown country, or country expects a subdivision but has none
     const uncached = keys.filter(k => {
         const v = cache[k];
-        return !v || !v.c || v.c === 'Unknown';
+        if (!v || !v.c || v.c === 'Unknown') return true;
+        if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
+        return false;
     });
     let done = 0;
 
@@ -445,35 +349,33 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
-function setCacheInfo(fetchedAt, gpsCount, total) {
+function setCacheInfo(gpsCount, total) {
     const el = document.getElementById('cache-info');
     if (!el) return;
-    const date = new Date(fetchedAt).toLocaleString();
-    const gpsPct = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
+    const gpsNote = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
     el.innerHTML = `
-        <span class="cache-meta">Cached ${date}${gpsPct}</span>
-        <button class="cache-refresh-btn" id="refresh-btn">Refresh now</button>
-        <button class="cache-refresh-btn" id="full-refresh-btn" style="margin-left:4px">Full re-fetch</button>
+        <span class="cache-meta">${total.toLocaleString()} activities${gpsNote}</span>
+        <button class="cache-refresh-btn" id="refresh-btn">Sync new activities</button>
     `;
     document.getElementById('refresh-btn').addEventListener('click', () => runPipeline(true));
-    document.getElementById('full-refresh-btn').addEventListener('click', () => {
-        clearActivityCache();
-        runPipeline(false);
-    });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-async function runPipeline(forceRefresh = false) {
+async function runPipeline(sync = false) {
     try {
-        const { slim, total } = await fetchAllActivities(forceRefresh);
+        let { slim, total } = sync ? await syncWithWorker() : await loadFromWorker();
+
+        // If KV is empty (first time), trigger an initial sync automatically
+        if (!sync && slim.length === 0 && total === 0) {
+            setStatus('No data yet — running initial sync…');
+            ({ slim, total } = await syncWithWorker());
+        }
+
+        setCacheInfo(slim.length, total);
 
         const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
-
-        // Load geo cache, migrating v1 data if needed
         let cache = loadGeoCache();
-
-        // Geocode any cells not yet in cache
         cache = await geocodeAll(cellKeys, cache);
 
         hideLoader();
@@ -484,7 +386,7 @@ async function runPipeline(forceRefresh = false) {
         renderSubdivisions(subdivisions);
 
     } catch (err) {
-        setStatus('Error loading data: ' + err.message);
+        setStatus('Error: ' + err.message);
         console.error(err);
     }
 }
