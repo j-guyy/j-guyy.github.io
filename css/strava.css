@@ -67,12 +67,6 @@
     padding: 0 16px;
 }
 
-/* Override dashboard.css summary-stats for strava — let the existing
-   .summary-stats-container / .summary-stat / .stat-number styles apply
-   via dashboard.css; just cap the width here */
-#strava-summary .summary-stats-container {
-    max-width: 100%;
-}
 
 /* 6 group items + 1 countries = 7 — use a flexible wrap grid */
 .strava-group-stats {
@@ -84,6 +78,40 @@
     color: rgba(255,255,255,0.4);
     font-size: 0.8rem;
     margin-top: 4px;
+}
+
+/* ── Cache info bar ──────────────────────────── */
+.cache-info-bar {
+    max-width: 960px;
+    margin: 0 auto 16px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cache-meta {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.35);
+}
+
+.cache-refresh-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.5);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.cache-refresh-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* ── Responsive ──────────────────────────────── */
