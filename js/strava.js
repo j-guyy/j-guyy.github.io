@@ -1075,16 +1075,35 @@ async function initCityMap() {
     setCityStatus('Loading road network…');
     dbg(`City Hunter: initialising for ${cfg.name}`);
 
-    let ways, polylines;
+    let ways, polylines, boundarySegments;
     try {
-        [ways, polylines] = await Promise.all([
+        [ways, polylines, boundarySegments] = await Promise.all([
             fetchCityRoads(cfg),
             loadPolylines(),
+            fetchCityBoundary(cfg),
         ]);
     } catch (err) {
         dbg(`City Hunter error: ${err.message}`);
         setCityStatus('Failed to load city data.');
         return;
+    }
+
+    // Assemble raw boundary way-segments into closed polygon rings, then
+    // clip every OSM way so only nodes inside the city limits are counted.
+    const boundaryPolygons = boundarySegments && boundarySegments.length
+        ? assembleRings(boundarySegments) : [];
+
+    if (boundaryPolygons.length) {
+        const before = ways.length;
+        ways = ways
+            .map(way => ({
+                ...way,
+                coords: way.coords.filter(([lat, lng]) =>
+                    boundaryPolygons.some(ring => pointInPolygon(lat, lng, ring))
+                ),
+            }))
+            .filter(way => way.coords.length >= 2);
+        dbg(`City boundary: clipped ${before - ways.length} ways outside limits (${ways.length} remain)`);
     }
 
     setCityStatus('Analysing coverage…');
@@ -1107,20 +1126,18 @@ async function initCityMap() {
     renderCityMap(completedWays);
     renderCityStats(completedWays);
 
-    // Draw city boundary (non-blocking — renders when ready)
-    fetchCityBoundary(cfg).then(rings => {
-        if (!rings || !rings.length) return;
-        rings.forEach(ring => {
+    // Draw boundary on the now-ready map (data already in hand — no second fetch)
+    if (boundaryPolygons.length) {
+        boundaryPolygons.forEach(ring => {
             L.polyline(ring, {
                 color: '#ffffff',
                 weight: 3,
                 opacity: 0.85,
-                dashArray: null,
                 interactive: false,
             }).addTo(cityMap);
         });
-        dbg(`City boundary: ${rings.length} ring(s) drawn`);
-    }).catch(err => dbg(`City boundary fetch failed: ${err.message}`));
+        dbg(`City boundary: ${boundaryPolygons.length} polygon(s) drawn`);
+    }
 
     cityMapInitialized = true;
     const done = completedWays.filter(w => w.pct === 1).length;
@@ -1171,6 +1188,58 @@ async function fetchCityRoads(cfg) {
 
     try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ways })); } catch {}
     return ways;
+}
+
+// Chain Overpass member-way segments into closed polygon rings.
+// Segments arrive in arbitrary order and may need to be reversed to connect.
+function assembleRings(segments) {
+    const EPS = 0.00002; // ~2 m tolerance for endpoint matching
+    const close = (a, b) => Math.abs(a[0] - b[0]) < EPS && Math.abs(a[1] - b[1]) < EPS;
+
+    const remaining = segments.map(s => s.slice()); // shallow-copy each ring
+    const rings = [];
+
+    while (remaining.length > 0) {
+        const ring = remaining.shift().slice();
+        let grew = true;
+        while (grew) {
+            grew = false;
+            for (let i = 0; i < remaining.length; i++) {
+                const seg = remaining[i];
+                const head = ring[0], tail = ring[ring.length - 1];
+                if (close(tail, seg[0])) {
+                    ring.push(...seg.slice(1));
+                } else if (close(tail, seg[seg.length - 1])) {
+                    ring.push(...seg.slice(0, -1).reverse());
+                } else if (close(head, seg[seg.length - 1])) {
+                    ring.unshift(...seg.slice(0, -1));
+                } else if (close(head, seg[0])) {
+                    ring.unshift(...seg.slice(1).reverse());
+                } else {
+                    continue;
+                }
+                remaining.splice(i, 1);
+                grew = true;
+                break;
+            }
+        }
+        rings.push(ring);
+    }
+    return rings;
+}
+
+// Standard ray-casting point-in-polygon. Coords are [lat, lng].
+function pointInPolygon(lat, lng, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [lati, lngi] = ring[i];
+        const [latj, lngj] = ring[j];
+        if (((lngi > lng) !== (lngj > lng)) &&
+            (lat < (latj - lati) * (lng - lngi) / (lngj - lngi) + lati)) {
+            inside = !inside;
+        }
+    }
+    return inside;
 }
 
 async function fetchCityBoundary(cfg) {
@@ -1238,16 +1307,44 @@ function parseOverpassWays(data) {
 
 // ── Coverage analysis ─────────────────────────────────────────────────────────
 
-// Build a ~111 m grid of every decoded polyline point for fast proximity checks.
+// Interpolate extra points along a segment so no gap exceeds maxSpacingM.
+// Strava summary_polyline is simplified — raw points can be 50–200 m apart,
+// meaning a segment can visually cross a node with no stored point nearby.
+function densifySegment(lat1, lng1, lat2, lng2, maxSpacingM, out) {
+    const d = metresApart(lat1, lng1, lat2, lng2);
+    if (d <= maxSpacingM) return;
+    const steps = Math.ceil(d / maxSpacingM);
+    for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        out.push([lat1 + (lat2 - lat1) * t, lng1 + (lng2 - lng1) * t]);
+    }
+}
+
+// Build a ~111 m grid of every decoded (and densified) polyline point for fast
+// proximity checks. Grid cell = 0.001° ≈ 111 m; isNodeVisited searches 3×3 cells.
 function buildPointIndex(polylines) {
     const G = 0.001;
+    const MAX_SPACING_M = 15; // densify so no gap exceeds this
     const index = {};
+
+    const addPt = (lat, lng) => {
+        const key = `${Math.floor(lat / G)},${Math.floor(lng / G)}`;
+        if (!index[key]) index[key] = [];
+        index[key].push([lat, lng]);
+    };
+
     polylines.forEach(encoded => {
         if (!encoded) return;
-        for (const [lat, lng] of decodePolyline(encoded)) {
-            const key = `${Math.floor(lat / G)},${Math.floor(lng / G)}`;
-            if (!index[key]) index[key] = [];
-            index[key].push([lat, lng]);
+        const pts = decodePolyline(encoded);
+        for (let i = 0; i < pts.length; i++) {
+            const [lat, lng] = pts[i];
+            addPt(lat, lng);
+            if (i < pts.length - 1) {
+                const [lat2, lng2] = pts[i + 1];
+                const extra = [];
+                densifySegment(lat, lng, lat2, lng2, MAX_SPACING_M, extra);
+                extra.forEach(([a, b]) => addPt(a, b));
+            }
         }
     });
     return index;
