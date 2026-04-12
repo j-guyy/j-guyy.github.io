@@ -1036,7 +1036,7 @@ const CITY_CONFIGS = {
         center: [39.955, -105.135],
         zoom: 14,
         // OSM highway types to include — excludes motorways, trunk roads, service roads
-        highways: 'residential|living_street|footway|path|cycleway|pedestrian|track|unclassified|tertiary',
+        highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary',
     },
 };
 const ACTIVE_CITY = 'superior-co';
