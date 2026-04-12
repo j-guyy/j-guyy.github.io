@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorado Mountain Ranges — Justin Guyette</title>
+    <meta name="description" content="Tracking exploration of Colorado's 44+ mountain ranges — best hikes, best bike rides, and interactive map.">
+    <meta property="og:title" content="Colorado Mountain Ranges — Justin Guyette">
+    <meta property="og:description" content="Tracking exploration of Colorado's 44+ mountain ranges — best hikes, best bike rides, and interactive map.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://j-guyy.github.io/colorado-ranges.html">
+    <meta property="og:image" content="https://j-guyy.github.io/images/hiking/huron.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Colorado Mountain Ranges — Justin Guyette">
+    <meta name="twitter:description" content="Tracking exploration of Colorado's 44+ mountain ranges — best hikes, best bike rides, and interactive map.">
+    <meta name="twitter:image" content="https://j-guyy.github.io/images/hiking/huron.jpg">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/colorado-ranges.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css"/>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css"/>
+</head>
+
+<body class="page co-ranges-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>Colorado Mountain Ranges</h1>
+            <h2 id="hero-subtitle">Best Hike &amp; Best Bike Ride for Every Range</h2>
+        </div>
+
+        <!-- Progress -->
+        <div class="ranges-progress">
+            <h2>Exploration Progress</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-bar">Loading…</div>
+            </div>
+            <div class="progress-stats" id="progress-stats"></div>
+        </div>
+
+        <!-- Region Breakdown -->
+        <div class="section">
+            <h2>By Region</h2>
+            <div class="region-stats-grid" id="region-stats"></div>
+        </div>
+
+        <!-- Map -->
+        <div class="section">
+            <h2>Range Map</h2>
+            <p class="description">Click any marker or table row for details. Green = explored, gray = not yet.</p>
+            <div id="ranges-map" class="map-container"></div>
+            <!-- Detail panel — appears below map when a marker or row is clicked -->
+            <div id="range-detail" class="range-detail" style="display:none;"></div>
+        </div>
+
+        <!-- Table -->
+        <div class="section">
+            <h2>All Ranges</h2>
+            <p class="description">Click a row to highlight it and see details above.</p>
+
+            <div class="range-table-controls">
+                <span class="range-filter-label">Filter by region:</span>
+                <select id="region-filter">
+                    <option value="">All Regions</option>
+                    <option value="Northwest Colorado">Northwest Colorado</option>
+                    <option value="North-Central Colorado &amp; Front Range">North-Central Colorado &amp; Front Range</option>
+                    <option value="I-70 Corridor &amp; Central Mountains">I-70 Corridor &amp; Central Mountains</option>
+                    <option value="Sawatch Range &amp; Central Colorado">Sawatch Range &amp; Central Colorado</option>
+                    <option value="South-Central Colorado">South-Central Colorado</option>
+                    <option value="San Juan Mountains">San Juan Mountains</option>
+                    <option value="Southern Front Range &amp; Foothills">Southern Front Range &amp; Foothills</option>
+                </select>
+            </div>
+
+            <div id="table-container"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="js/colorado-ranges.js"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

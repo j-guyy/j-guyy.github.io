@@ -1,0 +1,754 @@
+[
+  {
+    "id": "elkhead",
+    "name": "Elkhead Mountains",
+    "region": "Northwest Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 10869,
+    "highpoint": "Sand Mountain",
+    "description": "A remote, volcanic-origin range near Steamboat Springs running unusually east-west. Low elevation by Colorado standards but strikingly wild, with dense elk herds and very few established trails. Most peaks see single-digit annual ascents.",
+    "best_hike": "Hahns Peak (10,774 ft) — The most accessible Elkhead summit, a prominent volcanic cone visible from Steamboat Lake. Short but steep scramble from the old mine road. About 3 miles RT, 2,000 ft gain. Excellent 360° views of the Park Range and Zirkel Wilderness.",
+    "best_bike": "Great Divide Mountain Bike Route — The GDMBR passes through the remote ranch and sage country surrounding the Elkheads between Steamboat Springs and the Wyoming border. Gravel roads with sweeping views and almost zero traffic.",
+    "explored": false,
+    "coords": [
+      -107.05,
+      40.77
+    ]
+  },
+  {
+    "id": "park-range",
+    "name": "Park Range",
+    "region": "Northwest Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 12180,
+    "highpoint": "Mt. Zirkel",
+    "description": "The snowiest range in Colorado, forming the Continental Divide north of Steamboat Springs. Home to the Mount Zirkel Wilderness. Dense spruce-fir forests, alpine lakes, and heavy snowfall (500+ inches/year). The range extends north into Wyoming.",
+    "best_hike": "Mount Zirkel (12,180 ft) via Slavonia Trailhead — A classic high-country trek through the Zirkel Wilderness. About 14 miles RT, 3,200 ft gain. Passes Gold Creek Lake and Gilpin Lake en route to the rounded summit with panoramic views of the Never Summers, Flat Tops, and Gore Range.",
+    "best_bike": "Rabbit Ears Pass to Steamboat gravel descent — A mix of US-40 shoulder and forest roads dropping from Rabbit Ears Pass (9,426 ft) into Steamboat Springs. The gravel roads in Routt National Forest on both sides of the pass offer huge loops through aspen groves and open meadows.",
+    "explored": true,
+    "coords": [
+      -106.82,
+      40.62
+    ]
+  },
+  {
+    "id": "rabbit-ears",
+    "name": "Rabbit Ears Range",
+    "region": "Northwest Colorado",
+    "elevation_low": 8500,
+    "elevation_high": 10654,
+    "highpoint": "Rabbit Ears Peak",
+    "description": "A compact volcanic subrange between the Park Range and the Gore Range. Named for the distinctive twin rock spires visible from US-40. Gentle terrain, heavy snow, excellent cross-country skiing and snowshoeing in winter.",
+    "best_hike": "Rabbit Ears Peak (10,654 ft) — A short but fun hike to the iconic twin volcanic plugs from the Rabbit Ears Pass area. About 4 miles RT, 1,000 ft gain. The rock spires require Class 4 scrambling but the base area rewards with great views.",
+    "best_bike": "Muddy Pass to Gore Pass gravel loop — Forest roads and county roads linking Muddy Pass, Gore Pass, and the upper Yampa Valley. Remote, rolling, and scenic gravel through sage and aspen with views of the Gore Range skyline. ~40–60 miles depending on routing.",
+    "explored": false,
+    "coords": [
+      -106.62,
+      40.37
+    ]
+  },
+  {
+    "id": "flat-tops",
+    "name": "Flat Tops",
+    "region": "Northwest Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 12354,
+    "highpoint": "Flat Top Mountain",
+    "description": "Colorado's second-largest wilderness area (235,000+ acres). A massive basaltic lava plateau with an eerily flat summit surface, deep canyons, and over 100 lakes. One of the first designated wilderness areas in the US. Extremely remote in the interior.",
+    "best_hike": "Chinese Wall via Stillwater Trailhead — A spectacular backpacking route (or ambitious day hike, ~16 miles RT) to the iconic Chinese Wall, a massive basalt cliff rimming the plateau edge. Views across the White River Valley are staggering. The plateau surface is surreal — tundra grassland at 11,000+ ft.",
+    "best_bike": "Flat Tops Trail Scenic Byway (Meeker to Yampa) — A 65-mile paved road with significant gravel spur options through Ripple Creek Pass (10,343 ft). The pavement is a great road ride with minimal traffic; forest road spurs off both sides offer extensive gravel riding.",
+    "explored": false,
+    "coords": [
+      -107.52,
+      40
+    ]
+  },
+  {
+    "id": "white-river-plateau",
+    "name": "White River Plateau",
+    "region": "Northwest Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 11500,
+    "highpoint": "Unnamed highpoint",
+    "description": "A broad, forested upland between the Flat Tops and the Eagle River valley. Contains portions of White River National Forest. Less dramatic than the Flat Tops but rich in wildlife and solitude.",
+    "best_hike": "Hanging Lake (6,100–7,200 ft) — Located in Glenwood Canyon at the plateau's edge. A steep 1.2-mile climb to a stunning travertine lake (permit required). For a more representative plateau experience, Grouse Lake Trail (~8 miles RT) accesses a remote alpine lake on the plateau's interior.",
+    "best_bike": "Sweetwater Lake Road to Coffee Pot Road loop — Gravel roads traversing the northern White River Plateau through ranch country and national forest, with views toward the Flat Tops. Remote, quiet, and excellent gravel terrain.",
+    "explored": false,
+    "coords": [
+      -107.45,
+      39.75
+    ]
+  },
+  {
+    "id": "roan-plateau",
+    "name": "Roan Plateau",
+    "region": "Northwest Colorado",
+    "elevation_low": 5500,
+    "elevation_high": 9000,
+    "highpoint": "Roan Cliffs rim",
+    "description": "A massive mesa-like plateau rising 4,000 feet above the Colorado River valley near Rifle. Stunning cliff-edge views, aspen forests on top, and one of western Colorado's hidden gems. Oil shale country with ongoing conservation debates.",
+    "best_hike": "JQS Trail to Roan Plateau rim — A strenuous hike (or drive) ascending the historic JQS switchback road up the 4,000-ft cliff face from Rifle. Once on top, wander the rim for miles of cliff-edge views over the Colorado River valley.",
+    "best_bike": "JQS Road climb + Roan Plateau rim ride — An epic gravel ride ascending the 4,000-ft JQS Road switchbacks from Rifle, then rolling along the cliff-edge plateau rim roads. One of the most dramatic gravel climbs in the state. Part of the Rolling Horse bikepacking route.",
+    "explored": false,
+    "coords": [
+      -108.12,
+      39.65
+    ]
+  },
+  {
+    "id": "battlement-mesa",
+    "name": "Battlement Mesa",
+    "region": "Northwest Colorado",
+    "elevation_low": 5500,
+    "elevation_high": 11132,
+    "highpoint": "Battlement Mesa highpoint",
+    "description": "A volcanic mesa between the Colorado River and the Flat Tops. Rugged, remote, and lightly visited. The mesa's steep flanks and flat summit create a distinctive profile visible from I-70 near Parachute.",
+    "best_hike": "Battlement Mesa highpoint via Brush Creek — A long, remote approach through Brush Creek drainage to the mesa summit. Off-trail route-finding above treeline. Best as an overnight trip. Very few people summit this one.",
+    "best_bike": "Battlement Mesa Road (CR 300) — Gravel road circumnavigating the mesa's base through ranch country with dramatic mesa views. Connect to Mamm Creek and Divide Creek roads for longer loops.",
+    "explored": false,
+    "coords": [
+      -108.05,
+      39.5
+    ]
+  },
+  {
+    "id": "grand-mesa",
+    "name": "Grand Mesa",
+    "region": "Northwest Colorado",
+    "elevation_low": 5500,
+    "elevation_high": 11234,
+    "highpoint": "Leon Peak",
+    "description": "The largest flat-topped mountain in the world. Over 300 lakes dot the mesa surface at 10,000+ ft. A unique geological feature: a basalt cap over softer sedimentary layers. Excellent fishing, fall colors, and a surreal driving/riding experience.",
+    "best_hike": "Crag Crest Trail — An 11-mile loop along the narrow spine of Grand Mesa's highest ridge. Follows a dramatic fin of rock with lakes on both sides and 360° views of the Elk Mountains, West Elks, Book Cliffs, and Uncompahgre Plateau.",
+    "best_bike": "Grand Mesa Scenic Byway (CO-65) — A paved road ride from Mesa (4,700 ft) to the mesa top (10,800 ft) and down to Cedaredge. About 60 miles with 6,000+ ft of climbing. The gravel Land's End Road offers a stunning cliff-edge ride with views 6,000 ft down to the Grand Valley.",
+    "explored": false,
+    "coords": [
+      -108.07,
+      39.05
+    ]
+  },
+  {
+    "id": "medicine-bow",
+    "name": "Medicine Bow Mountains",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 10000,
+    "elevation_high": 12951,
+    "highpoint": "Clark Peak",
+    "description": "The northwesternmost subrange of the Front Range, extending into Wyoming. Contains the Rawah Wilderness (73,000 acres, 85 miles of trails). Remote and uncrowded compared to RMNP and Indian Peaks.",
+    "best_hike": "Clark Peak (12,951 ft) via Blue Lake Trail — The Rawah Wilderness highpoint. About 14 miles RT, 3,000 ft gain. Passes Blue Lake in a stunning cirque setting. Solitude is near-guaranteed compared to anything in RMNP.",
+    "best_bike": "Cameron Pass (10,276 ft) gravel loops — Forest roads on both sides of Cameron Pass (CO-14) offer excellent gravel riding through the Medicine Bows. The Laramie River Road heading north from Chambers Lake is particularly scenic.",
+    "explored": false,
+    "coords": [
+      -105.87,
+      40.85
+    ]
+  },
+  {
+    "id": "never-summer",
+    "name": "Never Summer Mountains",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 10000,
+    "elevation_high": 12940,
+    "highpoint": "Mt. Richthofen",
+    "description": "A compact, volcanic-origin subrange on RMNP's western boundary. Dramatically rugged despite modest elevations. Accessible from the Kawuneeche Valley (west side of RMNP) or Cameron Pass area.",
+    "best_hike": "Mount Richthofen (12,940 ft) via Lake Agnes — About 10 miles RT, 3,200 ft gain from the Lake Agnes trailhead near Cameron Pass. A Class 2 scramble to the Never Summers' highpoint with spectacular views into RMNP and the Rawah Wilderness.",
+    "best_bike": "Trail Ridge Road (west approach) — Ride up the west side of Trail Ridge Road from Grand Lake. The road climbs through the Kawuneeche Valley with the Never Summers as a dramatic wall to the north before ascending to 12,183 ft.",
+    "explored": false,
+    "coords": [
+      -105.92,
+      40.45
+    ]
+  },
+  {
+    "id": "mummy-range",
+    "name": "Mummy Range",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 8500,
+    "elevation_high": 13560,
+    "highpoint": "Hagues Peak",
+    "description": "RMNP's northern subrange. Wilder and less visited than the main RMNP divide. Contains Hagues Peak (the park's second-highest summit), Ypsilon Mountain with its iconic Y-shaped couloirs, and the remote Mummy Mountain.",
+    "best_hike": "Hagues Peak (13,560 ft) via Lawn Lake Trail — About 15 miles RT, 5,500 ft gain. Long but non-technical (Class 2). Passes the site of the 1982 Lawn Lake dam failure. The summit offers the best views in the park's northern section.",
+    "best_bike": "Old Fall River Road — A one-way uphill gravel road from Horseshoe Park to the Alpine Visitor Center. 9.4 miles, ~3,200 ft gain. Open to bikes (going up only). A unique gravel experience inside a national park with Mummy Range views throughout.",
+    "explored": false,
+    "coords": [
+      -105.62,
+      40.6
+    ]
+  },
+  {
+    "id": "rmnp",
+    "name": "Rocky Mountain National Park (main divide)",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 8000,
+    "elevation_high": 14259,
+    "highpoint": "Longs Peak",
+    "description": "Colorado's premier alpine park. The main Continental Divide ridge running from Longs Peak south through Chiefs Head, Pagoda, McHenrys, Powell, Taylor, and Otis peaks. World-class mountaineering, scrambling, and hiking.",
+    "best_hike": "Longs Peak (14,259 ft) via the Keyhole Route — The iconic Colorado 14er. About 15 miles RT, 5,100 ft gain. Class 3 with exposure on the Narrows, Trough, and Homestretch. Alpine start mandatory. Alternatively, Sky Pond via Glacier Gorge (9 miles RT) passes three alpine lakes and the dramatic Sharkstooth spire.",
+    "best_bike": "Trail Ridge Road (full crossing) — Estes Park to Grand Lake via the highest continuous paved road in the US (12,183 ft). About 48 miles one way with ~4,000 ft net gain from the east side. Above treeline for 11 miles. One of the great road rides in North America.",
+    "explored": true,
+    "coords": [
+      -105.72,
+      40.3
+    ]
+  },
+  {
+    "id": "laramie-co",
+    "name": "Laramie Mountains (Colorado section)",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 7000,
+    "elevation_high": 9400,
+    "highpoint": "Unnamed highpoint",
+    "description": "A low-elevation extension of the Front Range running north from near Fort Collins into Wyoming. Largely private ranchland with some BLM and state land. Gentle terrain with prairie-mountain transitions.",
+    "best_hike": "North Fork Trail in Lory State Park — A moderate 7-mile loop through the foothills where the Laramie Mountains begin their rise north of Fort Collins. Views of Horsetooth Reservoir and the high peaks beyond.",
+    "best_bike": "Red Mountain Open Space to Lory State Park gravel loop — County roads and open space trails north of Fort Collins through the Laramie foothills. Rolling gravel with views of the high Continental Divide to the west.",
+    "explored": false,
+    "coords": [
+      -105.27,
+      40.85
+    ]
+  },
+  {
+    "id": "indian-peaks",
+    "name": "Indian Peaks",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 8400,
+    "elevation_high": 13502,
+    "highpoint": "North Arapaho Peak",
+    "description": "The iconic subrange visible from the Boulder/Superior area. Seven 13ers, 50+ alpine lakes, remnant glaciers, and six Continental Divide crossings. One of the most heavily used wilderness areas in the US due to Front Range proximity.",
+    "best_hike": "Isabelle Glacier via Long Lake — About 9 miles RT, 2,200 ft gain from Brainard Lake. Passes Long Lake and Lake Isabelle before ascending to the glacier and Continental Divide views. For a bigger objective, North Arapaho Peak (13,502 ft) via Arapaho Glacier Trail (10 miles RT, 3,500 ft gain) is the range highpoint.",
+    "best_bike": "Brainard Lake Road + Peak to Peak Highway — Brainard Lake Road climbs to 10,300 ft with Indian Peaks views. Connect with the Peak to Peak Highway (CO-72/119) for a classic road ride from Nederland through Ward to Allenspark. For gravel, the Rollins Pass Road (east side) is an unmissable high-altitude dirt road to the Continental Divide at 11,671 ft.",
+    "explored": true,
+    "coords": [
+      -105.65,
+      40.03
+    ]
+  },
+  {
+    "id": "vasquez",
+    "name": "Vasquez Mountains",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 10000,
+    "elevation_high": 12947,
+    "highpoint": "Vasquez Peak",
+    "description": "An L-shaped subrange between Berthoud Pass and the Fraser Valley. Contains the Vasquez Peak Wilderness and Byers Peak Wilderness. Rolling tundra, incredible wildflowers, and a quiet, intimate mountain character. The CDT traverses the southern slopes.",
+    "best_hike": "Byers Peak (12,804 ft) — About 8.8 miles RT, 3,000 ft gain from the Fraser Experimental Forest trailhead. The most popular peak in the range with panoramic views of the Gore, Indian Peaks, and Never Summers. Combine with Bills Peak for a longer loop.",
+    "best_bike": "Jones Pass Road to CDT junction — A classic Front Range gravel climb from near the Henderson Mine to Jones Pass (12,451 ft) on the Continental Divide. About 8 miles one way with 2,800 ft gain. Connect with the CDT for ridge riding.",
+    "explored": false,
+    "coords": [
+      -105.88,
+      39.82
+    ]
+  },
+  {
+    "id": "williams-fork",
+    "name": "Williams Fork Mountains",
+    "region": "North-Central Colorado & Front Range",
+    "elevation_low": 9000,
+    "elevation_high": 12757,
+    "highpoint": "Coon Hill",
+    "description": "A gentle, tundra-covered subrange west of the Eisenhower Tunnel wrapping north toward Ute Pass. The Ptarmigan Peak Wilderness covers part of the range. Intimate Gore Range views from the ridgeline. Very few visitors.",
+    "best_hike": "Ptarmigan Peak (~12,498 ft) — About 10.6 miles RT, 3,120 ft gain. The most established hike in the range, with spectacular views of Buffalo Mountain, the Gore Range, and Lake Dillon below.",
+    "best_bike": "Ute Pass Road (gravel) — The gravel road over Ute Pass between Silverthorne and the Williams Fork Reservoir offers gentle gravel riding through the heart of the range with Gore Range views.",
+    "explored": false,
+    "coords": [
+      -106.1,
+      39.72
+    ]
+  },
+  {
+    "id": "gore",
+    "name": "Gore Range",
+    "region": "I-70 Corridor & Central Mountains",
+    "elevation_low": 8500,
+    "elevation_high": 13534,
+    "highpoint": "Mt. Powell",
+    "description": "One of Colorado's most rugged and dramatic ranges. A deeply serrated crest of Precambrian gneiss running north-south between Vail and Silverthorne. The Eagles Nest Wilderness protects the core. No 14ers, but the terrain is more alpine and technical than many ranges that have them. No roads cross the range.",
+    "best_hike": "Gore Lake — 9 miles RT, 2,500 ft gain from the Gore Creek trailhead near Vail. A stunning day hike to a cirque lake beneath the Gore's craggy crest. For a bigger objective, the Eccles Pass to Eagles Nest traverse is a strenuous 12+ mile point-to-point through the heart of the Eagles Nest Wilderness.",
+    "best_bike": "Vail Pass to Frisco bike path — A paved recreational path dropping from Vail Pass (10,666 ft) to Frisco with Gore Range views the entire way. About 15 miles, 2,100 ft descent. For gravel, Shrine Pass Road (Vail Pass to Red Cliff, 12 miles) is a classic with views of Mt. of the Holy Cross.",
+    "explored": false,
+    "coords": [
+      -106.35,
+      39.72
+    ]
+  },
+  {
+    "id": "tenmile",
+    "name": "Tenmile Range",
+    "region": "I-70 Corridor & Central Mountains",
+    "elevation_low": 9000,
+    "elevation_high": 14265,
+    "highpoint": "Quandary Peak",
+    "description": "A compact, accessible range between Breckenridge and Copper Mountain. Contains Quandary Peak (the most-climbed 14er in Colorado) and the classic Tenmile Traverse. Steep, rocky, and highly visible from I-70.",
+    "best_hike": "Quandary Peak (14,265 ft) via East Ridge — About 7 miles RT, 3,450 ft gain. Colorado's most popular 14er for good reason: relatively straightforward, stunning views, and accessible from Breckenridge. For experienced scramblers, the Tenmile Traverse (Peaks 1–10, ~15 miles, Class 3) is one of Colorado's great ridge traverses.",
+    "best_bike": "Boreas Pass Road (Breckenridge to Como) — A classic gravel ride over Boreas Pass (11,481 ft) on a historic narrow-gauge railroad grade. About 22 miles one way with gentle grades. Views of the Tenmile Range, Mosquito Range, and South Park.",
+    "explored": true,
+    "coords": [
+      -106.12,
+      39.47
+    ]
+  },
+  {
+    "id": "mosquito",
+    "name": "Mosquito Range",
+    "region": "I-70 Corridor & Central Mountains",
+    "elevation_low": 9000,
+    "elevation_high": 14286,
+    "highpoint": "Mt. Lincoln",
+    "description": "Directly across South Park from the Tenmile Range. Contains a cluster of four 14ers accessible from Kite Lake (Democrat, Lincoln, Cameron, Bross). Rich mining history throughout. The Mosquito Pass Road is the highest auto road pass in North America.",
+    "best_hike": "DeCaLiBron loop from Kite Lake (Democrat, Cameron, Lincoln, Bross) — About 8 miles, 3,900 ft cumulative gain. Four 14ers in one day on moderate Class 2 terrain. One of Colorado's most efficient multi-summit days.",
+    "best_bike": "Mosquito Pass Road (Leadville to Fairplay/Alma) — The highest pass road in North America at 13,186 ft. A burly gravel climb from either side with massive views. About 16 miles one way. Rough surface in places; perfect for gravel bikes with 40mm+ tires.",
+    "explored": true,
+    "coords": [
+      -106.12,
+      39.35
+    ]
+  },
+  {
+    "id": "loveland-argentine",
+    "name": "Continental Divide (Loveland Pass / Argentine Pass area)",
+    "region": "I-70 Corridor & Central Mountains",
+    "elevation_low": 9000,
+    "elevation_high": 14270,
+    "highpoint": "Grays Peak",
+    "description": "The section of the Continental Divide between the Eisenhower Tunnel and Berthoud Pass, including the Grays/Torreys massif and Argentine Pass. Highly accessible from the I-70 corridor.",
+    "best_hike": "Grays Peak (14,270 ft) & Torreys Peak (14,267 ft) — A classic 14er double from Stevens Gulch. About 8 miles RT, 3,600 ft cumulative gain. Grays is the highest peak on the Continental Divide in North America. Torreys adds a short Class 2 ridge traverse.",
+    "best_bike": "Loveland Pass (11,990 ft) descent + Argentine Pass Road — Ride up (or shuttle to) Loveland Pass for a high-altitude paved experience. For gravel, the Argentine Pass Road from Waldorf climbs to 13,207 ft — one of the highest rideable passes in the state.",
+    "explored": true,
+    "coords": [
+      -105.92,
+      39.65
+    ]
+  },
+  {
+    "id": "sawatch",
+    "name": "Sawatch Range",
+    "region": "Sawatch Range & Central Colorado",
+    "elevation_low": 8500,
+    "elevation_high": 14440,
+    "highpoint": "Mt. Elbert",
+    "description": "The highest range in Colorado and the entire Rocky Mountains. Contains 15 fourteeners including Mt. Elbert (highest in the Rockies), Mt. Massive, and the Collegiate Peaks. Generally big, bulky mountains with rounded profiles but massive vertical gain. Towns of Leadville, Buena Vista, and Salida anchor the eastern flank.",
+    "best_hike": "Mt. Elbert (14,440 ft) via North/South Mt. Elbert Trail — About 11 miles RT, 4,700 ft gain. The highest peak in the Rocky Mountains. Non-technical but relentless. Views from the summit span every major Colorado range.",
+    "best_bike": "Cottonwood Pass (12,126 ft) from Buena Vista — One of Colorado's great paved pass rides. About 20 miles, 4,500 ft gain from BV. Views of the entire Sawatch crest. The west side drops into Taylor Park on gravel, making an epic one-way gravel descent.",
+    "explored": true,
+    "coords": [
+      -106.45,
+      39
+    ]
+  },
+  {
+    "id": "elk-mountains",
+    "name": "Elk Mountains",
+    "region": "Sawatch Range & Central Colorado",
+    "elevation_low": 7500,
+    "elevation_high": 14265,
+    "highpoint": "Castle Peak",
+    "description": "Among Colorado's most dramatic and technical ranges. Home to the Maroon Bells, Capitol Peak (the state's most difficult standard 14er), and the town of Aspen. Sedimentary peaks with dramatic red and white banding. The Four Pass Loop is a world-class backpacking circuit.",
+    "best_hike": "Four Pass Loop — A 26-mile backpacking loop crossing four 12,400+ ft passes through the Maroon Bells-Snowmass Wilderness. Passes Maroon Bells, Snowmass Lake, and Frigid Air Pass. Widely considered one of the top 5 backpacking trips in Colorado. For a day hike, Crater Lake beneath the Maroon Bells (3.6 miles RT) is iconic.",
+    "best_bike": "Maroon Bells Road (shuttle ride) + Kebler Pass — Ride the road to Maroon Lake (~10 miles RT). For gravel, Kebler Pass (paved/gravel, 30 miles Crested Butte to CO-133) passes through one of the world's largest aspen groves. Autumn timing makes this transcendent.",
+    "explored": false,
+    "coords": [
+      -106.97,
+      39.1
+    ]
+  },
+  {
+    "id": "west-elk",
+    "name": "West Elk Mountains",
+    "region": "Sawatch Range & Central Colorado",
+    "elevation_low": 7500,
+    "elevation_high": 12920,
+    "highpoint": "West Elk Peak",
+    "description": "A volcanic range between the Elk Mountains and the Gunnison Valley. Contains the West Elk Wilderness. More subdued than the Elks but with dramatic volcanic features including the Castles — a series of spectacular volcanic breccia spires.",
+    "best_hike": "The Castles via Mill Creek Trail — About 12 miles RT, 2,500 ft gain. A stunning hike to the base of cathedral-like volcanic spires. One of Colorado's most unique geological formations. The approach through wildflower meadows is spectacular in July.",
+    "best_bike": "Ohio Pass (10,033 ft) gravel road — A scenic gravel road connecting Kebler Pass to Ohio Creek Valley south of Crested Butte. About 10 miles of gravel with West Elk views. Combine with Kebler Pass for a longer loop through prime fall color territory.",
+    "explored": true,
+    "coords": [
+      -107.2,
+      38.65
+    ]
+  },
+  {
+    "id": "sangre-de-cristo",
+    "name": "Sangre de Cristo Mountains",
+    "region": "South-Central Colorado",
+    "elevation_low": 7500,
+    "elevation_high": 14351,
+    "highpoint": "Blanca Peak",
+    "description": "Colorado's longest single range, stretching 250+ miles from Poncha Pass into New Mexico. Extremely steep with no foothills — the highest peaks rise 7,000 ft from the valley floor in just a few miles. Contains 10 fourteeners and the Great Sand Dunes. The Crestones are among Colorado's most technical summits.",
+    "best_hike": "Crestone Needle (14,197 ft) via South Colony Lakes — About 13 miles RT, 4,800 ft gain, Class 3. One of Colorado's most dramatic 14er climbs with exposed scrambling on solid conglomerate rock.",
+    "best_bike": "Medano Pass Road — A rough but rideable (wide tires!) 4WD road over Medano Pass (9,950 ft) between Great Sand Dunes NP and the Wet Mountain Valley. About 22 miles of sand and gravel through the heart of the Sangre de Cristos. Unique terrain: you ride through stream crossings in sand at the dunes end.",
+    "explored": false,
+    "coords": [
+      -105.5,
+      37.8
+    ]
+  },
+  {
+    "id": "spanish-peaks",
+    "name": "Spanish Peaks",
+    "region": "South-Central Colorado",
+    "elevation_low": 7000,
+    "elevation_high": 13626,
+    "highpoint": "West Spanish Peak",
+    "description": "A pair of prominent volcanic stocks rising dramatically above the plains south of Walsenburg. Famous for the radial stone dikes — volcanic walls radiating from the peaks like spokes of a wheel. Sacred to multiple Native American tribes. Visible from 100+ miles away.",
+    "best_hike": "West Spanish Peak (13,626 ft) via Wahatoya Trail — About 11 miles RT, 4,200 ft gain. A strenuous climb through spruce forest to alpine tundra with views across the entire southern Colorado frontier — the Sangre de Cristos, Culebra Range, and the Great Plains stretching to infinity.",
+    "best_bike": "CO-12 (Highway of Legends) — A scenic paved loop from Trinidad over Cucharas Pass (9,941 ft). About 82 miles with dramatic Spanish Peaks views throughout. The road passes through coal mining towns and volcanic dike country.",
+    "explored": false,
+    "coords": [
+      -104.92,
+      37.4
+    ]
+  },
+  {
+    "id": "wet-mountains",
+    "name": "Wet Mountains",
+    "region": "South-Central Colorado",
+    "elevation_low": 7000,
+    "elevation_high": 12347,
+    "highpoint": "Greenhorn Mountain",
+    "description": "A relatively obscure range between the Arkansas Valley and the Wet Mountain Valley. Contains the Greenhorn Mountain Wilderness. Heavily forested, gentle summits, and surprisingly good solitude given proximity to Pueblo and Canon City.",
+    "best_hike": "Greenhorn Mountain (12,347 ft) via Bartlett Trail — About 6 miles RT, 2,500 ft gain. The range highpoint with views of the Sangre de Cristos, Spanish Peaks, and the plains. Short but rewarding.",
+    "best_bike": "Ophir Creek Road / Hardscrabble Pass loop — Gravel roads through the Wet Mountains between Westcliffe and the Arkansas Valley. Rolling terrain through ponderosa and spruce with views of the Sangre de Cristo wall. ~30–50 miles depending on routing.",
+    "explored": false,
+    "coords": [
+      -105.05,
+      37.9
+    ]
+  },
+  {
+    "id": "la-garita",
+    "name": "La Garita Mountains",
+    "region": "South-Central Colorado",
+    "elevation_low": 9000,
+    "elevation_high": 14014,
+    "highpoint": "San Luis Peak",
+    "description": "A remote volcanic range in the eastern San Juans. Contains San Luis Peak, Colorado's most remote and arguably easiest 14er. The La Garita Wilderness protects 129,000 acres. Gentle, rounded summits with vast tundra expanses.",
+    "best_hike": "San Luis Peak (14,014 ft) via Stewart Creek — About 13 miles RT, 3,600 ft gain. The most remote 14er in Colorado and one of the easiest — a long walk through beautiful tundra and willow meadows. No crowds.",
+    "best_bike": "Creede to Lake City via Spring Creek Pass (10,898 ft) — A paved/gravel ride on CO-149 through the La Garitas with minimal traffic. About 50 miles. The Rio Grande headwaters section near Creede is stunning.",
+    "explored": true,
+    "coords": [
+      -106.85,
+      37.9
+    ]
+  },
+  {
+    "id": "san-juans",
+    "name": "San Juan Mountains (main range)",
+    "region": "San Juan Mountains",
+    "elevation_low": 7000,
+    "elevation_high": 14309,
+    "highpoint": "Uncompahgre Peak",
+    "description": "Colorado's wildest and most extensive mountain range. Volcanic origin with 14 fourteeners, dozens of mining ghost towns, and some of the most rugged backcountry in the lower 48. Towns of Ouray, Silverton, Telluride, and Lake City anchor the range. The Alpine Loop and Million Dollar Highway are legendary.",
+    "best_hike": "Uncompahgre Peak (14,309 ft) via Nellie Creek — About 7.5 miles RT, 3,000 ft gain. The highest peak in the San Juans. Non-technical Class 2. For something wilder, Mt. Sneffels (14,150 ft) via Yankee Boy Basin (6 miles RT, 2,900 ft gain, Class 3) combines wildflower meadows with a thrilling summit scramble.",
+    "best_bike": "Alpine Loop (Engineer Pass / Cinnamon Pass) — A 63-mile gravel loop through the heart of the San Juans connecting Lake City, Silverton, and Ouray via two 12,000+ ft passes. Perhaps the single best gravel ride in Colorado for scenery.",
+    "explored": false,
+    "coords": [
+      -107.55,
+      37.92
+    ]
+  },
+  {
+    "id": "la-plata",
+    "name": "La Plata Mountains",
+    "region": "San Juan Mountains",
+    "elevation_low": 8000,
+    "elevation_high": 13232,
+    "highpoint": "Hesperus Mountain",
+    "description": "A small but rugged subrange southwest of Durango. Hesperus Mountain (Dibentsaa) is sacred to the Navajo as the northern boundary marker. Compact, lightly visited, and surprisingly dramatic.",
+    "best_hike": "Sharkstooth Peak (12,462 ft) via Sharkstooth Trail — About 10 miles RT, 3,100 ft gain. A scenic hike through aspen and spruce to a dramatic summit. Less known than the neighboring San Juans but equally rewarding.",
+    "best_bike": "La Plata Canyon Road — A gravel road ascending La Plata Canyon from Hesperus toward the mining ruins above. About 15 miles out-and-back with 3,000 ft gain. Beautiful canyon setting with La Plata peaks rising on both sides.",
+    "explored": false,
+    "coords": [
+      -108,
+      37.35
+    ]
+  },
+  {
+    "id": "grenadier",
+    "name": "Grenadier Range",
+    "region": "San Juan Mountains",
+    "elevation_low": 10000,
+    "elevation_high": 13738,
+    "highpoint": "Vestal Peak",
+    "description": "One of Colorado's most alpine and remote subranges, accessible only by the Durango & Silverton Narrow Gauge Railroad or very long approaches. Stunning quartzite towers and spires. No roads. The Weminuche Wilderness protects the range.",
+    "best_hike": "Vestal Peak (13,738 ft) via Elk Creek (train access) — Take the train to Elk Creek, then hike ~7 miles to Vestal Basin. Vestal Peak is a Class 3/4 alpine rock climb on beautiful quartzite. Arrow and Vestal together form one of Colorado's most iconic skyline views.",
+    "best_bike": "Million Dollar Highway (US-550) approach from Durango to Silverton — No bike access into the Grenadiers proper (wilderness), but the ride to Silverton through the Animas Canyon is one of the great road rides in the American West.",
+    "explored": false,
+    "coords": [
+      -107.65,
+      37.67
+    ]
+  },
+  {
+    "id": "needle-mountains",
+    "name": "Needle Mountains",
+    "region": "San Juan Mountains",
+    "elevation_low": 10000,
+    "elevation_high": 14083,
+    "highpoint": "Windom Peak",
+    "description": "Adjacent to the Grenadiers, also in the Weminuche Wilderness. Contains three 14ers (Windom, Sunlight, Eolus) accessible only via the Durango & Silverton Railroad. One of the most committing 14er objectives in Colorado.",
+    "best_hike": "Windom / Sunlight / Eolus via Chicago Basin — Take the train to Needleton, hike 6 miles to Chicago Basin, then climb all three 14ers over 1–2 days. Class 3–4 terrain. Sunlight's summit block is a famous Class 4 move. The full experience is a 3–4 day backpacking trip.",
+    "best_bike": "Million Dollar Highway (US-550) Silverton to Ouray — 23 miles of the most dramatic paved road in Colorado. Three passes (Molas, Coal Bank, Red Mountain) with 5,000+ ft cumulative climbing. Sheer drop-offs, no guardrails, and views into the Needles, Grenadiers, and the entire western San Juans.",
+    "explored": false,
+    "coords": [
+      -107.62,
+      37.6
+    ]
+  },
+  {
+    "id": "west-needle",
+    "name": "West Needle Mountains",
+    "region": "San Juan Mountains",
+    "elevation_low": 10000,
+    "elevation_high": 13075,
+    "highpoint": "Twilight Peak",
+    "description": "A subrange between the Needle Mountains and the Animas River canyon. Less dramatic than the Needles/Grenadiers but still wild and remote. Accessed from the Durango & Silverton Railroad or Molas Pass area.",
+    "best_hike": "Twilight Peak (13,075 ft) — A long approach from the train stop at Needleton, then a Class 2/3 route to the highpoint. The ridgeline views from the Molas Pass area into the West Needles are also excellent.",
+    "best_bike": "Molas Pass (10,910 ft) to Little Molas Lake gravel — Forest roads and trails in the Molas Pass area offer short gravel rides with views into the Needle and West Needle ranges. Extraordinary scenery per mile.",
+    "explored": false,
+    "coords": [
+      -107.72,
+      37.65
+    ]
+  },
+  {
+    "id": "sleeping-ute",
+    "name": "Sleeping Ute Mountain",
+    "region": "San Juan Mountains",
+    "elevation_low": 6000,
+    "elevation_high": 9984,
+    "highpoint": "Ute Peak",
+    "description": "An isolated laccolith (volcanic intrusion) on the Ute Mountain Ute Reservation near Cortez. The mountain's profile resembles a sleeping warrior and is sacred to the Ute people. Access is restricted to tribal land.",
+    "best_hike": "Not publicly accessible — Sleeping Ute Mountain is on the Ute Mountain Ute Reservation. Hiking requires tribal permission. Best appreciated from the viewpoint on US-491 south of Cortez, or from Mesa Verde NP.",
+    "best_bike": "Not publicly accessible — The best bike ride in the area is the approach road toward Mesa Verde NP from Cortez, which offers dramatic Sleeping Ute views.",
+    "explored": false,
+    "coords": [
+      -108.75,
+      37.27
+    ]
+  },
+  {
+    "id": "uncompahgre-plateau",
+    "name": "Uncompahgre Plateau",
+    "region": "San Juan Mountains",
+    "elevation_low": 5500,
+    "elevation_high": 10308,
+    "highpoint": "Horsefly Peak",
+    "description": "A massive, forested mesa stretching 65 miles between the Uncompahgre Valley and the Dolores River canyon. Covered in ponderosa, aspen, and spruce. Extensive gravel road network. Lightly visited despite enormous size.",
+    "best_hike": "Rim Trail (various segments) — The Uncompahgre Plateau has a developing rim trail system along its western edge with views down into the Dolores River canyon and Paradox Valley. Individual segments of 5–15 miles offer excellent day hiking.",
+    "best_bike": "Divide Road (FR-402) — A 70-mile gravel road running the full length of the plateau from Columbine Pass to the Delta area. Gently rolling through aspen and spruce forest at 9,000–10,000 ft with minimal traffic. One of Colorado's great gravel roads.",
+    "explored": false,
+    "coords": [
+      -108.5,
+      38.5
+    ]
+  },
+  {
+    "id": "pinon-mesa",
+    "name": "Pinon Mesa",
+    "region": "San Juan Mountains",
+    "elevation_low": 5000,
+    "elevation_high": 8700,
+    "highpoint": "Unnamed highpoint",
+    "description": "A broad mesa west of Grand Junction and south of the Colorado National Monument. High desert terrain transitioning to pinyon-juniper woodland. Part of the McInnis Canyons NCA.",
+    "best_hike": "Rattlesnake Canyon (arches) via Pollock Bench — About 7 miles RT to reach the second-largest concentration of natural arches outside of Arches NP. Remote desert hiking with dramatic canyon views. Best in spring or fall.",
+    "best_bike": "Pinon Mesa Road (gravel) — Gravel roads traversing the mesa top with views toward the La Sal Mountains, the Book Cliffs, and Colorado National Monument. Connect with the Kokopelli Trail corridor for longer adventures.",
+    "explored": true,
+    "coords": [
+      -108.78,
+      39
+    ]
+  },
+  {
+    "id": "platte-river-mtns",
+    "name": "Platte River Mountains",
+    "region": "Southern Front Range & Foothills",
+    "elevation_low": 9000,
+    "elevation_high": 14264,
+    "highpoint": "Mt. Blue Sky (Mt. Evans)",
+    "description": "The subrange encompassing the Mt. Evans (Blue Sky) massif, Guanella Pass, and the upper North Fork of the South Platte. Contains the Mt. Evans Wilderness and the highest paved road in North America.",
+    "best_hike": "Mt. Blue Sky (14,264 ft) via Chicago Lakes Trail — About 9 miles RT, 3,600 ft gain. A much more rewarding approach than driving: passes Summit Lake and the incredible Chicago Lakes cirque.",
+    "best_bike": "Mt. Evans Road (CO-5) — The highest paved road in North America, climbing from Echo Lake (10,600 ft) to the summit parking area at 14,130 ft. About 14 miles, 3,500 ft gain. A legendary hill climb used for the annual Mt. Evans Hill Climb race.",
+    "explored": true,
+    "coords": [
+      -105.65,
+      39.6
+    ]
+  },
+  {
+    "id": "kenosha",
+    "name": "Kenosha Mountains",
+    "region": "Southern Front Range & Foothills",
+    "elevation_low": 9000,
+    "elevation_high": 12431,
+    "highpoint": "Unnamed highpoint",
+    "description": "A short, gentle subrange between the Platte River Mountains and the Tarryall Mountains. Kenosha Pass (10,001 ft) on US-285 is one of Colorado's premier fall color viewpoints.",
+    "best_hike": "Kenosha Pass to Georgia Pass (Colorado Trail segment) — About 16 miles one way on the Colorado Trail. Crosses Kenosha Pass through one of the state's most spectacular aspen groves, then climbs through mixed terrain to Georgia Pass on the Continental Divide.",
+    "best_bike": "Kenosha Pass to Georgia Pass via Colorado Trail — This CT segment is open to mountain bikes and is one of the best bikeable sections of the Colorado Trail. About 16 miles one way with 2,500 ft gain. Gravel roads through South Park offer huge open-range riding with Mosquito Range views.",
+    "explored": false,
+    "coords": [
+      -105.72,
+      39.4
+    ]
+  },
+  {
+    "id": "tarryall",
+    "name": "Tarryall Mountains",
+    "region": "Southern Front Range & Foothills",
+    "elevation_low": 8500,
+    "elevation_high": 12320,
+    "highpoint": "Bison Peak",
+    "description": "Home to the Lost Creek Wilderness — one of Colorado's most unique wilderness areas. Bizarre granite formations, rock arches, and a creek that literally disappears underground. Heavily forested with scattered granite outcrops. Underrated and uncrowded.",
+    "best_hike": "Bison Peak (12,320 ft) via Ute Creek Trail — About 13 miles RT, 3,000 ft gain. The range highpoint with 360° views of the Front Range, Mosquito Range, and South Park. The trail passes through Lost Creek Wilderness's bizarre granite landscape.",
+    "best_bike": "Tarryall Road (CR-77) — A gravel road running through the Tarryall Creek valley between the Tarryall Mountains and the Kenosha Mountains. About 30 miles of rolling gravel through ranch country with views of Bison Peak and the Lost Creek Wilderness.",
+    "explored": false,
+    "coords": [
+      -105.42,
+      39.2
+    ]
+  },
+  {
+    "id": "puma-hills",
+    "name": "Puma Hills",
+    "region": "Southern Front Range & Foothills",
+    "elevation_low": 7500,
+    "elevation_high": 10200,
+    "highpoint": "Unnamed highpoint",
+    "description": "A small Front Range subrange south of the Platte River Mountains. Rocky outcroppings, old mining claims, and Class 4–5 rock features. Popular with climbers and boulderers. Heavily used by hunters and ATV users in season.",
+    "best_hike": "Puma Hills rock outcroppings scramble — No formal trails, but the area offers excellent off-trail scrambling on vertical rock features and old mining claims. More of a climber's playground than a hiking destination.",
+    "best_bike": "Forest roads through the Puma Hills — A network of rough forest roads connecting Pike National Forest routes between Pine Junction and the Rampart Range.",
+    "explored": false,
+    "coords": [
+      -105.35,
+      39.3
+    ]
+  },
+  {
+    "id": "rampart",
+    "name": "Rampart Range",
+    "region": "Southern Front Range & Foothills",
+    "elevation_low": 7000,
+    "elevation_high": 10240,
+    "highpoint": "Unnamed highpoint",
+    "description": "A long, gentle subrange extending from Pikes Peak north to Castle Rock. Separates the Front Range urban corridor from South Park. Contains popular mountain biking and OHV areas. Heavily forested with ponderosa pine.",
+    "best_hike": "Winding Stairs Trail to Devil's Head Lookout — About 2.8 miles RT, 950 ft gain. A short but rewarding hike to one of the few remaining fire lookout towers in the Front Range. 360° views from Pikes Peak to Longs Peak and across the plains.",
+    "best_bike": "Rampart Range Road (FR-300) — A 50+ mile gravel road running the length of the Rampart Range from Garden of the Gods to Sedalia. Rolling terrain through ponderosa pine with Pikes Peak views. Can be ridden as a multi-day tour.",
+    "explored": false,
+    "coords": [
+      -105.03,
+      39.1
+    ]
+  },
+  {
+    "id": "culebra",
+    "name": "Culebra Range",
+    "region": "South-Central Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 14047,
+    "highpoint": "Culebra Peak",
+    "description": "Colorado's only privately owned 14er (Culebra Peak, on Cielo Vista Ranch — currently ~$150/person fee to climb). The southernmost range in Colorado, extending into New Mexico. Very remote and lightly visited.",
+    "best_hike": "Culebra Peak (14,047 ft) via Cielo Vista Ranch — About 11 miles RT, 4,500 ft gain. Requires paying the access fee. One of the most remote and least-climbed 14ers. Views into the Sangre de Cristos, Spanish Peaks, and New Mexico.",
+    "best_bike": "CO-159 (Fort Garland to San Luis) — A paved ride through the San Luis Valley with the Culebra Range as a dramatic eastern wall. Add gravel via La Veta Pass approach or Sangre de Cristo back roads.",
+    "explored": true,
+    "coords": [
+      -105.2,
+      37.2
+    ]
+  },
+  {
+    "id": "raggeds-ruby",
+    "name": "Raggeds / Ruby Range",
+    "region": "Sawatch Range & Central Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 12920,
+    "highpoint": "Treasury Mountain area",
+    "description": "A dramatic subrange between the Elk Mountains and the West Elks. Contains the Raggeds Wilderness and the iconic Ruby Range visible from Crested Butte. Gorgeous fall color country.",
+    "best_hike": "Ruby Peak area via Erickson Springs — A 12+ mile out-and-back to the Ruby Range highpoints above Erickson Springs. Alternatively, Oh-Be-Joyful Creek (8 miles RT) is a classic wildflower hike below the Raggeds.",
+    "best_bike": "Schofield Pass / Paradise Divide — A high-altitude gravel road over Schofield Pass and across Paradise Divide between Crested Butte and Crystal/Marble. Some of the most spectacular gravel scenery in Colorado.",
+    "explored": false,
+    "coords": [
+      -107.1,
+      38.87
+    ]
+  },
+  {
+    "id": "sneffels",
+    "name": "Sneffels Range",
+    "region": "San Juan Mountains",
+    "elevation_low": 8000,
+    "elevation_high": 14150,
+    "highpoint": "Mt. Sneffels",
+    "description": "A stunning subrange of the San Juans between Ouray, Ridgway, and Telluride. Mt. Sneffels is among Colorado's most photogenic peaks. The Dallas Divide and Last Dollar Road viewpoints are iconic.",
+    "best_hike": "Mt. Sneffels (14,150 ft) via Yankee Boy Basin — About 6 miles RT, 2,900 ft gain, Class 3. The approach through Yankee Boy Basin wildflower meadows is world-class in late July. One of Colorado's best 14er experiences.",
+    "best_bike": "Last Dollar Road (Telluride to Ridgway) — A gravel road over Last Dollar Pass (~10,663 ft) with jaw-dropping Sneffels Range views and aspen groves. About 22 miles. One of Colorado's most scenic gravel roads, especially in fall.",
+    "explored": false,
+    "coords": [
+      -107.82,
+      38
+    ]
+  },
+  {
+    "id": "san-miguel",
+    "name": "San Miguel Mountains",
+    "region": "San Juan Mountains",
+    "elevation_low": 8000,
+    "elevation_high": 14246,
+    "highpoint": "Mt. Wilson",
+    "description": "The western subrange of the San Juans, containing the Wilson Group — three of Colorado's most difficult and remote 14ers (Mt. Wilson, Wilson Peak, El Diente). The Telluride ski area sits within the range.",
+    "best_hike": "Wilson Peak (14,017 ft) via Rock of Ages Trail — About 12 miles RT, 4,300 ft gain, Class 3/4. The peak on the Coors label. A serious mountaineering objective with loose rock and route-finding.",
+    "best_bike": "Telluride to Lizard Head Pass via CO-145 — A gorgeous paved ride along the San Miguel River with Wilson Peak and Sunshine Mountain as backdrops. About 30 miles, 2,500 ft gain. Add Ophir Pass (gravel, 10,000 ft) for a more adventurous extension.",
+    "explored": false,
+    "coords": [
+      -108.05,
+      37.85
+    ]
+  },
+  {
+    "id": "cochetopa",
+    "name": "Cochetopa Hills / Saguache Range",
+    "region": "South-Central Colorado",
+    "elevation_low": 8000,
+    "elevation_high": 12800,
+    "highpoint": "Unnamed highpoint",
+    "description": "A broad, gentle highland between the La Garitas and the Sangre de Cristos. Contains the Cochetopa Pass area, historically one of the most important Native American and early settler crossings of the Continental Divide. Very remote, very quiet.",
+    "best_hike": "Cochetopa Creek to Lujan Pass area — Mostly off-trail hiking through gentle sagebrush hills and forests. Best used as a pass-through on a longer backcountry traverse. The Stone Cellar area offers some established trails.",
+    "best_bike": "North Cochetopa Pass Road (BLM road) — Gravel roads through the Cochetopa Hills are excellent for gravel touring. The network between CO-114 and Saguache offers 40–60 miles of remote, rolling gravel with zero traffic.",
+    "explored": false,
+    "coords": [
+      -106.82,
+      38.15
+    ]
+  },
+  {
+    "id": "book-cliffs",
+    "name": "Book Cliffs",
+    "region": "Northwest Colorado",
+    "elevation_low": 4500,
+    "elevation_high": 8800,
+    "highpoint": "Unnamed highpoint",
+    "description": "A massive, continuous escarpment stretching from Grand Junction east toward Rifle and beyond into Utah. Not a typical mountain range but one of the most visually striking landforms in western Colorado. Contains the Little Book Cliffs Wild Horse Range.",
+    "best_hike": "Little Book Cliffs Wild Horse Range — Multiple trails (8–15 miles RT) through BLM lands where wild horses roam free. The Coal Canyon Trail to the horse viewing areas is the most popular. Hoodoos, desert geology, and wild mustangs.",
+    "best_bike": "Kokopelli Trail (Loma to Moab) — The first sections near Loma/Fruita ride along the base of the Book Cliffs with dramatic views. For gravel, the 18 Road trails near Fruita offer amazing Book Cliffs panoramas.",
+    "explored": true,
+    "coords": [
+      -108.5,
+      39.42
+    ]
+  },
+  {
+    "id": "collegiate-peaks",
+    "name": "Collegiate Peaks",
+    "region": "Sawatch Range & Central Colorado",
+    "elevation_low": 8500,
+    "elevation_high": 14433,
+    "highpoint": "Mt. Harvard",
+    "description": "The section of the Sawatch between Buena Vista and Leadville named for Ivy League universities. Contains six 14ers: Harvard, Columbia, Yale, Princeton, Oxford, and Belford/Missouri. The Collegiate Peaks Wilderness is one of Colorado's most popular alpine areas.",
+    "best_hike": "Mt. Harvard (14,433 ft) via North Cottonwood Creek — About 14 miles RT, 4,500 ft gain. Colorado's third-highest peak and the highest named for a university. Long but non-technical. Can be combined with Mt. Columbia (14,073 ft) for an ambitious day.",
+    "best_bike": "Collegiate Peaks Loop (gravel) — A gravel loop from Buena Vista over Cottonwood Pass, through Taylor Park, over Tincup Pass, and back to BV via St. Elmo and Chalk Creek. About 80–90 miles of mixed paved/gravel with four 14ers visible throughout.",
+    "explored": true,
+    "coords": [
+      -106.42,
+      38.88
+    ]
+  }
+]
