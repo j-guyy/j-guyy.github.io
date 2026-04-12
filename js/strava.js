@@ -1122,13 +1122,28 @@ async function fetchCityRoads(cfg) {
         + `(way["highway"~"^(${cfg.highways})$"](${south},${west},${north},${east}););`
         + `out body;>;out skel qt;`;
 
+    const OVERPASS_MIRRORS = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    ];
+
     dbg('Overpass API: fetching ways…');
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-    });
-    if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+    let res = null;
+    for (const mirror of OVERPASS_MIRRORS) {
+        try {
+            res = await fetch(mirror, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query),
+            });
+            if (res.ok) break;
+            dbg(`Overpass mirror ${mirror} returned ${res.status}, trying next…`);
+        } catch (e) {
+            dbg(`Overpass mirror ${mirror} failed: ${e.message}, trying next…`);
+        }
+    }
+    if (!res || !res.ok) throw new Error(`All Overpass mirrors failed`);
 
     const data = await res.json();
     const ways = parseOverpassWays(data);
