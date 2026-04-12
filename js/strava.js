@@ -1,6 +1,6 @@
 const WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 const GEO_CACHE_KEY = 'strava_geo_cache_v2'; // v2: stores {c, s} instead of string
-const GEO_BATCH = 10;
+const GEO_BATCH = 5; // Conservative — BigDataCloud rate-limits hard bursts
 
 const GROUPS = {
     'Foot Sports':  ['Run','TrailRun','VirtualRun','Hike','Walk','Snowshoe'],
@@ -91,20 +91,29 @@ async function syncWithWorker() {
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
-async function geocodeKey(key) {
+async function geocodeKey(key, logFirst = false) {
     const [lat, lng] = key.split(',').map(Number);
-    try {
-        const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
-        );
-        const data = await res.json();
-        return {
-            c: data.countryName || 'Unknown',
-            s: data.principalSubdivision || ''
-        };
-    } catch {
-        return { c: 'Unknown', s: '' };
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+            const res = await fetch(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+            );
+            if (!res.ok) {
+                dbg(`BigDataCloud HTTP ${res.status} for ${key} (attempt ${attempt + 1})`);
+                continue;
+            }
+            const data = await res.json();
+            if (logFirst) dbg(`BigDataCloud sample response for ${key}`, { countryName: data.countryName, principalSubdivision: data.principalSubdivision, status: data.status });
+            if (data.countryName && data.countryName !== 'Unknown') {
+                return { c: data.countryName, s: data.principalSubdivision || '' };
+            }
+            dbg(`BigDataCloud returned no country for ${key} (attempt ${attempt + 1})`, { status: data.status, description: data.description });
+        } catch (err) {
+            dbg(`BigDataCloud fetch error for ${key} (attempt ${attempt + 1}): ${err.message}`);
+        }
     }
+    return { c: 'Unknown', s: '' };
 }
 
 // Load geo cache — server (KV) is authoritative, localStorage is fallback
@@ -164,18 +173,23 @@ async function geocodeAll(keys, cache) {
     let geocodingModified = false;
 
     if (needCountry.length > 0) {
-        let done = 0;
+        dbg(`BigDataCloud country pass: ${needCountry.length} cells (batches of ${GEO_BATCH})`);
+        let done = 0, succeeded = 0;
         for (let i = 0; i < needCountry.length; i += GEO_BATCH) {
             const batch = needCountry.slice(i, i + GEO_BATCH);
-            await Promise.all(batch.map(async key => {
-                const result = await geocodeKey(key);
-                if (result.c !== 'Unknown') cache[key] = result;
+            // Log the very first API response so we can see the raw shape in debug
+            await Promise.all(batch.map(async (key, batchIdx) => {
+                const result = await geocodeKey(key, i === 0 && batchIdx === 0);
+                if (result.c !== 'Unknown') { cache[key] = result; succeeded++; }
                 done++;
-                setStatus(`Geocoding locations… ${done} / ${needCountry.length}`);
+                setStatus(`Geocoding locations… ${done} / ${needCountry.length} (${succeeded} ok)`);
             }));
-            if (i + GEO_BATCH < needCountry.length) await new Promise(r => setTimeout(r, 150));
+            // Save to localStorage every batch so closing the tab preserves progress
+            try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+            if (i + GEO_BATCH < needCountry.length) await new Promise(r => setTimeout(r, 600));
         }
-        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+        dbg(`BigDataCloud done: ${succeeded} / ${needCountry.length} cells geocoded`);
+        if (succeeded > 0) geocodingModified = true;
     }
 
     // Pass 2: Nominatim — individual call per cell for accuracy.
