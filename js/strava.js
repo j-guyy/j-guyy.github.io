@@ -180,6 +180,23 @@ async function resetGeoCache() {
     }
 }
 
+async function resetCountyData() {
+    if (!confirm('Clear all county detection data from the server? This will force a full re-detection on next county map open.')) return;
+    try {
+        await fetch(`${WORKER_URL}/counties/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fips: [], processedIds: [] }),
+        });
+        countyMapInitialized = false;
+        visitedFips.clear();
+        countyProcessedIds.clear();
+        dbg('County data reset. Reopen the County Hunter map to re-detect.');
+    } catch (err) {
+        dbg(`County reset failed: ${err.message}`);
+    }
+}
+
 async function geocodeAll(keys, cache) {
     // Single Nominatim pass — handles both country and subdivision in one call.
     // Sequential at 1.1s/cell to respect Nominatim's rate limit.
@@ -518,6 +535,12 @@ function renderSubdivisions(subdivisions) {
 
 // ── County Hunter ─────────────────────────────────────────────────────────────
 
+const LSAD_NAMES = {
+    '06': 'County',        '07': 'city',          '11': 'Census Area',
+    '12': 'Borough',       '13': 'City and Borough', '15': 'Parish',
+    '25': 'city',
+};
+
 const STATE_ABBR = {
     '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
     '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
@@ -566,8 +589,9 @@ async function initCountyMap() {
         return;
     }
 
-    visitedFips = new Set(saved.fips || []);
-    countyProcessedIds = new Set(saved.processedIds || []);
+    // Filter out nulls — NaN serialises to null in JSON, guard against corrupt saves
+    visitedFips       = new Set((saved.fips         || []).filter(Boolean));
+    countyProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
     dbg(`County cache: ${visitedFips.size} counties, ${countyProcessedIds.size} processed activities`);
 
     // Only process activities with polylines not yet analysed
@@ -587,8 +611,8 @@ async function initCountyMap() {
     }
 
     // Build Leaflet map centred on the contiguous US
+    // SVG renderer (default) — GeoJSON mouse events don't work reliably on canvas
     countyMap = L.map('county-map', {
-        renderer: L.canvas(),
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
@@ -611,7 +635,7 @@ async function initCountyMap() {
 
 function preprocessCounties(geojson) {
     return geojson.features.map(feature => ({
-        fips: feature.properties.STATE + feature.properties.COUNTY,
+        fips: feature.properties.GEOID,   // 5-digit FIPS, e.g. "08013"
         feature,
         bbox: computeFeatureBbox(feature),
     }));
@@ -700,8 +724,7 @@ function pointInRing(lat, lng, ring) {
 function renderCountyMap(geojson) {
     L.geoJSON(geojson, {
         style: feature => {
-            const fips = feature.properties.STATE + feature.properties.COUNTY;
-            const visited = visitedFips.has(fips);
+            const visited = visitedFips.has(feature.properties.GEOID);
             return {
                 fillColor:   visited ? '#4CAF50' : 'transparent',
                 fillOpacity: visited ? 0.45 : 0,
@@ -710,16 +733,16 @@ function renderCountyMap(geojson) {
             };
         },
         onEachFeature: (feature, layer) => {
-            const fips = feature.properties.STATE + feature.properties.COUNTY;
-            if (!visitedFips.has(fips)) return;
-            const state = STATE_ABBR[feature.properties.STATE] || feature.properties.STATE;
-            const name = feature.properties.NAME;
-            const lsad = feature.properties.LSAD || 'County';
+            const { GEOID, STATEFP, NAME, LSAD } = feature.properties;
+            const visited = visitedFips.has(GEOID);
+            if (!visited) return;
+            const state = STATE_ABBR[STATEFP] || STATEFP || '?';
+            const lsad  = LSAD_NAMES[LSAD] || 'County';
             layer.bindPopup(`
                 <div class="activity-popup-inner">
                     <div class="activity-popup-type" style="color:#4CAF50">${state}</div>
-                    <div class="activity-popup-name">${name} ${lsad}</div>
-                    <div class="activity-popup-date">FIPS ${fips}</div>
+                    <div class="activity-popup-name">${NAME} ${lsad}</div>
+                    <div class="activity-popup-date">FIPS ${GEOID}</div>
                 </div>`, { className: 'activity-popup' });
             layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
             layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
@@ -997,7 +1020,8 @@ function renderDebugPanel() {
         <div class="dbg-header">
             <strong>Debug Log</strong>
             <div style="display:flex;gap:6px">
-                <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data from server and localStorage — forces full re-geocode">Reset geo cache</button>
+                <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data — forces full re-geocode">Reset geo cache</button>
+                <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
