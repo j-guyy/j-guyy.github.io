@@ -20,7 +20,7 @@ const GROUP_KEYS = [...Object.keys(GROUPS), 'Other'];
 // Countries with regional breakdowns.
 // `names` covers variations BigDataCloud may return for the same country.
 const SUBDIVISION_CONFIG = [
-    { id: 'us',        names: ['United States', 'United States of America'], flag: '🇺🇸', label: 'US States',           colLabel: 'State'    },
+    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], flag: '🇺🇸', label: 'US States',           colLabel: 'State'    },
     { id: 'canada',    names: ['Canada'],                                    flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province' },
     { id: 'australia', names: ['Australia'],                                 flag: '🇦🇺', label: 'Australian States',    colLabel: 'State'    },
     { id: 'mexico',    names: ['Mexico'],                                    flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State'    },
@@ -146,30 +146,72 @@ function loadGeoCache() {
 }
 
 async function geocodeAll(keys, cache) {
-    // Re-geocode if: missing, Unknown country, or country expects a subdivision but has none
-    const uncached = keys.filter(k => {
+    // Pass 1: BigDataCloud — batch all cells missing country or subdivision
+    const needGeo = keys.filter(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') return true;
         if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
         return false;
     });
-    let done = 0;
 
-    for (let i = 0; i < uncached.length; i += GEO_BATCH) {
-        const batch = uncached.slice(i, i + GEO_BATCH);
+    let done = 0;
+    for (let i = 0; i < needGeo.length; i += GEO_BATCH) {
+        const batch = needGeo.slice(i, i + GEO_BATCH);
         await Promise.all(batch.map(async key => {
             const result = await geocodeKey(key);
-            // Only overwrite if we got a real answer — don't replace good data with Unknown
             if (result.c !== 'Unknown') cache[key] = result;
             done++;
-            setStatus(`Geocoding locations… ${done} / ${uncached.length}`);
+            setStatus(`Geocoding locations… ${done} / ${needGeo.length}`);
         }));
-        // Small pause between batches to avoid rate-limiting
-        if (i + GEO_BATCH < uncached.length) await new Promise(r => setTimeout(r, 150));
+        if (i + GEO_BATCH < needGeo.length) await new Promise(r => setTimeout(r, 150));
+    }
+
+    // Pass 2: Nominatim fallback — sequential, 1 req/sec, for any subdivision countries
+    // where BigDataCloud returned empty subdivision (e.g. China)
+    const needSubdiv = keys.filter(k => {
+        const v = cache[k];
+        return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
+    });
+
+    if (needSubdiv.length > 0) {
+        dbg(`Nominatim fallback for ${needSubdiv.length} cells (1 req/sec)…`);
+        for (let i = 0; i < needSubdiv.length; i++) {
+            const key = needSubdiv[i];
+            const [lat, lng] = key.split(',').map(Number);
+            setStatus(`Getting subdivision via Nominatim… ${i + 1} / ${needSubdiv.length}`);
+            const s = await geocodeSubdivisionNominatim(lat, lng);
+            if (s) cache[key] = { ...cache[key], s };
+            if (i < needSubdiv.length - 1) await new Promise(r => setTimeout(r, 1100));
+        }
+        dbg(`Nominatim done`, needSubdiv.slice(0, 5).map(k => ({ key: k, s: cache[k]?.s || '(empty)' })));
     }
 
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
     return cache;
+}
+
+// Strip common suffixes OSM appends to Chinese province names
+function cleanSubdivision(s) {
+    return s
+        .replace(/ Province$/, '')
+        .replace(/ Autonomous Region$/, '')
+        .replace(/ Municipality$/, '')
+        .replace(/ Special Administrative Region$/, '')
+        .trim();
+}
+
+async function geocodeSubdivisionNominatim(lat, lng) {
+    try {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+            { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' } }
+        );
+        const data = await res.json();
+        const raw = data.address?.state || data.address?.province || '';
+        return raw ? cleanSubdivision(raw) : '';
+    } catch {
+        return '';
+    }
 }
 
 // ── Build data ────────────────────────────────────────────────────────────────
