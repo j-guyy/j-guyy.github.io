@@ -626,6 +626,9 @@ async function initCountyMap() {
     renderCountyMap(geojson);
     renderCountyStats();
 
+    setCountyStatus('Loading activity routes…');
+    await addPolylineOverlay(countyMap);
+
     countyMapInitialized = true;
     setCountyStatus('');
     dbg(`County map rendered: ${visitedFips.size} visited`);
@@ -807,6 +810,39 @@ let mapInitialized = false;
 // Each entry: { layer: L.polyline, type: string }
 let mapLayers = [];
 
+// Shared polyline cache — fetched once, reused by Activity Map, County Hunter, Tile Hunter
+let cachedPolylines = null;
+
+async function loadPolylines() {
+    if (cachedPolylines !== null) return cachedPolylines;
+    dbg('GET /polylines/all…');
+    const res = await fetch(`${WORKER_URL}/polylines/all`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    cachedPolylines = await res.json();
+    dbg(`Polylines: ${cachedPolylines.length} total, ${cachedPolylines.filter(Boolean).length} with GPS`);
+    return cachedPolylines;
+}
+
+// Draws all activity polylines onto any Leaflet map instance.
+// Uses the shared cache so the fetch only ever happens once per page load.
+// Non-interactive (no popups) — secondary decoration on county/tile maps.
+async function addPolylineOverlay(targetMap) {
+    let polylines;
+    try { polylines = await loadPolylines(); }
+    catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return; }
+
+    const renderer = L.canvas();
+    polylines.forEach((encoded, i) => {
+        if (!encoded) return;
+        const slim = currentSlim[i];
+        if (!slim) return;
+        const points = decodePolyline(encoded);
+        if (!points.length) return;
+        const color = GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
+        L.polyline(points, { color, weight: 1.2, opacity: 0.35, renderer }).addTo(targetMap);
+    });
+}
+
 function toggleMap() {
     const section = document.getElementById('map-section');
     const btn = document.getElementById('map-toggle-btn');
@@ -845,15 +881,11 @@ async function initMap() {
         maxZoom: 19,
     }).addTo(stravaMap);
 
-    // Lazy-fetch polylines — separate from the stats payload
+    // Lazy-fetch polylines via shared cache
     setMapStatus('Fetching routes…');
-    dbg('GET /polylines/all…');
-    let polylines = [];
+    let polylines;
     try {
-        const res = await fetch(`${WORKER_URL}/polylines/all`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        polylines = await res.json();
-        dbg(`Polylines: ${polylines.length} total, ${polylines.filter(Boolean).length} with GPS`);
+        polylines = await loadPolylines();
     } catch (err) {
         dbg(`Polylines fetch failed: ${err.message}`);
         setMapStatus('Failed to load routes.');
@@ -979,6 +1011,199 @@ function decodePolyline(encoded) {
     return points;
 }
 
+// ── Tile Hunter ───────────────────────────────────────────────────────────────
+//
+// Divides the world into 0.01° × 0.01° tiles (~1.1 km at equator, ~1 mi at
+// mid-latitudes). A tile is "visited" when any decoded polyline point falls
+// inside it — detection is pure floor-division, O(n) with no spatial index.
+
+let tileMap = null;
+let tileMapInitialized = false;
+let visitedTiles = new Set();   // "latInt,lngInt" strings, e.g. "3991,-10523"
+let tileProcessedIds = new Set();
+
+function toggleTileMap() {
+    const section = document.getElementById('tile-section');
+    const btn = document.getElementById('tile-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !tileMapInitialized) {
+        initTileMap();
+    } else if (opening && tileMap) {
+        setTimeout(() => tileMap.invalidateSize(), 50);
+    }
+}
+
+async function initTileMap() {
+    setTileStatus('Loading saved tile data…');
+    dbg('Tile map: loading saved data…');
+
+    let saved;
+    try {
+        saved = await fetch(`${WORKER_URL}/tiles/all`).then(r => r.json());
+    } catch (err) {
+        dbg(`Tile load error: ${err.message}`);
+        setTileStatus('Failed to load tile data.');
+        return;
+    }
+
+    visitedTiles      = new Set((saved.tiles        || []).filter(Boolean));
+    tileProcessedIds  = new Set((saved.processedIds || []).filter(Boolean));
+    dbg(`Tile cache: ${visitedTiles.size} tiles, ${tileProcessedIds.size} processed activities`);
+
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !tileProcessedIds.has(a.i));
+    dbg(`Tile detection: ${unprocessed.length} new activities to process`);
+
+    if (unprocessed.length > 0) {
+        const newTiles = await detectTilesAsync(unprocessed);
+        newTiles.forEach(t => visitedTiles.add(t));
+        unprocessed.forEach(a => tileProcessedIds.add(a.i));
+        dbg(`Tile detection done: +${newTiles.size} new tiles (${visitedTiles.size} total)`);
+        await saveTilesToWorker();
+    }
+
+    tileMap = L.map('tile-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([38, -96], 4);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+    }).addTo(tileMap);
+
+    new TileHunterLayer(visitedTiles).addTo(tileMap);
+
+    setTileStatus('Loading activity routes…');
+    await addPolylineOverlay(tileMap);
+
+    renderTileStats();
+    tileMapInitialized = true;
+    setTileStatus('');
+    dbg(`Tile map rendered: ${visitedTiles.size} tiles`);
+}
+
+// ── Tile detection ────────────────────────────────────────────────────────────
+
+// No spatial index needed — mapping a lat/lng to a tile is just floor division.
+async function detectTilesAsync(activities) {
+    const newTiles = new Set();
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 100 === 0) {
+            setTileStatus(`Detecting tiles… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0)); // yield to browser
+        }
+        if (!activities[i].p) continue;
+        for (const [lat, lng] of decodePolyline(activities[i].p)) {
+            newTiles.add(`${Math.floor(lat * 100)},${Math.floor(lng * 100)}`);
+        }
+    }
+    return newTiles;
+}
+
+// ── Tile canvas layer ─────────────────────────────────────────────────────────
+//
+// Renders visited tiles as filled rectangles on a canvas element in Leaflet's
+// overlayPane. Canvas is repositioned via DomUtil.setPosition after each
+// moveend/zoomend (same pattern as Leaflet's own SVG renderer) so it stays
+// aligned with the basemap during smooth panning.
+
+const TileHunterLayer = L.Layer.extend({
+    initialize(tileKeys) {
+        // Parse once — array of [latInt, lngInt] number pairs
+        this._tiles = [...tileKeys].map(k => k.split(',').map(Number));
+    },
+    onAdd(map) {
+        this._map = map;
+        this._canvas = document.createElement('canvas');
+        this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
+        map.getPanes().overlayPane.appendChild(this._canvas);
+        map.on('moveend zoomend resize', this._redraw, this);
+        this._redraw();
+    },
+    onRemove(map) {
+        this._canvas.remove();
+        map.off('moveend zoomend resize', this._redraw, this);
+    },
+    _redraw() {
+        const map = this._map;
+        const size = map.getSize();
+        const topLeft = map.containerPointToLayerPoint([0, 0]);
+        L.DomUtil.setPosition(this._canvas, topLeft);
+        this._canvas.width  = size.x;
+        this._canvas.height = size.y;
+
+        const ctx = this._canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.5)';
+
+        for (const [latInt, lngInt] of this._tiles) {
+            const sw = map.latLngToContainerPoint([latInt / 100,       lngInt / 100]);
+            const ne = map.latLngToContainerPoint([(latInt + 1) / 100, (lngInt + 1) / 100]);
+            const x = Math.min(sw.x, ne.x);
+            const y = Math.min(sw.y, ne.y);
+            const w = Math.max(Math.abs(ne.x - sw.x), 1);
+            const h = Math.max(Math.abs(ne.y - sw.y), 1);
+            // Skip tiles that are entirely off-screen
+            if (x + w < 0 || y + h < 0 || x > size.x || y > size.y) continue;
+            ctx.fillRect(x, y, w, h);
+        }
+    },
+});
+
+// ── Tile persistence ──────────────────────────────────────────────────────────
+
+function renderTileStats() {
+    const el = document.getElementById('tile-stats-bar');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedTiles.size.toLocaleString()}</span>
+            <span class="county-stat-label">Tiles Visited</span>
+        </div>`;
+}
+
+async function saveTilesToWorker() {
+    try {
+        const res = await fetch(`${WORKER_URL}/tiles/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tiles: [...visitedTiles],
+                processedIds: [...tileProcessedIds],
+            }),
+        });
+        const data = await res.json();
+        dbg(`Tile data saved: ${data.tiles} tiles`);
+    } catch (err) {
+        dbg(`Tile save failed: ${err.message}`);
+    }
+}
+
+async function resetTileData() {
+    if (!confirm('Clear all tile detection data? Forces full re-detection on next open.')) return;
+    try {
+        await fetch(`${WORKER_URL}/tiles/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tiles: [], processedIds: [] }),
+        });
+        tileMapInitialized = false;
+        visitedTiles.clear();
+        tileProcessedIds.clear();
+        dbg('Tile data reset. Reopen Tile Hunter to re-detect.');
+    } catch (err) {
+        dbg(`Tile reset failed: ${err.message}`);
+    }
+}
+
+function setTileStatus(msg) {
+    const el = document.getElementById('tile-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
 const debugLog = [];
@@ -1022,6 +1247,7 @@ function renderDebugPanel() {
             <div style="display:flex;gap:6px">
                 <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data — forces full re-geocode">Reset geo cache</button>
                 <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
+                <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
