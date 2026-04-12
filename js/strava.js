@@ -178,66 +178,44 @@ async function geocodeAll(keys, cache) {
         try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
     }
 
-    // Pass 2: Nominatim for cells with a country but no subdivision.
-    // Uses neighbor lookup first — once one cell in a state is geocoded,
-    // nearby cells get filled in without any API call.
-    const needSubdiv = keys
-        .filter(k => {
-            const v = cache[k];
-            return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
-        })
-        .sort(); // sort so nearby grid keys are adjacent in the list
+    // Pass 2: Nominatim — individual call per cell for accuracy.
+    // No neighbor borrowing: that approach causes cross-border cascade errors.
+    // Results are cached server-side so this only runs once ever.
+    const needSubdiv = keys.filter(k => {
+        const v = cache[k];
+        return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
+    });
 
     if (needSubdiv.length > 0) {
-        let nominatimCalls = 0;
-        let neighborFills = 0;
-
-        dbg(`Subdivision pass: ${needSubdiv.length} cells need state/province data`);
+        const estMins = Math.ceil(needSubdiv.length * 1.1 / 60);
+        dbg(`Nominatim subdivision pass: ${needSubdiv.length} cells (~${estMins} min, one-time only)`);
 
         for (let i = 0; i < needSubdiv.length; i++) {
             const key = needSubdiv[i];
-            if (cache[key]?.s) { neighborFills++; continue; }
-
-            const neighborState = findNeighborSubdivision(key, cache);
-            if (neighborState) {
-                cache[key] = { ...cache[key], s: neighborState };
-                neighborFills++;
-                continue;
-            }
-
             const [lat, lng] = key.split(',').map(Number);
-            setStatus(`Geocoding subdivisions… ${i + 1} / ${needSubdiv.length} (${nominatimCalls} API calls)`);
+            setStatus(`Geocoding subdivisions… ${i + 1} / ${needSubdiv.length}`);
+
             const s = await geocodeSubdivisionNominatim(lat, lng);
             if (s) cache[key] = { ...cache[key], s };
-            nominatimCalls++;
 
-            // Save to localStorage after every API call (progress preservation if tab is closed)
+            // Save to localStorage after every call
             try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+
+            // Save to server every 25 calls — preserves progress if the tab is closed
+            if ((i + 1) % 25 === 0) {
+                dbg(`Checkpoint: saving ${i + 1} / ${needSubdiv.length} to server…`);
+                await saveGeoToWorker(cache);
+            }
 
             if (i < needSubdiv.length - 1) await new Promise(r => setTimeout(r, 1100));
         }
 
-        dbg(`Subdivision geocoding done: ${nominatimCalls} Nominatim calls, ${neighborFills} filled from neighbors`);
-        geocodingModified = nominatimCalls > 0;
+        dbg(`Nominatim done: ${needSubdiv.length} cells geocoded`);
+        geocodingModified = true;
     }
 
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
     return { cache, modified: needCountry.length > 0 || geocodingModified };
-}
-
-// Borrow a subdivision from a nearby cached cell in the same country (within ~1°)
-function findNeighborSubdivision(key, cache) {
-    const [lat, lng] = key.split(',').map(Number);
-    const country = cache[key]?.c;
-    for (let dlat = -10; dlat <= 10; dlat++) {
-        for (let dlng = -10; dlng <= 10; dlng++) {
-            if (dlat === 0 && dlng === 0) continue;
-            const k = `${(lat + dlat * 0.1).toFixed(1)},${(lng + dlng * 0.1).toFixed(1)}`;
-            const v = cache[k];
-            if (v && v.c === country && v.s) return v.s;
-        }
-    }
-    return null;
 }
 
 // Strip common suffixes OSM appends to Chinese province names
@@ -257,7 +235,12 @@ async function geocodeSubdivisionNominatim(lat, lng) {
             { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' } }
         );
         const data = await res.json();
-        const raw = data.address?.state || data.address?.province || '';
+        // Check all fields Nominatim uses for first-level subdivisions:
+        // state → most countries; territory → ACT, NT, etc.; province → some countries
+        const raw = data.address?.state
+            || data.address?.territory
+            || data.address?.province
+            || '';
         return raw ? cleanSubdivision(raw) : '';
     } catch {
         return '';
@@ -513,13 +496,27 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
-function setCacheInfo(gpsCount, total) {
+const SYNC_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+function relativeTime(ts) {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(mins / 60);
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (mins > 0) return `${mins}m ago`;
+    return 'just now';
+}
+
+function setCacheInfo(gpsCount, total, syncedAt) {
     const el = document.getElementById('cache-info');
     if (!el) return;
     const gpsNote = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
+    const syncNote = syncedAt ? `Synced ${relativeTime(syncedAt)}` : 'Never synced';
     el.innerHTML = `
-        <span class="cache-meta">${total.toLocaleString()} activities${gpsNote}</span>
-        <button class="cache-refresh-btn" id="refresh-btn">Sync new activities</button>
+        <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
+        <button class="cache-refresh-btn" id="refresh-btn">Sync now</button>
         <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
     `;
     document.getElementById('refresh-btn').addEventListener('click', () => runPipeline(true));
@@ -527,59 +524,81 @@ function setCacheInfo(gpsCount, total) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-async function runPipeline(sync = false) {
-    try {
-        dbg(`Pipeline start — mode: ${sync ? 'sync' : 'load'}`);
+// Geocode any new cells, save to server if needed, then render everything
+async function geocodeAndRender(slim, total, syncedAt, cache) {
+    setCacheInfo(slim.length, total, syncedAt);
 
-        // Fetch activities and geo cache from the server in parallel
+    const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
+    dbg(`Unique grid cells: ${cellKeys.length} (from ${slim.length} GPS activities)`);
+
+    let hits = 0, needCountry = 0, needSubdiv = 0;
+    cellKeys.forEach(k => {
+        const v = cache[k];
+        if (!v || !v.c || v.c === 'Unknown') needCountry++;
+        else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) needSubdiv++;
+        else hits++;
+    });
+    dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);
+
+    const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
+    if (modified) await saveGeoToWorker(updatedCache);
+
+    hideLoader();
+
+    const { countries, subdivisions } = buildData(slim, updatedCache);
+    const subCounts = SUBDIVISION_CONFIG
+        .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
+        .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
+    dbg(`Countries: ${Object.keys(countries).sort().join(', ')}`);
+    dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
+
+    renderSummary(slim, countries, total);
+    renderTable(countries);
+    renderSubdivisions(subdivisions);
+    dbg('Render complete');
+
+    return updatedCache;
+}
+
+async function runPipeline(forceSync = false) {
+    try {
+        dbg(`Pipeline start — mode: ${forceSync ? 'force-sync' : 'load'}`);
+
+        // Fetch activities + geo cache from the server in parallel
         const [activityData, geoCache] = await Promise.all([
-            sync ? syncWithWorker() : loadFromWorker(),
+            loadFromWorker(),
             loadGeoCache()
         ]);
 
-        let { slim, total } = activityData;
+        let { slim, total, syncedAt } = activityData;
         let cache = geoCache;
 
-        // If KV is empty (first time), trigger an initial sync automatically
-        if (!sync && slim.length === 0 && total === 0) {
+        // First-ever load: KV is empty, run initial sync before rendering
+        if (slim.length === 0 && total === 0) {
             setStatus('No data yet — running initial sync…');
             dbg('KV empty — triggering initial sync');
-            ({ slim, total } = await syncWithWorker());
+            ({ slim, total, syncedAt } = await syncWithWorker());
         }
 
-        setCacheInfo(slim.length, total);
+        // Render with current cached data immediately
+        cache = await geocodeAndRender(slim, total, syncedAt, cache);
 
-        const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
-        dbg(`Unique grid cells: ${cellKeys.length} (from ${slim.length} GPS activities)`);
-
-        let hits = 0, needCountry = 0, needSubdiv = 0;
-        cellKeys.forEach(k => {
-            const v = cache[k];
-            if (!v || !v.c || v.c === 'Unknown') needCountry++;
-            else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) needSubdiv++;
-            else hits++;
-        });
-        dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);
-
-        const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
-        cache = updatedCache;
-
-        // Persist updated geo cache back to server if any new geocoding ran
-        if (modified) await saveGeoToWorker(cache);
-
-        hideLoader();
-
-        const { countries, subdivisions } = buildData(slim, cache);
-        const subCounts = SUBDIVISION_CONFIG
-            .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
-            .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
-        dbg(`Countries: ${Object.keys(countries).sort().join(', ')}`);
-        dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
-
-        renderSummary(slim, countries, total);
-        renderTable(countries);
-        renderSubdivisions(subdivisions);
-        dbg('Render complete');
+        // Auto-sync if cooldown expired, or always if forced by the button
+        const cooldownExpired = !syncedAt || (Date.now() - syncedAt) > SYNC_COOLDOWN_MS;
+        if (forceSync || cooldownExpired) {
+            const reason = forceSync ? 'manual' : `last sync ${relativeTime(syncedAt)}`;
+            dbg(`Syncing with Strava (${reason})…`);
+            const result = await syncWithWorker();
+            if (result.newActivities > 0) {
+                dbg(`${result.newActivities} new activities — re-rendering`);
+                cache = await geocodeAndRender(result.slim, result.total, result.syncedAt, cache);
+            } else {
+                // Update the sync timestamp in the bar even if no new activities
+                setCacheInfo(slim.length, total, result.syncedAt);
+            }
+        } else {
+            dbg(`Auto-sync skipped — last synced ${relativeTime(syncedAt)}, cooldown is ${SYNC_COOLDOWN_MS / 3600000}h`);
+        }
 
     } catch (err) {
         dbg(`ERROR: ${err.message}`);
