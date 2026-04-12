@@ -1,6 +1,6 @@
 const WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 const GEO_CACHE_KEY = 'strava_geo_cache_v2'; // v2: stores {c, s} instead of string
-const ACTIVITIES_CACHE_KEY = 'strava_activities_cache_v1';
+const ACTIVITIES_CACHE_KEY = 'strava_activities_cache_v2'; // v2: adds lastActivityTime
 const ACTIVITIES_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const GEO_BATCH = 10;
 
@@ -51,15 +51,15 @@ function loadActivityCache() {
     try {
         const raw = localStorage.getItem(ACTIVITIES_CACHE_KEY);
         if (!raw) return null;
-        const { fetchedAt, slim, total } = JSON.parse(raw);
+        const { fetchedAt, slim, total, lastActivityTime } = JSON.parse(raw);
         if (Date.now() - fetchedAt > ACTIVITIES_CACHE_TTL_MS) return null;
-        return { slim, fetchedAt, total: total ?? slim.length };
+        return { slim, fetchedAt, total: total ?? slim.length, lastActivityTime: lastActivityTime ?? null };
     } catch { return null; }
 }
 
-function saveActivityCache(slim, total) {
+function saveActivityCache(slim, total, lastActivityTime) {
     const fetchedAt = Date.now();
-    try { localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ fetchedAt, slim, total })); } catch {}
+    try { localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ fetchedAt, slim, total, lastActivityTime })); } catch {}
     return fetchedAt;
 }
 
@@ -76,35 +76,93 @@ function slimActivities(activities) {
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
+// Extract the newest activity's unix timestamp from a raw batch (Strava returns newest first)
+function newestTimestamp(batch) {
+    for (const a of batch) {
+        if (a.start_date) return Math.floor(new Date(a.start_date).getTime() / 1000);
+    }
+    return null;
+}
+
 async function fetchAllActivities(forceRefresh = false) {
-    if (!forceRefresh) {
-        const cached = loadActivityCache();
-        if (cached) {
-            const age = Math.round((Date.now() - cached.fetchedAt) / 60000);
-            setStatus(`Loaded from cache (${age}m ago)`);
-            setCacheInfo(cached.fetchedAt, cached.slim.length, cached.total);
-            return { slim: cached.slim, total: cached.total };
-        }
+    const cached = loadActivityCache();
+
+    if (!forceRefresh && cached) {
+        const age = Math.round((Date.now() - cached.fetchedAt) / 60000);
+        setStatus(`Loaded from cache (${age}m ago)`);
+        setCacheInfo(cached.fetchedAt, cached.slim.length, cached.total);
+        return { slim: cached.slim, total: cached.total };
     }
 
+    // Smart refresh: only fetch activities newer than what we already have
+    if (forceRefresh && cached?.lastActivityTime) {
+        return await fetchNewActivities(cached);
+    }
+
+    // Full fetch from scratch
+    return await fetchFullActivities();
+}
+
+async function fetchFullActivities() {
     let slim = [];
     let total = 0;
     let page = 1;
-    setStatus(`Fetching activities…`);
+    let lastActivityTime = null;
+    setStatus('Fetching activities…');
 
     while (true) {
         const res = await fetch(`${WORKER_URL}/activities?per_page=200&page=${page}`);
         const batch = await res.json();
         if (!Array.isArray(batch) || batch.length === 0) break;
+        // Capture timestamp of the very first (newest) activity
+        if (page === 1) lastActivityTime = newestTimestamp(batch);
         total += batch.length;
         slim = slim.concat(slimActivities(batch));
         setStatus(`Fetching activities… ${total} loaded (${slim.length} with GPS)`);
         page++;
     }
 
-    const fetchedAt = saveActivityCache(slim, total);
+    const fetchedAt = saveActivityCache(slim, total, lastActivityTime);
     setCacheInfo(fetchedAt, slim.length, total);
     return { slim, total };
+}
+
+async function fetchNewActivities(cached) {
+    let newSlim = [];
+    let newTotal = 0;
+    let page = 1;
+    let newestSeen = cached.lastActivityTime;
+    setStatus('Checking for new activities…');
+
+    while (true) {
+        const res = await fetch(`${WORKER_URL}/activities?per_page=200&page=${page}&after=${cached.lastActivityTime}`);
+        const batch = await res.json();
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        // The first batch's first activity is the newest new one
+        if (page === 1) {
+            const ts = newestTimestamp(batch);
+            if (ts) newestSeen = ts;
+        }
+        newTotal += batch.length;
+        newSlim = newSlim.concat(slimActivities(batch));
+        setStatus(`Found ${newTotal} new activities…`);
+        page++;
+    }
+
+    if (newTotal === 0) {
+        // Nothing new — just bump fetchedAt so the TTL resets
+        const fetchedAt = saveActivityCache(cached.slim, cached.total, cached.lastActivityTime);
+        setCacheInfo(fetchedAt, cached.slim.length, cached.total);
+        setStatus('Up to date — no new activities');
+        return { slim: cached.slim, total: cached.total };
+    }
+
+    const merged = [...newSlim, ...cached.slim];
+    const total = cached.total + newTotal;
+    const fetchedAt = saveActivityCache(merged, total, newestSeen);
+    setCacheInfo(fetchedAt, merged.length, total);
+    setStatus(`Added ${newTotal} new ${newTotal === 1 ? 'activity' : 'activities'}`);
+    return { slim: merged, total };
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -164,16 +222,24 @@ function loadGeoCache() {
 }
 
 async function geocodeAll(keys, cache) {
-    const uncached = keys.filter(k => !(k in cache));
+    // Treat missing entries AND 'Unknown' entries as needing a (re-)geocode
+    const uncached = keys.filter(k => {
+        const v = cache[k];
+        return !v || !v.c || v.c === 'Unknown';
+    });
     let done = 0;
 
     for (let i = 0; i < uncached.length; i += GEO_BATCH) {
         const batch = uncached.slice(i, i + GEO_BATCH);
         await Promise.all(batch.map(async key => {
-            cache[key] = await geocodeKey(key);
+            const result = await geocodeKey(key);
+            // Only overwrite if we got a real answer — don't replace good data with Unknown
+            if (result.c !== 'Unknown') cache[key] = result;
             done++;
             setStatus(`Geocoding locations… ${done} / ${uncached.length}`);
         }));
+        // Small pause between batches to avoid rate-limiting
+        if (i + GEO_BATCH < uncached.length) await new Promise(r => setTimeout(r, 150));
     }
 
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
@@ -387,18 +453,20 @@ function setCacheInfo(fetchedAt, gpsCount, total) {
     el.innerHTML = `
         <span class="cache-meta">Cached ${date}${gpsPct}</span>
         <button class="cache-refresh-btn" id="refresh-btn">Refresh now</button>
+        <button class="cache-refresh-btn" id="full-refresh-btn" style="margin-left:4px">Full re-fetch</button>
     `;
-    document.getElementById('refresh-btn').addEventListener('click', () => {
+    document.getElementById('refresh-btn').addEventListener('click', () => runPipeline(true));
+    document.getElementById('full-refresh-btn').addEventListener('click', () => {
         clearActivityCache();
-        location.reload();
+        runPipeline(false);
     });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', async function () {
+async function runPipeline(forceRefresh = false) {
     try {
-        const { slim, total } = await fetchAllActivities();
+        const { slim, total } = await fetchAllActivities(forceRefresh);
 
         const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
 
@@ -419,4 +487,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         setStatus('Error loading data: ' + err.message);
         console.error(err);
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', () => runPipeline(false));
