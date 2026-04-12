@@ -659,10 +659,14 @@ function buildActivityPopup(slim) {
     const date = slim.d ? formatActivityDate(slim.d) : '';
     const group = getGroup(slim.t);
     const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
+    const href = slim.i ? `https://www.strava.com/activities/${slim.i}` : null;
+    const nameHtml = href
+        ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${name}</a>`
+        : name;
     return `
         <div class="activity-popup-inner">
             <div class="activity-popup-type" style="color:${color}">${type}</div>
-            <div class="activity-popup-name">${name}</div>
+            <div class="activity-popup-name">${nameHtml}</div>
             ${date ? `<div class="activity-popup-date">${date}</div>` : ''}
         </div>`;
 }

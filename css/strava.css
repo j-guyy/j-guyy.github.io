@@ -259,6 +259,18 @@
     margin-top: 3px;
 }
 
+.activity-popup-link {
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.25);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.activity-popup-link:hover {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
 /* ── Activity Type Filters ───────────────────── */
 .filter-bar {
     display: flex;
