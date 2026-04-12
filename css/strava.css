@@ -191,6 +191,42 @@
     margin-left: 4px;
 }
 
+/* ── County Hunter ───────────────────────────── */
+#county-map {
+    width: 100%;
+    height: 520px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+
+.county-stats-bar {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.county-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.county-stat-number {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.county-stat-label {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 /* ── Activity Map ────────────────────────────── */
 #strava-map {
     width: 100%;

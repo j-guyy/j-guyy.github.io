@@ -516,6 +516,259 @@ function renderSubdivisions(subdivisions) {
     });
 }
 
+// ── County Hunter ─────────────────────────────────────────────────────────────
+
+const STATE_ABBR = {
+    '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
+    '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
+    '18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD',
+    '25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE',
+    '32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND',
+    '39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD',
+    '47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
+    '55':'WI','56':'WY','72':'PR',
+};
+
+let countyMap = null;
+let countyMapInitialized = false;
+let visitedFips = new Set();
+let countyProcessedIds = new Set();
+
+function toggleCountyMap() {
+    const section = document.getElementById('county-section');
+    const btn = document.getElementById('county-toggle-btn');
+    if (!section) return;
+
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+
+    if (opening && !countyMapInitialized) {
+        initCountyMap();
+    } else if (opening && countyMap) {
+        setTimeout(() => countyMap.invalidateSize(), 50);
+    }
+}
+
+async function initCountyMap() {
+    setCountyStatus('Loading county boundaries…');
+    dbg('County map: loading GeoJSON + saved data…');
+
+    let geojson, saved;
+    try {
+        [geojson, saved] = await Promise.all([
+            fetch('/data/counties-us.json').then(r => r.json()),
+            fetch(`${WORKER_URL}/counties/all`).then(r => r.json()),
+        ]);
+    } catch (err) {
+        dbg(`County map load error: ${err.message}`);
+        setCountyStatus('Failed to load county data.');
+        return;
+    }
+
+    visitedFips = new Set(saved.fips || []);
+    countyProcessedIds = new Set(saved.processedIds || []);
+    dbg(`County cache: ${visitedFips.size} counties, ${countyProcessedIds.size} processed activities`);
+
+    // Only process activities with polylines not yet analysed
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !countyProcessedIds.has(a.i));
+    dbg(`County detection: ${unprocessed.length} new activities to process`);
+
+    if (unprocessed.length > 0) {
+        const counties = preprocessCounties(geojson);
+        const index = buildSpatialIndex(counties);
+        const newFips = await detectCountiesAsync(unprocessed, counties, index);
+
+        newFips.forEach(f => visitedFips.add(f));
+        unprocessed.forEach(a => countyProcessedIds.add(a.i));
+
+        dbg(`County detection done: +${newFips.size} new (${visitedFips.size} total)`);
+        await saveCountiesToWorker();
+    }
+
+    // Build Leaflet map centred on the contiguous US
+    countyMap = L.map('county-map', {
+        renderer: L.canvas(),
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([38, -96], 4);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 12,
+    }).addTo(countyMap);
+
+    renderCountyMap(geojson);
+    renderCountyStats();
+
+    countyMapInitialized = true;
+    setCountyStatus('');
+    dbg(`County map rendered: ${visitedFips.size} visited`);
+}
+
+// ── County detection helpers ──────────────────────────────────────────────────
+
+function preprocessCounties(geojson) {
+    return geojson.features.map(feature => ({
+        fips: feature.properties.STATE + feature.properties.COUNTY,
+        feature,
+        bbox: computeFeatureBbox(feature),
+    }));
+}
+
+function computeFeatureBbox(feature) {
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    const scan = ring => ring.forEach(([lng, lat]) => {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+    });
+    const { type, coordinates } = feature.geometry;
+    if (type === 'Polygon') coordinates.forEach(scan);
+    else if (type === 'MultiPolygon') coordinates.forEach(poly => poly.forEach(scan));
+    return { minLng, maxLng, minLat, maxLat };
+}
+
+// 1° × 1° spatial grid — each cell lists counties whose bbox overlaps it.
+// Eliminates ~99% of county candidates per point before running ray casting.
+function buildSpatialIndex(counties) {
+    const index = {};
+    counties.forEach(county => {
+        const { minLng, maxLng, minLat, maxLat } = county.bbox;
+        for (let lng = Math.floor(minLng); lng <= Math.floor(maxLng); lng++) {
+            for (let lat = Math.floor(minLat); lat <= Math.floor(maxLat); lat++) {
+                const key = `${lng},${lat}`;
+                if (!index[key]) index[key] = [];
+                index[key].push(county);
+            }
+        }
+    });
+    return index;
+}
+
+// Process activities in chunks, yielding to the browser every 50 to keep the UI
+// responsive. Samples every 3rd decoded polyline point — accurate enough for
+// county-level detection since summary polylines are already simplified.
+async function detectCountiesAsync(activities, counties, index) {
+    const newFips = new Set();
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setCountyStatus(`Detecting counties… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const points = decodePolyline(activities[i].p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const county of candidates) {
+                if (visitedFips.has(county.fips) || newFips.has(county.fips)) continue;
+                const b = county.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, county.feature)) newFips.add(county.fips);
+            }
+        }
+    }
+    return newFips;
+}
+
+function pointInFeature(lat, lng, feature) {
+    const { type, coordinates } = feature.geometry;
+    if (type === 'Polygon') return pointInRing(lat, lng, coordinates[0]);
+    if (type === 'MultiPolygon') return coordinates.some(poly => pointInRing(lat, lng, poly[0]));
+    return false;
+}
+
+// Standard ray-casting point-in-polygon.
+// GeoJSON rings use [longitude, latitude] order.
+function pointInRing(lat, lng, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+// ── County rendering ──────────────────────────────────────────────────────────
+
+function renderCountyMap(geojson) {
+    L.geoJSON(geojson, {
+        style: feature => {
+            const fips = feature.properties.STATE + feature.properties.COUNTY;
+            const visited = visitedFips.has(fips);
+            return {
+                fillColor:   visited ? '#4CAF50' : 'transparent',
+                fillOpacity: visited ? 0.45 : 0,
+                color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.1)',
+                weight:      visited ? 0.8 : 0.4,
+            };
+        },
+        onEachFeature: (feature, layer) => {
+            const fips = feature.properties.STATE + feature.properties.COUNTY;
+            if (!visitedFips.has(fips)) return;
+            const state = STATE_ABBR[feature.properties.STATE] || feature.properties.STATE;
+            const name = feature.properties.NAME;
+            const lsad = feature.properties.LSAD || 'County';
+            layer.bindPopup(`
+                <div class="activity-popup-inner">
+                    <div class="activity-popup-type" style="color:#4CAF50">${state}</div>
+                    <div class="activity-popup-name">${name} ${lsad}</div>
+                    <div class="activity-popup-date">FIPS ${fips}</div>
+                </div>`, { className: 'activity-popup' });
+            layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
+            layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
+        },
+    }).addTo(countyMap);
+}
+
+function renderCountyStats() {
+    const el = document.getElementById('county-stats-bar');
+    if (!el) return;
+    const total = 3233;
+    const pct = ((visitedFips.size / total) * 100).toFixed(1);
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedFips.size.toLocaleString()}</span>
+            <span class="county-stat-label">Counties Visited</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${total.toLocaleString()}</span>
+            <span class="county-stat-label">Total US Counties</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Complete</span>
+        </div>`;
+}
+
+async function saveCountiesToWorker() {
+    try {
+        const res = await fetch(`${WORKER_URL}/counties/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fips: [...visitedFips],
+                processedIds: [...countyProcessedIds],
+            }),
+        });
+        const data = await res.json();
+        dbg(`County data saved: ${data.counties} counties`);
+    } catch (err) {
+        dbg(`County save failed: ${err.message}`);
+    }
+}
+
+function setCountyStatus(msg) {
+    const el = document.getElementById('county-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Map ───────────────────────────────────────────────────────────────────────
 
 const GROUP_COLORS = {
