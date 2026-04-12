@@ -107,87 +107,137 @@ async function geocodeKey(key) {
     }
 }
 
-// Load geo cache, migrating v1 string-format entries to v2 {c,s} objects.
-// This recovers valid country data even if the v2 cache is empty or corrupt,
-// so we don't need to re-hit the geocoding API for data we already have.
-function loadGeoCache() {
+// Load geo cache — server (KV) is authoritative, localStorage is fallback
+async function loadGeoCache() {
+    try {
+        const res = await fetch(`${WORKER_URL}/geo/all`);
+        if (res.ok) {
+            const serverCache = await res.json();
+            if (Object.keys(serverCache).length > 0) {
+                dbg(`Geo cache: ${Object.keys(serverCache).length} entries from server`);
+                try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(serverCache)); } catch {}
+                return serverCache;
+            }
+        }
+    } catch {}
+
+    // Fall back to localStorage (first-ever load, or server cache is empty/reset)
     let cache = {};
     try { cache = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch {}
-
-    // Count how many entries are already valid v2 objects
-    const entries = Object.entries(cache);
-    const validV2 = entries.filter(([, v]) => v && typeof v === 'object' && v.c && v.c !== 'Unknown').length;
-
-    // If most entries are missing or 'Unknown', try migrating from v1
-    if (validV2 < entries.length * 0.5) {
-        let v1 = {};
-        try { v1 = JSON.parse(localStorage.getItem('strava_geo_cache_v1') || '{}'); } catch {}
-
-        Object.entries(v1).forEach(([key, val]) => {
-            // Only use v1 entry if current v2 entry is missing or Unknown
-            const existing = cache[key];
-            const existingOk = existing && typeof existing === 'object' && existing.c && existing.c !== 'Unknown';
-            if (!existingOk && typeof val === 'string' && val !== 'Unknown') {
-                cache[key] = { c: val, s: '' };
-            }
-        });
-
-        // Also convert any remaining raw string values
-        Object.keys(cache).forEach(key => {
-            if (typeof cache[key] === 'string') {
-                cache[key] = { c: cache[key], s: '' };
-            }
-        });
-
-        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-    }
-
+    dbg(`Geo cache: ${Object.keys(cache).length} entries from localStorage (server was empty)`);
     return cache;
 }
 
+async function saveGeoToWorker(cache) {
+    try {
+        const res = await fetch(`${WORKER_URL}/geo/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cache)
+        });
+        const data = await res.json();
+        dbg(`Geo cache saved to server (${data.keys} entries)`);
+    } catch (err) {
+        dbg(`Warning: failed to save geo cache to server — ${err.message}`);
+    }
+}
+
+async function resetGeoCache() {
+    if (!confirm('Clear all geocoded location data from the server? This will force a full re-geocode on next load.')) return;
+    try {
+        await fetch(`${WORKER_URL}/geo/reset`, { method: 'POST' });
+        localStorage.removeItem(GEO_CACHE_KEY);
+        dbg('Geo cache reset on server and locally. Reloading…');
+        setTimeout(() => location.reload(), 800);
+    } catch (err) {
+        dbg(`Reset failed: ${err.message}`);
+    }
+}
+
 async function geocodeAll(keys, cache) {
-    // Pass 1: BigDataCloud — batch all cells missing country or subdivision
-    const needGeo = keys.filter(k => {
+    // Pass 1: BigDataCloud — only for cells with no country yet
+    const needCountry = keys.filter(k => {
         const v = cache[k];
-        if (!v || !v.c || v.c === 'Unknown') return true;
-        if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
-        return false;
+        return !v || !v.c || v.c === 'Unknown';
     });
 
-    let done = 0;
-    for (let i = 0; i < needGeo.length; i += GEO_BATCH) {
-        const batch = needGeo.slice(i, i + GEO_BATCH);
-        await Promise.all(batch.map(async key => {
-            const result = await geocodeKey(key);
-            if (result.c !== 'Unknown') cache[key] = result;
-            done++;
-            setStatus(`Geocoding locations… ${done} / ${needGeo.length}`);
-        }));
-        if (i + GEO_BATCH < needGeo.length) await new Promise(r => setTimeout(r, 150));
+    let geocodingModified = false;
+
+    if (needCountry.length > 0) {
+        let done = 0;
+        for (let i = 0; i < needCountry.length; i += GEO_BATCH) {
+            const batch = needCountry.slice(i, i + GEO_BATCH);
+            await Promise.all(batch.map(async key => {
+                const result = await geocodeKey(key);
+                if (result.c !== 'Unknown') cache[key] = result;
+                done++;
+                setStatus(`Geocoding locations… ${done} / ${needCountry.length}`);
+            }));
+            if (i + GEO_BATCH < needCountry.length) await new Promise(r => setTimeout(r, 150));
+        }
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
     }
 
-    // Pass 2: Nominatim fallback — sequential, 1 req/sec, for any subdivision countries
-    // where BigDataCloud returned empty subdivision (e.g. China)
-    const needSubdiv = keys.filter(k => {
-        const v = cache[k];
-        return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
-    });
+    // Pass 2: Nominatim for cells with a country but no subdivision.
+    // Uses neighbor lookup first — once one cell in a state is geocoded,
+    // nearby cells get filled in without any API call.
+    const needSubdiv = keys
+        .filter(k => {
+            const v = cache[k];
+            return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
+        })
+        .sort(); // sort so nearby grid keys are adjacent in the list
 
     if (needSubdiv.length > 0) {
-        dbg(`Nominatim fallback for ${needSubdiv.length} cells (1 req/sec)…`);
+        let nominatimCalls = 0;
+        let neighborFills = 0;
+
+        dbg(`Subdivision pass: ${needSubdiv.length} cells need state/province data`);
+
         for (let i = 0; i < needSubdiv.length; i++) {
             const key = needSubdiv[i];
+            if (cache[key]?.s) { neighborFills++; continue; }
+
+            const neighborState = findNeighborSubdivision(key, cache);
+            if (neighborState) {
+                cache[key] = { ...cache[key], s: neighborState };
+                neighborFills++;
+                continue;
+            }
+
             const [lat, lng] = key.split(',').map(Number);
-            setStatus(`Getting subdivision via Nominatim… ${i + 1} / ${needSubdiv.length}`);
+            setStatus(`Geocoding subdivisions… ${i + 1} / ${needSubdiv.length} (${nominatimCalls} API calls)`);
             const s = await geocodeSubdivisionNominatim(lat, lng);
             if (s) cache[key] = { ...cache[key], s };
+            nominatimCalls++;
+
+            // Save to localStorage after every API call (progress preservation if tab is closed)
+            try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+
             if (i < needSubdiv.length - 1) await new Promise(r => setTimeout(r, 1100));
         }
-        dbg(`Nominatim done`, needSubdiv.slice(0, 5).map(k => ({ key: k, s: cache[k]?.s || '(empty)' })));
+
+        dbg(`Subdivision geocoding done: ${nominatimCalls} Nominatim calls, ${neighborFills} filled from neighbors`);
+        geocodingModified = nominatimCalls > 0;
     }
 
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-    return cache;
+    return { cache, modified: needCountry.length > 0 || geocodingModified };
+}
+
+// Borrow a subdivision from a nearby cached cell in the same country (within ~1°)
+function findNeighborSubdivision(key, cache) {
+    const [lat, lng] = key.split(',').map(Number);
+    const country = cache[key]?.c;
+    for (let dlat = -10; dlat <= 10; dlat++) {
+        for (let dlng = -10; dlng <= 10; dlng++) {
+            if (dlat === 0 && dlng === 0) continue;
+            const k = `${(lat + dlat * 0.1).toFixed(1)},${(lng + dlng * 0.1).toFixed(1)}`;
+            const v = cache[k];
+            if (v && v.c === country && v.s) return v.s;
+        }
+    }
+    return null;
 }
 
 // Strip common suffixes OSM appends to Chinese province names
@@ -441,7 +491,10 @@ function renderDebugPanel() {
     panel.innerHTML = `
         <div class="dbg-header">
             <strong>Debug Log</strong>
-            <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear</button>
+            <div style="display:flex;gap:6px">
+                <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data from server and localStorage — forces full re-geocode">Reset geo cache</button>
+                <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
+            </div>
         </div>
         <ul id="debug-log"></ul>
     `;
@@ -478,7 +531,14 @@ async function runPipeline(sync = false) {
     try {
         dbg(`Pipeline start — mode: ${sync ? 'sync' : 'load'}`);
 
-        let { slim, total } = sync ? await syncWithWorker() : await loadFromWorker();
+        // Fetch activities and geo cache from the server in parallel
+        const [activityData, geoCache] = await Promise.all([
+            sync ? syncWithWorker() : loadFromWorker(),
+            loadGeoCache()
+        ]);
+
+        let { slim, total } = activityData;
+        let cache = geoCache;
 
         // If KV is empty (first time), trigger an initial sync automatically
         if (!sync && slim.length === 0 && total === 0) {
@@ -492,34 +552,20 @@ async function runPipeline(sync = false) {
         const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
         dbg(`Unique grid cells: ${cellKeys.length} (from ${slim.length} GPS activities)`);
 
-        let cache = loadGeoCache();
-
-        // Break down what's in the cache for each cell key
-        let hits = 0, needGeo = 0, needSubdiv = 0;
-        const sampleMissing = [];
+        let hits = 0, needCountry = 0, needSubdiv = 0;
         cellKeys.forEach(k => {
             const v = cache[k];
-            if (!v || !v.c || v.c === 'Unknown') {
-                needGeo++;
-                if (sampleMissing.length < 3) sampleMissing.push({ key: k, entry: v ?? null });
-            } else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) {
-                needSubdiv++;
-                if (sampleMissing.length < 3) sampleMissing.push({ key: k, entry: v, reason: 'missing subdivision' });
-            } else {
-                hits++;
-            }
+            if (!v || !v.c || v.c === 'Unknown') needCountry++;
+            else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) needSubdiv++;
+            else hits++;
         });
-        dbg(`Geo cache: ${hits} good, ${needGeo} missing country, ${needSubdiv} missing subdivision`, sampleMissing.length ? sampleMissing : null);
+        dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);
 
-        cache = await geocodeAll(cellKeys, cache);
+        const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
+        cache = updatedCache;
 
-        // After geocoding, sample a few subdivision-country entries to verify state data
-        const subdivSample = cellKeys
-            .map(k => ({ k, v: cache[k] }))
-            .filter(({ v }) => v && SUBDIVISION_BY_COUNTRY[v.c])
-            .slice(0, 5)
-            .map(({ k, v }) => ({ key: k, country: v.c, subdivision: v.s || '(empty)' }));
-        dbg(`Post-geocode subdivision sample`, subdivSample.length ? subdivSample : 'none found');
+        // Persist updated geo cache back to server if any new geocoding ran
+        if (modified) await saveGeoToWorker(cache);
 
         hideLoader();
 
@@ -527,7 +573,7 @@ async function runPipeline(sync = false) {
         const subCounts = SUBDIVISION_CONFIG
             .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
             .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
-        dbg(`Countries found: ${Object.keys(countries).sort().join(', ')}`);
+        dbg(`Countries: ${Object.keys(countries).sort().join(', ')}`);
         dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
 
         renderSummary(slim, countries, total);
