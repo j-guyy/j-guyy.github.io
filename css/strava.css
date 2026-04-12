@@ -114,6 +114,83 @@
     color: var(--primary-color);
 }
 
+/* ── Debug panel ─────────────────────────────── */
+#debug-panel {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    max-height: 50vh;
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+    font-family: monospace;
+    z-index: 9999;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+}
+
+.dbg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    flex-shrink: 0;
+}
+
+.dbg-clear {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.4);
+    border-radius: 3px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.7rem;
+}
+
+.dbg-clear:hover { color: #fff; border-color: #fff; }
+
+#debug-log {
+    list-style: none;
+    margin: 0;
+    padding: 8px 12px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#debug-log li {
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
+}
+
+.dbg-ts {
+    color: var(--primary-color);
+    margin-right: 6px;
+}
+
+.dbg-data {
+    margin: 2px 0 0 0;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.05);
+    border-left: 2px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.7rem;
+}
+
+.dbg-toggle-btn {
+    margin-left: 4px;
+}
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
     .strava-page .hero h1 {

@@ -48,17 +48,39 @@ function gridKey(latlng) {
 // Load all stored activities from the worker (one fast KV read, no Strava call)
 async function loadFromWorker() {
     setStatus('Loading activities…');
+    dbg('GET /activities/all — reading from KV…');
+    const t0 = Date.now();
     const res = await fetch(`${WORKER_URL}/activities/all`);
     if (!res.ok) throw new Error(`Worker error: ${res.status}`);
-    return res.json(); // { slim, total, lastActivityTime }
+    const data = await res.json();
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    dbg(`Worker responded in ${elapsed}s`, {
+        total: data.total,
+        slimCount: data.slim?.length ?? 0,
+        lastActivityTime: data.lastActivityTime
+            ? new Date(data.lastActivityTime * 1000).toLocaleString()
+            : null,
+    });
+    return data;
 }
 
 // Tell the worker to fetch new activities from Strava and merge them into KV
 async function syncWithWorker() {
     setStatus('Syncing new activities…');
+    dbg('POST /activities/sync — fetching new from Strava…');
+    const t0 = Date.now();
     const res = await fetch(`${WORKER_URL}/activities/sync`, { method: 'POST' });
     if (!res.ok) throw new Error(`Sync error: ${res.status}`);
-    const data = await res.json(); // { slim, total, lastActivityTime, newActivities }
+    const data = await res.json();
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    dbg(`Sync complete in ${elapsed}s`, {
+        newActivities: data.newActivities,
+        total: data.total,
+        slimCount: data.slim?.length ?? 0,
+        lastActivityTime: data.lastActivityTime
+            ? new Date(data.lastActivityTime * 1000).toLocaleString()
+            : null,
+    });
     if (data.newActivities === 0) {
         setStatus('Up to date — no new activities');
     } else {
@@ -337,6 +359,53 @@ function renderSubdivisions(subdivisions) {
     });
 }
 
+// ── Debug log ─────────────────────────────────────────────────────────────────
+
+const debugLog = [];
+
+function dbg(msg, data = null) {
+    const ts = new Date().toLocaleTimeString();
+    const entry = { ts, msg, data };
+    debugLog.push(entry);
+
+    const list = document.getElementById('debug-log');
+    if (!list) return;
+
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="dbg-ts">${ts}</span> ${msg}`;
+    if (data !== null) {
+        const pre = document.createElement('pre');
+        pre.className = 'dbg-data';
+        pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        li.appendChild(pre);
+    }
+    list.appendChild(li);
+    list.scrollTop = list.scrollHeight;
+}
+
+function toggleDebug() {
+    const panel = document.getElementById('debug-panel');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+}
+
+function renderDebugPanel() {
+    const existing = document.getElementById('debug-panel');
+    if (existing) return; // already rendered
+
+    const panel = document.createElement('div');
+    panel.id = 'debug-panel';
+    panel.hidden = true;
+    panel.innerHTML = `
+        <div class="dbg-header">
+            <strong>Debug Log</strong>
+            <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear</button>
+        </div>
+        <ul id="debug-log"></ul>
+    `;
+    document.body.appendChild(panel);
+}
+
 // ── Status / cache helpers ────────────────────────────────────────────────────
 
 function setStatus(msg) {
@@ -356,6 +425,7 @@ function setCacheInfo(gpsCount, total) {
     el.innerHTML = `
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote}</span>
         <button class="cache-refresh-btn" id="refresh-btn">Sync new activities</button>
+        <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
     `;
     document.getElementById('refresh-btn').addEventListener('click', () => runPipeline(true));
 }
@@ -364,31 +434,52 @@ function setCacheInfo(gpsCount, total) {
 
 async function runPipeline(sync = false) {
     try {
+        dbg(`Pipeline start — mode: ${sync ? 'sync' : 'load'}`);
+
         let { slim, total } = sync ? await syncWithWorker() : await loadFromWorker();
 
         // If KV is empty (first time), trigger an initial sync automatically
         if (!sync && slim.length === 0 && total === 0) {
             setStatus('No data yet — running initial sync…');
+            dbg('KV empty — triggering initial sync');
             ({ slim, total } = await syncWithWorker());
         }
 
         setCacheInfo(slim.length, total);
 
         const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
+        dbg(`Unique grid cells: ${cellKeys.length} (from ${slim.length} GPS activities)`);
+
         let cache = loadGeoCache();
+        const cachedCount = cellKeys.filter(k => {
+            const v = cache[k];
+            return v && v.c && v.c !== 'Unknown' && !(SUBDIVISION_BY_COUNTRY[v.c] && !v.s);
+        }).length;
+        dbg(`Geo cache: ${cachedCount} hits, ${cellKeys.length - cachedCount} need geocoding`);
+
         cache = await geocodeAll(cellKeys, cache);
 
         hideLoader();
 
         const { countries, subdivisions } = buildData(slim, cache);
+        const subCounts = SUBDIVISION_CONFIG
+            .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
+            .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
+        dbg(`Built data — ${Object.keys(countries).length} countries, subdivisions: ${subCounts.join(', ') || 'none'}`);
+
         renderSummary(slim, countries, total);
         renderTable(countries);
         renderSubdivisions(subdivisions);
+        dbg('Render complete');
 
     } catch (err) {
+        dbg(`ERROR: ${err.message}`);
         setStatus('Error: ' + err.message);
         console.error(err);
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => runPipeline(false));
+document.addEventListener('DOMContentLoaded', () => {
+    renderDebugPanel();
+    runPipeline(false);
+});
