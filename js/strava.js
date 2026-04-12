@@ -1,6 +1,5 @@
 const WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 const GEO_CACHE_KEY = 'strava_geo_cache_v2'; // v2: stores {c, s} instead of string
-const GEO_BATCH = 5; // Conservative — BigDataCloud rate-limits hard bursts
 
 const GROUPS = {
     'Foot Sports':  ['Run','TrailRun','VirtualRun','Hike','Walk','Snowshoe'],
@@ -91,26 +90,29 @@ async function syncWithWorker() {
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
-async function geocodeKey(key, logFirst = false) {
-    const [lat, lng] = key.split(',').map(Number);
+// Single geocoding function using Nominatim — returns both country and subdivision.
+// Replaces BigDataCloud which proved unreliable for bulk requests.
+async function geocodeKey(lat, lng) {
     for (let attempt = 0; attempt < 3; attempt++) {
         try {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+            if (attempt > 0) {
+                dbg(`Nominatim retry ${attempt} for ${lat},${lng}`);
+                await new Promise(r => setTimeout(r, 2000 * attempt));
+            }
             const res = await fetch(
-                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+                { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' } }
             );
             if (!res.ok) {
-                dbg(`BigDataCloud HTTP ${res.status} for ${key} (attempt ${attempt + 1})`);
+                dbg(`Nominatim HTTP ${res.status} for ${lat},${lng}`);
                 continue;
             }
             const data = await res.json();
-            if (logFirst) dbg(`BigDataCloud sample response for ${key}`, { countryName: data.countryName, principalSubdivision: data.principalSubdivision, status: data.status });
-            if (data.countryName && data.countryName !== 'Unknown') {
-                return { c: data.countryName, s: data.principalSubdivision || '' };
-            }
-            dbg(`BigDataCloud returned no country for ${key} (attempt ${attempt + 1})`, { status: data.status, description: data.description });
+            const country = data.address?.country || 'Unknown';
+            const rawSubdiv = data.address?.state || data.address?.territory || data.address?.province || '';
+            return { c: country, s: rawSubdiv ? cleanSubdivision(rawSubdiv) : '' };
         } catch (err) {
-            dbg(`BigDataCloud fetch error for ${key} (attempt ${attempt + 1}): ${err.message}`);
+            dbg(`Nominatim error for ${lat},${lng} (attempt ${attempt + 1}): ${err.message}`);
         }
     }
     return { c: 'Unknown', s: '' };
@@ -164,72 +166,44 @@ async function resetGeoCache() {
 }
 
 async function geocodeAll(keys, cache) {
-    // Pass 1: BigDataCloud — only for cells with no country yet
-    const needCountry = keys.filter(k => {
+    // Single Nominatim pass — handles both country and subdivision in one call.
+    // Sequential at 1.1s/cell to respect Nominatim's rate limit.
+    // Server-cached after first run so this only ever runs once.
+    const needGeo = keys.filter(k => {
         const v = cache[k];
-        return !v || !v.c || v.c === 'Unknown';
+        if (!v || !v.c || v.c === 'Unknown') return true;
+        if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
+        return false;
     });
 
-    let geocodingModified = false;
+    if (needGeo.length === 0) return { cache, modified: false };
 
-    if (needCountry.length > 0) {
-        dbg(`BigDataCloud country pass: ${needCountry.length} cells (batches of ${GEO_BATCH})`);
-        let done = 0, succeeded = 0;
-        for (let i = 0; i < needCountry.length; i += GEO_BATCH) {
-            const batch = needCountry.slice(i, i + GEO_BATCH);
-            // Log the very first API response so we can see the raw shape in debug
-            await Promise.all(batch.map(async (key, batchIdx) => {
-                const result = await geocodeKey(key, i === 0 && batchIdx === 0);
-                if (result.c !== 'Unknown') { cache[key] = result; succeeded++; }
-                done++;
-                setStatus(`Geocoding locations… ${done} / ${needCountry.length} (${succeeded} ok)`);
-            }));
-            // Save to localStorage every batch so closing the tab preserves progress
-            try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-            if (i + GEO_BATCH < needCountry.length) await new Promise(r => setTimeout(r, 600));
-        }
-        dbg(`BigDataCloud done: ${succeeded} / ${needCountry.length} cells geocoded`);
-        if (succeeded > 0) geocodingModified = true;
-    }
+    const estMins = Math.ceil(needGeo.length * 1.1 / 60);
+    dbg(`Nominatim geocoding: ${needGeo.length} cells (~${estMins} min, one-time only)`);
 
-    // Pass 2: Nominatim — individual call per cell for accuracy.
-    // No neighbor borrowing: that approach causes cross-border cascade errors.
-    // Results are cached server-side so this only runs once ever.
-    const needSubdiv = keys.filter(k => {
-        const v = cache[k];
-        return v && v.c && v.c !== 'Unknown' && SUBDIVISION_BY_COUNTRY[v.c] && !v.s;
-    });
+    let succeeded = 0;
+    for (let i = 0; i < needGeo.length; i++) {
+        const key = needGeo[i];
+        const [lat, lng] = key.split(',').map(Number);
+        setStatus(`Geocoding… ${i + 1} / ${needGeo.length}`);
 
-    if (needSubdiv.length > 0) {
-        const estMins = Math.ceil(needSubdiv.length * 1.1 / 60);
-        dbg(`Nominatim subdivision pass: ${needSubdiv.length} cells (~${estMins} min, one-time only)`);
+        const result = await geocodeKey(lat, lng);
+        if (result.c !== 'Unknown') { cache[key] = result; succeeded++; }
 
-        for (let i = 0; i < needSubdiv.length; i++) {
-            const key = needSubdiv[i];
-            const [lat, lng] = key.split(',').map(Number);
-            setStatus(`Geocoding subdivisions… ${i + 1} / ${needSubdiv.length}`);
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
 
-            const s = await geocodeSubdivisionNominatim(lat, lng);
-            if (s) cache[key] = { ...cache[key], s };
-
-            // Save to localStorage after every call
-            try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-
-            // Save to server every 25 calls — preserves progress if the tab is closed
-            if ((i + 1) % 25 === 0) {
-                dbg(`Checkpoint: saving ${i + 1} / ${needSubdiv.length} to server…`);
-                await saveGeoToWorker(cache);
-            }
-
-            if (i < needSubdiv.length - 1) await new Promise(r => setTimeout(r, 1100));
+        // Checkpoint save to server every 25 calls
+        if ((i + 1) % 25 === 0) {
+            dbg(`Checkpoint ${i + 1} / ${needGeo.length} — ${succeeded} geocoded so far`);
+            await saveGeoToWorker(cache);
         }
 
-        dbg(`Nominatim done: ${needSubdiv.length} cells geocoded`);
-        geocodingModified = true;
+        if (i < needGeo.length - 1) await new Promise(r => setTimeout(r, 1100));
     }
 
+    dbg(`Geocoding complete: ${succeeded} / ${needGeo.length} cells resolved`);
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
-    return { cache, modified: needCountry.length > 0 || geocodingModified };
+    return { cache, modified: succeeded > 0 };
 }
 
 // Strip common suffixes OSM appends to Chinese province names
@@ -242,24 +216,6 @@ function cleanSubdivision(s) {
         .trim();
 }
 
-async function geocodeSubdivisionNominatim(lat, lng) {
-    try {
-        const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
-            { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' } }
-        );
-        const data = await res.json();
-        // Check all fields Nominatim uses for first-level subdivisions:
-        // state → most countries; territory → ACT, NT, etc.; province → some countries
-        const raw = data.address?.state
-            || data.address?.territory
-            || data.address?.province
-            || '';
-        return raw ? cleanSubdivision(raw) : '';
-    } catch {
-        return '';
-    }
-}
 
 // ── Build data ────────────────────────────────────────────────────────────────
 
