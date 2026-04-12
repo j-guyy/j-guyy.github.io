@@ -51,15 +51,15 @@ function loadActivityCache() {
     try {
         const raw = localStorage.getItem(ACTIVITIES_CACHE_KEY);
         if (!raw) return null;
-        const { fetchedAt, slim } = JSON.parse(raw);
+        const { fetchedAt, slim, total } = JSON.parse(raw);
         if (Date.now() - fetchedAt > ACTIVITIES_CACHE_TTL_MS) return null;
-        return { slim, fetchedAt };
+        return { slim, fetchedAt, total: total ?? slim.length };
     } catch { return null; }
 }
 
-function saveActivityCache(slim) {
+function saveActivityCache(slim, total) {
     const fetchedAt = Date.now();
-    try { localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ fetchedAt, slim })); } catch {}
+    try { localStorage.setItem(ACTIVITIES_CACHE_KEY, JSON.stringify({ fetchedAt, slim, total })); } catch {}
     return fetchedAt;
 }
 
@@ -81,13 +81,14 @@ async function fetchAllActivities(forceRefresh = false) {
         const cached = loadActivityCache();
         if (cached) {
             const age = Math.round((Date.now() - cached.fetchedAt) / 60000);
-            setStatus(`Loaded ${cached.slim.length} activities from cache (${age}m ago)`);
-            setCacheInfo(cached.fetchedAt, cached.slim.length);
-            return cached.slim;
+            setStatus(`Loaded from cache (${age}m ago)`);
+            setCacheInfo(cached.fetchedAt, cached.slim.length, cached.total);
+            return { slim: cached.slim, total: cached.total };
         }
     }
 
     let slim = [];
+    let total = 0;
     let page = 1;
     setStatus(`Fetching activities…`);
 
@@ -95,14 +96,15 @@ async function fetchAllActivities(forceRefresh = false) {
         const res = await fetch(`${WORKER_URL}/activities?per_page=200&page=${page}`);
         const batch = await res.json();
         if (!Array.isArray(batch) || batch.length === 0) break;
+        total += batch.length;
         slim = slim.concat(slimActivities(batch));
-        setStatus(`Fetching activities… ${slim.length}+ with GPS loaded`);
+        setStatus(`Fetching activities… ${total} loaded (${slim.length} with GPS)`);
         page++;
     }
 
-    const fetchedAt = saveActivityCache(slim);
-    setCacheInfo(fetchedAt, slim.length);
-    return slim;
+    const fetchedAt = saveActivityCache(slim, total);
+    setCacheInfo(fetchedAt, slim.length, total);
+    return { slim, total };
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -121,6 +123,44 @@ async function geocodeKey(key) {
     } catch {
         return { c: 'Unknown', s: '' };
     }
+}
+
+// Load geo cache, migrating v1 string-format entries to v2 {c,s} objects.
+// This recovers valid country data even if the v2 cache is empty or corrupt,
+// so we don't need to re-hit the geocoding API for data we already have.
+function loadGeoCache() {
+    let cache = {};
+    try { cache = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch {}
+
+    // Count how many entries are already valid v2 objects
+    const entries = Object.entries(cache);
+    const validV2 = entries.filter(([, v]) => v && typeof v === 'object' && v.c && v.c !== 'Unknown').length;
+
+    // If most entries are missing or 'Unknown', try migrating from v1
+    if (validV2 < entries.length * 0.5) {
+        let v1 = {};
+        try { v1 = JSON.parse(localStorage.getItem('strava_geo_cache_v1') || '{}'); } catch {}
+
+        Object.entries(v1).forEach(([key, val]) => {
+            // Only use v1 entry if current v2 entry is missing or Unknown
+            const existing = cache[key];
+            const existingOk = existing && typeof existing === 'object' && existing.c && existing.c !== 'Unknown';
+            if (!existingOk && typeof val === 'string' && val !== 'Unknown') {
+                cache[key] = { c: val, s: '' };
+            }
+        });
+
+        // Also convert any remaining raw string values
+        Object.keys(cache).forEach(key => {
+            if (typeof cache[key] === 'string') {
+                cache[key] = { c: cache[key], s: '' };
+            }
+        });
+
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    }
+
+    return cache;
 }
 
 async function geocodeAll(keys, cache) {
@@ -255,8 +295,7 @@ function buildSortableTable(data, state, nameCol, onSort) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
-function renderSummary(slim, countries) {
-    const total = slim.length;
+function renderSummary(slim, countries, total) {
     const countryCount = Object.keys(countries).length;
     const groupTotals = {};
     GROUP_KEYS.forEach(g => {
@@ -269,7 +308,7 @@ function renderSummary(slim, countries) {
                 <div class="stat-number-container">
                     <span class="stat-number">${total.toLocaleString()}</span>
                 </div>
-                <span class="stat-label">Total Activities (with GPS)</span>
+                <span class="stat-label">Total Activities</span>
             </div>
             <div class="other-stats strava-group-stats">
                 <div class="summary-stat">
@@ -340,12 +379,13 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
-function setCacheInfo(fetchedAt, count) {
+function setCacheInfo(fetchedAt, gpsCount, total) {
     const el = document.getElementById('cache-info');
     if (!el) return;
     const date = new Date(fetchedAt).toLocaleString();
+    const gpsPct = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
     el.innerHTML = `
-        <span class="cache-meta">Data cached ${date} · ${count.toLocaleString()} GPS activities</span>
+        <span class="cache-meta">Cached ${date}${gpsPct}</span>
         <button class="cache-refresh-btn" id="refresh-btn">Refresh now</button>
     `;
     document.getElementById('refresh-btn').addEventListener('click', () => {
@@ -358,19 +398,20 @@ function setCacheInfo(fetchedAt, count) {
 
 document.addEventListener('DOMContentLoaded', async function () {
     try {
-        const slim = await fetchAllActivities();
+        const { slim, total } = await fetchAllActivities();
 
         const cellKeys = [...new Set(slim.map(a => gridKey(a.l)))];
 
-        let cache = {};
-        try { cache = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch {}
+        // Load geo cache, migrating v1 data if needed
+        let cache = loadGeoCache();
 
+        // Geocode any cells not yet in cache
         cache = await geocodeAll(cellKeys, cache);
 
         hideLoader();
 
         const { countries, subdivisions } = buildData(slim, cache);
-        renderSummary(slim, countries);
+        renderSummary(slim, countries, total);
         renderTable(countries);
         renderSubdivisions(subdivisions);
 
