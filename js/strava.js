@@ -627,7 +627,7 @@ async function initCountyMap() {
     renderCountyStats();
 
     setCountyStatus('Loading activity routes…');
-    await addPolylineOverlay(countyMap);
+    await addPolylineOverlay(countyMap, { interactive: true });
 
     countyMapInitialized = true;
     setCountyStatus('');
@@ -825,8 +825,10 @@ async function loadPolylines() {
 
 // Draws all activity polylines onto any Leaflet map instance.
 // Uses the shared cache so the fetch only ever happens once per page load.
-// Non-interactive (no popups) — secondary decoration on county/tile maps.
-async function addPolylineOverlay(targetMap) {
+// Options:
+//   color       — fixed colour string; omit to use per-group colours
+//   interactive — if true, adds popups + hover highlight (like Activity Map)
+async function addPolylineOverlay(targetMap, { color = null, interactive = false } = {}) {
     let polylines;
     try { polylines = await loadPolylines(); }
     catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return; }
@@ -838,8 +840,15 @@ async function addPolylineOverlay(targetMap) {
         if (!slim) return;
         const points = decodePolyline(encoded);
         if (!points.length) return;
-        const color = GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
-        L.polyline(points, { color, weight: 1.2, opacity: 0.35, renderer }).addTo(targetMap);
+        const c = color || GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
+        const layer = L.polyline(points, { color: c, weight: 1.2, opacity: 0.45, renderer })
+            .addTo(targetMap);
+
+        if (interactive) {
+            layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
+            layer.on('mouseover', function () { this.setStyle({ opacity: 0.9, weight: 3 }); });
+            layer.on('mouseout',  function () { this.setStyle({ opacity: 0.45, weight: 1.2 }); });
+        }
     });
 }
 
@@ -1078,7 +1087,7 @@ async function initTileMap() {
     new TileHunterLayer(visitedTiles).addTo(tileMap);
 
     setTileStatus('Loading activity routes…');
-    await addPolylineOverlay(tileMap);
+    await addPolylineOverlay(tileMap, { color: '#ffffff', interactive: true });
 
     renderTileStats();
     tileMapInitialized = true;
