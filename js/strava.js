@@ -1020,6 +1020,270 @@ function decodePolyline(encoded) {
     return points;
 }
 
+// ── City Hunter ───────────────────────────────────────────────────────────────
+//
+// Fetches the road/trail network for a configured city from OpenStreetMap via
+// the Overpass API and determines which segments have been covered by activity
+// polylines. OSM data is cached in localStorage (7-day TTL). Completion is
+// derived from the shared polyline cache — no extra server storage needed.
+//
+// To add more cities later, add an entry to CITY_CONFIGS and update ACTIVE_CITY.
+
+const CITY_CONFIGS = {
+    'superior-co': {
+        name: 'Superior, CO',
+        bbox: [39.92, -105.20, 39.98, -105.08],  // [south, west, north, east]
+        center: [39.955, -105.135],
+        zoom: 14,
+        // OSM highway types to include — excludes motorways, trunk roads, service roads
+        highways: 'residential|living_street|footway|path|cycleway|pedestrian|track|unclassified|tertiary',
+    },
+};
+const ACTIVE_CITY = 'superior-co';
+const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is within 25 m
+
+let cityMap = null;
+let cityMapInitialized = false;
+
+function toggleCityMap() {
+    const section = document.getElementById('city-section');
+    const btn = document.getElementById('city-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !cityMapInitialized) {
+        initCityMap();
+    } else if (opening && cityMap) {
+        setTimeout(() => cityMap.invalidateSize(), 50);
+    }
+}
+
+async function initCityMap() {
+    const cfg = CITY_CONFIGS[ACTIVE_CITY];
+    setCityStatus('Loading road network…');
+    dbg(`City Hunter: initialising for ${cfg.name}`);
+
+    let ways, polylines;
+    try {
+        [ways, polylines] = await Promise.all([
+            fetchCityRoads(cfg),
+            loadPolylines(),
+        ]);
+    } catch (err) {
+        dbg(`City Hunter error: ${err.message}`);
+        setCityStatus('Failed to load city data.');
+        return;
+    }
+
+    setCityStatus('Analysing coverage…');
+    await new Promise(r => setTimeout(r, 0)); // yield before heavy computation
+
+    const pointIndex = buildPointIndex(polylines);
+    const completedWays = computeWayCompletion(ways, pointIndex);
+
+    cityMap = L.map('city-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView(cfg.center, cfg.zoom);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+    }).addTo(cityMap);
+
+    renderCityMap(completedWays);
+    renderCityStats(completedWays);
+
+    cityMapInitialized = true;
+    const done = completedWays.filter(w => w.pct === 1).length;
+    setCityStatus('');
+    dbg(`City Hunter: ${done}/${completedWays.length} ways complete`);
+}
+
+// ── OSM road data ─────────────────────────────────────────────────────────────
+
+async function fetchCityRoads(cfg) {
+    const cacheKey = `city_hunter_${ACTIVE_CITY}`;
+    const TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        if (cached && Date.now() - cached.ts < TTL) {
+            dbg(`City roads: ${cached.ways.length} ways from localStorage cache`);
+            return cached.ways;
+        }
+    } catch {}
+
+    setCityStatus('Fetching road network from OpenStreetMap…');
+    const [south, west, north, east] = cfg.bbox;
+    const query = `[out:json][timeout:90];`
+        + `(way["highway"~"^(${cfg.highways})$"](${south},${west},${north},${east}););`
+        + `out body;>;out skel qt;`;
+
+    dbg('Overpass API: fetching ways…');
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+    });
+    if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+
+    const data = await res.json();
+    const ways = parseOverpassWays(data);
+    dbg(`City roads: ${ways.length} ways fetched from Overpass`);
+
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ways })); } catch {}
+    return ways;
+}
+
+function parseOverpassWays(data) {
+    // Build node id → [lat, lon] lookup from the skel nodes
+    const nodeMap = {};
+    data.elements.forEach(el => {
+        if (el.type === 'node') nodeMap[el.id] = [el.lat, el.lon];
+    });
+
+    return data.elements
+        .filter(el => el.type === 'way' && el.tags?.highway)
+        .map(way => ({
+            id:      way.id,
+            name:    way.tags.name || '',
+            highway: way.tags.highway,
+            coords:  (way.nodes || []).map(nid => nodeMap[nid]).filter(Boolean),
+        }))
+        .filter(way => way.coords.length >= 2);
+}
+
+// ── Coverage analysis ─────────────────────────────────────────────────────────
+
+// Build a ~111 m grid of every decoded polyline point for fast proximity checks.
+function buildPointIndex(polylines) {
+    const G = 0.001;
+    const index = {};
+    polylines.forEach(encoded => {
+        if (!encoded) return;
+        for (const [lat, lng] of decodePolyline(encoded)) {
+            const key = `${Math.floor(lat / G)},${Math.floor(lng / G)}`;
+            if (!index[key]) index[key] = [];
+            index[key].push([lat, lng]);
+        }
+    });
+    return index;
+}
+
+function isNodeVisited(lat, lng, index) {
+    const G = 0.001;
+    const r = Math.floor(lat / G);
+    const c = Math.floor(lng / G);
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const pts = index[`${r + dr},${c + dc}`];
+            if (!pts) continue;
+            for (const [plat, plng] of pts) {
+                if (metresApart(lat, lng, plat, plng) <= VISIT_THRESHOLD_M) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function metresApart(lat1, lng1, lat2, lng2) {
+    const dlat = (lat2 - lat1) * 111320;
+    const dlng = (lng2 - lng1) * 111320 * Math.cos((lat1 + lat2) / 2 * Math.PI / 180);
+    return Math.sqrt(dlat * dlat + dlng * dlng);
+}
+
+function computeWayCompletion(ways, pointIndex) {
+    return ways.map(way => {
+        let visited = 0;
+        for (const [lat, lng] of way.coords) {
+            if (isNodeVisited(lat, lng, pointIndex)) visited++;
+        }
+        const pct = way.coords.length > 0 ? visited / way.coords.length : 0;
+        return { ...way, visited, total: way.coords.length, pct };
+    });
+}
+
+// ── City rendering ────────────────────────────────────────────────────────────
+
+function wayColor(pct) {
+    if (pct === 1) return '#4CAF50';              // complete  — green
+    if (pct > 0)   return '#FF9800';              // partial   — orange
+    return 'rgba(255,255,255,0.25)';              // untouched — faint
+}
+
+function renderCityMap(completedWays) {
+    completedWays.forEach(way => {
+        const color    = wayColor(way.pct);
+        const complete = way.pct === 1;
+        const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
+        const baseWeight  = complete ? 3 : 2;
+
+        const layer = L.polyline(way.coords, {
+            color,
+            weight:  baseWeight,
+            opacity: baseOpacity,
+        }).addTo(cityMap);
+
+        const pctLabel = (way.pct * 100).toFixed(0) + '%';
+        const nameHtml = way.name
+            ? way.name
+            : `<em style="opacity:0.6">${way.highway}</em>`;
+        layer.bindPopup(`
+            <div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:${color}">${way.highway}</div>
+                <div class="activity-popup-name">${nameHtml}</div>
+                <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
+            </div>`, { className: 'activity-popup' });
+        layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
+        layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
+    });
+}
+
+function renderCityStats(completedWays) {
+    const el = document.getElementById('city-stats-bar');
+    if (!el) return;
+    const total   = completedWays.length;
+    const done    = completedWays.filter(w => w.pct === 1).length;
+    const partial = completedWays.filter(w => w.pct > 0 && w.pct < 1).length;
+    const totalNodes   = completedWays.reduce((s, w) => s + w.total,   0);
+    const visitedNodes = completedWays.reduce((s, w) => s + w.visited, 0);
+    const pct = totalNodes > 0 ? (visitedNodes / totalNodes * 100).toFixed(1) : '0.0';
+
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${done.toLocaleString()}</span>
+            <span class="county-stat-label">Complete</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${partial.toLocaleString()}</span>
+            <span class="county-stat-label">Partial</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${total.toLocaleString()}</span>
+            <span class="county-stat-label">Total Streets</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Node Coverage</span>
+        </div>`;
+}
+
+async function resetCityData() {
+    if (!confirm('Clear cached road network data? OSM data will be re-fetched on next open.')) return;
+    localStorage.removeItem(`city_hunter_${ACTIVE_CITY}`);
+    cityMapInitialized = false;
+    if (cityMap) { cityMap.remove(); cityMap = null; }
+    dbg('City road cache cleared. Reopen City Hunter to re-fetch from OSM.');
+}
+
+function setCityStatus(msg) {
+    const el = document.getElementById('city-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Tile Hunter ───────────────────────────────────────────────────────────────
 //
 // Divides the world into 0.01° × 0.01° tiles (~1.1 km at equator, ~1 mi at
