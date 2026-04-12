@@ -1374,12 +1374,10 @@ function metresApart(lat1, lng1, lat2, lng2) {
 
 function computeWayCompletion(ways, pointIndex) {
     return ways.map(way => {
-        let visited = 0;
-        for (const [lat, lng] of way.coords) {
-            if (isNodeVisited(lat, lng, pointIndex)) visited++;
-        }
+        const visitedFlags = way.coords.map(([lat, lng]) => isNodeVisited(lat, lng, pointIndex));
+        const visited = visitedFlags.filter(Boolean).length;
         const pct = way.coords.length > 0 ? visited / way.coords.length : 0;
-        return { ...way, visited, total: way.coords.length, pct };
+        return { ...way, visited, total: way.coords.length, pct, visitedFlags };
     });
 }
 
@@ -1420,9 +1418,9 @@ function renderCityMap(completedWays) {
         layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
         layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
 
-        // Collect nodes on incomplete ways for the "remaining" overlay
-        if (way.pct < 1) {
-            way.coords.forEach(coord => {
+        // Collect only the truly unvisited nodes for the "remaining" overlay
+        way.coords.forEach((coord, idx) => {
+            if (!way.visitedFlags[idx]) {
                 unvisitedMarkers.push(L.circleMarker(coord, {
                     radius: 3,
                     color: '#FF4444',
@@ -1432,8 +1430,8 @@ function renderCityMap(completedWays) {
                     renderer,
                     interactive: false,
                 }));
-            });
-        }
+            }
+        });
     });
 
     cityNodeLayer = L.layerGroup(unvisitedMarkers);
@@ -1513,8 +1511,7 @@ async function toggleCityActivities() {
             if (!slim) return;
             const points = decodePolyline(encoded);
             if (!points.length) return;
-            const color = GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
-            const layer = L.polyline(points, { color, weight: 1.5, opacity: 0.6, renderer });
+            const layer = L.polyline(points, { color: '#29B6F6', weight: 1.5, opacity: 0.6, renderer });
             layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
             layer.on('mouseover', function () { this.setStyle({ opacity: 0.95, weight: 3 }); });
             layer.on('mouseout',  function () { this.setStyle({ opacity: 0.6, weight: 1.5 }); });
