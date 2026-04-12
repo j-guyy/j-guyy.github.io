@@ -559,6 +559,8 @@ async function initMap() {
     stravaMap = L.map('strava-map', {
         renderer: L.canvas(),
         preferCanvas: true,
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
     }).setView([30, 0], 2);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -605,6 +607,10 @@ async function initMap() {
             opacity: visible ? 0.55 : 0,
         }).addTo(stravaMap);
 
+        layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
+        layer.on('mouseover', function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.9, weight: 3 }); });
+        layer.on('mouseout',  function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.55, weight: 1.5 }); });
+
         mapLayers.push({ layer, type: slim.t });
         if (visible) points.forEach(p => allPoints.push(p));
     });
@@ -645,6 +651,26 @@ function renderMapLegend() {
 function setMapStatus(msg) {
     const el = document.getElementById('map-status');
     if (el) el.textContent = msg;
+}
+
+function buildActivityPopup(slim) {
+    const name = slim.n || 'Untitled Activity';
+    const type = typeLabel(slim.t);
+    const date = slim.d ? formatActivityDate(slim.d) : '';
+    const group = getGroup(slim.t);
+    const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
+    return `
+        <div class="activity-popup-inner">
+            <div class="activity-popup-type" style="color:${color}">${type}</div>
+            <div class="activity-popup-name">${name}</div>
+            ${date ? `<div class="activity-popup-date">${date}</div>` : ''}
+        </div>`;
+}
+
+function formatActivityDate(dateStr) {
+    // dateStr is "YYYY-MM-DD" from start_date_local
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 // Google encoded polyline decoder (no library needed)

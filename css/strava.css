@@ -222,6 +222,43 @@
     flex-shrink: 0;
 }
 
+/* ── Map popups ──────────────────────────────── */
+.activity-popup .leaflet-popup-content-wrapper {
+    background: rgba(18, 18, 18, 0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    color: #fff;
+}
+
+.activity-popup .leaflet-popup-tip {
+    background: rgba(18, 18, 18, 0.95);
+}
+
+.activity-popup .leaflet-popup-content {
+    margin: 10px 14px;
+}
+
+.activity-popup-type {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.activity-popup-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.activity-popup-date {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.45);
+    margin-top: 3px;
+}
+
 /* ── Activity Type Filters ───────────────────── */
 .filter-bar {
     display: flex;
