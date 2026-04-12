@@ -150,6 +150,37 @@
     background-color: var(--primary-hover-color);
 }
 
+/* Sortable Table Headers */
+.travel-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.travel-table th.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.travel-table th.sort-active {
+    color: var(--primary-color);
+}
+
+.sort-indicator {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.7em;
+    opacity: 0.5;
+    vertical-align: middle;
+}
+
+.travel-table th.sortable:hover .sort-indicator {
+    opacity: 0.9;
+}
+
+.travel-table th.sort-active .sort-indicator {
+    opacity: 1;
+}
+
 /* Travel Table Styling */
 .travel-table {
     width: 100%;

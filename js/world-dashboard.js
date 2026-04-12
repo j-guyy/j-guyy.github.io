@@ -1,3 +1,12 @@
+const sortState = {
+    northAmerica: { col: 'population', dir: 'desc' },
+    southAmerica: { col: 'population', dir: 'desc' },
+    europe:       { col: 'population', dir: 'desc' },
+    asia:         { col: 'population', dir: 'desc' },
+    africa:       { col: 'population', dir: 'desc' },
+    oceania:      { col: 'population', dir: 'desc' }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     loadCountriesWithPopulation('data/countries.json', function (updatedData) {
         worldData = updatedData;
@@ -121,6 +130,34 @@ function displayWorldTravelSummary() {
     });
 }
 
+function sortTableData(data, col, dir) {
+    return [...data].sort((a, b) => {
+        let aVal = a[col];
+        let bVal = b[col];
+
+        // Boolean: true (visited) = 1, false = 0
+        if (typeof aVal === 'boolean') {
+            aVal = aVal ? 1 : 0;
+            bVal = bVal ? 1 : 0;
+        }
+
+        let primary;
+        if (typeof aVal === 'string') {
+            const cmp = aVal.localeCompare(bVal);
+            primary = dir === 'asc' ? cmp : -cmp;
+        } else {
+            primary = dir === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        // Secondary sort: population descending within tied groups
+        if (primary === 0 && col !== 'population') {
+            return b.population - a.population;
+        }
+
+        return primary;
+    });
+}
+
 function updateTable(continentType) {
     const tableContainer = document.getElementById('travel-table-container');
     tableContainer.innerHTML = '';
@@ -129,32 +166,55 @@ function updateTable(continentType) {
     table.className = 'travel-table';
 
     const tableHeaders = ['Country', 'Population', 'Status'];
-    let tableData;
+    const sortKeys     = ['name', 'population', 'visited'];
 
-    switch (continentType) {
-        case 'northAmerica':
-            tableData = worldData.northAmericanCountries.sort((a, b) => b.population - a.population);
-            break;
-        case 'southAmerica':
-            tableData = worldData.southAmericanCountries.sort((a, b) => b.population - a.population);
-            break;
-        case 'europe':
-            tableData = worldData.europeanCountries.sort((a, b) => b.population - a.population);
-            break;
-        case 'asia':
-            tableData = worldData.asianCountries.sort((a, b) => b.population - a.population);
-            break;
-        case 'africa':
-            tableData = worldData.africanCountries.sort((a, b) => b.population - a.population);
-            break;
-        case 'oceania':
-            tableData = worldData.oceaniaCountries.sort((a, b) => b.population - a.population);
-            break;
-    }
+    const continentMap = {
+        northAmerica: worldData.northAmericanCountries,
+        southAmerica: worldData.southAmericanCountries,
+        europe:       worldData.europeanCountries,
+        asia:         worldData.asianCountries,
+        africa:       worldData.africanCountries,
+        oceania:      worldData.oceaniaCountries
+    };
 
-    // Create table header
+    const rawData = continentMap[continentType];
+    const { col, dir } = sortState[continentType];
+    const tableData = sortTableData(rawData, col, dir);
+
+    // Create sortable table header
     const thead = document.createElement('thead');
-    thead.innerHTML = `<tr>${tableHeaders.map(header => `<th>${header}</th>`).join('')}</tr>`;
+    const headerRow = document.createElement('tr');
+
+    tableHeaders.forEach((header, i) => {
+        const th = document.createElement('th');
+        const key = sortKeys[i];
+        const isActive = col === key;
+
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(header));
+        th.appendChild(indicator);
+
+        th.addEventListener('click', () => {
+            const state = sortState[continentType];
+            if (state.col === key) {
+                sortState[continentType].dir = state.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                const defaultDir = (key === 'visited' || key === 'population') ? 'desc' : 'asc';
+                sortState[continentType] = { col: key, dir: defaultDir };
+            }
+            updateTable(continentType);
+        });
+
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
     table.appendChild(thead);
 
     // Create table body

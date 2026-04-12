@@ -933,7 +933,7 @@
       32.7765
     ],
     "population": "851,698",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Cape Coral",
@@ -1206,7 +1206,7 @@
       33.4735
     ],
     "population": "630,968",
-    "visited": false
+    "visited": true
   },
   {
     "name": "Durham",

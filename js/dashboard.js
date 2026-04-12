@@ -1,5 +1,11 @@
 let metros, highPoints, nationalParks, visitedStates;
 
+const sortState = {
+    highpoints: { col: 'elevation', dir: 'desc' },
+    metros:     { col: 'rank',      dir: 'asc'  },
+    parks:      { col: 'name',      dir: 'asc'  }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
         fetch('/data/metros.json').then(response => response.json()),
@@ -81,29 +87,94 @@ function displayTravelSummary() {
     });
 }
 
+function sortTableData(data, col, dir, tableType) {
+    return [...data].sort((a, b) => {
+        let aVal = a[col];
+        let bVal = b[col];
+
+        // Parse population strings (e.g. "10,234,567") for metros
+        if (col === 'population' && tableType === 'metros') {
+            aVal = parseInt(String(aVal).replace(/,/g, ''), 10) || 0;
+            bVal = parseInt(String(bVal).replace(/,/g, ''), 10) || 0;
+        }
+
+        // Boolean: true (visited) = 1, false = 0
+        if (typeof aVal === 'boolean') {
+            aVal = aVal ? 1 : 0;
+            bVal = bVal ? 1 : 0;
+        }
+
+        if (typeof aVal === 'string') {
+            const cmp = aVal.localeCompare(bVal);
+            return dir === 'asc' ? cmp : -cmp;
+        }
+
+        return dir === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+}
+
 function updateTable(tableType) {
     const tableContainer = document.getElementById('travel-table-container');
-    tableContainer.innerHTML = ''; // Clear previous table
+    tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
     table.className = 'travel-table';
 
-    let tableData, tableHeaders;
+    let tableHeaders, sortKeys, rawData;
 
     if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
-        tableData = highPoints.sort((a, b) => b.elevation - a.elevation);
+        // 'Rank' column uses elevation as its sort key (rank = elevation order)
+        sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
+        rawData      = highPoints;
     } else if (tableType === 'metros') {
         tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
-        tableData = metros.sort((a, b) => a.rank - b.rank);
+        sortKeys     = ['rank', 'metro_name', 'state', 'population', 'visited'];
+        rawData      = metros;
     } else if (tableType === 'parks') {
         tableHeaders = ['National Park', 'State', 'Status'];
-        tableData = nationalParks.sort((a, b) => a.name.localeCompare(b.name));
+        sortKeys     = ['name', 'state', 'visited'];
+        rawData      = nationalParks;
     }
 
-    // Create table header
+    const { col, dir } = sortState[tableType];
+    const tableData = sortTableData(rawData, col, dir, tableType);
+
+    // Create sortable table header
     const thead = document.createElement('thead');
-    thead.innerHTML = `<tr>${tableHeaders.map(header => `<th>${header}</th>`).join('')}</tr>`;
+    const headerRow = document.createElement('tr');
+
+    tableHeaders.forEach((header, i) => {
+        const th = document.createElement('th');
+        const key = sortKeys[i];
+        const isActive = col === key;
+
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(header));
+        th.appendChild(indicator);
+
+        th.addEventListener('click', () => {
+            const state = sortState[tableType];
+            if (state.col === key) {
+                sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Default direction: desc for numeric/visited, asc for text
+                const defaultDir = (key === 'visited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
+                sortState[tableType] = { col: key, dir: defaultDir };
+            }
+            updateTable(tableType);
+        });
+
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
     table.appendChild(thead);
 
     // Create table body
