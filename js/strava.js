@@ -3,7 +3,7 @@ const GEO_CACHE_KEY = 'strava_geo_cache_v3'; // v3: 0.01° grid precision (was 0
 
 const GROUPS = {
     'Foot Sports':  ['Run','TrailRun','VirtualRun','Hike','Walk','Snowshoe'],
-    'Bike Sports':  ['Ride','EBikeRide','VirtualRide','Handcycle','Velomobile'],
+    'Bike Sports':  ['Ride','GravelRide','EBikeRide','VirtualRide','Handcycle','Velomobile'],
     'Snow Sports':  ['AlpineSki','BackcountrySki','NordicSki','Snowboard','Snowkite'],
     'Water Sports': ['Swim','OpenWaterSwim','Kayaking','Rowing','Surfing','Windsurf','Kitesurf','Canoeing','StandUpPaddling','Sail']
 };
