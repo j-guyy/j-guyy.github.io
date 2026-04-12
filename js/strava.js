@@ -1088,7 +1088,44 @@ async function initTileMap() {
 
 // ── Tile detection ────────────────────────────────────────────────────────────
 
-// No spatial index needed — mapping a lat/lng to a tile is just floor division.
+// Walk all grid cells crossed by a line segment using a DDA grid traversal.
+// This ensures tiles a polyline passes *through* are counted, not just tiles
+// that happen to contain a decoded polyline point.
+function addSegmentTiles(lat1, lng1, lat2, lng2, tileSet) {
+    let r = Math.floor(lat1 * 100);
+    let c = Math.floor(lng1 * 100);
+    const endR = Math.floor(lat2 * 100);
+    const endC = Math.floor(lng2 * 100);
+
+    tileSet.add(`${r},${c}`);
+    if (r === endR && c === endC) return;
+
+    const dLat = lat2 - lat1;
+    const dLng = lng2 - lng1;
+    const stepR = dLat >= 0 ? 1 : -1;
+    const stepC = dLng >= 0 ? 1 : -1;
+
+    // Parametric t-step to cross one full grid cell in each axis
+    const tDeltaR = dLat !== 0 ? Math.abs(0.01 / dLat) : Infinity;
+    const tDeltaC = dLng !== 0 ? Math.abs(0.01 / dLng) : Infinity;
+
+    // t at which the ray first crosses a grid boundary in each axis
+    let tMaxR = dLat !== 0
+        ? Math.abs(((stepR > 0 ? r + 1 : r) / 100 - lat1) / dLat)
+        : Infinity;
+    let tMaxC = dLng !== 0
+        ? Math.abs(((stepC > 0 ? c + 1 : c) / 100 - lng1) / dLng)
+        : Infinity;
+
+    const limit = Math.abs(endR - r) + Math.abs(endC - c) + 1;
+    for (let i = 0; i < limit; i++) {
+        if (tMaxR < tMaxC) { r += stepR; tMaxR += tDeltaR; }
+        else                { c += stepC; tMaxC += tDeltaC; }
+        tileSet.add(`${r},${c}`);
+        if (r === endR && c === endC) break;
+    }
+}
+
 async function detectTilesAsync(activities) {
     const newTiles = new Set();
     for (let i = 0; i < activities.length; i++) {
@@ -1097,8 +1134,15 @@ async function detectTilesAsync(activities) {
             await new Promise(r => setTimeout(r, 0)); // yield to browser
         }
         if (!activities[i].p) continue;
-        for (const [lat, lng] of decodePolyline(activities[i].p)) {
-            newTiles.add(`${Math.floor(lat * 100)},${Math.floor(lng * 100)}`);
+        const points = decodePolyline(activities[i].p);
+        for (let j = 0; j < points.length; j++) {
+            const [lat, lng] = points[j];
+            if (j === 0) {
+                newTiles.add(`${Math.floor(lat * 100)},${Math.floor(lng * 100)}`);
+            } else {
+                const [prevLat, prevLng] = points[j - 1];
+                addSegmentTiles(prevLat, prevLng, lat, lng, newTiles);
+            }
         }
     }
     return newTiles;
