@@ -2167,6 +2167,9 @@ let trailNodeLayer = null;
 let trailActivityLayer = null;
 let trailNodesVisible = false;
 let trailActivitiesVisible = false;
+let trailCompletedWays = [];   // full computed set, kept for filter re-renders
+let trailWayLayers = [];       // [{layer, way}] — lets us show/hide without re-fetching
+const deactivatedTrailSurfaces = new Set();
 
 function toggleTrailMap() {
     const section = document.getElementById('trail-section');
@@ -2191,6 +2194,9 @@ function switchTrail(trailKey) {
     trailActivityLayer = null;
     trailNodesVisible = false;
     trailActivitiesVisible = false;
+    trailCompletedWays = [];
+    trailWayLayers = [];
+    deactivatedTrailSurfaces.clear();
     const section = document.getElementById('trail-section');
     if (section && section.style.display !== 'none') initTrailMap();
 }
@@ -2246,8 +2252,10 @@ async function initTrailMap() {
         maxZoom: 19,
     }).addTo(trailMap);
 
+    trailCompletedWays = completedWays;
     renderTrailMap(completedWays);
     renderTrailStats(completedWays);
+    renderTrailSurfaceFilters();
 
     if (boundaryPolygons.length) {
         boundaryPolygons.forEach(ring => {
@@ -2316,13 +2324,14 @@ async function fetchCOTrexTrails(cfg) {
         if (data.error) throw new Error(`COTrex error: ${data.error.message}`);
 
         for (const f of (data.features || [])) {
-            const { name = '', type = 'trail' } = f.attributes || {};
+            const { name = '', type = 'trail', surface = '' } = f.attributes || {};
             for (const path of (f.geometry?.paths || [])) {
                 if (path.length < 2) continue;
                 ways.push({
                     id:      `${f.attributes?.OBJECTID ?? offset}_${ways.length}`,
                     name,
                     highway: type,
+                    surface: surface.trim(),
                     // ArcGIS returns [lng, lat] — convert to Leaflet's [lat, lng]
                     coords:  path.map(([lng, lat]) => [lat, lng]),
                 });
@@ -2341,6 +2350,7 @@ async function fetchCOTrexTrails(cfg) {
 function renderTrailMap(completedWays) {
     const renderer = L.canvas();
     const unvisitedMarkers = [];
+    trailWayLayers = [];
 
     completedWays.forEach(way => {
         const color       = wayColor(way.pct);
@@ -2358,14 +2368,21 @@ function renderTrailMap(completedWays) {
         const nameHtml = way.name
             ? way.name
             : `<em style="opacity:0.6">${way.highway}</em>`;
+        const surfaceNote = way.surface ? ` · ${way.surface}` : '';
         layer.bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${color}">${way.highway}</div>
+                <div class="activity-popup-type" style="color:${color}">${way.highway}${surfaceNote}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
-        layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
-        layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
+        layer.on('mouseover', function () {
+            if (!deactivatedTrailSurfaces.has(way.surface)) this.setStyle({ opacity: 1, weight: baseWeight + 1.5 });
+        });
+        layer.on('mouseout', function () {
+            if (!deactivatedTrailSurfaces.has(way.surface)) this.setStyle({ opacity: baseOpacity, weight: baseWeight });
+        });
+
+        trailWayLayers.push({ layer, way, baseOpacity, baseWeight });
 
         way.coords.forEach((coord, idx) => {
             if (!way.visitedFlags[idx]) {
@@ -2422,6 +2439,66 @@ function renderTrailStats(completedWays) {
         </div>`;
 }
 
+function renderTrailSurfaceFilters() {
+    const el = document.getElementById('trail-surface-filters');
+    if (!el || !trailCompletedWays.length) return;
+
+    const surfaceCounts = {};
+    trailCompletedWays.forEach(w => {
+        const s = w.surface || '';
+        surfaceCounts[s] = (surfaceCounts[s] || 0) + 1;
+    });
+
+    const surfaces = Object.keys(surfaceCounts).sort((a, b) => {
+        if (!a) return 1; if (!b) return -1;
+        return a.localeCompare(b);
+    });
+    if (surfaces.length <= 1) { el.innerHTML = ''; return; }
+
+    const pills = surfaces.map(s => {
+        const active = !deactivatedTrailSurfaces.has(s);
+        const label  = s || '(unknown)';
+        return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleTrailSurface('${s.replace(/'/g, "\\'")}')">${label} <span class="filter-pill-count">${surfaceCounts[s]}</span></button>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div style="margin-bottom:8px;font-size:0.72rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.05em">Surface filter</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="filter-all-btn" onclick="setAllTrailSurfaces(true)">All</button>
+            <button class="filter-all-btn" onclick="setAllTrailSurfaces(false)">None</button>
+            <div class="filter-pills">${pills}</div>
+        </div>`;
+}
+
+function toggleTrailSurface(surface) {
+    if (deactivatedTrailSurfaces.has(surface)) {
+        deactivatedTrailSurfaces.delete(surface);
+    } else {
+        deactivatedTrailSurfaces.add(surface);
+    }
+    applyTrailSurfaceFilter();
+}
+
+function setAllTrailSurfaces(enabled) {
+    if (enabled) {
+        deactivatedTrailSurfaces.clear();
+    } else {
+        trailCompletedWays.forEach(w => deactivatedTrailSurfaces.add(w.surface || ''));
+    }
+    applyTrailSurfaceFilter();
+}
+
+function applyTrailSurfaceFilter() {
+    trailWayLayers.forEach(({ layer, way, baseOpacity, baseWeight }) => {
+        const hidden = deactivatedTrailSurfaces.has(way.surface || '');
+        layer.setStyle({ opacity: hidden ? 0 : baseOpacity, weight: hidden ? 0 : baseWeight });
+    });
+
+    const visibleWays = trailCompletedWays.filter(w => !deactivatedTrailSurfaces.has(w.surface || ''));
+    renderTrailStats(visibleWays);
+    renderTrailSurfaceFilters(); // re-render pills to update active state
+}
+
 function toggleTrailNodes() {
     if (!trailMap || !trailNodeLayer) return;
     trailNodesVisible = !trailNodesVisible;
@@ -2470,15 +2547,18 @@ async function toggleTrailActivities() {
 }
 
 async function resetTrailData() {
-    if (!confirm('Clear cached trail network data? OSM data will be re-fetched on next open.')) return;
+    if (!confirm('Clear cached trail network data? It will be re-fetched from COTrex on next open.')) return;
     localStorage.removeItem(`trail_hunter_${ACTIVE_TRAIL}`);
     trailMapInitialized = false;
     trailNodeLayer = null;
     trailActivityLayer = null;
     trailNodesVisible = false;
     trailActivitiesVisible = false;
+    trailCompletedWays = [];
+    trailWayLayers = [];
+    deactivatedTrailSurfaces.clear();
     if (trailMap) { trailMap.remove(); trailMap = null; }
-    dbg('Trail cache cleared. Reopen Trail Hunter to re-fetch from OSM.');
+    dbg('Trail cache cleared. Reopen Trail Hunter to re-fetch from COTrex.');
 }
 
 function setTrailStatus(msg) {
