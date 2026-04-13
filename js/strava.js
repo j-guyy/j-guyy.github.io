@@ -1643,7 +1643,7 @@ async function initTileMap() {
     tileMap = L.map('tile-map', {
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
-    }).setView([38, -96], 4);
+    }).setView([38, -96], 6);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -1664,45 +1664,27 @@ async function initTileMap() {
 
 // ── Tile detection ────────────────────────────────────────────────────────────
 
-// Walk all z14 tile cells crossed by a lat/lng segment using DDA traversal.
-// Operates in integer tile-x/tile-y space so it matches the OSM/Strava grid exactly.
+// Sample a segment every SAMPLE_M metres and collect the z14 tile for each sample.
+// Strava z14 tiles are ~1500 m wide, so 200 m sampling never misses a crossed tile.
+// Simpler and more reliable than a Mercator-space DDA.
+const TILE_SAMPLE_M = 200;
+
 function addSegmentTiles(lat1, lng1, lat2, lng2, tileSet) {
-    let [x, y]       = latLngToTileXY(lat1, lng1);
-    const [endX, endY] = latLngToTileXY(lat2, lng2);
-
-    tileSet.add(`${x},${y}`);
-    if (x === endX && y === endY) return;
-
-    // Work in fractional tile-space to drive the DDA
-    const n    = Math.pow(2, TILE_ZOOM);
-    // Convert lat to Mercator tile-Y fraction
-    const toTY = lat => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
-    const toTX = lng => (lng + 180) / 360 * n;
-
-    const tx1 = toTX(lng1), ty1 = toTY(lat1);
-    const tx2 = toTX(lng2), ty2 = toTY(lat2);
-    const dx = tx2 - tx1, dy = ty2 - ty1;
-
-    const stepX = dx >= 0 ? 1 : -1;
-    const stepY = dy >= 0 ? 1 : -1;
-    const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
-    const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
-    let tMaxX = dx !== 0 ? Math.abs((stepX > 0 ? x + 1 : x) - tx1) / Math.abs(dx) : Infinity;
-    let tMaxY = dy !== 0 ? Math.abs((stepY > 0 ? y + 1 : y) - ty1) / Math.abs(dy) : Infinity;
-
-    const limit = Math.abs(endX - x) + Math.abs(endY - y) + 1;
-    for (let i = 0; i < limit; i++) {
-        if (tMaxX < tMaxY) { x += stepX; tMaxX += tDeltaX; }
-        else               { y += stepY; tMaxY += tDeltaY; }
-        tileSet.add(`${x},${y}`);
-        if (x === endX && y === endY) break;
+    const d = metresApart(lat1, lng1, lat2, lng2);
+    const steps = Math.max(1, Math.ceil(d / TILE_SAMPLE_M));
+    for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const lat = lat1 + (lat2 - lat1) * t;
+        const lng = lng1 + (lng2 - lng1) * t;
+        const [tx, ty] = latLngToTileXY(lat, lng);
+        tileSet.add(`${tx},${ty}`);
     }
 }
 
 async function detectTilesAsync(activities) {
     const newTiles = new Set();
     for (let i = 0; i < activities.length; i++) {
-        if (i % 100 === 0) {
+        if (i % 25 === 0) {
             setTileStatus(`Detecting tiles… ${i} / ${activities.length}`);
             await new Promise(r => setTimeout(r, 0));
         }
