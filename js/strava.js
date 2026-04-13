@@ -1597,11 +1597,14 @@ let tileMap = null;
 let tileMapInitialized = false;
 let visitedTiles = new Set();   // "x,y" z14 tile coordinate strings
 let tileProcessedIds = new Set();
-let tileClusterMap = null;      // tile key → size of its connected cluster
-let tileSquareMap  = null;      // tile key → largest square (N) with this tile as bottom-right
+let tileClusterMap      = null; // tile key → size of its connected cluster
+let tileSquareMap       = null; // tile key → dp_br: largest square with tile as bottom-right
+let tileSquareMembership = null;// tile key → largest square tile actually belongs to
 let tileMaxCluster = 0;
 let tileMaxSquare  = 0;
 let tileGridLayer  = null;
+
+const SQUARE_THRESHOLD = 10;   // only highlight squares ≥ this size
 
 function toggleTileMap() {
     const section = document.getElementById('tile-section');
@@ -1668,7 +1671,7 @@ async function initTileMap() {
         const key = `${tx},${ty}`;
         if (!visitedTiles.has(key)) return;
         const cluster = tileClusterMap ? tileClusterMap.get(key) : '?';
-        const square  = tileSquareMap  ? tileSquareMap.get(key)  : 1;
+        const square  = largestSquareContaining(tx, ty);
         L.popup({ className: 'activity-popup' })
             .setLatLng(e.latlng)
             .setContent(`<div class="activity-popup-inner">
@@ -1762,9 +1765,38 @@ const TileHunterLayer = L.Layer.extend({
         this._canvas.height = size.y;
 
         const ctx = this._canvas.getContext('2d');
-        ctx.fillStyle = 'rgba(76, 175, 80, 0.5)';
+
+        // Bucket tiles into five visual tiers (drawn lowest → highest priority)
+        const buckets = { isolated: [], cluster: [], maxCluster: [], square: [], maxSquare: [] };
 
         for (const [tx, ty] of this._tiles) {
+            const key = `${tx},${ty}`;
+            const membership   = tileSquareMembership ? (tileSquareMembership.get(key) || 0) : 0;
+            const clusterSize  = tileClusterMap       ? (tileClusterMap.get(key)        || 1) : 1;
+
+            const isClusterTile = tileClusterMap && tileClusterMap.has(key);
+
+            if      (membership >= tileMaxSquare && tileMaxSquare >= SQUARE_THRESHOLD)
+                buckets.maxSquare.push([tx, ty]);
+            else if (membership >= SQUARE_THRESHOLD)
+                buckets.square.push([tx, ty]);
+            else if (isClusterTile && clusterSize === tileMaxCluster)
+                buckets.maxCluster.push([tx, ty]);
+            else if (isClusterTile)
+                buckets.cluster.push([tx, ty]);
+            else
+                buckets.isolated.push([tx, ty]);
+        }
+
+        const COLORS = {
+            isolated:   'rgba(244, 67,  54,  0.55)',  // red        — lone tile
+            cluster:    'rgba(129, 199, 132, 0.60)',  // light green — connected cluster
+            maxCluster: 'rgba(46,  125, 50,  0.80)',  // dark green  — largest cluster
+            square:     'rgba(100, 181, 246, 0.65)',  // light blue  — square ≥10×10
+            maxSquare:  'rgba(21,  101, 192, 0.85)',  // dark blue   — max square
+        };
+
+        const drawRect = (tx, ty) => {
             const [nwLat, nwLng] = tileXYToLatLng(tx,     ty);
             const [seLat, seLng] = tileXYToLatLng(tx + 1, ty + 1);
             const nw = map.latLngToContainerPoint([nwLat, nwLng]);
@@ -1773,30 +1805,44 @@ const TileHunterLayer = L.Layer.extend({
             const py = Math.min(nw.y, se.y);
             const pw = Math.max(Math.abs(se.x - nw.x), 1);
             const ph = Math.max(Math.abs(se.y - nw.y), 1);
-            if (px + pw < 0 || py + ph < 0 || px > size.x || py > size.y) continue;
+            if (px + pw < 0 || py + ph < 0 || px > size.x || py > size.y) return;
             ctx.fillRect(px, py, pw, ph);
+        };
+
+        for (const [tier, color] of Object.entries(COLORS)) {
+            ctx.fillStyle = color;
+            buckets[tier].forEach(([tx, ty]) => drawRect(tx, ty));
         }
     },
 });
 
 // ── Cluster & Square analysis ─────────────────────────────────────────────────
 
-// BFS over the visited tile set to label every tile with its cluster size.
+// A tile is a "cluster tile" only if all four cardinal neighbors are also visited.
+// BFS then finds connected components among those interior tiles.
 function computeClusters(tileSet) {
-    const clusterOf = new Map(); // key → cluster size (filled after BFS)
-
+    // Step 1: qualify — must have all 4 neighbors visited
+    const interior = new Set();
     for (const key of tileSet) {
-        if (clusterOf.has(key)) continue;
+        const [x, y] = key.split(',').map(Number);
+        if (tileSet.has(`${x},${y-1}`) && tileSet.has(`${x},${y+1}`) &&
+            tileSet.has(`${x-1},${y}`) && tileSet.has(`${x+1},${y}`)) {
+            interior.add(key);
+        }
+    }
 
-        // BFS — use array as queue with a head pointer (faster than shift())
+    // Step 2: BFS over interior tiles to find connected components
+    const clusterOf = new Map(); // key → cluster size
+    for (const key of interior) {
+        if (clusterOf.has(key)) continue;
         const queue = [key];
-        clusterOf.set(key, 0); // mark visited
+        clusterOf.set(key, 0);
         let head = 0;
         while (head < queue.length) {
             const curr = queue[head++];
             const [x, y] = curr.split(',').map(Number);
             for (const nb of [`${x+1},${y}`, `${x-1},${y}`, `${x},${y+1}`, `${x},${y-1}`]) {
-                if (tileSet.has(nb) && !clusterOf.has(nb)) {
+                if (interior.has(nb) && !clusterOf.has(nb)) {
                     clusterOf.set(nb, 0);
                     queue.push(nb);
                 }
@@ -1836,7 +1882,37 @@ function computeTileStats() {
     tileMaxSquare = 0;
     for (const v of tileSquareMap.values())  if (v > tileMaxSquare)  tileMaxSquare  = v;
 
+    // Spread each large-square bottom-right corner across its full N×N footprint
+    // so every tile knows the largest square it actually belongs to.
+    tileSquareMembership = new Map();
+    for (const [key, dp] of tileSquareMap) {
+        if (dp < SQUARE_THRESHOLD) continue;
+        const [bx, by] = key.split(',').map(Number);
+        for (let dx = 0; dx < dp; dx++) {
+            for (let dy = 0; dy < dp; dy++) {
+                const tk = `${bx - dx},${by - dy}`;
+                if ((tileSquareMembership.get(tk) || 0) < dp) tileSquareMembership.set(tk, dp);
+            }
+        }
+    }
+
     dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare}`);
+}
+
+// On-demand: find the largest square tile (tx,ty) is actually part of.
+// Checks every possible bottom-right offset up to tileMaxSquare — fast at click time.
+function largestSquareContaining(tx, ty) {
+    if (!tileSquareMap) return 1;
+    let best = 1;
+    for (let i = 0; i <= tileMaxSquare; i++) {
+        for (let j = 0; j <= tileMaxSquare; j++) {
+            const dp = tileSquareMap.get(`${tx + i},${ty + j}`) || 0;
+            // The square of size dp ending at (tx+i, ty+j) contains (tx,ty)
+            // iff dp > i  (extends left enough) AND dp > j (extends up enough)
+            if (dp > i && dp > j) best = Math.max(best, dp);
+        }
+    }
+    return best;
 }
 
 // ── Tile grid layer ───────────────────────────────────────────────────────────
@@ -1921,11 +1997,18 @@ function renderTileStats() {
             <span class="county-stat-number">${tileMaxSquare}×${tileMaxSquare}</span>
             <span class="county-stat-label">Max Square</span>
         </div>
-        <div style="margin-left:auto;display:flex;align-items:center">
+        <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
             <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:rgba(255,255,255,0.55);cursor:pointer;white-space:nowrap">
                 <input type="checkbox" id="tile-grid-checkbox" onchange="toggleTileGrid(this.checked)" style="cursor:pointer;accent-color:var(--primary-color)">
                 Gridlines
             </label>
+            <div class="map-legend" style="margin:0">
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(244,67,54,0.8)"></span>Edge tile</span>
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(129,199,132,0.85)"></span>Cluster</span>
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(46,125,50,0.95)"></span>Max cluster</span>
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(100,181,246,0.85)"></span>Square ≥${SQUARE_THRESHOLD}×${SQUARE_THRESHOLD}</span>
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(21,101,192,0.95)"></span>Max square</span>
+            </div>
         </div>`;
 }
 
@@ -1957,8 +2040,9 @@ async function resetTileData() {
         tileMapInitialized = false;
         visitedTiles.clear();
         tileProcessedIds.clear();
-        tileClusterMap = null;
-        tileSquareMap  = null;
+        tileClusterMap       = null;
+        tileSquareMap        = null;
+        tileSquareMembership = null;
         tileMaxCluster = 0;
         tileMaxSquare  = 0;
         tileGridLayer  = null;
