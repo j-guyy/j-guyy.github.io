@@ -13,7 +13,9 @@
       "Bash(winget upgrade:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:gis.colorado.gov)"
     ]
   }
 }

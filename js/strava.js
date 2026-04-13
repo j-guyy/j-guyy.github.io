@@ -2137,14 +2137,17 @@ function setTileStatus(msg) {
 // area and measures node-level coverage against your Strava polylines, using the
 // same buildPointIndex / computeWayCompletion machinery as City Hunter.
 
+// COTrex ArcGIS MapServer — Colorado's official trail database
+const COTREX_URL = 'https://gis.colorado.gov/public/rest/services/OIT/Colorado_State_Basemap/MapServer/40/query';
+
 const TRAIL_CONFIGS = {
     'boulder-county': {
         name: 'Boulder County, CO',
         bbox: [39.95, -105.67, 40.27, -105.06],
         center: [40.11, -105.36],
         zoom: 11,
-        geoid: '08013',   // boundary from local counties-us.json
-        highways: 'path|track',
+        geoid: '08013',       // boundary from local counties-us.json
+        trailFilter: "hiking='Yes'",
     },
     'rmnp': {
         name: 'Rocky Mountain National Park',
@@ -2153,7 +2156,7 @@ const TRAIL_CONFIGS = {
         zoom: 11,
         boundaryName: 'Rocky Mountain National Park',
         boundaryType: 'protected_area',
-        highways: 'path|track',
+        trailFilter: "hiking='Yes'",
     },
 };
 let ACTIVE_TRAIL = 'boulder-county';
@@ -2200,7 +2203,7 @@ async function initTrailMap() {
     let ways, polylines, boundarySegments;
     try {
         [ways, polylines, boundarySegments] = await Promise.all([
-            fetchTrailWays(cfg),
+            fetchCOTrexTrails(cfg),
             loadPolylines(),
             fetchCityBoundary(cfg, `trail_boundary_${ACTIVE_TRAIL}`),
         ]);
@@ -2264,46 +2267,73 @@ async function initTrailMap() {
     dbg(`Trail Hunter: ${done}/${completedWays.length} trails complete`);
 }
 
-async function fetchTrailWays(cfg) {
+// Fetch hiking trails from the COTrex ArcGIS MapServer, paginating 2 000 records
+// at a time (server max). Coordinates are requested in WGS84 (outSR=4326) and
+// arrive as [lng, lat] path arrays — flipped to [lat, lng] for Leaflet.
+async function fetchCOTrexTrails(cfg) {
     const cacheKey = `trail_hunter_${ACTIVE_TRAIL}`;
     const TTL = 7 * 24 * 60 * 60 * 1000;
 
     try {
         const cached = JSON.parse(localStorage.getItem(cacheKey));
         if (cached && Date.now() - cached.ts < TTL) {
-            dbg(`Trail ways: ${cached.ways.length} ways from localStorage cache`);
+            dbg(`COTrex cache: ${cached.ways.length} trail segments from localStorage`);
             return cached.ways;
         }
     } catch {}
 
-    setTrailStatus('Fetching trail network from OpenStreetMap…');
     const [south, west, north, east] = cfg.bbox;
-    const query = `[out:json][timeout:90];`
-        + `(way["highway"~"^(${cfg.highways})$"][access!~"^(private|no)$"][foot!~"^(no|private)$"]`
-        + `(${south},${west},${north},${east}););`
-        + `out body;>;out skel qt;`;
+    const PAGE = 2000;
+    const ways = [];
+    let offset = 0;
 
-    dbg('Overpass API: fetching trail ways…');
-    let res = null;
-    for (const mirror of OVERPASS_MIRRORS) {
+    while (true) {
+        setTrailStatus(`Fetching trails from COTrex… ${ways.length} so far`);
+        await new Promise(r => setTimeout(r, 0)); // yield to browser
+
+        const params = new URLSearchParams({
+            where:        cfg.trailFilter || '1=1',
+            geometry:     `${west},${south},${east},${north}`,
+            geometryType: 'esriGeometryEnvelope',
+            inSR:         '4326',
+            spatialRel:   'esriSpatialRelIntersects',
+            outFields:    'name,type,surface',
+            outSR:        '4326',
+            returnGeometry: 'true',
+            resultOffset:      String(offset),
+            resultRecordCount: String(PAGE),
+            f: 'json',
+        });
+
+        let data;
         try {
-            res = await fetch(mirror, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-            });
-            if (res.ok) break;
-            dbg(`Overpass mirror ${mirror} returned ${res.status}, trying next…`);
+            const res = await fetch(`${COTREX_URL}?${params}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
         } catch (e) {
-            dbg(`Overpass mirror ${mirror} failed: ${e.message}, trying next…`);
+            throw new Error(`COTrex fetch failed: ${e.message}`);
         }
+        if (data.error) throw new Error(`COTrex error: ${data.error.message}`);
+
+        for (const f of (data.features || [])) {
+            const { name = '', type = 'trail' } = f.attributes || {};
+            for (const path of (f.geometry?.paths || [])) {
+                if (path.length < 2) continue;
+                ways.push({
+                    id:      `${f.attributes?.OBJECTID ?? offset}_${ways.length}`,
+                    name,
+                    highway: type,
+                    // ArcGIS returns [lng, lat] — convert to Leaflet's [lat, lng]
+                    coords:  path.map(([lng, lat]) => [lat, lng]),
+                });
+            }
+        }
+
+        if (!data.exceededTransferLimit) break;
+        offset += PAGE;
     }
-    if (!res || !res.ok) throw new Error('All Overpass mirrors failed');
 
-    const data = await res.json();
-    const ways = parseOverpassWays(data);
-    dbg(`Trail ways: ${ways.length} ways fetched from Overpass`);
-
+    dbg(`COTrex: ${ways.length} trail segments fetched`);
     try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ways })); } catch {}
     return ways;
 }
