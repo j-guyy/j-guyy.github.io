@@ -622,6 +622,7 @@ async function initCountyMap() {
         subdomains: 'abcd',
         maxZoom: 12,
     }).addTo(countyMap);
+    new LocationControl().addTo(countyMap);
 
     setCountyStatus('Loading activity routes…');
     await addPolylineOverlay(countyMap, { interactive: true });
@@ -889,6 +890,7 @@ async function initMap() {
         subdomains: 'abcd',
         maxZoom: 19,
     }).addTo(stravaMap);
+    new LocationControl().addTo(stravaMap);
 
     // Lazy-fetch polylines via shared cache
     setMapStatus('Fetching routes…');
@@ -1157,6 +1159,7 @@ async function initCityMap() {
         subdomains: 'abcd',
         maxZoom: 19,
     }).addTo(cityMap);
+    new LocationControl().addTo(cityMap);
 
     renderCityMap(completedWays);
     renderCityStats(completedWays);
@@ -1708,6 +1711,7 @@ async function initTileMap() {
         subdomains: 'abcd',
         maxZoom: 19,
     }).addTo(tileMap);
+    new LocationControl().addTo(tileMap);
 
     setTileStatus('Computing clusters & squares…');
     await new Promise(r => setTimeout(r, 0));
@@ -2131,6 +2135,134 @@ function setTileStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Location Control ──────────────────────────────────────────────────────────
+//
+// Custom Leaflet control for real-time location tracking. Renders a crosshair
+// button on the topright of any map. Clicking it opens a small panel with:
+//   • "Current location" — fly the map to the user's GPS position
+//   • "Show my location" — toggle a live dot that refreshes every 10 seconds
+//
+// Each map gets its own instance; state and intervals are fully self-contained
+// and are cleaned up when the map is destroyed.
+
+const LocationControl = L.Control.extend({
+    options: { position: 'topright' },
+
+    onAdd(map) {
+        this._map     = map;
+        this._watching  = false;
+        this._marker    = null;
+        this._ring      = null;   // accuracy circle
+        this._intervalId = null;
+
+        const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control loc-control');
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+
+        // ── Main button ──
+        this._btn = L.DomUtil.create('a', 'loc-btn', wrap);
+        this._btn.href  = '#';
+        this._btn.title = 'My location';
+        this._btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="12" y1="2"  x2="12" y2="7"/>
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <line x1="2"  y1="12" x2="7"  y2="12"/>
+            <line x1="17" y1="12" x2="22" y2="12"/>
+        </svg>`;
+        L.DomEvent.on(this._btn, 'click', e => {
+            L.DomEvent.preventDefault(e);
+            this._panel.hidden = !this._panel.hidden;
+        });
+
+        // ── Dropdown panel ──
+        this._panel = L.DomUtil.create('div', 'loc-panel', wrap);
+        this._panel.hidden = true;
+
+        // "Current location" button
+        const gotoBtn = L.DomUtil.create('button', 'loc-panel-item', this._panel);
+        gotoBtn.innerHTML = '<span class="loc-icon">⊕</span> Current location';
+        L.DomEvent.on(gotoBtn, 'click', () => {
+            this._gotoLocation();
+            this._panel.hidden = true;
+        });
+
+        L.DomUtil.create('div', 'loc-panel-divider', this._panel);
+
+        // "Show my location" toggle
+        const toggleRow = L.DomUtil.create('label', 'loc-panel-item loc-panel-toggle', this._panel);
+        const toggleSpan = L.DomUtil.create('span', '', toggleRow);
+        toggleSpan.textContent = 'Show my location';
+        this._checkbox = L.DomUtil.create('input', 'loc-checkbox', toggleRow);
+        this._checkbox.type = 'checkbox';
+        L.DomEvent.on(this._checkbox, 'change', () => this._setTracking(this._checkbox.checked));
+
+        // Close panel when map body is clicked
+        map.on('click', () => { this._panel.hidden = true; });
+
+        return wrap;
+    },
+
+    onRemove() {
+        this._stopTracking();
+    },
+
+    _gotoLocation() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            pos => this._map.setView([pos.coords.latitude, pos.coords.longitude],
+                                      Math.max(this._map.getZoom(), 16)),
+            err => dbg(`Location error: ${err.message}`)
+        );
+    },
+
+    _setTracking(enabled) {
+        if (enabled) this._startTracking(); else this._stopTracking();
+    },
+
+    _startTracking() {
+        if (this._watching) return;
+        this._watching = true;
+        this._updateLocation();
+        this._intervalId = setInterval(() => this._updateLocation(), 10000);
+    },
+
+    _stopTracking() {
+        this._watching = false;
+        clearInterval(this._intervalId);
+        this._intervalId = null;
+        if (this._marker) { this._marker.remove(); this._marker = null; }
+        if (this._ring)   { this._ring.remove();   this._ring   = null; }
+        if (this._checkbox) this._checkbox.checked = false;
+    },
+
+    _updateLocation() {
+        if (!this._watching || !navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(pos => {
+            if (!this._watching) return;
+            const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+            if (this._marker) {
+                this._marker.setLatLng([lat, lng]);
+                this._ring.setLatLng([lat, lng]).setRadius(accuracy);
+            } else {
+                this._ring = L.circle([lat, lng], {
+                    radius: accuracy,
+                    color: '#29B6F6', fillColor: '#29B6F6',
+                    fillOpacity: 0.10, weight: 1, interactive: false,
+                }).addTo(this._map);
+                this._marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    color: '#fff', fillColor: '#29B6F6',
+                    fillOpacity: 1, weight: 2.5, interactive: false,
+                }).addTo(this._map);
+            }
+        },
+        err => dbg(`Location update failed: ${err.message}`),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 });
+    },
+});
+
 // ── Trail Hunter ─────────────────────────────────────────────────────────────
 //
 // Region-based trail tracker: fetches OSM path/footway/track ways for a configured
@@ -2251,6 +2383,7 @@ async function initTrailMap() {
         subdomains: 'abcd',
         maxZoom: 19,
     }).addTo(trailMap);
+    new LocationControl().addTo(trailMap);
 
     trailCompletedWays = completedWays;
     renderTrailMap(completedWays);
