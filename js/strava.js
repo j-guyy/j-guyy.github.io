@@ -1479,10 +1479,14 @@ function renderCityMap(completedWays) {
         const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
         const baseWeight  = complete ? 3 : 2;
 
+        // Thin visible line — non-interactive so the hit target below captures events
+        const visibleLayer = L.polyline(way.coords, {
+            color, weight: baseWeight, opacity: baseOpacity, interactive: false,
+        }).addTo(cityMap);
+
+        // Wide transparent hit target — easy to tap on mobile
         const layer = L.polyline(way.coords, {
-            color,
-            weight:  baseWeight,
-            opacity: baseOpacity,
+            color, weight: 20, opacity: 0.001,
         }).addTo(cityMap);
 
         const pctLabel = (way.pct * 100).toFixed(0) + '%';
@@ -1495,8 +1499,8 @@ function renderCityMap(completedWays) {
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
-        layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
-        layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
+        layer.on('mouseover', function () { visibleLayer.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
+        layer.on('mouseout',  function () { visibleLayer.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
 
         // Collect only the truly unvisited nodes for the "remaining" overlay
         way.coords.forEach((coord, idx) => {
@@ -1545,7 +1549,7 @@ function renderCityStats(completedWays) {
             <span class="county-stat-number">${pct}%</span>
             <span class="county-stat-label">Node Coverage</span>
         </div>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="stats-bar-actions">
             <button class="cache-refresh-btn" id="city-nodes-btn" onclick="toggleCityNodes()">
                 Show remaining nodes
             </button>
@@ -2074,7 +2078,7 @@ function renderTileStats() {
             <span class="county-stat-number">${tileMaxSquare}×${tileMaxSquare}</span>
             <span class="county-stat-label">Max Square</span>
         </div>
-        <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <div class="stats-bar-actions" style="flex-direction:column;align-items:flex-end">
             <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:rgba(255,255,255,0.55);cursor:pointer;white-space:nowrap">
                 <input type="checkbox" id="tile-grid-checkbox" onchange="toggleTileGrid(this.checked)" style="cursor:pointer;accent-color:var(--primary-color)">
                 Gridlines
@@ -2491,10 +2495,14 @@ function renderTrailMap(completedWays) {
         const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
         const baseWeight  = complete ? 3 : 2;
 
-        const layer = L.polyline(way.coords, {
-            color,
-            weight:  baseWeight,
-            opacity: baseOpacity,
+        // Thin visible line — non-interactive
+        const visibleLayer = L.polyline(way.coords, {
+            color, weight: baseWeight, opacity: baseOpacity, interactive: false,
+        }).addTo(trailMap);
+
+        // Wide transparent hit target — easy to tap on mobile
+        const hitLayer = L.polyline(way.coords, {
+            color, weight: 20, opacity: 0.001,
         }).addTo(trailMap);
 
         const pctLabel = (way.pct * 100).toFixed(0) + '%';
@@ -2502,20 +2510,20 @@ function renderTrailMap(completedWays) {
             ? way.name
             : `<em style="opacity:0.6">${way.highway}</em>`;
         const surfaceNote = way.surface ? ` · ${way.surface}` : '';
-        layer.bindPopup(`
+        hitLayer.bindPopup(`
             <div class="activity-popup-inner">
                 <div class="activity-popup-type" style="color:${color}">${way.highway}${surfaceNote}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
-        layer.on('mouseover', function () {
-            if (!deactivatedTrailSurfaces.has(way.surface)) this.setStyle({ opacity: 1, weight: baseWeight + 1.5 });
+        hitLayer.on('mouseover', function () {
+            if (!deactivatedTrailSurfaces.has(way.surface)) visibleLayer.setStyle({ opacity: 1, weight: baseWeight + 1.5 });
         });
-        layer.on('mouseout', function () {
-            if (!deactivatedTrailSurfaces.has(way.surface)) this.setStyle({ opacity: baseOpacity, weight: baseWeight });
+        hitLayer.on('mouseout', function () {
+            if (!deactivatedTrailSurfaces.has(way.surface)) visibleLayer.setStyle({ opacity: baseOpacity, weight: baseWeight });
         });
 
-        trailWayLayers.push({ layer, way, baseOpacity, baseWeight });
+        trailWayLayers.push({ visibleLayer, hitLayer, way, baseOpacity, baseWeight });
 
         // Collect unvisited nodes grouped by surface for filtered visibility
         const surface = way.surface || '';
@@ -2568,7 +2576,7 @@ function renderTrailStats(completedWays) {
             <span class="county-stat-number">${pct}%</span>
             <span class="county-stat-label">Node Coverage</span>
         </div>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="stats-bar-actions">
             <button class="cache-refresh-btn" id="trail-nodes-btn" onclick="toggleTrailNodes()">
                 Show remaining nodes
             </button>
@@ -2628,9 +2636,10 @@ function setAllTrailSurfaces(enabled) {
 }
 
 function applyTrailSurfaceFilter() {
-    trailWayLayers.forEach(({ layer, way, baseOpacity, baseWeight }) => {
+    trailWayLayers.forEach(({ visibleLayer, hitLayer, way, baseOpacity }) => {
         const hidden = deactivatedTrailSurfaces.has(way.surface || '');
-        layer.setStyle({ opacity: hidden ? 0 : baseOpacity, weight: hidden ? 0 : baseWeight });
+        visibleLayer.setStyle({ opacity: hidden ? 0 : baseOpacity });
+        hitLayer.setStyle({ opacity: hidden ? 0 : 0.001 });
     });
 
     applyTrailNodeVisibility(); // keep node overlay in sync with surface filter

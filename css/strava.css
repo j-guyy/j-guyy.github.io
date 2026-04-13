@@ -543,13 +543,154 @@
     opacity: 0.65;
 }
 
+/* ── Stats bar actions (Show nodes / Show activities) ── */
+.stats-bar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
-    .strava-page .hero h1 {
-        font-size: 2.2rem;
+    /* Hero */
+    .strava-page .hero h1 { font-size: 2.2rem; }
+    .strava-page .hero h2 { font-size: 1rem; }
+
+    /* Summary stats grid — 3 columns instead of auto-fill 140px (gives 2 on mobile) */
+    .strava-group-stats {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px !important;
     }
 
-    .strava-page .hero h2 {
-        font-size: 1rem;
+    /* Tighter stat cards */
+    .strava-group-stats .summary-stat {
+        padding: 10px 6px !important;
+    }
+
+    .strava-group-stats .stat-number {
+        font-size: 1.4em !important;
+    }
+
+    .strava-group-stats .stat-label {
+        font-size: 0.65em !important;
+    }
+
+    /* Cache info bar — stack on mobile */
+    .cache-info-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    /* Section headings that contain controls */
+    .strava-page .section h2 {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        font-size: 1.3rem;
+        line-height: 1.4;
+    }
+
+    /* Select dropdowns in headings */
+    .city-select {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+        max-width: 160px;
+    }
+
+    /* Stats bars — tighter on mobile */
+    .county-stats-bar {
+        gap: 14px;
+    }
+
+    .county-stat-number {
+        font-size: 1.35rem;
+    }
+
+    .county-stat-label {
+        font-size: 0.65rem;
+    }
+
+    /* Stats bar action buttons — break below the numbers */
+    .stats-bar-actions {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 4px;
+        flex-direction: row !important;
+        align-items: center !important;
+    }
+
+    /* Filter bar — smaller pills */
+    .filter-pill {
+        font-size: 0.74rem;
+        padding: 2px 8px;
+    }
+
+    .filter-all-btn {
+        font-size: 0.74rem;
+        padding: 2px 8px;
+    }
+
+    /* Tile Hunter legend — wrap tightly */
+    #tile-stats-bar .map-legend {
+        gap: 6px;
+    }
+
+    /* Trail surface filters */
+    #trail-surface-filters .filter-pills {
+        gap: 4px;
+    }
+
+    /* Maps — slightly shorter on small screens to avoid full-page scroll */
+    #strava-map,
+    #county-map,
+    #tile-map,
+    #city-map,
+    #trail-map {
+        height: 420px;
+    }
+
+    /* Location control panel — ensure it doesn't clip off left edge */
+    .loc-panel {
+        right: auto;
+        left: 0;
+        top: 34px;
+    }
+
+    /* Debug panel — full width on mobile */
+    #debug-panel {
+        width: calc(100vw - 24px);
+        left: 12px;
+        right: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* On very small screens use 2-column stats grid */
+    .strava-group-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .county-stats-bar {
+        gap: 10px;
+    }
+
+    .county-stat-number {
+        font-size: 1.15rem;
+    }
+
+    /* Stack Tile Hunter stats bar vertically */
+    #tile-stats-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    #tile-stats-bar .stats-bar-actions {
+        width: 100%;
+        flex-direction: row !important;
+        align-items: center !important;
     }
 }
