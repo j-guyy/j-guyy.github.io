@@ -1307,22 +1307,33 @@ async function fetchCountyBoundary(geoid) {
     return rings;
 }
 
-async function fetchCityBoundary(cfg) {
+// cacheKey defaults to the city-scoped key; pass a custom key for Trail Hunter.
+async function fetchCityBoundary(cfg, cacheKey = null) {
     if (cfg.geoid) return fetchCountyBoundary(cfg.geoid);
     if (!cfg.boundaryName) return null;
-    const cacheKey = `city_boundary_${ACTIVE_CITY}`;
+    const resolvedKey = cacheKey !== null ? cacheKey : `city_boundary_${ACTIVE_CITY}`;
     const TTL = 30 * 24 * 60 * 60 * 1000; // 30 days — boundaries rarely change
 
     try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        const cached = JSON.parse(localStorage.getItem(resolvedKey));
         if (cached && Date.now() - cached.ts < TTL) return cached.rings;
     } catch {}
 
     const [south, west, north, east] = cfg.bbox;
-    const query = `[out:json][timeout:30];`
-        + `relation["name"="${cfg.boundaryName}"]["boundary"="administrative"]`
-        + `["admin_level"="${cfg.boundaryAdminLevel}"](${south},${west},${north},${east});`
-        + `out geom;`;
+    const boundaryType = cfg.boundaryType || 'administrative';
+    let query;
+    if (boundaryType === 'administrative') {
+        query = `[out:json][timeout:30];`
+            + `relation["name"="${cfg.boundaryName}"]["boundary"="administrative"]`
+            + `["admin_level"="${cfg.boundaryAdminLevel}"](${south},${west},${north},${east});`
+            + `out geom;`;
+    } else {
+        // Non-administrative boundary (e.g. protected_area for national parks)
+        query = `[out:json][timeout:60];`
+            + `relation["name"="${cfg.boundaryName}"]["boundary"="${boundaryType}"]`
+            + `(${south},${west},${north},${east});`
+            + `out geom;`;
+    }
 
     let res = null;
     for (const mirror of OVERPASS_MIRRORS) {
@@ -1349,7 +1360,7 @@ async function fetchCityBoundary(cfg) {
         });
     });
 
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rings })); } catch {}
+    try { localStorage.setItem(resolvedKey, JSON.stringify({ ts: Date.now(), rings })); } catch {}
     return rings;
 }
 
@@ -2120,6 +2131,331 @@ function setTileStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Trail Hunter ─────────────────────────────────────────────────────────────
+//
+// Region-based trail tracker: fetches OSM path/footway/track ways for a configured
+// area and measures node-level coverage against your Strava polylines, using the
+// same buildPointIndex / computeWayCompletion machinery as City Hunter.
+
+const TRAIL_CONFIGS = {
+    'boulder-county': {
+        name: 'Boulder County, CO',
+        bbox: [39.95, -105.67, 40.27, -105.06],
+        center: [40.11, -105.36],
+        zoom: 11,
+        geoid: '08013',   // boundary from local counties-us.json
+        highways: 'path|footway|track',
+    },
+    'rmnp': {
+        name: 'Rocky Mountain National Park',
+        bbox: [40.15, -105.90, 40.60, -105.45],
+        center: [40.38, -105.68],
+        zoom: 11,
+        boundaryName: 'Rocky Mountain National Park',
+        boundaryType: 'protected_area',
+        highways: 'path|footway|track',
+    },
+};
+let ACTIVE_TRAIL = 'boulder-county';
+
+let trailMap = null;
+let trailMapInitialized = false;
+let trailNodeLayer = null;
+let trailActivityLayer = null;
+let trailNodesVisible = false;
+let trailActivitiesVisible = false;
+
+function toggleTrailMap() {
+    const section = document.getElementById('trail-section');
+    const btn = document.getElementById('trail-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !trailMapInitialized) {
+        initTrailMap();
+    } else if (opening && trailMap) {
+        setTimeout(() => trailMap.invalidateSize(), 50);
+    }
+}
+
+function switchTrail(trailKey) {
+    if (!TRAIL_CONFIGS[trailKey] || trailKey === ACTIVE_TRAIL) return;
+    ACTIVE_TRAIL = trailKey;
+    if (trailMap) { trailMap.remove(); trailMap = null; }
+    trailMapInitialized = false;
+    trailNodeLayer = null;
+    trailActivityLayer = null;
+    trailNodesVisible = false;
+    trailActivitiesVisible = false;
+    const section = document.getElementById('trail-section');
+    if (section && section.style.display !== 'none') initTrailMap();
+}
+
+async function initTrailMap() {
+    const cfg = TRAIL_CONFIGS[ACTIVE_TRAIL];
+    setTrailStatus('Loading trail network…');
+    dbg(`Trail Hunter: initialising for ${cfg.name}`);
+
+    let ways, polylines, boundarySegments;
+    try {
+        [ways, polylines, boundarySegments] = await Promise.all([
+            fetchTrailWays(cfg),
+            loadPolylines(),
+            fetchCityBoundary(cfg, `trail_boundary_${ACTIVE_TRAIL}`),
+        ]);
+    } catch (err) {
+        dbg(`Trail Hunter error: ${err.message}`);
+        setTrailStatus('Failed to load trail data.');
+        return;
+    }
+
+    const boundaryPolygons = boundarySegments && boundarySegments.length
+        ? assembleRings(boundarySegments) : [];
+
+    if (boundaryPolygons.length) {
+        const before = ways.length;
+        ways = ways
+            .map(way => ({
+                ...way,
+                coords: way.coords.filter(([lat, lng]) =>
+                    boundaryPolygons.some(ring => pointInPolygon(lat, lng, ring))
+                ),
+            }))
+            .filter(way => way.coords.length >= 2);
+        dbg(`Trail boundary: clipped ${before - ways.length} ways outside limits (${ways.length} remain)`);
+    }
+
+    setTrailStatus('Analysing coverage…');
+    await new Promise(r => setTimeout(r, 0));
+
+    const pointIndex = buildPointIndex(polylines);
+    const completedWays = computeWayCompletion(ways, pointIndex);
+
+    trailMap = L.map('trail-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView(cfg.center, cfg.zoom);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+    }).addTo(trailMap);
+
+    renderTrailMap(completedWays);
+    renderTrailStats(completedWays);
+
+    if (boundaryPolygons.length) {
+        boundaryPolygons.forEach(ring => {
+            L.polyline(ring, {
+                color: '#ffffff',
+                weight: 3,
+                opacity: 0.85,
+                interactive: false,
+            }).addTo(trailMap);
+        });
+        dbg(`Trail boundary: ${boundaryPolygons.length} polygon(s) drawn`);
+    }
+
+    trailMapInitialized = true;
+    const done = completedWays.filter(w => w.pct === 1).length;
+    setTrailStatus('');
+    dbg(`Trail Hunter: ${done}/${completedWays.length} trails complete`);
+}
+
+async function fetchTrailWays(cfg) {
+    const cacheKey = `trail_hunter_${ACTIVE_TRAIL}`;
+    const TTL = 7 * 24 * 60 * 60 * 1000;
+
+    try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        if (cached && Date.now() - cached.ts < TTL) {
+            dbg(`Trail ways: ${cached.ways.length} ways from localStorage cache`);
+            return cached.ways;
+        }
+    } catch {}
+
+    setTrailStatus('Fetching trail network from OpenStreetMap…');
+    const [south, west, north, east] = cfg.bbox;
+    const query = `[out:json][timeout:90];`
+        + `(way["highway"~"^(${cfg.highways})$"][access!~"^(private|no)$"][foot!~"^(no|private)$"]`
+        + `(${south},${west},${north},${east}););`
+        + `out body;>;out skel qt;`;
+
+    dbg('Overpass API: fetching trail ways…');
+    let res = null;
+    for (const mirror of OVERPASS_MIRRORS) {
+        try {
+            res = await fetch(mirror, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query),
+            });
+            if (res.ok) break;
+            dbg(`Overpass mirror ${mirror} returned ${res.status}, trying next…`);
+        } catch (e) {
+            dbg(`Overpass mirror ${mirror} failed: ${e.message}, trying next…`);
+        }
+    }
+    if (!res || !res.ok) throw new Error('All Overpass mirrors failed');
+
+    const data = await res.json();
+    const ways = parseOverpassWays(data);
+    dbg(`Trail ways: ${ways.length} ways fetched from Overpass`);
+
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ways })); } catch {}
+    return ways;
+}
+
+function renderTrailMap(completedWays) {
+    const renderer = L.canvas();
+    const unvisitedMarkers = [];
+
+    completedWays.forEach(way => {
+        const color       = wayColor(way.pct);
+        const complete    = way.pct === 1;
+        const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
+        const baseWeight  = complete ? 3 : 2;
+
+        const layer = L.polyline(way.coords, {
+            color,
+            weight:  baseWeight,
+            opacity: baseOpacity,
+        }).addTo(trailMap);
+
+        const pctLabel = (way.pct * 100).toFixed(0) + '%';
+        const nameHtml = way.name
+            ? way.name
+            : `<em style="opacity:0.6">${way.highway}</em>`;
+        layer.bindPopup(`
+            <div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:${color}">${way.highway}</div>
+                <div class="activity-popup-name">${nameHtml}</div>
+                <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
+            </div>`, { className: 'activity-popup' });
+        layer.on('mouseover', function () { this.setStyle({ opacity: 1, weight: baseWeight + 1.5 }); });
+        layer.on('mouseout',  function () { this.setStyle({ opacity: baseOpacity, weight: baseWeight }); });
+
+        way.coords.forEach((coord, idx) => {
+            if (!way.visitedFlags[idx]) {
+                unvisitedMarkers.push(L.circleMarker(coord, {
+                    radius: 3,
+                    color: '#FF4444',
+                    fillColor: '#FF4444',
+                    fillOpacity: 0.85,
+                    weight: 0,
+                    renderer,
+                    interactive: false,
+                }));
+            }
+        });
+    });
+
+    trailNodeLayer = L.layerGroup(unvisitedMarkers);
+}
+
+function renderTrailStats(completedWays) {
+    const el = document.getElementById('trail-stats-bar');
+    if (!el) return;
+    const total        = completedWays.length;
+    const done         = completedWays.filter(w => w.pct === 1).length;
+    const partial      = completedWays.filter(w => w.pct > 0 && w.pct < 1).length;
+    const totalNodes   = completedWays.reduce((s, w) => s + w.total,   0);
+    const visitedNodes = completedWays.reduce((s, w) => s + w.visited, 0);
+    const pct = totalNodes > 0 ? (visitedNodes / totalNodes * 100).toFixed(1) : '0.0';
+
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${done.toLocaleString()}</span>
+            <span class="county-stat-label">Complete</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${partial.toLocaleString()}</span>
+            <span class="county-stat-label">Partial</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${total.toLocaleString()}</span>
+            <span class="county-stat-label">Total Trails</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Node Coverage</span>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="cache-refresh-btn" id="trail-nodes-btn" onclick="toggleTrailNodes()">
+                Show remaining nodes
+            </button>
+            <button class="cache-refresh-btn" id="trail-activities-btn" onclick="toggleTrailActivities()">
+                Show my activities
+            </button>
+        </div>`;
+}
+
+function toggleTrailNodes() {
+    if (!trailMap || !trailNodeLayer) return;
+    trailNodesVisible = !trailNodesVisible;
+    if (trailNodesVisible) {
+        trailNodeLayer.addTo(trailMap);
+    } else {
+        trailNodeLayer.removeFrom(trailMap);
+    }
+    const btn = document.getElementById('trail-nodes-btn');
+    if (btn) btn.textContent = trailNodesVisible ? 'Hide remaining nodes' : 'Show remaining nodes';
+}
+
+async function toggleTrailActivities() {
+    if (!trailMap) return;
+    trailActivitiesVisible = !trailActivitiesVisible;
+    const btn = document.getElementById('trail-activities-btn');
+
+    if (!trailActivitiesVisible) {
+        if (trailActivityLayer) trailActivityLayer.removeFrom(trailMap);
+        if (btn) btn.textContent = 'Show my activities';
+        return;
+    }
+
+    if (btn) btn.textContent = 'Hide my activities';
+
+    if (!trailActivityLayer) {
+        const polylines = await loadPolylines();
+        const renderer = L.canvas();
+        const layers = [];
+        polylines.forEach((encoded, i) => {
+            if (!encoded) return;
+            const slim = currentSlim[i];
+            if (!slim) return;
+            const points = decodePolyline(encoded);
+            if (!points.length) return;
+            const layer = L.polyline(points, { color: '#29B6F6', weight: 1.5, opacity: 0.6, renderer });
+            layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
+            layer.on('mouseover', function () { this.setStyle({ opacity: 0.95, weight: 3 }); });
+            layer.on('mouseout',  function () { this.setStyle({ opacity: 0.6, weight: 1.5 }); });
+            layers.push(layer);
+        });
+        trailActivityLayer = L.layerGroup(layers);
+    }
+
+    trailActivityLayer.addTo(trailMap);
+}
+
+async function resetTrailData() {
+    if (!confirm('Clear cached trail network data? OSM data will be re-fetched on next open.')) return;
+    localStorage.removeItem(`trail_hunter_${ACTIVE_TRAIL}`);
+    trailMapInitialized = false;
+    trailNodeLayer = null;
+    trailActivityLayer = null;
+    trailNodesVisible = false;
+    trailActivitiesVisible = false;
+    if (trailMap) { trailMap.remove(); trailMap = null; }
+    dbg('Trail cache cleared. Reopen Trail Hunter to re-fetch from OSM.');
+}
+
+function setTrailStatus(msg) {
+    const el = document.getElementById('trail-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
 const debugLog = [];
@@ -2176,6 +2512,7 @@ function renderDebugPanel() {
                 <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
                 <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
                 <button class="dbg-clear" onclick="resetCityData()" title="Clear city road cache from localStorage — forces fresh Overpass fetch">Reset city</button>
+                <button class="dbg-clear" onclick="resetTrailData()" title="Clear trail network cache from localStorage — forces fresh Overpass fetch">Reset trails</button>
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>

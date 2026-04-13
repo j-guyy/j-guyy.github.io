@@ -94,6 +94,27 @@
             </div>
         </div>
 
+        <!-- Trail Hunter (region-based, lazy-loaded) -->
+        <div class="section">
+            <h2>Trail Hunter
+                <select id="trail-select" class="city-select" onchange="switchTrail(this.value)">
+                    <option value="boulder-county">Boulder County, CO</option>
+                    <option value="rmnp">Rocky Mountain NP</option>
+                </select>
+                <button class="cache-refresh-btn" id="trail-toggle-btn" onclick="toggleTrailMap()">Show map</button>
+            </h2>
+            <div id="trail-section" style="display:none">
+                <div id="trail-stats-bar" class="county-stats-bar"></div>
+                <div id="trail-map"></div>
+                <div class="map-legend" style="margin-top:10px">
+                    <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Complete</span>
+                    <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
+                    <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
+                </div>
+                <p id="trail-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
+
         <!-- By Country table -->
         <div class="section">
             <h2>By Country</h2>
