@@ -1882,12 +1882,35 @@ function computeTileStats() {
     tileMaxSquare = 0;
     for (const v of tileSquareMap.values())  if (v > tileMaxSquare)  tileMaxSquare  = v;
 
-    // Spread each large-square bottom-right corner across its full N×N footprint
-    // so every tile knows the largest square it actually belongs to.
     tileSquareMembership = new Map();
+
+    // Pass 1: spread max-square tiles and record their footprint.
+    const maxSquareFootprint = new Set();
     for (const [key, dp] of tileSquareMap) {
-        if (dp < SQUARE_THRESHOLD) continue;
+        if (dp < tileMaxSquare) continue;
         const [bx, by] = key.split(',').map(Number);
+        for (let dx = 0; dx < dp; dx++) {
+            for (let dy = 0; dy < dp; dy++) {
+                const tk = `${bx - dx},${by - dy}`;
+                maxSquareFootprint.add(tk);
+                tileSquareMembership.set(tk, dp);
+            }
+        }
+    }
+
+    // Pass 2: spread other large squares (≥ SQUARE_THRESHOLD but < max).
+    // Skip any square whose footprint touches the max-square region — those
+    // tiles should fall through to cluster / tile coloring instead.
+    for (const [key, dp] of tileSquareMap) {
+        if (dp < SQUARE_THRESHOLD || dp >= tileMaxSquare) continue;
+        const [bx, by] = key.split(',').map(Number);
+        let overlaps = false;
+        outer: for (let dx = 0; dx < dp; dx++) {
+            for (let dy = 0; dy < dp; dy++) {
+                if (maxSquareFootprint.has(`${bx - dx},${by - dy}`)) { overlaps = true; break outer; }
+            }
+        }
+        if (overlaps) continue;
         for (let dx = 0; dx < dp; dx++) {
             for (let dy = 0; dy < dp; dy++) {
                 const tk = `${bx - dx},${by - dy}`;
@@ -2003,7 +2026,7 @@ function renderTileStats() {
                 Gridlines
             </label>
             <div class="map-legend" style="margin:0">
-                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(244,67,54,0.8)"></span>Edge tile</span>
+                <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(244,67,54,0.8)"></span>Tile</span>
                 <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(129,199,132,0.85)"></span>Cluster</span>
                 <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(46,125,50,0.95)"></span>Max cluster</span>
                 <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(100,181,246,0.85)"></span>Square ≥${SQUARE_THRESHOLD}×${SQUARE_THRESHOLD}</span>
