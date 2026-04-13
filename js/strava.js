@@ -2144,7 +2144,7 @@ const TRAIL_CONFIGS = {
         center: [40.11, -105.36],
         zoom: 11,
         geoid: '08013',   // boundary from local counties-us.json
-        highways: 'path|footway|track',
+        highways: 'path|track',
     },
     'rmnp': {
         name: 'Rocky Mountain National Park',
@@ -2153,7 +2153,7 @@ const TRAIL_CONFIGS = {
         zoom: 11,
         boundaryName: 'Rocky Mountain National Park',
         boundaryType: 'protected_area',
-        highways: 'path|footway|track',
+        highways: 'path|track',
     },
 };
 let ACTIVE_TRAIL = 'boulder-county';
