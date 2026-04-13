@@ -310,57 +310,57 @@ function sortedEntries(data, state, nameCol) {
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
+// Shortcut group buttons — toggle all types in the set at once
+const QUICK_GROUPS = {
+    'All Run':  ['Run', 'TrailRun', 'VirtualRun'],
+    'All Ride': ['Ride', 'GravelRide', 'EBikeRide', 'VirtualRide', 'Handcycle', 'Velomobile'],
+};
+
 function renderFilters() {
     const container = document.getElementById('strava-filters');
     if (!container) return;
 
-    // Tally types from the full (unfiltered) slim list
     const typeCounts = {};
     currentSlim.forEach(a => { typeCounts[a.t] = (typeCounts[a.t] || 0) + 1; });
     const allTypes = Object.keys(typeCounts);
     if (allTypes.length === 0) { container.innerHTML = ''; return; }
 
-    // Group types by sport category, preserving GROUP_KEYS order
-    const grouped = {};
-    allTypes.forEach(t => {
-        const g = getGroup(t);
-        if (!grouped[g]) grouped[g] = [];
-        grouped[g].push(t);
+    // Sort types: respect GROUP_KEYS order within each group, then alphabetically
+    const sortedTypes = [...allTypes].sort((a, b) => {
+        const ga = GROUP_KEYS.indexOf(getGroup(a));
+        const gb = GROUP_KEYS.indexOf(getGroup(b));
+        return ga !== gb ? ga - gb : a.localeCompare(b);
     });
 
-    let html = `<div class="filter-bar">
-        <div class="filter-controls">
-            <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
-            <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
-        </div>
-        <div class="filter-groups">`;
+    // Quick-group button: active if every present type in the set is active
+    const quickGroupHtml = Object.entries(QUICK_GROUPS).map(([label, types]) => {
+        const present = types.filter(t => typeCounts[t]);
+        if (!present.length) return '';
+        const allActive = present.every(t => !deactivatedTypes.has(t));
+        return `<button class="filter-all-btn${allActive ? ' active' : ''}" onclick="toggleQuickGroup(${JSON.stringify(types)})">${label}</button>`;
+    }).join('');
 
-    GROUP_KEYS.forEach(groupName => {
-        const types = grouped[groupName];
-        if (!types || types.length === 0) return;
-        types.sort();
-        // Group header is active if ALL types in the group are active
-        const groupActive = types.every(t => !deactivatedTypes.has(t));
-        html += `<div class="filter-group">
-            <button class="filter-group-label${groupActive ? ' active' : ''}" onclick="toggleGroup('${groupName}')">${GROUP_ICONS[groupName]} ${groupName}</button>
-            <div class="filter-pills">`;
-        types.forEach(t => {
-            const active = !deactivatedTypes.has(t);
-            const label = typeLabel(t);
-            const count = typeCounts[t];
-            html += `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleSportType('${t}')">${label} <span class="filter-pill-count">${count}</span></button>`;
-        });
-        html += `</div></div>`;
-    });
+    let pillsHtml = sortedTypes.map(t => {
+        const active = !deactivatedTypes.has(t);
+        const count  = typeCounts[t];
+        return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleSportType('${t}')">${typeLabel(t)} <span class="filter-pill-count">${count}</span></button>`;
+    }).join('');
 
-    html += `</div></div>`;
-    container.innerHTML = html;
+    container.innerHTML = `
+        <div class="filter-bar">
+            <div class="filter-controls">
+                <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
+                <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
+                ${quickGroupHtml}
+            </div>
+            <div class="filter-pills">${pillsHtml}</div>
+        </div>`;
 }
 
-function toggleGroup(groupName) {
-    const typesInGroup = [...new Set(currentSlim.filter(a => getGroup(a.t) === groupName).map(a => a.t))];
-    const allActive = typesInGroup.every(t => !deactivatedTypes.has(t));
-    typesInGroup.forEach(t => allActive ? deactivatedTypes.add(t) : deactivatedTypes.delete(t));
+function toggleQuickGroup(types) {
+    const present   = types.filter(t => currentSlim.some(a => a.t === t));
+    const allActive = present.every(t => !deactivatedTypes.has(t));
+    present.forEach(t => allActive ? deactivatedTypes.add(t) : deactivatedTypes.delete(t));
     renderFilters();
     applyFilters();
     updateMapFilters();
@@ -623,11 +623,11 @@ async function initCountyMap() {
         maxZoom: 12,
     }).addTo(countyMap);
 
-    renderCountyMap(geojson);
-    renderCountyStats();
-
     setCountyStatus('Loading activity routes…');
     await addPolylineOverlay(countyMap, { interactive: true });
+
+    renderCountyMap(geojson);
+    renderCountyStats();
 
     countyMapInitialized = true;
     setCountyStatus('');
@@ -1569,13 +1569,33 @@ function setCityStatus(msg) {
 
 // ── Tile Hunter ───────────────────────────────────────────────────────────────
 //
-// Divides the world into 0.01° × 0.01° tiles (~1.1 km at equator, ~1 mi at
-// mid-latitudes). A tile is "visited" when any decoded polyline point falls
-// inside it — detection is pure floor-division, O(n) with no spatial index.
+// Uses OpenStreetMap zoom-level 14 tiles — the same grid as Strava/VeloViewer.
+// At 40°N (Colorado) each tile is ~1.5 km × ~1.5 km (~0.9 mi).
+// Tile keys are stored as "x,y" integer pairs in the z14 tile coordinate system.
+
+const TILE_ZOOM = 14;
+
+// lat/lng → z14 tile [x, y]
+function latLngToTileXY(lat, lng) {
+    const z = TILE_ZOOM;
+    const x = Math.floor((lng + 180) / 360 * Math.pow(2, z));
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z));
+    return [x, y];
+}
+
+// z14 tile [x, y] → NW corner lat/lng
+function tileXYToLatLng(x, y) {
+    const z = TILE_ZOOM;
+    const n = Math.pow(2, z);
+    const lng = x / n * 360 - 180;
+    const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+    return [latRad * 180 / Math.PI, lng];
+}
 
 let tileMap = null;
 let tileMapInitialized = false;
-let visitedTiles = new Set();   // "latInt,lngInt" strings, e.g. "3991,-10523"
+let visitedTiles = new Set();   // "x,y" z14 tile coordinate strings
 let tileProcessedIds = new Set();
 
 function toggleTileMap() {
@@ -1644,41 +1664,38 @@ async function initTileMap() {
 
 // ── Tile detection ────────────────────────────────────────────────────────────
 
-// Walk all grid cells crossed by a line segment using a DDA grid traversal.
-// This ensures tiles a polyline passes *through* are counted, not just tiles
-// that happen to contain a decoded polyline point.
+// Walk all z14 tile cells crossed by a lat/lng segment using DDA traversal.
+// Operates in integer tile-x/tile-y space so it matches the OSM/Strava grid exactly.
 function addSegmentTiles(lat1, lng1, lat2, lng2, tileSet) {
-    let r = Math.floor(lat1 * 100);
-    let c = Math.floor(lng1 * 100);
-    const endR = Math.floor(lat2 * 100);
-    const endC = Math.floor(lng2 * 100);
+    let [x, y]       = latLngToTileXY(lat1, lng1);
+    const [endX, endY] = latLngToTileXY(lat2, lng2);
 
-    tileSet.add(`${r},${c}`);
-    if (r === endR && c === endC) return;
+    tileSet.add(`${x},${y}`);
+    if (x === endX && y === endY) return;
 
-    const dLat = lat2 - lat1;
-    const dLng = lng2 - lng1;
-    const stepR = dLat >= 0 ? 1 : -1;
-    const stepC = dLng >= 0 ? 1 : -1;
+    // Work in fractional tile-space to drive the DDA
+    const n    = Math.pow(2, TILE_ZOOM);
+    // Convert lat to Mercator tile-Y fraction
+    const toTY = lat => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
+    const toTX = lng => (lng + 180) / 360 * n;
 
-    // Parametric t-step to cross one full grid cell in each axis
-    const tDeltaR = dLat !== 0 ? Math.abs(0.01 / dLat) : Infinity;
-    const tDeltaC = dLng !== 0 ? Math.abs(0.01 / dLng) : Infinity;
+    const tx1 = toTX(lng1), ty1 = toTY(lat1);
+    const tx2 = toTX(lng2), ty2 = toTY(lat2);
+    const dx = tx2 - tx1, dy = ty2 - ty1;
 
-    // t at which the ray first crosses a grid boundary in each axis
-    let tMaxR = dLat !== 0
-        ? Math.abs(((stepR > 0 ? r + 1 : r) / 100 - lat1) / dLat)
-        : Infinity;
-    let tMaxC = dLng !== 0
-        ? Math.abs(((stepC > 0 ? c + 1 : c) / 100 - lng1) / dLng)
-        : Infinity;
+    const stepX = dx >= 0 ? 1 : -1;
+    const stepY = dy >= 0 ? 1 : -1;
+    const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
+    const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+    let tMaxX = dx !== 0 ? Math.abs((stepX > 0 ? x + 1 : x) - tx1) / Math.abs(dx) : Infinity;
+    let tMaxY = dy !== 0 ? Math.abs((stepY > 0 ? y + 1 : y) - ty1) / Math.abs(dy) : Infinity;
 
-    const limit = Math.abs(endR - r) + Math.abs(endC - c) + 1;
+    const limit = Math.abs(endX - x) + Math.abs(endY - y) + 1;
     for (let i = 0; i < limit; i++) {
-        if (tMaxR < tMaxC) { r += stepR; tMaxR += tDeltaR; }
-        else                { c += stepC; tMaxC += tDeltaC; }
-        tileSet.add(`${r},${c}`);
-        if (r === endR && c === endC) break;
+        if (tMaxX < tMaxY) { x += stepX; tMaxX += tDeltaX; }
+        else               { y += stepY; tMaxY += tDeltaY; }
+        tileSet.add(`${x},${y}`);
+        if (x === endX && y === endY) break;
     }
 }
 
@@ -1687,15 +1704,15 @@ async function detectTilesAsync(activities) {
     for (let i = 0; i < activities.length; i++) {
         if (i % 100 === 0) {
             setTileStatus(`Detecting tiles… ${i} / ${activities.length}`);
-            await new Promise(r => setTimeout(r, 0)); // yield to browser
+            await new Promise(r => setTimeout(r, 0));
         }
         if (!activities[i].p) continue;
         const points = decodePolyline(activities[i].p);
         for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
-            if (j === 0) {
-                newTiles.add(`${Math.floor(lat * 100)},${Math.floor(lng * 100)}`);
-            } else {
+            const [tx, ty] = latLngToTileXY(lat, lng);
+            newTiles.add(`${tx},${ty}`);
+            if (j > 0) {
                 const [prevLat, prevLng] = points[j - 1];
                 addSegmentTiles(prevLat, prevLng, lat, lng, newTiles);
             }
@@ -1713,7 +1730,7 @@ async function detectTilesAsync(activities) {
 
 const TileHunterLayer = L.Layer.extend({
     initialize(tileKeys) {
-        // Parse once — array of [latInt, lngInt] number pairs
+        // Parse once — array of [tileX, tileY] z14 integer pairs
         this._tiles = [...tileKeys].map(k => k.split(',').map(Number));
     },
     onAdd(map) {
@@ -1739,16 +1756,17 @@ const TileHunterLayer = L.Layer.extend({
         const ctx = this._canvas.getContext('2d');
         ctx.fillStyle = 'rgba(76, 175, 80, 0.5)';
 
-        for (const [latInt, lngInt] of this._tiles) {
-            const sw = map.latLngToContainerPoint([latInt / 100,       lngInt / 100]);
-            const ne = map.latLngToContainerPoint([(latInt + 1) / 100, (lngInt + 1) / 100]);
-            const x = Math.min(sw.x, ne.x);
-            const y = Math.min(sw.y, ne.y);
-            const w = Math.max(Math.abs(ne.x - sw.x), 1);
-            const h = Math.max(Math.abs(ne.y - sw.y), 1);
-            // Skip tiles that are entirely off-screen
-            if (x + w < 0 || y + h < 0 || x > size.x || y > size.y) continue;
-            ctx.fillRect(x, y, w, h);
+        for (const [tx, ty] of this._tiles) {
+            const [nwLat, nwLng] = tileXYToLatLng(tx,     ty);
+            const [seLat, seLng] = tileXYToLatLng(tx + 1, ty + 1);
+            const nw = map.latLngToContainerPoint([nwLat, nwLng]);
+            const se = map.latLngToContainerPoint([seLat, seLng]);
+            const px = Math.min(nw.x, se.x);
+            const py = Math.min(nw.y, se.y);
+            const pw = Math.max(Math.abs(se.x - nw.x), 1);
+            const ph = Math.max(Math.abs(se.y - nw.y), 1);
+            if (px + pw < 0 || py + ph < 0 || px > size.x || py > size.y) continue;
+            ctx.fillRect(px, py, pw, ph);
         }
     },
 });
@@ -1834,6 +1852,17 @@ function toggleDebug() {
     panel.hidden = !panel.hidden;
 }
 
+function toggleDebugExpand() {
+    const log  = document.getElementById('debug-log');
+    const btns = document.getElementById('dbg-action-btns');
+    const lbl  = document.getElementById('dbg-expand-lbl');
+    if (!log) return;
+    const collapsed = log.style.display === 'none';
+    log.style.display   = collapsed ? '' : 'none';
+    if (btns) btns.style.display = collapsed ? 'flex' : 'none';
+    if (lbl)  lbl.textContent    = collapsed ? '▾' : '▸';
+}
+
 function renderDebugPanel() {
     const existing = document.getElementById('debug-panel');
     if (existing) return; // already rendered
@@ -1842,9 +1871,9 @@ function renderDebugPanel() {
     panel.id = 'debug-panel';
     panel.hidden = true;
     panel.innerHTML = `
-        <div class="dbg-header">
-            <strong>Debug Log</strong>
-            <div style="display:flex;gap:6px">
+        <div class="dbg-header" onclick="toggleDebugExpand()" style="cursor:pointer" title="Click to expand / collapse">
+            <strong>Debug Log <span id="dbg-expand-lbl">▸</span></strong>
+            <div id="dbg-action-btns" style="display:none;gap:6px" onclick="event.stopPropagation()">
                 <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data — forces full re-geocode">Reset geo cache</button>
                 <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
                 <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
@@ -1852,7 +1881,7 @@ function renderDebugPanel() {
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
-        <ul id="debug-log"></ul>
+        <ul id="debug-log" style="display:none"></ul>
     `;
     document.body.appendChild(panel);
 }
