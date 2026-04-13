@@ -1032,16 +1032,24 @@ function decodePolyline(encoded) {
 const CITY_CONFIGS = {
     'superior-co': {
         name: 'Superior, CO',
-        bbox: [39.92, -105.20, 39.98, -105.08],  // [south, west, north, east]
+        bbox: [39.92, -105.20, 39.98, -105.08],
         center: [39.955, -105.135],
         zoom: 14,
-        boundaryName: 'Superior',           // OSM relation name for admin boundary
-        boundaryAdminLevel: '8',            // US municipality = 8
-        // OSM highway types to include — excludes motorways, trunk roads, service roads
+        boundaryName: 'Superior',
+        boundaryAdminLevel: '8',
+        highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary',
+    },
+    'boulder-co': {
+        name: 'Boulder, CO',
+        bbox: [39.97, -105.35, 40.09, -105.17],
+        center: [40.015, -105.27],
+        zoom: 13,
+        boundaryName: 'Boulder',
+        boundaryAdminLevel: '8',
         highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary',
     },
 };
-const ACTIVE_CITY = 'superior-co';
+let ACTIVE_CITY = 'superior-co';
 const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is within 25 m
 const OVERPASS_MIRRORS = [
     'https://overpass-api.de/api/interpreter',
@@ -1067,6 +1075,25 @@ function toggleCityMap() {
         initCityMap();
     } else if (opening && cityMap) {
         setTimeout(() => cityMap.invalidateSize(), 50);
+    }
+}
+
+function switchCity(cityKey) {
+    if (!CITY_CONFIGS[cityKey] || cityKey === ACTIVE_CITY) return;
+    ACTIVE_CITY = cityKey;
+
+    // Tear down existing map and state
+    if (cityMap) { cityMap.remove(); cityMap = null; }
+    cityMapInitialized = false;
+    cityNodeLayer = null;
+    cityActivityLayer = null;
+    cityNodesVisible = false;
+    cityActivitiesVisible = false;
+
+    // If the section is already open, kick off a fresh load
+    const section = document.getElementById('city-section');
+    if (section && section.style.display !== 'none') {
+        initCityMap();
     }
 }
 

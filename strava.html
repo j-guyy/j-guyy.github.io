@@ -74,7 +74,13 @@
 
         <!-- City Hunter (lazy-loaded) -->
         <div class="section">
-            <h2>City Hunter — Superior, CO <button class="cache-refresh-btn" id="city-toggle-btn" onclick="toggleCityMap()">Show map</button></h2>
+            <h2>City Hunter
+                <select id="city-select" class="city-select" onchange="switchCity(this.value)">
+                    <option value="superior-co">Superior, CO</option>
+                    <option value="boulder-co">Boulder, CO</option>
+                </select>
+                <button class="cache-refresh-btn" id="city-toggle-btn" onclick="toggleCityMap()">Show map</button>
+            </h2>
             <div id="city-section" style="display:none">
                 <div id="city-stats-bar" class="county-stats-bar"></div>
                 <div id="city-map"></div>

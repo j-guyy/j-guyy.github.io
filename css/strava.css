@@ -237,6 +237,31 @@
 }
 
 /* ── City Hunter ─────────────────────────────── */
+.city-select {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.7);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin: 0 8px;
+    transition: border-color 0.2s ease;
+    vertical-align: middle;
+}
+
+.city-select:hover,
+.city-select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.city-select option {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+
 #city-map {
     width: 100%;
     height: 520px;
