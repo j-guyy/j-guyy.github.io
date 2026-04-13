@@ -1048,6 +1048,14 @@ const CITY_CONFIGS = {
         boundaryAdminLevel: '8',
         highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary',
     },
+    'boulder-county-co': {
+        name: 'Boulder County, CO',
+        bbox: [39.95, -105.67, 40.27, -105.06],
+        center: [40.11, -105.36],
+        zoom: 11,
+        geoid: '08013',   // fetches boundary from local counties-us.json instead of Overpass
+        highways: 'residential|living_street|path|cycleway|pedestrian|track|unclassified|tertiary|secondary',
+    },
 };
 let ACTIVE_CITY = 'superior-co';
 const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is within 25 m
@@ -1269,7 +1277,38 @@ function pointInPolygon(lat, lng, ring) {
     return inside;
 }
 
+// If the config has a FIPS geoid, pull the boundary from our local county GeoJSON
+// instead of making an Overpass request.
+async function fetchCountyBoundary(geoid) {
+    const cacheKey = `city_boundary_county_${geoid}`;
+    const TTL = 30 * 24 * 60 * 60 * 1000;
+    try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey));
+        if (cached && Date.now() - cached.ts < TTL) return cached.rings;
+    } catch {}
+
+    const geojson = await fetch('/data/counties-us.json').then(r => r.json());
+    const feature = geojson.features.find(f => f.properties.GEOID === geoid);
+    if (!feature) { dbg(`County boundary: GEOID ${geoid} not found`); return null; }
+
+    const rings = [];
+    const geom  = feature.geometry;
+    // GeoJSON coords are [lng, lat] — convert to [lat, lng] for Leaflet
+    const toRing = coords => coords.map(([lng, lat]) => [lat, lng]);
+
+    if (geom.type === 'Polygon') {
+        rings.push(toRing(geom.coordinates[0])); // outer ring only
+    } else if (geom.type === 'MultiPolygon') {
+        geom.coordinates.forEach(poly => rings.push(toRing(poly[0])));
+    }
+
+    dbg(`County boundary: ${rings.length} ring(s) from local GeoJSON for GEOID ${geoid}`);
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rings })); } catch {}
+    return rings;
+}
+
 async function fetchCityBoundary(cfg) {
+    if (cfg.geoid) return fetchCountyBoundary(cfg.geoid);
     if (!cfg.boundaryName) return null;
     const cacheKey = `city_boundary_${ACTIVE_CITY}`;
     const TTL = 30 * 24 * 60 * 60 * 1000; // 30 days — boundaries rarely change
