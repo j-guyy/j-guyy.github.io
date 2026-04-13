@@ -1597,6 +1597,11 @@ let tileMap = null;
 let tileMapInitialized = false;
 let visitedTiles = new Set();   // "x,y" z14 tile coordinate strings
 let tileProcessedIds = new Set();
+let tileClusterMap = null;      // tile key → size of its connected cluster
+let tileSquareMap  = null;      // tile key → largest square (N) with this tile as bottom-right
+let tileMaxCluster = 0;
+let tileMaxSquare  = 0;
+let tileGridLayer  = null;
 
 function toggleTileMap() {
     const section = document.getElementById('tile-section');
@@ -1651,7 +1656,28 @@ async function initTileMap() {
         maxZoom: 19,
     }).addTo(tileMap);
 
+    setTileStatus('Computing clusters & squares…');
+    await new Promise(r => setTimeout(r, 0));
+    computeTileStats();
+
     new TileHunterLayer(visitedTiles).addTo(tileMap);
+
+    // Click any visited tile → show cluster + square info
+    tileMap.on('click', e => {
+        const [tx, ty] = latLngToTileXY(e.latlng.lat, e.latlng.lng);
+        const key = `${tx},${ty}`;
+        if (!visitedTiles.has(key)) return;
+        const cluster = tileClusterMap ? tileClusterMap.get(key) : '?';
+        const square  = tileSquareMap  ? tileSquareMap.get(key)  : 1;
+        L.popup({ className: 'activity-popup' })
+            .setLatLng(e.latlng)
+            .setContent(`<div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:#4CAF50">z14 Tile ${tx}, ${ty}</div>
+                <div class="activity-popup-name">Cluster: <strong>${cluster.toLocaleString()}</strong> tiles</div>
+                <div class="activity-popup-date">Square: <strong>${square}×${square}</strong> (your max: ${tileMaxSquare}×${tileMaxSquare})</div>
+            </div>`)
+            .openOn(tileMap);
+    });
 
     setTileStatus('Loading activity routes…');
     await addPolylineOverlay(tileMap, { color: '#ffffff', interactive: true });
@@ -1659,7 +1685,7 @@ async function initTileMap() {
     renderTileStats();
     tileMapInitialized = true;
     setTileStatus('');
-    dbg(`Tile map rendered: ${visitedTiles.size} tiles`);
+    dbg(`Tile map rendered: ${visitedTiles.size} tiles, max cluster ${tileMaxCluster}, max square ${tileMaxSquare}×${tileMaxSquare}`);
 }
 
 // ── Tile detection ────────────────────────────────────────────────────────────
@@ -1753,6 +1779,130 @@ const TileHunterLayer = L.Layer.extend({
     },
 });
 
+// ── Cluster & Square analysis ─────────────────────────────────────────────────
+
+// BFS over the visited tile set to label every tile with its cluster size.
+function computeClusters(tileSet) {
+    const clusterOf = new Map(); // key → cluster size (filled after BFS)
+
+    for (const key of tileSet) {
+        if (clusterOf.has(key)) continue;
+
+        // BFS — use array as queue with a head pointer (faster than shift())
+        const queue = [key];
+        clusterOf.set(key, 0); // mark visited
+        let head = 0;
+        while (head < queue.length) {
+            const curr = queue[head++];
+            const [x, y] = curr.split(',').map(Number);
+            for (const nb of [`${x+1},${y}`, `${x-1},${y}`, `${x},${y+1}`, `${x},${y-1}`]) {
+                if (tileSet.has(nb) && !clusterOf.has(nb)) {
+                    clusterOf.set(nb, 0);
+                    queue.push(nb);
+                }
+            }
+        }
+        const size = queue.length;
+        for (const k of queue) clusterOf.set(k, size);
+    }
+    return clusterOf;
+}
+
+// Sparse DP for largest all-visited N×N square, processing tiles in (y, x) order
+// so that dp[x-1,y], dp[x,y-1], dp[x-1,y-1] are always ready when we reach (x,y).
+// dp[key] = N means (x,y) is the bottom-right of a fully-visited N×N square.
+function computeSquares(tileSet) {
+    const dp = new Map();
+    const sorted = [...tileSet]
+        .map(k => k.split(',').map(Number))
+        .sort((a, b) => a[1] !== b[1] ? a[1] - b[1] : a[0] - b[0]);
+
+    for (const [x, y] of sorted) {
+        const left    = dp.get(`${x-1},${y}`)   || 0;
+        const top     = dp.get(`${x},${y-1}`)   || 0;
+        const topLeft = dp.get(`${x-1},${y-1}`) || 0;
+        dp.set(`${x},${y}`, Math.min(left, top, topLeft) + 1);
+    }
+    return dp;
+}
+
+function computeTileStats() {
+    tileClusterMap = computeClusters(visitedTiles);
+    tileSquareMap  = computeSquares(visitedTiles);
+
+    tileMaxCluster = 0;
+    for (const v of tileClusterMap.values()) if (v > tileMaxCluster) tileMaxCluster = v;
+
+    tileMaxSquare = 0;
+    for (const v of tileSquareMap.values())  if (v > tileMaxSquare)  tileMaxSquare  = v;
+
+    dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare}`);
+}
+
+// ── Tile grid layer ───────────────────────────────────────────────────────────
+// Draws z14 tile boundary lines. Only renders when tiles are ≥ 8 px wide on
+// screen (map zoom ≥ ~11); otherwise the lines would be sub-pixel noise.
+
+const TileGridLayer = L.Layer.extend({
+    onAdd(map) {
+        this._map = map;
+        this._canvas = document.createElement('canvas');
+        this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
+        map.getPanes().overlayPane.appendChild(this._canvas);
+        map.on('moveend zoomend resize', this._redraw, this);
+        this._redraw();
+    },
+    onRemove(map) {
+        this._canvas.remove();
+        map.off('moveend zoomend resize', this._redraw, this);
+    },
+    _redraw() {
+        const map  = this._map;
+        const size = map.getSize();
+        const topLeft = map.containerPointToLayerPoint([0, 0]);
+        L.DomUtil.setPosition(this._canvas, topLeft);
+        this._canvas.width  = size.x;
+        this._canvas.height = size.y;
+
+        // Tile pixel size at current zoom — skip if too small to see
+        const tilePx = 256 * Math.pow(2, map.getZoom() - TILE_ZOOM);
+        if (tilePx < 8) return;
+
+        const ctx = this._canvas.getContext('2d');
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth   = 0.5;
+
+        const bounds = map.getBounds();
+        const [xMin, yMin] = latLngToTileXY(bounds.getNorth(), bounds.getWest());
+        const [xMax, yMax] = latLngToTileXY(bounds.getSouth(), bounds.getEast());
+
+        ctx.beginPath();
+        for (let x = xMin; x <= xMax + 1; x++) {
+            const [lat, lng] = tileXYToLatLng(x, yMin);
+            const pt = map.latLngToContainerPoint([lat, lng]);
+            ctx.moveTo(pt.x, 0);
+            ctx.lineTo(pt.x, size.y);
+        }
+        for (let y = yMin; y <= yMax + 1; y++) {
+            const [lat, lng] = tileXYToLatLng(xMin, y);
+            const pt = map.latLngToContainerPoint([lat, lng]);
+            ctx.moveTo(0, pt.y);
+            ctx.lineTo(size.x, pt.y);
+        }
+        ctx.stroke();
+    },
+});
+
+function toggleTileGrid(show) {
+    if (!tileMap) return;
+    if (show) {
+        if (!tileGridLayer) tileGridLayer = new TileGridLayer();
+        tileGridLayer.addTo(tileMap);
+    } else {
+        if (tileGridLayer) tileGridLayer.removeFrom(tileMap);
+    }
+}
+
 // ── Tile persistence ──────────────────────────────────────────────────────────
 
 function renderTileStats() {
@@ -1762,6 +1912,20 @@ function renderTileStats() {
         <div class="county-stat-item">
             <span class="county-stat-number">${visitedTiles.size.toLocaleString()}</span>
             <span class="county-stat-label">Tiles Visited</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${tileMaxCluster.toLocaleString()}</span>
+            <span class="county-stat-label">Max Cluster</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${tileMaxSquare}×${tileMaxSquare}</span>
+            <span class="county-stat-label">Max Square</span>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:rgba(255,255,255,0.55);cursor:pointer;white-space:nowrap">
+                <input type="checkbox" id="tile-grid-checkbox" onchange="toggleTileGrid(this.checked)" style="cursor:pointer;accent-color:var(--primary-color)">
+                Gridlines
+            </label>
         </div>`;
 }
 
@@ -1793,6 +1957,12 @@ async function resetTileData() {
         tileMapInitialized = false;
         visitedTiles.clear();
         tileProcessedIds.clear();
+        tileClusterMap = null;
+        tileSquareMap  = null;
+        tileMaxCluster = 0;
+        tileMaxSquare  = 0;
+        tileGridLayer  = null;
+        if (tileMap) { tileMap.remove(); tileMap = null; }
         dbg('Tile data reset. Reopen Tile Hunter to re-detect.');
     } catch (err) {
         dbg(`Tile reset failed: ${err.message}`);
