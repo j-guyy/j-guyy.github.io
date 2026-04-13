@@ -2163,7 +2163,7 @@ let ACTIVE_TRAIL = 'boulder-county';
 
 let trailMap = null;
 let trailMapInitialized = false;
-let trailNodeLayer = null;
+let trailNodeLayers = [];      // [{group: L.layerGroup, surface}] — one per surface type
 let trailActivityLayer = null;
 let trailNodesVisible = false;
 let trailActivitiesVisible = false;
@@ -2190,7 +2190,7 @@ function switchTrail(trailKey) {
     ACTIVE_TRAIL = trailKey;
     if (trailMap) { trailMap.remove(); trailMap = null; }
     trailMapInitialized = false;
-    trailNodeLayer = null;
+    trailNodeLayers = [];
     trailActivityLayer = null;
     trailNodesVisible = false;
     trailActivitiesVisible = false;
@@ -2349,7 +2349,7 @@ async function fetchCOTrexTrails(cfg) {
 
 function renderTrailMap(completedWays) {
     const renderer = L.canvas();
-    const unvisitedMarkers = [];
+    const markersBySurface = {};  // surface → [L.circleMarker, ...]
     trailWayLayers = [];
 
     completedWays.forEach(way => {
@@ -2384,9 +2384,12 @@ function renderTrailMap(completedWays) {
 
         trailWayLayers.push({ layer, way, baseOpacity, baseWeight });
 
+        // Collect unvisited nodes grouped by surface for filtered visibility
+        const surface = way.surface || '';
+        if (!markersBySurface[surface]) markersBySurface[surface] = [];
         way.coords.forEach((coord, idx) => {
             if (!way.visitedFlags[idx]) {
-                unvisitedMarkers.push(L.circleMarker(coord, {
+                markersBySurface[surface].push(L.circleMarker(coord, {
                     radius: 3,
                     color: '#FF4444',
                     fillColor: '#FF4444',
@@ -2399,7 +2402,10 @@ function renderTrailMap(completedWays) {
         });
     });
 
-    trailNodeLayer = L.layerGroup(unvisitedMarkers);
+    trailNodeLayers = Object.entries(markersBySurface).map(([surface, markers]) => ({
+        group: L.layerGroup(markers),
+        surface,
+    }));
 }
 
 function renderTrailStats(completedWays) {
@@ -2494,21 +2500,31 @@ function applyTrailSurfaceFilter() {
         layer.setStyle({ opacity: hidden ? 0 : baseOpacity, weight: hidden ? 0 : baseWeight });
     });
 
+    applyTrailNodeVisibility(); // keep node overlay in sync with surface filter
+
     const visibleWays = trailCompletedWays.filter(w => !deactivatedTrailSurfaces.has(w.surface || ''));
     renderTrailStats(visibleWays);
     renderTrailSurfaceFilters(); // re-render pills to update active state
 }
 
 function toggleTrailNodes() {
-    if (!trailMap || !trailNodeLayer) return;
+    if (!trailMap || !trailNodeLayers.length) return;
     trailNodesVisible = !trailNodesVisible;
-    if (trailNodesVisible) {
-        trailNodeLayer.addTo(trailMap);
-    } else {
-        trailNodeLayer.removeFrom(trailMap);
-    }
+    applyTrailNodeVisibility();
     const btn = document.getElementById('trail-nodes-btn');
     if (btn) btn.textContent = trailNodesVisible ? 'Hide remaining nodes' : 'Show remaining nodes';
+}
+
+// Show node groups that are both globally visible and not surface-filtered out.
+function applyTrailNodeVisibility() {
+    trailNodeLayers.forEach(({ group, surface }) => {
+        const surfaceActive = !deactivatedTrailSurfaces.has(surface);
+        if (trailNodesVisible && surfaceActive) {
+            group.addTo(trailMap);
+        } else {
+            group.removeFrom(trailMap);
+        }
+    });
 }
 
 async function toggleTrailActivities() {
@@ -2550,7 +2566,7 @@ async function resetTrailData() {
     if (!confirm('Clear cached trail network data? It will be re-fetched from COTrex on next open.')) return;
     localStorage.removeItem(`trail_hunter_${ACTIVE_TRAIL}`);
     trailMapInitialized = false;
-    trailNodeLayer = null;
+    trailNodeLayers = [];
     trailActivityLayer = null;
     trailNodesVisible = false;
     trailActivitiesVisible = false;
