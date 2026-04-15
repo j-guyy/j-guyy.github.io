@@ -2766,20 +2766,24 @@ function toggleMountainMap() {
     }
 }
 
-async function fetchMountainPeaks(south, west, north, east) {
-    const cacheKey = `mountain_peaks_${[south, north, west, east].map(v => v.toFixed(1)).join('_')}`;
+// Fetch peaks for a single 5°×5° grid cell (with localStorage caching)
+async function fetchPeaksForCell(cellKey, south, west, north, east) {
+    const cacheKey = `mountain_peaks_cell_${cellKey}`;
     try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
         if (cached && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-            dbg(`Mountain peaks: ${cached.peaks.length} from cache`);
+            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
             return cached.peaks;
         }
     } catch {}
 
-    dbg(`Mountain peaks: querying Overpass bbox ${south.toFixed(2)},${west.toFixed(2)},${north.toFixed(2)},${east.toFixed(2)}`);
-    const query = `[out:json][timeout:30];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
+    dbg(`Mountain peaks cell ${cellKey}: querying Overpass…`);
+    const query = `[out:json][timeout:25];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
     const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error(`Overpass ${res.status}`);
+    if (!res.ok) {
+        dbg(`Mountain peaks cell ${cellKey}: Overpass ${res.status} — skipping`);
+        return [];
+    }
     const data = await res.json();
 
     const peaks = (data.elements || [])
@@ -2792,9 +2796,43 @@ async function fetchMountainPeaks(south, west, north, east) {
             ele: parseFloat(e.tags.ele),
         }));
 
-    dbg(`Mountain peaks: ${peaks.length} from Overpass`);
+    dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} from Overpass`);
     try { localStorage.setItem(cacheKey, JSON.stringify({ peaks, ts: Date.now() })); } catch {}
     return peaks;
+}
+
+// Fetch peaks across all 5°×5° cells that contain foot activities.
+// Splits the global bounding box into cells so no single Overpass query times out.
+async function fetchMountainPeaks(footActs) {
+    // Build unique set of 5° grid cells covered by foot activity starts
+    const cells = new Map(); // cellKey → {south, west, north, east}
+    for (const a of footActs) {
+        const lat5 = Math.floor(a.l[0] / 5) * 5;
+        const lng5 = Math.floor(a.l[1] / 5) * 5;
+        const key = `${lat5},${lng5}`;
+        if (!cells.has(key)) {
+            // Add 0.5° pad on each side so peaks on cell edges aren't missed
+            cells.set(key, { south: lat5 - 0.5, west: lng5 - 0.5, north: lat5 + 5.5, east: lng5 + 5.5 });
+        }
+    }
+
+    dbg(`Mountain peaks: querying ${cells.size} Overpass cell(s) for ${footActs.length} foot activities`);
+
+    const allPeaks = [];
+    const seenIds = new Set();
+    let cellIdx = 0;
+
+    for (const [cellKey, { south, west, north, east }] of cells) {
+        cellIdx++;
+        setMountainStatus(`Fetching peaks… cell ${cellIdx} / ${cells.size}`);
+        const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
+        for (const p of peaks) {
+            if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
+        }
+    }
+
+    dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
+    return allPeaks;
 }
 
 async function detectMountainSummits(peaks) {
@@ -3024,7 +3062,7 @@ async function resetMountainData() {
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k?.startsWith('mountain_peaks_')) keys.push(k);
+        if (k?.startsWith('mountain_peaks_cell_')) keys.push(k);
     }
     keys.forEach(k => localStorage.removeItem(k));
     mountainPeaks = [];
@@ -3053,18 +3091,8 @@ async function initMountainHunter() {
         return;
     }
 
-    let south = 90, north = -90, west = 180, east = -180;
-    for (const a of footActs) {
-        south = Math.min(south, a.l[0]);
-        north = Math.max(north, a.l[0]);
-        west  = Math.min(west,  a.l[1]);
-        east  = Math.max(east,  a.l[1]);
-    }
-    south -= 0.3; north += 0.3; west -= 0.3; east += 0.3;
-
     try {
-        setMountainStatus('Fetching peaks from OpenStreetMap…');
-        mountainPeaks = await fetchMountainPeaks(south, west, north, east);
+        mountainPeaks = await fetchMountainPeaks(footActs);
 
         if (!mountainPeaks.length) {
             setMountainStatus('No named peaks found in your activity area.');
