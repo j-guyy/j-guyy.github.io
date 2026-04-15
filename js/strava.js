@@ -2724,6 +2724,366 @@ function setTrailStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Mountain Hunter ───────────────────────────────────────────────────────────
+//
+// Detects mountain summits reached by decoding activity polylines and checking
+// proximity (≤300 m) against OSM natural=peak nodes fetched from Overpass.
+// Elevation gain stats come directly from the `e` field in slim activity data.
+
+const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'AlpineSki', 'NordicSki']);
+const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe']);
+const SUMMIT_RADIUS_M = 300;
+const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+
+let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
+let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
+let mountainMapInstance = null;
+let mountainMapInitialized = false;
+let mountainHunterReady = false;
+
+function mToFt(m) { return Math.round(m * 3.28084); }
+
+function haversineM(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+    const dφ = (lat2 - lat1) * Math.PI / 180;
+    const dλ = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function toggleMountainMap() {
+    const section = document.getElementById('mountain-map-section');
+    const btn = document.getElementById('mountain-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !mountainMapInitialized) {
+        renderMountainMap();
+    } else if (opening && mountainMapInstance) {
+        setTimeout(() => mountainMapInstance.invalidateSize(), 50);
+    }
+}
+
+async function fetchMountainPeaks(south, west, north, east) {
+    const cacheKey = `mountain_peaks_${[south, north, west, east].map(v => v.toFixed(1)).join('_')}`;
+    try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        if (cached && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+            dbg(`Mountain peaks: ${cached.peaks.length} from cache`);
+            return cached.peaks;
+        }
+    } catch {}
+
+    dbg(`Mountain peaks: querying Overpass bbox ${south.toFixed(2)},${west.toFixed(2)},${north.toFixed(2)},${east.toFixed(2)}`);
+    const query = `[out:json][timeout:30];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
+    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`Overpass ${res.status}`);
+    const data = await res.json();
+
+    const peaks = (data.elements || [])
+        .filter(e => { const v = parseFloat(e.tags?.ele); return !isNaN(v) && v > 0; })
+        .map(e => ({
+            id: e.id,
+            name: e.tags?.name || e.tags?.['name:en'] || 'Unnamed Peak',
+            lat: e.lat,
+            lng: e.lon,
+            ele: parseFloat(e.tags.ele),
+        }));
+
+    dbg(`Mountain peaks: ${peaks.length} from Overpass`);
+    try { localStorage.setItem(cacheKey, JSON.stringify({ peaks, ts: Date.now() })); } catch {}
+    return peaks;
+}
+
+async function detectMountainSummits(peaks) {
+    const acts = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
+    if (!acts.length || !peaks.length) return new Map();
+
+    // 0.5° grid index for fast candidate lookup
+    const index = {};
+    for (const peak of peaks) {
+        const key = `${Math.floor(peak.lat * 2)},${Math.floor(peak.lng * 2)}`;
+        (index[key] = index[key] || []).push(peak);
+    }
+
+    const visits = new Map();
+
+    for (let i = 0; i < acts.length; i++) {
+        if (i % 25 === 0) {
+            setMountainStatus(`Scanning routes… ${i} / ${acts.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = acts[i];
+        const points = decodePolyline(act.p);
+        const hit = new Set();
+
+        for (let j = 0; j < points.length; j += 4) {
+            const [lat, lng] = points[j];
+            const gr = Math.floor(lat * 2);
+            const gc = Math.floor(lng * 2);
+
+            for (let dl = -1; dl <= 1; dl++) {
+                for (let dk = -1; dk <= 1; dk++) {
+                    const candidates = index[`${gr + dl},${gc + dk}`] || [];
+                    for (const peak of candidates) {
+                        if (hit.has(peak.id)) continue;
+                        if (Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008) continue;
+                        if (haversineM(lat, lng, peak.lat, peak.lng) <= SUMMIT_RADIUS_M) {
+                            hit.add(peak.id);
+                            if (!visits.has(peak.id)) visits.set(peak.id, []);
+                            visits.get(peak.id).push({
+                                actId:   act.i,
+                                actName: act.n || 'Untitled',
+                                actType: act.t,
+                                date:    act.d || '',
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return visits;
+}
+
+// Renders elevation gain stat immediately (no Overpass needed) plus placeholder peak stats
+function renderMountainQuickStats() {
+    const el = document.getElementById('mountain-stats-bar');
+    if (!el) return;
+
+    const topGain = currentSlim
+        .filter(a => ELEVATION_ACTIVITY_TYPES.has(a.t) && (a.e || 0) > 0)
+        .reduce((best, a) => (!best || a.e > best.e) ? a : best, null);
+
+    el.innerHTML = `
+        <div class="county-stat-item" id="mh-peaks-stat">
+            <span class="county-stat-number">…</span>
+            <span class="county-stat-label">Peaks Summited</span>
+        </div>
+        <div class="county-stat-item" id="mh-tallest-stat">
+            <span class="county-stat-number">…</span>
+            <span class="county-stat-label">Tallest Peak</span>
+        </div>
+        <div class="county-stat-item" id="mh-most-climbed-stat">
+            <span class="county-stat-number">…</span>
+            <span class="county-stat-label">Most Climbed</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${topGain ? mToFt(topGain.e).toLocaleString() + ' ft' : '—'}</span>
+            <span class="county-stat-label">Most Elev. Gain${topGain
+                ? `<br><span class="mh-sublabel">${topGain.n || 'Untitled'}</span>`
+                : ''}</span>
+        </div>`;
+}
+
+function renderMountainStats() {
+    if (!mountainHunterReady) return;
+
+    let tallestPeak = null, mostClimbedPeak = null, mostClimbedCount = 0;
+    for (const [peakId, pvs] of mountainVisits) {
+        const peak = mountainPeaks.find(p => p.id === peakId);
+        if (!peak) continue;
+        if (!tallestPeak || peak.ele > tallestPeak.ele) tallestPeak = peak;
+        if (pvs.length > mostClimbedCount) { mostClimbedCount = pvs.length; mostClimbedPeak = peak; }
+    }
+
+    const peaksEl = document.getElementById('mh-peaks-stat');
+    if (peaksEl) peaksEl.querySelector('.county-stat-number').textContent = mountainVisits.size;
+
+    const tallestEl = document.getElementById('mh-tallest-stat');
+    if (tallestEl && tallestPeak) {
+        tallestEl.querySelector('.county-stat-number').textContent = mToFt(tallestPeak.ele).toLocaleString() + ' ft';
+        tallestEl.querySelector('.county-stat-label').innerHTML =
+            `Tallest Peak<br><span class="mh-sublabel">${tallestPeak.name}</span>`;
+    } else if (tallestEl) {
+        tallestEl.querySelector('.county-stat-number').textContent = '—';
+    }
+
+    const mostEl = document.getElementById('mh-most-climbed-stat');
+    if (mostEl && mostClimbedPeak) {
+        mostEl.querySelector('.county-stat-number').textContent = mostClimbedCount + '×';
+        mostEl.querySelector('.county-stat-label').innerHTML =
+            `Most Climbed<br><span class="mh-sublabel">${mostClimbedPeak.name}</span>`;
+    } else if (mostEl) {
+        mostEl.querySelector('.county-stat-number').textContent = '—';
+    }
+
+    renderMountainTable();
+}
+
+function renderMountainTable() {
+    const tableEl = document.getElementById('mountain-table');
+    if (!tableEl || !mountainVisits.size) return;
+
+    const rows = [...mountainVisits.entries()]
+        .map(([id, pvs]) => ({ peak: mountainPeaks.find(p => p.id === id), pvs }))
+        .filter(r => r.peak)
+        .sort((a, b) => b.peak.ele - a.peak.ele);
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    table.innerHTML = `
+        <thead><tr>
+            <th>Peak</th>
+            <th>Elevation</th>
+            <th style="text-align:center">Summits</th>
+            <th>Last Summit</th>
+        </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(({ peak, pvs }) => {
+        const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+        const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${peak.name}</td>
+            <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
+            <td style="text-align:center">${pvs.length}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
+                : (last.actName || '—')}
+                ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableEl.innerHTML = '';
+    tableEl.appendChild(table);
+}
+
+function renderMountainMap() {
+    if (!mountainHunterReady) {
+        setMountainStatus('Summit data not ready yet — try again in a moment.');
+        return;
+    }
+
+    // Center on visited peaks, or foot activity centroid as fallback
+    let clat, clng, czoom;
+    if (mountainVisits.size > 0) {
+        const vPeaks = [...mountainVisits.keys()].map(id => mountainPeaks.find(p => p.id === id)).filter(Boolean);
+        clat  = vPeaks.reduce((s, p) => s + p.lat, 0) / vPeaks.length;
+        clng  = vPeaks.reduce((s, p) => s + p.lng, 0) / vPeaks.length;
+        czoom = 9;
+    } else {
+        const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
+        clat  = footActs.reduce((s, a) => s + a.l[0], 0) / footActs.length;
+        clng  = footActs.reduce((s, a) => s + a.l[1], 0) / footActs.length;
+        czoom = 8;
+    }
+
+    mountainMapInstance = L.map('mountain-map', { center: [clat, clng], zoom: czoom });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(mountainMapInstance);
+    new LocationControl().addTo(mountainMapInstance);
+
+    for (const peak of mountainPeaks) {
+        const pvs   = mountainVisits.get(peak.id);
+        const visited = !!pvs;
+        const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+        const href  = last?.actId ? `https://www.strava.com/activities/${last.actId}` : null;
+
+        L.circleMarker([peak.lat, peak.lng], {
+            radius:      visited ? 7 : 4,
+            color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.25)',
+            fillColor:   visited ? '#4CAF50' : 'rgba(255,255,255,0.1)',
+            fillOpacity: visited ? 0.85 : 0.35,
+            weight:      visited ? 2 : 1,
+        })
+        .bindPopup(`
+            <div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:${visited ? '#4CAF50' : 'rgba(255,255,255,0.4)'}">
+                    ▲ ${mToFt(peak.ele).toLocaleString()} ft (${Math.round(peak.ele).toLocaleString()}m)
+                </div>
+                <div class="activity-popup-name">${peak.name}</div>
+                <div class="activity-popup-date">
+                    ${visited
+                        ? `Summited ${pvs.length}× · Last: ${last.date ? formatActivityDate(last.date) : '?'}
+                           ${href ? `<br><a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>` : ''}`
+                        : 'Not yet summited'}
+                </div>
+            </div>`, { className: 'activity-popup' })
+        .addTo(mountainMapInstance);
+    }
+
+    mountainMapInitialized = true;
+    setMountainStatus('');
+}
+
+function setMountainStatus(msg) {
+    const el = document.getElementById('mountain-status');
+    if (el) el.textContent = msg;
+}
+
+async function resetMountainData() {
+    if (!confirm('Clear cached mountain peak data? Peaks will be re-fetched from OpenStreetMap.')) return;
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k?.startsWith('mountain_peaks_')) keys.push(k);
+    }
+    keys.forEach(k => localStorage.removeItem(k));
+    mountainPeaks = [];
+    mountainVisits = new Map();
+    mountainHunterReady = false;
+    mountainMapInitialized = false;
+    if (mountainMapInstance) { mountainMapInstance.remove(); mountainMapInstance = null; }
+    dbg('Mountain cache cleared — re-initialising…');
+    initMountainHunter().catch(err => dbg(`Mountain reset error: ${err.message}`));
+}
+
+async function initMountainHunter() {
+    if (!currentSlim.length) return;
+
+    // Elevation gain stat is instant — show it right away
+    renderMountainQuickStats();
+
+    if (mountainHunterReady) {
+        renderMountainStats();
+        return;
+    }
+
+    const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
+    if (!footActs.length) {
+        setMountainStatus('No hiking or running activities found.');
+        return;
+    }
+
+    let south = 90, north = -90, west = 180, east = -180;
+    for (const a of footActs) {
+        south = Math.min(south, a.l[0]);
+        north = Math.max(north, a.l[0]);
+        west  = Math.min(west,  a.l[1]);
+        east  = Math.max(east,  a.l[1]);
+    }
+    south -= 0.3; north += 0.3; west -= 0.3; east += 0.3;
+
+    try {
+        setMountainStatus('Fetching peaks from OpenStreetMap…');
+        mountainPeaks = await fetchMountainPeaks(south, west, north, east);
+
+        if (!mountainPeaks.length) {
+            setMountainStatus('No named peaks found in your activity area.');
+            return;
+        }
+
+        setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
+        mountainVisits = await detectMountainSummits(mountainPeaks);
+
+        mountainHunterReady = true;
+        setMountainStatus('');
+        renderMountainStats();
+        dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
+    } catch (err) {
+        setMountainStatus(`Error: ${err.message}`);
+        dbg(`Mountain Hunter error: ${err.message}`);
+    }
+}
+
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
 const debugLog = [];
@@ -2781,6 +3141,7 @@ function renderDebugPanel() {
                 <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
                 <button class="dbg-clear" onclick="resetCityData()" title="Clear city road cache from localStorage — forces fresh Overpass fetch">Reset city</button>
                 <button class="dbg-clear" onclick="resetTrailData()" title="Clear trail network cache from localStorage — forces fresh Overpass fetch">Reset trails</button>
+                <button class="dbg-clear" onclick="resetMountainData()" title="Clear mountain peak cache from localStorage — forces fresh Overpass fetch">Reset mountains</button>
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
@@ -2867,6 +3228,10 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     renderTable(countries);
     renderSubdivisions(subdivisions);
     dbg('Render complete');
+
+    // Mountain Hunter — runs in background; elevation gain stat is instant,
+    // peak detection starts after a short yield so the main UI paints first
+    setTimeout(() => initMountainHunter().catch(err => dbg(`Mountain Hunter bg error: ${err.message}`)), 400);
 
     return updatedCache;
 }

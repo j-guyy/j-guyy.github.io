@@ -15,7 +15,8 @@
       "Bash(find:*)",
       "Bash(node:*)",
       "WebSearch",
-      "WebFetch(domain:gis.colorado.gov)"
+      "WebFetch(domain:gis.colorado.gov)",
+      "WebFetch(domain:strava-worker.justinguyette.workers.dev)"
     ]
   }
 }

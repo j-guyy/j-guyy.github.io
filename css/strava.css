@@ -275,6 +275,31 @@
     background: #1a1a1a;
 }
 
+/* ── Mountain Hunter ─────────────────────────── */
+#mountain-map {
+    width: 100%;
+    height: 520px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1a1a1a;
+    margin-top: 16px;
+}
+
+#mountain-table {
+    margin-top: 16px;
+}
+
+.mh-sublabel {
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.55);
+    font-weight: 400;
+}
+
+.mh-ele-m {
+    opacity: 0.4;
+    font-size: 0.82em;
+}
+
 /* ── Trail Hunter ────────────────────────────── */
 #trail-map {
     width: 100%;
@@ -649,7 +674,8 @@
     #county-map,
     #tile-map,
     #city-map,
-    #trail-map {
+    #trail-map,
+    #mountain-map {
         height: 420px;
     }
 
