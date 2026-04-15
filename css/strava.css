@@ -289,6 +289,34 @@
     margin-top: 16px;
 }
 
+/* Mountain Hunter progress bar */
+#mountain-progress-wrap {
+    margin-top: 12px;
+}
+
+#mountain-progress-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    position: relative;
+}
+
+#mountain-progress-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--primary-color);
+    border-radius: 2px;
+    width: var(--mh-progress, 0%);
+    transition: width 0.3s ease;
+}
+
+#mountain-progress-label {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
 .mh-sublabel {
     font-size: 0.78em;
     color: rgba(255,255,255,0.55);

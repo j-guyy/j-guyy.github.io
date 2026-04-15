@@ -2731,6 +2731,9 @@ function setTrailStatus(msg) {
 // Elevation gain stats come directly from the `e` field in slim activity data.
 
 const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'AlpineSki', 'NordicSki']);
+// Narrower set used only for deciding which geographic cells to query for peaks.
+// Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski are the mountain-specific types.
+const MOUNTAIN_CELL_TYPES = new Set(['Hike', 'TrailRun', 'BackcountrySki', 'AlpineSki', 'NordicSki']);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe']);
 const SUMMIT_RADIUS_M = 300;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -2801,12 +2804,21 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
     return peaks;
 }
 
-// Fetch peaks across all 5°×5° cells that contain foot activities.
-// Splits the global bounding box into cells so no single Overpass query times out.
+// Fetch peaks across all 5°×5° cells that contain Hike/TrailRun/ski activities.
+// Uses MOUNTAIN_CELL_TYPES (not all foot types) so flat city runs in 23 countries
+// don't cause cells to be created worldwide. Summit detection still runs on all
+// MOUNTAIN_ACTIVITY_TYPES — the cell set just controls which regions are queried.
 async function fetchMountainPeaks(footActs) {
-    // Build unique set of 5° grid cells covered by foot activity starts
+    // Only Hike/TrailRun/ski activities drive cell selection
+    const cellActs = footActs.filter(a => MOUNTAIN_CELL_TYPES.has(a.t));
+    if (!cellActs.length) {
+        dbg('Mountain peaks: no Hike/TrailRun/ski activities found — skipping Overpass');
+        return [];
+    }
+
+    // Build unique set of 5° grid cells covered by those activity starts
     const cells = new Map(); // cellKey → {south, west, north, east}
-    for (const a of footActs) {
+    for (const a of cellActs) {
         const lat5 = Math.floor(a.l[0] / 5) * 5;
         const lng5 = Math.floor(a.l[1] / 5) * 5;
         const key = `${lat5},${lng5}`;
@@ -2824,12 +2836,14 @@ async function fetchMountainPeaks(footActs) {
 
     for (const [cellKey, { south, west, north, east }] of cells) {
         cellIdx++;
-        setMountainStatus(`Fetching peaks… cell ${cellIdx} / ${cells.size}`);
+        const pct = (cellIdx - 1) / cells.size * 50;   // first 50% = fetching cells
+        setMountainProgress(pct, `Fetching peaks… region ${cellIdx} of ${cells.size}`);
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         for (const p of peaks) {
             if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
         }
     }
+    setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
 
     dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
     return allPeaks;
@@ -2850,7 +2864,8 @@ async function detectMountainSummits(peaks) {
 
     for (let i = 0; i < acts.length; i++) {
         if (i % 25 === 0) {
-            setMountainStatus(`Scanning routes… ${i} / ${acts.length}`);
+            const pct = 50 + (i / acts.length) * 50;   // second 50% = scanning routes
+            setMountainProgress(pct, `Scanning routes… ${i} of ${acts.length}`);
             await new Promise(r => setTimeout(r, 0));
         }
         const act = acts[i];
@@ -3057,12 +3072,28 @@ function setMountainStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// pct: 0–100, label: string shown below the bar. Pass pct=null to hide.
+function setMountainProgress(pct, label) {
+    const wrap  = document.getElementById('mountain-progress-wrap');
+    const bar   = document.getElementById('mountain-progress-bar');
+    const lbl   = document.getElementById('mountain-progress-label');
+    if (!wrap) return;
+    if (pct === null) {
+        wrap.style.display = 'none';
+        return;
+    }
+    wrap.style.display = 'block';
+    if (bar) bar.style.setProperty('--mh-progress', `${Math.min(100, pct).toFixed(1)}%`);
+    if (lbl) lbl.textContent = label || '';
+}
+
 async function resetMountainData() {
     if (!confirm('Clear cached mountain peak data? Peaks will be re-fetched from OpenStreetMap.')) return;
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k?.startsWith('mountain_peaks_cell_')) keys.push(k);
+        // Clear both new cell-based keys and any old single-bbox keys
+        if (k?.startsWith('mountain_peaks_')) keys.push(k);
     }
     keys.forEach(k => localStorage.removeItem(k));
     mountainPeaks = [];
@@ -3103,10 +3134,13 @@ async function initMountainHunter() {
         mountainVisits = await detectMountainSummits(mountainPeaks);
 
         mountainHunterReady = true;
+        setMountainProgress(100, `Complete — ${mountainVisits.size} peak${mountainVisits.size !== 1 ? 's' : ''} summited`);
+        setTimeout(() => setMountainProgress(null), 2000);
         setMountainStatus('');
         renderMountainStats();
         dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
     } catch (err) {
+        setMountainProgress(null);
         setMountainStatus(`Error: ${err.message}`);
         dbg(`Mountain Hunter error: ${err.message}`);
     }
