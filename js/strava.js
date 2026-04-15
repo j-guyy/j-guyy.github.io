@@ -2769,7 +2769,7 @@ function toggleMountainMap() {
     }
 }
 
-// Fetch peaks for a single 5°×5° grid cell (with localStorage caching)
+// Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with backoff
 async function fetchPeaksForCell(cellKey, south, west, north, east) {
     const cacheKey = `mountain_peaks_cell_${cellKey}`;
     try {
@@ -2780,28 +2780,49 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
         }
     } catch {}
 
-    dbg(`Mountain peaks cell ${cellKey}: querying Overpass…`);
     const query = `[out:json][timeout:25];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
-    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-    if (!res.ok) {
-        dbg(`Mountain peaks cell ${cellKey}: Overpass ${res.status} — skipping`);
-        return [];
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+            const wait = attempt * 4000;
+            dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} — waiting ${wait / 1000}s`);
+            await new Promise(r => setTimeout(r, wait));
+        }
+
+        let res;
+        try { res = await fetch(url); } catch (err) {
+            dbg(`Mountain peaks cell ${cellKey}: fetch error — ${err.message}`);
+            continue;
+        }
+
+        if (res.status === 429 || res.status === 504) {
+            dbg(`Mountain peaks cell ${cellKey}: ${res.status} — will retry`);
+            continue;
+        }
+        if (!res.ok) {
+            dbg(`Mountain peaks cell ${cellKey}: Overpass ${res.status} — skipping`);
+            return [];
+        }
+
+        const data = await res.json();
+        const peaks = (data.elements || [])
+            .filter(e => { const v = parseFloat(e.tags?.ele); return !isNaN(v) && v > 0; })
+            .map(e => ({
+                id: e.id,
+                name: e.tags?.name || e.tags?.['name:en'] || 'Unnamed Peak',
+                lat: e.lat,
+                lng: e.lon,
+                ele: parseFloat(e.tags.ele),
+            }));
+
+        dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} from Overpass`);
+        try { localStorage.setItem(cacheKey, JSON.stringify({ peaks, ts: Date.now() })); } catch {}
+        return peaks;
     }
-    const data = await res.json();
 
-    const peaks = (data.elements || [])
-        .filter(e => { const v = parseFloat(e.tags?.ele); return !isNaN(v) && v > 0; })
-        .map(e => ({
-            id: e.id,
-            name: e.tags?.name || e.tags?.['name:en'] || 'Unnamed Peak',
-            lat: e.lat,
-            lng: e.lon,
-            ele: parseFloat(e.tags.ele),
-        }));
-
-    dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} from Overpass`);
-    try { localStorage.setItem(cacheKey, JSON.stringify({ peaks, ts: Date.now() })); } catch {}
-    return peaks;
+    dbg(`Mountain peaks cell ${cellKey}: all retries failed — skipping`);
+    return [];
 }
 
 // Fetch peaks across all 5°×5° cells that contain Hike/TrailRun/ski activities.
@@ -2809,10 +2830,12 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
 // don't cause cells to be created worldwide. Summit detection still runs on all
 // MOUNTAIN_ACTIVITY_TYPES — the cell set just controls which regions are queried.
 async function fetchMountainPeaks(footActs) {
-    // Only Hike/TrailRun/ski activities drive cell selection
-    const cellActs = footActs.filter(a => MOUNTAIN_CELL_TYPES.has(a.t));
+    // Only Hike/TrailRun/ski activities with real elevation gain drive cell selection.
+    // The 100 m (≈330 ft) threshold drops flat-area hikes in lowland countries so
+    // we don't fire dozens of useless Overpass queries.
+    const cellActs = footActs.filter(a => MOUNTAIN_CELL_TYPES.has(a.t) && (a.e || 0) >= 100);
     if (!cellActs.length) {
-        dbg('Mountain peaks: no Hike/TrailRun/ski activities found — skipping Overpass');
+        dbg('Mountain peaks: no mountain-type activities with ≥100 m gain — skipping Overpass');
         return [];
     }
 
@@ -2838,6 +2861,8 @@ async function fetchMountainPeaks(footActs) {
         cellIdx++;
         const pct = (cellIdx - 1) / cells.size * 50;   // first 50% = fetching cells
         setMountainProgress(pct, `Fetching peaks… region ${cellIdx} of ${cells.size}`);
+        // 1 s gap between requests so Overpass doesn't rate-limit us
+        if (cellIdx > 1) await new Promise(r => setTimeout(r, 1000));
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         for (const p of peaks) {
             if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
