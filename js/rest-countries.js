@@ -102,7 +102,7 @@ function mergePopulationData(countriesData, popMap) {
  * Calls onPopulationUpdate when live data arrives so the page can re-render.
  */
 async function loadCountriesWithPopulation(jsonPath, onPopulationUpdate) {
-    const countriesData = await fetch(jsonPath).then(r => r.json());
+    const countriesData = await TravelAPI.fetchCountries();
 
     // Fire off the API call in the background — don't block rendering
     fetchPopulationData().then(popMap => {

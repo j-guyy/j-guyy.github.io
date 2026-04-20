@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Travel Data</title>
+    <style>
+        body { font-family: monospace; background: #1a1a2e; color: #eee; padding: 40px; }
+        h1 { color: #4CAF50; }
+        .status { margin: 8px 0; padding: 8px 12px; border-radius: 4px; }
+        .ok { background: rgba(76,175,80,0.2); }
+        .err { background: rgba(244,67,54,0.2); }
+        .pending { background: rgba(255,193,7,0.2); }
+        button { background: #4CAF50; color: white; border: none; padding: 12px 24px; font-size: 16px; cursor: pointer; border-radius: 6px; margin-top: 16px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input { padding: 8px 12px; font-size: 16px; border-radius: 6px; border: 1px solid #555; background: #2a2a3e; color: #eee; width: 300px; }
+        label { display: block; margin-top: 16px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Seed Travel Data to Cloudflare KV</h1>
+    <p>This page reads your local JSON files and uploads them to your Cloudflare worker.<br>
+       Run this once after deploying the updated worker. You can delete this page afterward.</p>
+
+    <label for="password">Travel Password (TRAVEL_PASSWORD env var):</label>
+    <input type="password" id="password" placeholder="Enter password">
+
+    <button id="seed-btn" onclick="seedAll()">Seed All Data</button>
+
+    <div id="log" style="margin-top: 24px;"></div>
+
+    <script src="js/travel-api.js"></script>
+    <script>
+        const log = document.getElementById('log');
+
+        function addLog(msg, cls) {
+            const div = document.createElement('div');
+            div.className = 'status ' + cls;
+            div.textContent = msg;
+            log.appendChild(div);
+        }
+
+        async function seedAll() {
+            const password = document.getElementById('password').value;
+            if (!password) { alert('Enter password'); return; }
+
+            const btn = document.getElementById('seed-btn');
+            btn.disabled = true;
+            log.innerHTML = '';
+
+            const datasets = [
+                { type: 'highpoints', url: 'data/highPoints.json', label: 'High Points' },
+                { type: 'metros', url: 'data/metros.json', label: 'Metros' },
+                { type: 'parks', url: 'data/nationalParks.json', label: 'National Parks' },
+                { type: 'countries', url: 'data/countries.json', label: 'Countries' },
+                { type: 'visitedStates', url: 'data/visitedStates.json', label: 'Visited States' },
+            ];
+
+            for (const ds of datasets) {
+                addLog(`Seeding ${ds.label}...`, 'pending');
+                try {
+                    const res = await fetch(ds.url);
+                    const data = await res.json();
+                    await TravelAPI.seed(ds.type, data, password);
+                    addLog(`${ds.label} seeded successfully`, 'ok');
+                } catch (err) {
+                    addLog(`${ds.label} FAILED: ${err.message}`, 'err');
+                }
+            }
+
+            addLog('Done! You can now delete this page.', 'ok');
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>

@@ -7,7 +7,7 @@ let layerGroups = {};
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
         fetch('/data/forbes100cities.json').then(response => response.json()),
-        fetch('/data/metros.json').then(response => response.json()),
+        TravelAPI.fetchMetros(),
         fetch('/data/worldCities.json').then(response => response.json()),
         fetch('/data/sevenWonders.json').then(response => response.json())
     ])

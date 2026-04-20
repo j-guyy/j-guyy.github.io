@@ -57,9 +57,8 @@ async function initMap() {
             PERSON_INITIALS[id] = name.charAt(0).toUpperCase();
         });
 
-        // Load metros.json and merge person1's US cities
-        const metrosResponse = await fetch('data/metros.json');
-        const metrosData = await metrosResponse.json();
+        // Load metros and merge person1's US cities
+        const metrosData = await TravelAPI.fetchMetros();
 
         metrosData.forEach(metro => {
             if (metro.visited) {
@@ -1094,8 +1093,8 @@ async function mergeAdditionalPerson1Data(ftData) {
     const [worldCities, highPoints, stateHighPoints, nationalParks, skiResorts, sevenWonders, britishIsles, adk46ers, colorado14ers] = await Promise.all([
         fetch('data/worldCities.json').then(r => r.json()),
         fetch('data/worldMountains.json').then(r => r.json()),
-        fetch('data/highPoints.json').then(r => r.json()),
-        fetch('data/nationalParks.json').then(r => r.json()),
+        TravelAPI.fetchHighPoints(),
+        TravelAPI.fetchNationalParks(),
         fetch('data/skiResorts.json').then(r => r.json()),
         fetch('data/sevenWonders.json').then(r => r.json()),
         fetch('data/british-isles-high-five.json').then(r => r.json()),

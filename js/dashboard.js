@@ -1,4 +1,5 @@
 let metros, highPoints, nationalParks, visitedStates;
+let editMode = false;
 
 const sortState = {
     highpoints: { col: 'elevation', dir: 'desc' },
@@ -8,10 +9,10 @@ const sortState = {
 
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
-        fetch('/data/metros.json').then(response => response.json()),
-        fetch('/data/highPoints.json').then(response => response.json()),
-        fetch('/data/nationalParks.json').then(response => response.json()),
-        fetch('/data/visitedStates.json').then(response => response.json())
+        TravelAPI.fetchMetros(),
+        TravelAPI.fetchHighPoints(),
+        TravelAPI.fetchNationalParks(),
+        TravelAPI.fetchVisitedStates()
     ])
         .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
             metros = metrosData;
@@ -19,18 +20,129 @@ document.addEventListener('DOMContentLoaded', function () {
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
             displayTravelSummary();
-            // Initialize with highpoints table
             updateTable('highpoints');
+            setupEditMode();
+            setupCsvExport();
         })
         .catch(error => console.error('Error loading the JSON files:', error));
 });
 
+function setupEditMode() {
+    const btn = document.getElementById('edit-mode-btn');
+    btn.addEventListener('click', () => {
+        if (!editMode) {
+            const stored = sessionStorage.getItem('travelPassword');
+            if (stored) {
+                editMode = true;
+                btn.classList.add('active');
+                btn.textContent = 'Exit Edit Mode';
+                updateTable(document.getElementById('table-selector').value);
+            } else {
+                const pw = prompt('Enter travel password:');
+                if (pw) {
+                    sessionStorage.setItem('travelPassword', pw);
+                    editMode = true;
+                    btn.classList.add('active');
+                    btn.textContent = 'Exit Edit Mode';
+                    updateTable(document.getElementById('table-selector').value);
+                }
+            }
+        } else {
+            editMode = false;
+            btn.classList.remove('active');
+            btn.textContent = 'Edit Mode';
+            updateTable(document.getElementById('table-selector').value);
+        }
+    });
+}
+
+function setupCsvExport() {
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+        const tableType = document.getElementById('table-selector').value;
+        const { col, dir } = sortState[tableType];
+        let rows, headers, filename;
+
+        if (tableType === 'highpoints') {
+            headers = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
+            const sorted = sortTableData(highPoints, col, dir, tableType);
+            rows = sorted.map((item, i) => [
+                i + 1, item.name, item.state, item.elevation, item.visited ? 'Summited' : 'Not Summited'
+            ]);
+            filename = 'high-points.csv';
+        } else if (tableType === 'metros') {
+            headers = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
+            const sorted = sortTableData(metros, col, dir, tableType);
+            rows = sorted.map(item => [
+                item.rank, item.metro_name, item.state, item.population, item.visited ? 'Visited' : 'Not Visited'
+            ]);
+            filename = 'metros.csv';
+        } else if (tableType === 'parks') {
+            headers = ['National Park', 'State', 'Status'];
+            const sorted = sortTableData(nationalParks, col, dir, tableType);
+            rows = sorted.map(item => [
+                item.name, item.state, item.visited ? 'Visited' : 'Not Visited'
+            ]);
+            filename = 'national-parks.csv';
+        }
+
+        downloadCsv(headers, rows, filename);
+    });
+}
+
+function downloadCsv(headers, rows, filename) {
+    const escape = val => {
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+            ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const csv = [headers.map(escape).join(',')]
+        .concat(rows.map(row => row.map(escape).join(',')))
+        .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+async function handleToggle(tableType, item) {
+    const password = sessionStorage.getItem('travelPassword');
+    if (!password) return;
+
+    let type, key;
+    if (tableType === 'highpoints') {
+        type = 'highpoints';
+        key = item.state;
+    } else if (tableType === 'metros') {
+        type = 'metros';
+        key = String(item.rank);
+    } else if (tableType === 'parks') {
+        type = 'parks';
+        key = item.name;
+    }
+
+    try {
+        await TravelAPI.toggleVisited(type, key, password);
+        item.visited = !item.visited;
+        displayTravelSummary();
+        updateTable(tableType);
+    } catch (err) {
+        alert('Toggle failed: ' + err.message);
+        if (err.message.includes('Invalid password')) {
+            sessionStorage.removeItem('travelPassword');
+            editMode = false;
+            document.getElementById('edit-mode-btn').classList.remove('active');
+            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
+            updateTable(tableType);
+        }
+    }
+}
+
 function displayTravelSummary() {
     const summaryContainer = document.getElementById('travel-summary');
-    const tableContainer = document.getElementById('travel-table-container');
     const tableSelector = document.getElementById('table-selector');
 
-    // Calculate summary statistics
     const stateCount = Object.values(visitedStates).filter(visited => visited).length;
     const statePercentage = ((stateCount / 50) * 100).toFixed(0);
     const top100Metros = metros.filter(city => city.rank <= 100);
@@ -41,7 +153,6 @@ function displayTravelSummary() {
     const parkCount = nationalParks.filter(park => park.visited).length;
     const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
 
-    // Display summary statistics
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
             <div class="summary-stat states-summary">
@@ -81,10 +192,13 @@ function displayTravelSummary() {
         </div>
     `;
 
-    // Set up event listener for table selector
-    tableSelector.addEventListener('change', function () {
-        updateTable(this.value);
-    });
+    // Set up event listener for table selector (only once)
+    if (!tableSelector.dataset.bound) {
+        tableSelector.dataset.bound = 'true';
+        tableSelector.addEventListener('change', function () {
+            updateTable(this.value);
+        });
+    }
 }
 
 function sortTableData(data, col, dir, tableType) {
@@ -92,13 +206,11 @@ function sortTableData(data, col, dir, tableType) {
         let aVal = a[col];
         let bVal = b[col];
 
-        // Parse population strings (e.g. "10,234,567") for metros
         if (col === 'population' && tableType === 'metros') {
             aVal = parseInt(String(aVal).replace(/,/g, ''), 10) || 0;
             bVal = parseInt(String(bVal).replace(/,/g, ''), 10) || 0;
         }
 
-        // Boolean: true (visited) = 1, false = 0
         if (typeof aVal === 'boolean') {
             aVal = aVal ? 1 : 0;
             bVal = bVal ? 1 : 0;
@@ -124,7 +236,6 @@ function updateTable(tableType) {
 
     if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
-        // 'Rank' column uses elevation as its sort key (rank = elevation order)
         sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
         rawData      = highPoints;
     } else if (tableType === 'metros') {
@@ -164,7 +275,6 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                // Default direction: desc for numeric/visited, asc for text
                 const defaultDir = (key === 'visited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
@@ -183,13 +293,16 @@ function updateTable(tableType) {
         const row = document.createElement('tr');
         row.className = item.visited ? 'visited' : 'not-visited';
 
+        const statusIcon = item.visited ? '✅' : '⬜';
+        const statusClass = editMode ? 'status-toggle' : '';
+
         if (tableType === 'highpoints') {
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.name}</td>
                 <td>${item.state}</td>
                 <td>${item.elevation.toLocaleString()}</td>
-                <td>${item.visited ? '✅' : '⬜'}</td>
+                <td class="${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'metros') {
             row.innerHTML = `
@@ -197,19 +310,38 @@ function updateTable(tableType) {
                 <td>${item.metro_name}</td>
                 <td>${item.state}</td>
                 <td>${item.population}</td>
-                <td>${item.visited ? '✅' : '⬜'}</td>
+                <td class="${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'parks') {
             row.innerHTML = `
                 <td>${item.name}</td>
                 <td>${item.state}</td>
-                <td>${item.visited ? '✅' : '⬜'}</td>
+                <td class="${statusClass}">${statusIcon}</td>
             `;
+        }
+
+        if (editMode) {
+            const statusCell = row.querySelector('.status-toggle');
+            statusCell.addEventListener('click', () => handleToggle(tableType, item));
         }
 
         tbody.appendChild(row);
     });
 
     table.appendChild(tbody);
-    tableContainer.appendChild(table);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    tableContainer.appendChild(wrapper);
+
+    // Detect horizontal overflow and show/hide scroll hint
+    function checkScroll() {
+        const hasScroll = wrapper.scrollWidth > wrapper.clientWidth + 1;
+        wrapper.classList.toggle('has-scroll', hasScroll);
+        const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1;
+        wrapper.classList.toggle('scrolled-end', atEnd);
+    }
+    wrapper.addEventListener('scroll', checkScroll);
+    checkScroll();
 }

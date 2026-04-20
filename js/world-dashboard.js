@@ -1,3 +1,6 @@
+let worldData;
+let editMode = false;
+
 const sortState = {
     northAmerica: { col: 'population', dir: 'desc' },
     southAmerica: { col: 'population', dir: 'desc' },
@@ -7,8 +10,17 @@ const sortState = {
     oceania:      { col: 'population', dir: 'desc' }
 };
 
+const continentMap = {
+    northAmerica: 'northAmericanCountries',
+    southAmerica: 'southAmericanCountries',
+    europe:       'europeanCountries',
+    asia:         'asianCountries',
+    africa:       'africanCountries',
+    oceania:      'oceaniaCountries'
+};
+
 document.addEventListener('DOMContentLoaded', function () {
-    loadCountriesWithPopulation('data/countries.json', function (updatedData) {
+    loadCountriesWithPopulation(null, function (updatedData) {
         worldData = updatedData;
         displayWorldTravelSummary();
         renderPopulationSourceBadge();
@@ -19,16 +31,100 @@ document.addEventListener('DOMContentLoaded', function () {
             displayWorldTravelSummary();
             renderPopulationSourceBadge();
             updateTable('northAmerica');
+            setupEditMode();
+            setupCsvExport();
         })
         .catch(error => console.error('Error loading the JSON file:', error));
 });
 
+function setupEditMode() {
+    const btn = document.getElementById('edit-mode-btn');
+    btn.addEventListener('click', () => {
+        if (!editMode) {
+            const stored = sessionStorage.getItem('travelPassword');
+            if (stored) {
+                editMode = true;
+                btn.classList.add('active');
+                btn.textContent = 'Exit Edit Mode';
+                updateTable(document.getElementById('table-selector').value);
+            } else {
+                const pw = prompt('Enter travel password:');
+                if (pw) {
+                    sessionStorage.setItem('travelPassword', pw);
+                    editMode = true;
+                    btn.classList.add('active');
+                    btn.textContent = 'Exit Edit Mode';
+                    updateTable(document.getElementById('table-selector').value);
+                }
+            }
+        } else {
+            editMode = false;
+            btn.classList.remove('active');
+            btn.textContent = 'Edit Mode';
+            updateTable(document.getElementById('table-selector').value);
+        }
+    });
+}
+
+function setupCsvExport() {
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+        const continentType = document.getElementById('table-selector').value;
+        const { col, dir } = sortState[continentType];
+        const rawData = worldData[continentMap[continentType]];
+        const sorted = sortTableData(rawData, col, dir);
+
+        const headers = ['Country', 'Population', 'Status'];
+        const rows = sorted.map(c => [
+            c.name, c.population, c.visited ? 'Visited' : 'Not Visited'
+        ]);
+
+        const filename = continentType.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '') + '-countries.csv';
+        downloadCsv(headers, rows, filename);
+    });
+}
+
+function downloadCsv(headers, rows, filename) {
+    const escape = val => {
+        const str = String(val);
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+            ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const csv = [headers.map(escape).join(',')]
+        .concat(rows.map(row => row.map(escape).join(',')))
+        .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+async function handleToggle(continentType, country) {
+    const password = sessionStorage.getItem('travelPassword');
+    if (!password) return;
+
+    try {
+        await TravelAPI.toggleVisited('countries', country.name, password, continentType);
+        country.visited = !country.visited;
+        displayWorldTravelSummary();
+        updateTable(continentType);
+    } catch (err) {
+        alert('Toggle failed: ' + err.message);
+        if (err.message.includes('Invalid password')) {
+            sessionStorage.removeItem('travelPassword');
+            editMode = false;
+            document.getElementById('edit-mode-btn').classList.remove('active');
+            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
+            updateTable(continentType);
+        }
+    }
+}
+
 function displayWorldTravelSummary() {
     const summaryContainer = document.getElementById('travel-summary');
-    const tableContainer = document.getElementById('travel-table-container');
     const tableSelector = document.getElementById('table-selector');
 
-    // Calculate summary statistics for each continent
     const northAmericaCount = worldData.northAmericanCountries.filter(country => country.visited).length;
     const northAmericaPercentage = ((northAmericaCount / worldData.northAmericanCountries.length) * 100).toFixed(0);
 
@@ -47,7 +143,6 @@ function displayWorldTravelSummary() {
     const oceaniaCount = worldData.oceaniaCountries.filter(country => country.visited).length;
     const oceaniaPercentage = ((oceaniaCount / worldData.oceaniaCountries.length) * 100).toFixed(0);
 
-    // Calculate total countries visited
     const totalCountries = worldData.northAmericanCountries.length +
         worldData.southAmericanCountries.length +
         worldData.europeanCountries.length +
@@ -60,7 +155,6 @@ function displayWorldTravelSummary() {
 
     const totalPercentage = ((totalVisited / totalCountries) * 100).toFixed(0);
 
-    // Display summary statistics
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
             <div class="summary-stat world-summary">
@@ -124,10 +218,12 @@ function displayWorldTravelSummary() {
         </div>
     `;
 
-    // Set up event listener for table selector
-    tableSelector.addEventListener('change', function () {
-        updateTable(this.value);
-    });
+    if (!tableSelector.dataset.bound) {
+        tableSelector.dataset.bound = 'true';
+        tableSelector.addEventListener('change', function () {
+            updateTable(this.value);
+        });
+    }
 }
 
 function sortTableData(data, col, dir) {
@@ -135,7 +231,6 @@ function sortTableData(data, col, dir) {
         let aVal = a[col];
         let bVal = b[col];
 
-        // Boolean: true (visited) = 1, false = 0
         if (typeof aVal === 'boolean') {
             aVal = aVal ? 1 : 0;
             bVal = bVal ? 1 : 0;
@@ -149,7 +244,6 @@ function sortTableData(data, col, dir) {
             primary = dir === 'asc' ? aVal - bVal : bVal - aVal;
         }
 
-        // Secondary sort: population descending within tied groups
         if (primary === 0 && col !== 'population') {
             return b.population - a.population;
         }
@@ -168,16 +262,7 @@ function updateTable(continentType) {
     const tableHeaders = ['Country', 'Population', 'Status'];
     const sortKeys     = ['name', 'population', 'visited'];
 
-    const continentMap = {
-        northAmerica: worldData.northAmericanCountries,
-        southAmerica: worldData.southAmericanCountries,
-        europe:       worldData.europeanCountries,
-        asia:         worldData.asianCountries,
-        africa:       worldData.africanCountries,
-        oceania:      worldData.oceaniaCountries
-    };
-
-    const rawData = continentMap[continentType];
+    const rawData = worldData[continentMap[continentType]];
     const { col, dir } = sortState[continentType];
     const tableData = sortTableData(rawData, col, dir);
 
@@ -222,14 +307,37 @@ function updateTable(continentType) {
     tableData.forEach(country => {
         const row = document.createElement('tr');
         row.className = country.visited ? 'visited' : 'not-visited';
+
+        const statusIcon = country.visited ? '✅' : '⬜';
+        const statusClass = editMode ? 'status-toggle' : '';
+
         row.innerHTML = `
             <td>${country.name}</td>
             <td>${country.population.toLocaleString()}</td>
-            <td>${country.visited ? '✅' : '⬜'}</td>
+            <td class="${statusClass}">${statusIcon}</td>
         `;
+
+        if (editMode) {
+            const statusCell = row.querySelector('.status-toggle');
+            statusCell.addEventListener('click', () => handleToggle(continentType, country));
+        }
+
         tbody.appendChild(row);
     });
 
     table.appendChild(tbody);
-    tableContainer.appendChild(table);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    tableContainer.appendChild(wrapper);
+
+    function checkScroll() {
+        const hasScroll = wrapper.scrollWidth > wrapper.clientWidth + 1;
+        wrapper.classList.toggle('has-scroll', hasScroll);
+        const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1;
+        wrapper.classList.toggle('scrolled-end', atEnd);
+    }
+    wrapper.addEventListener('scroll', checkScroll);
+    checkScroll();
 }

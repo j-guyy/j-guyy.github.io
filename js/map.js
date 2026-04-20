@@ -2,10 +2,10 @@ let metros, highPoints, nationalParks, visitedStates;
 
 document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
-        fetch('/data/metros.json').then(response => response.json()),
-        fetch('/data/highPoints.json').then(response => response.json()),
-        fetch('/data/nationalParks.json').then(response => response.json()),
-        fetch('/data/visitedStates.json').then(response => response.json())
+        TravelAPI.fetchMetros(),
+        TravelAPI.fetchHighPoints(),
+        TravelAPI.fetchNationalParks(),
+        TravelAPI.fetchVisitedStates()
     ])
         .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
             metros = metrosData;

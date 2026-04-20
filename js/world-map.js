@@ -2,15 +2,15 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     Promise.all([
-        loadCountriesWithPopulation('data/countries.json', function (updatedData) {
+        loadCountriesWithPopulation(null, function (updatedData) {
             displayWorldTravelSummary(updatedData);
         }),
         fetch('data/worldCities.json').then(response => response.json()),
-        fetch('data/metros.json').then(response => response.json()),
+        TravelAPI.fetchMetros(),
         fetch('data/worldMountains.json').then(response => response.json()),
         fetch('data/familyTravels.json').then(response => response.json()),
-        fetch('data/highPoints.json').then(response => response.json()),
-        fetch('data/nationalParks.json').then(response => response.json()),
+        TravelAPI.fetchHighPoints(),
+        TravelAPI.fetchNationalParks(),
         fetch('data/skiResorts.json').then(response => response.json()),
         fetch('data/sevenWonders.json').then(response => response.json()),
         fetch('data/british-isles-high-five.json').then(response => response.json()),
