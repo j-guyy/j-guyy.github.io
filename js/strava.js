@@ -644,6 +644,7 @@ async function initCountyMap() {
 
     renderCountyMap(geojson);
     renderCountyStats();
+    renderRecentCounties(geojson);
 
     countyMapInitialized = true;
     setCountyStatus('');
@@ -787,6 +788,75 @@ function renderCountyStats() {
             <span class="county-stat-number">${pct}%</span>
             <span class="county-stat-label">Complete</span>
         </div>`;
+}
+
+function renderRecentCounties(geojson) {
+    const el = document.getElementById('county-recent-table');
+    if (!el) return;
+
+    // Build a FIPS → county-info lookup from the GeoJSON
+    const fipsInfo = {};
+    for (const f of geojson.features) {
+        const { GEOID, STATEFP, NAME, LSAD } = f.properties;
+        fipsInfo[GEOID] = { name: NAME, state: STATE_ABBR[STATEFP] || STATEFP, lsad: LSAD_NAMES[LSAD] || 'County' };
+    }
+
+    // Build a spatial index for fast point-in-county lookups (same as preprocessCounties)
+    const counties = preprocessCounties(geojson);
+    const index = buildSpatialIndex(counties);
+
+    // Walk activities newest-first, find unique counties
+    const sorted = [...currentSlim].filter(a => a.l && a.d).sort((a, b) => b.d.localeCompare(a.d));
+    const seen = new Set();
+    const rows = [];
+
+    for (const a of sorted) {
+        if (rows.length >= 20) break;
+        const [lat, lng] = a.l;
+        const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+        if (!candidates) continue;
+        for (const county of candidates) {
+            if (seen.has(county.fips)) continue;
+            const b = county.bbox;
+            if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+            if (pointInFeature(lat, lng, county.feature)) {
+                seen.add(county.fips);
+                const info = fipsInfo[county.fips];
+                if (info) rows.push({ fips: county.fips, info, activity: a });
+                break;
+            }
+        }
+    }
+
+    if (!rows.length) return;
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    table.innerHTML = `
+        <thead><tr>
+            <th>County</th>
+            <th>State</th>
+            <th>Activity</th>
+            <th>Date</th>
+        </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    for (const { info, activity } of rows) {
+        const href = activity.i ? `https://www.strava.com/activities/${activity.i}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${info.name} ${info.lsad}</td>
+            <td>${info.state}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${activity.n || 'Untitled'}</a>`
+                : (activity.n || 'Untitled')}</td>
+            <td>${activity.d ? formatActivityDate(activity.d) : '—'}</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Visited</h3>';
+    el.appendChild(table);
 }
 
 async function saveCountiesToWorker() {
@@ -1167,7 +1237,7 @@ async function initCityMap() {
     cityMap = L.map('city-map', {
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
-    }).setView(cfg.center, cfg.zoom);
+    }).fitBounds([[cfg.bbox[0], cfg.bbox[1]], [cfg.bbox[2], cfg.bbox[3]]]);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -1723,7 +1793,15 @@ async function initTileMap() {
     tileMap = L.map('tile-map', {
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
-    }).setView([38, -96], 6);
+    });
+
+    // Center on the largest square; if tied, pick the one with the most recent activity
+    const squareCenter = findMaxSquareCenter();
+    if (squareCenter) {
+        tileMap.setView(squareCenter, 12);
+    } else {
+        tileMap.setView([38, -96], 6);
+    }
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -1993,6 +2071,52 @@ function computeTileStats() {
     }
 
     dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare}`);
+}
+
+// Find the center of the largest square. If multiple squares share the max size,
+// pick the one containing the most recent activity start point.
+function findMaxSquareCenter() {
+    if (!tileSquareMap || tileMaxSquare < 1) return null;
+
+    // Collect all bottom-right corners of max-size squares
+    const brCorners = [];
+    for (const [key, dp] of tileSquareMap) {
+        if (dp === tileMaxSquare) brCorners.push(key);
+    }
+    if (!brCorners.length) return null;
+
+    let bestCorner = brCorners[0];
+
+    if (brCorners.length > 1) {
+        // For each max square, find the most recent activity whose start tile is inside it
+        let bestDate = '';
+        for (const corner of brCorners) {
+            const [bx, by] = corner.split(',').map(Number);
+            const squareTiles = new Set();
+            for (let dx = 0; dx < tileMaxSquare; dx++) {
+                for (let dy = 0; dy < tileMaxSquare; dy++) {
+                    squareTiles.add(`${bx - dx},${by - dy}`);
+                }
+            }
+            // Find most recent activity starting inside this square
+            for (const a of currentSlim) {
+                if (!a.l || !a.d) continue;
+                const [tx, ty] = latLngToTileXY(a.l[0], a.l[1]);
+                if (squareTiles.has(`${tx},${ty}`) && a.d > bestDate) {
+                    bestDate = a.d;
+                    bestCorner = corner;
+                }
+            }
+        }
+    }
+
+    // Compute center of the chosen square
+    const [bx, by] = bestCorner.split(',').map(Number);
+    const topLeftX = bx - tileMaxSquare + 1;
+    const topLeftY = by - tileMaxSquare + 1;
+    const [nwLat, nwLng] = tileXYToLatLng(topLeftX, topLeftY);
+    const [seLat, seLng] = tileXYToLatLng(bx + 1, by + 1);
+    return [(nwLat + seLat) / 2, (nwLng + seLng) / 2];
 }
 
 // On-demand: find the largest square tile (tx,ty) is actually part of.
