@@ -2745,13 +2745,15 @@ function setTrailStatus(msg) {
 // proximity (≤300 m) against OSM natural=peak nodes fetched from Overpass.
 // Elevation gain stats come directly from the `e` field in slim activity data.
 
-const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'AlpineSki', 'NordicSki']);
+// AlpineSki excluded — chairlift-assisted activities don't count as mountain sports
+const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 // Narrower set used only for deciding which geographic cells to query for peaks.
-// Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski are the mountain-specific types.
-const MOUNTAIN_CELL_TYPES = new Set(['Hike', 'TrailRun', 'BackcountrySki', 'AlpineSki', 'NordicSki']);
-const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe']);
+// Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
+const MOUNTAIN_CELL_TYPES = new Set(['Hike', 'TrailRun', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
+const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'Mountaineering', 'RockClimbing']);
 const SUMMIT_RADIUS_M = 300;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
 let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
 let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
@@ -2825,9 +2827,17 @@ async function savePeakCache() {
 async function fetchPeaksForCell(cellKey, south, west, north, east) {
     // Check server-backed cache first
     const cached = peakCellCache[cellKey];
-    if (cached && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-        dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
-        return cached.peaks;
+    if (cached) {
+        // Valid cache hit
+        if (Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
+            return cached.peaks;
+        }
+        // Recently failed — skip for now so we don't re-hammer Overpass
+        if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
+            dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
+            return [];
+        }
     }
 
     const query = `[out:json][timeout:25];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
@@ -2838,7 +2848,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
         const url = `${mirror}?data=${encodeURIComponent(query)}`;
 
         if (attempt > 0) {
-            const wait = attempt * 4000;
+            const wait = (attempt + 1) * 5000;  // 10s, 15s — give Overpass time to cool down
             dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} (${mirror.split('/')[2]}) — waiting ${wait / 1000}s`);
             await new Promise(r => setTimeout(r, wait));
         }
@@ -2874,7 +2884,9 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
         return peaks;
     }
 
-    dbg(`Mountain peaks cell ${cellKey}: all retries failed — skipping`);
+    // Cache the failure so we don't retry this cell for an hour
+    dbg(`Mountain peaks cell ${cellKey}: all retries failed — skipping for 1h`);
+    peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
     return [];
 }
 
@@ -2927,8 +2939,9 @@ async function fetchMountainPeaks(footActs) {
         setMountainProgress(pct, `Fetching peaks… region ${cellIdx} of ${cells.size}`);
 
         // Only throttle between actual Overpass requests, not cached hits
-        const isCached = peakCellCache[cellKey] && Date.now() - peakCellCache[cellKey].ts < MOUNTAIN_PEAK_CACHE_TTL;
-        if (!isCached && fetched) await new Promise(r => setTimeout(r, 1000));
+        const c = peakCellCache[cellKey];
+        const isCached = c && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
+        if (!isCached && fetched) await new Promise(r => setTimeout(r, 2000));
 
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         if (!isCached) fetched = true;
@@ -3027,6 +3040,8 @@ function renderMountainQuickStats() {
                 ? `<br><span class="mh-sublabel">${topGain.n || 'Untitled'}</span>`
                 : ''}</span>
         </div>`;
+
+    renderElevationLeaderboard();
 }
 
 function renderMountainStats() {
@@ -3102,6 +3117,48 @@ function renderMountainTable() {
     table.appendChild(tbody);
     tableEl.innerHTML = '';
     tableEl.appendChild(table);
+}
+
+function renderElevationLeaderboard() {
+    const el = document.getElementById('mountain-elev-table');
+    if (!el) return;
+
+    const rows = currentSlim
+        .filter(a => ELEVATION_ACTIVITY_TYPES.has(a.t) && (a.e || 0) > 0)
+        .sort((a, b) => b.e - a.e)
+        .slice(0, 20);
+
+    if (!rows.length) return;
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    table.innerHTML = `
+        <thead><tr>
+            <th>#</th>
+            <th>Activity</th>
+            <th>Type</th>
+            <th>Elev. Gain</th>
+            <th>Date</th>
+        </tr></thead>`;
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((a, i) => {
+        const href = a.i ? `https://www.strava.com/activities/${a.i}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${a.n || 'Untitled'}</a>`
+                : (a.n || 'Untitled')}</td>
+            <td>${typeLabel(a.t)}</td>
+            <td>${mToFt(a.e).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(a.e).toLocaleString()}m)</span></td>
+            <td>${a.d ? formatActivityDate(a.d) : '—'}</td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    el.innerHTML = '<h3 style="margin:24px 0 8px">Biggest Climbs</h3>';
+    el.appendChild(table);
 }
 
 function renderMountainMap() {
