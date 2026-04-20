@@ -2750,7 +2750,7 @@ const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Sno
 // Narrower set used only for deciding which geographic cells to query for peaks.
 // Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
 const MOUNTAIN_CELL_TYPES = new Set(['Hike', 'TrailRun', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
-const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'Mountaineering', 'RockClimbing']);
+const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const SUMMIT_RADIUS_M = 300;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
@@ -2873,7 +2873,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
             .filter(e => { const v = parseFloat(e.tags?.ele); return !isNaN(v) && v > 0; })
             .map(e => ({
                 id: e.id,
-                name: e.tags?.name || e.tags?.['name:en'] || 'Unnamed Peak',
+                name: e.tags?.name || e.tags?.['name:en'] || '',
                 lat: e.lat,
                 lng: e.lon,
                 ele: parseFloat(e.tags.ele),
@@ -2931,7 +2931,7 @@ async function fetchMountainPeaks(footActs) {
     const allPeaks = [];
     const seenIds = new Set();
     let cellIdx = 0;
-    let fetched = false;  // track whether we fetched anything new from Overpass
+    let fetchedCount = 0;  // how many new cells we've fetched from Overpass
 
     for (const [cellKey, { south, west, north, east }] of cells) {
         cellIdx++;
@@ -2941,18 +2941,25 @@ async function fetchMountainPeaks(footActs) {
         // Only throttle between actual Overpass requests, not cached hits
         const c = peakCellCache[cellKey];
         const isCached = c && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
-        if (!isCached && fetched) await new Promise(r => setTimeout(r, 2000));
+        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
 
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
-        if (!isCached) fetched = true;
+        if (!isCached) {
+            fetchedCount++;
+            // Checkpoint save every 5 new fetches so progress isn't lost if the page closes
+            if (fetchedCount % 5 === 0) {
+                dbg(`Peak cache checkpoint: ${fetchedCount} new cells fetched — saving…`);
+                await savePeakCache();
+            }
+        }
 
         for (const p of peaks) {
             if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
         }
     }
 
-    // Save back to server if we fetched any new cells
-    if (fetched) await savePeakCache();
+    // Final save if we fetched anything new
+    if (fetchedCount > 0) await savePeakCache();
 
     setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
     dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
@@ -3062,7 +3069,7 @@ function renderMountainStats() {
     if (tallestEl && tallestPeak) {
         tallestEl.querySelector('.county-stat-number').textContent = mToFt(tallestPeak.ele).toLocaleString() + ' ft';
         tallestEl.querySelector('.county-stat-label').innerHTML =
-            `Tallest Peak<br><span class="mh-sublabel">${tallestPeak.name}</span>`;
+            `Tallest Peak<br><span class="mh-sublabel">${tallestPeak.name || 'Unnamed Peak'}</span>`;
     } else if (tallestEl) {
         tallestEl.querySelector('.county-stat-number').textContent = '—';
     }
@@ -3071,7 +3078,7 @@ function renderMountainStats() {
     if (mostEl && mostClimbedPeak) {
         mostEl.querySelector('.county-stat-number').textContent = mostClimbedCount + '×';
         mostEl.querySelector('.county-stat-label').innerHTML =
-            `Most Climbed<br><span class="mh-sublabel">${mostClimbedPeak.name}</span>`;
+            `Most Climbed<br><span class="mh-sublabel">${mostClimbedPeak.name || 'Unnamed Peak'}</span>`;
     } else if (mostEl) {
         mostEl.querySelector('.county-stat-number').textContent = '—';
     }
@@ -3104,7 +3111,7 @@ function renderMountainTable() {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${peak.name}</td>
+            <td>${peak.name || 'Unnamed Peak'}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center">${pvs.length}</td>
             <td>${href
@@ -3206,7 +3213,7 @@ function renderMountainMap() {
                 <div class="activity-popup-type" style="color:${visited ? '#4CAF50' : 'rgba(255,255,255,0.4)'}">
                     ▲ ${mToFt(peak.ele).toLocaleString()} ft (${Math.round(peak.ele).toLocaleString()}m)
                 </div>
-                <div class="activity-popup-name">${peak.name}</div>
+                <div class="activity-popup-name">${peak.name || 'Unnamed Peak'}</div>
                 <div class="activity-popup-date">
                     ${visited
                         ? `Summited ${pvs.length}× · Last: ${last.date ? formatActivityDate(last.date) : '?'}
