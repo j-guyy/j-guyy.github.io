@@ -114,10 +114,13 @@ async function geocodeKey(lat, lng) {
                 dbg(`Nominatim retry ${attempt} for ${lat},${lng}`);
                 await new Promise(r => setTimeout(r, 2000 * attempt));
             }
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 8000);
             const res = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
-                { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' } }
+                { headers: { 'User-Agent': 'j-guyy.github.io/strava-stats' }, signal: ctrl.signal }
             );
+            clearTimeout(timer);
             if (!res.ok) {
                 dbg(`Nominatim HTTP ${res.status} for ${lat},${lng}`);
                 continue;
@@ -197,10 +200,17 @@ async function resetCountyData() {
     }
 }
 
+let geocodeRunning = false;  // concurrency guard for Nominatim requests
+
 async function geocodeAll(keys, cache) {
     // Single Nominatim pass — handles both country and subdivision in one call.
     // Sequential at 1.1s/cell to respect Nominatim's rate limit.
     // Server-cached after first run so this only ever runs once.
+    if (geocodeRunning) {
+        dbg('Nominatim geocoding: already running — skipping duplicate');
+        return { cache, modified: false };
+    }
+
     const needGeo = keys.filter(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') return true;
@@ -210,27 +220,32 @@ async function geocodeAll(keys, cache) {
 
     if (needGeo.length === 0) return { cache, modified: false };
 
+    geocodeRunning = true;
     const estMins = Math.ceil(needGeo.length * 1.1 / 60);
     dbg(`Nominatim geocoding: ${needGeo.length} cells (~${estMins} min, one-time only)`);
 
     let succeeded = 0;
-    for (let i = 0; i < needGeo.length; i++) {
-        const key = needGeo[i];
-        const [lat, lng] = key.split(',').map(Number);
-        setStatus(`Geocoding… ${i + 1} / ${needGeo.length}`);
+    try {
+        for (let i = 0; i < needGeo.length; i++) {
+            const key = needGeo[i];
+            const [lat, lng] = key.split(',').map(Number);
+            setStatus(`Geocoding… ${i + 1} / ${needGeo.length}`);
 
-        const result = await geocodeKey(lat, lng);
-        if (result.c !== 'Unknown') { cache[key] = result; succeeded++; }
+            const result = await geocodeKey(lat, lng);
+            if (result.c !== 'Unknown') { cache[key] = result; succeeded++; }
 
-        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+            try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
 
-        // Checkpoint save to server every 25 calls
-        if ((i + 1) % 25 === 0) {
-            dbg(`Checkpoint ${i + 1} / ${needGeo.length} — ${succeeded} geocoded so far`);
-            await saveGeoToWorker(cache);
+            // Checkpoint save to server every 25 calls
+            if ((i + 1) % 25 === 0) {
+                dbg(`Checkpoint ${i + 1} / ${needGeo.length} — ${succeeded} geocoded so far`);
+                await saveGeoToWorker(cache);
+            }
+
+            if (i < needGeo.length - 1) await new Promise(r => setTimeout(r, 1100));
         }
-
-        if (i < needGeo.length - 1) await new Promise(r => setTimeout(r, 1100));
+    } finally {
+        geocodeRunning = false;
     }
 
     dbg(`Geocoding complete: ${succeeded} / ${needGeo.length} cells resolved`);
@@ -2743,6 +2758,7 @@ let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainHunterReady = false;
+let mountainHunterRunning = false;  // concurrency guard — only one run at a time
 
 function mToFt(m) { return Math.round(m * 3.28084); }
 
@@ -2769,24 +2785,61 @@ function toggleMountainMap() {
     }
 }
 
-// Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with backoff
-async function fetchPeaksForCell(cellKey, south, west, north, east) {
-    const cacheKey = `mountain_peaks_cell_${cellKey}`;
+// ── Peak cache (server-backed) ───────────────────────────────────────────────
+// Peaks are cached per 5° cell in CloudFlare KV via the worker.
+// On load we fetch the full cache; only cells that are missing or expired
+// trigger an Overpass request.  Results are saved back to KV so subsequent
+// page loads are instant.
+
+let peakCellCache = {};  // cellKey → { peaks: [...], ts }
+
+async function loadPeakCache() {
     try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-        if (cached && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
-            return cached.peaks;
+        const res = await fetch(`${WORKER_URL}/peaks/all`);
+        if (res.ok) {
+            const data = await res.json();
+            peakCellCache = data.cells || {};
+            dbg(`Peak cache: ${Object.keys(peakCellCache).length} cells from server`);
+            return;
         }
     } catch {}
+    dbg('Peak cache: server unavailable — starting empty');
+    peakCellCache = {};
+}
+
+async function savePeakCache() {
+    try {
+        const res = await fetch(`${WORKER_URL}/peaks/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cells: peakCellCache }),
+        });
+        const data = await res.json();
+        dbg(`Peak cache saved to server (${data.cells} cells)`);
+    } catch (err) {
+        dbg(`Warning: failed to save peak cache — ${err.message}`);
+    }
+}
+
+// Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with mirror fallback
+async function fetchPeaksForCell(cellKey, south, west, north, east) {
+    // Check server-backed cache first
+    const cached = peakCellCache[cellKey];
+    if (cached && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+        dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
+        return cached.peaks;
+    }
 
     const query = `[out:json][timeout:25];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
+        // Rotate through mirrors on retries
+        const mirror = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length];
+        const url = `${mirror}?data=${encodeURIComponent(query)}`;
+
         if (attempt > 0) {
             const wait = attempt * 4000;
-            dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} — waiting ${wait / 1000}s`);
+            dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} (${mirror.split('/')[2]}) — waiting ${wait / 1000}s`);
             await new Promise(r => setTimeout(r, wait));
         }
 
@@ -2817,7 +2870,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
             }));
 
         dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} from Overpass`);
-        try { localStorage.setItem(cacheKey, JSON.stringify({ peaks, ts: Date.now() })); } catch {}
+        peakCellCache[cellKey] = { peaks, ts: Date.now() };
         return peaks;
     }
 
@@ -2851,25 +2904,44 @@ async function fetchMountainPeaks(footActs) {
         }
     }
 
-    dbg(`Mountain peaks: querying ${cells.size} Overpass cell(s) for ${footActs.length} foot activities`);
+    // Load server cache before checking which cells need fetching
+    await loadPeakCache();
+
+    // Count how many cells already have valid cache
+    let cachedCount = 0;
+    for (const key of cells.keys()) {
+        const c = peakCellCache[key];
+        if (c && Date.now() - c.ts < MOUNTAIN_PEAK_CACHE_TTL) cachedCount++;
+    }
+    const needCount = cells.size - cachedCount;
+    dbg(`Mountain peaks: ${cells.size} cells (${cachedCount} cached, ${needCount} need Overpass) for ${footActs.length} foot activities`);
 
     const allPeaks = [];
     const seenIds = new Set();
     let cellIdx = 0;
+    let fetched = false;  // track whether we fetched anything new from Overpass
 
     for (const [cellKey, { south, west, north, east }] of cells) {
         cellIdx++;
         const pct = (cellIdx - 1) / cells.size * 50;   // first 50% = fetching cells
         setMountainProgress(pct, `Fetching peaks… region ${cellIdx} of ${cells.size}`);
-        // 1 s gap between requests so Overpass doesn't rate-limit us
-        if (cellIdx > 1) await new Promise(r => setTimeout(r, 1000));
+
+        // Only throttle between actual Overpass requests, not cached hits
+        const isCached = peakCellCache[cellKey] && Date.now() - peakCellCache[cellKey].ts < MOUNTAIN_PEAK_CACHE_TTL;
+        if (!isCached && fetched) await new Promise(r => setTimeout(r, 1000));
+
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
+        if (!isCached) fetched = true;
+
         for (const p of peaks) {
             if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
         }
     }
-    setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
 
+    // Save back to server if we fetched any new cells
+    if (fetched) await savePeakCache();
+
+    setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
     dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
     return allPeaks;
 }
@@ -3114,19 +3186,22 @@ function setMountainProgress(pct, label) {
 
 async function resetMountainData() {
     if (!confirm('Clear cached mountain peak data? Peaks will be re-fetched from OpenStreetMap.')) return;
+    // Clear server cache
+    try { await fetch(`${WORKER_URL}/peaks/reset`, { method: 'POST' }); } catch {}
+    // Clear any legacy localStorage keys
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        // Clear both new cell-based keys and any old single-bbox keys
         if (k?.startsWith('mountain_peaks_')) keys.push(k);
     }
     keys.forEach(k => localStorage.removeItem(k));
+    peakCellCache = {};
     mountainPeaks = [];
     mountainVisits = new Map();
     mountainHunterReady = false;
     mountainMapInitialized = false;
     if (mountainMapInstance) { mountainMapInstance.remove(); mountainMapInstance = null; }
-    dbg('Mountain cache cleared — re-initialising…');
+    dbg('Mountain cache cleared (server + local) — re-initialising…');
     initMountainHunter().catch(err => dbg(`Mountain reset error: ${err.message}`));
 }
 
@@ -3141,8 +3216,17 @@ async function initMountainHunter() {
         return;
     }
 
+    // Concurrency guard — if already running (e.g. from a prior geocodeAndRender),
+    // skip this call. The in-progress run will finish and set mountainHunterReady.
+    if (mountainHunterRunning) {
+        dbg('Mountain Hunter: already running — skipping duplicate');
+        return;
+    }
+    mountainHunterRunning = true;
+
     const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
     if (!footActs.length) {
+        mountainHunterRunning = false;
         setMountainStatus('No hiking or running activities found.');
         return;
     }
@@ -3168,6 +3252,8 @@ async function initMountainHunter() {
         setMountainProgress(null);
         setMountainStatus(`Error: ${err.message}`);
         dbg(`Mountain Hunter error: ${err.message}`);
+    } finally {
+        mountainHunterRunning = false;
     }
 }
 
@@ -3323,7 +3409,14 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     return updatedCache;
 }
 
+let pipelineRunning = false;  // prevent concurrent pipeline runs
+
 async function runPipeline(forceSync = false) {
+    if (pipelineRunning) {
+        dbg(`Pipeline skipped — already running (requested ${forceSync ? 'force-sync' : 'load'})`);
+        return;
+    }
+    pipelineRunning = true;
     try {
         dbg(`Pipeline start — mode: ${forceSync ? 'force-sync' : 'load'}`);
 
@@ -3367,6 +3460,8 @@ async function runPipeline(forceSync = false) {
         dbg(`ERROR: ${err.message}`);
         setStatus('Error: ' + err.message);
         console.error(err);
+    } finally {
+        pipelineRunning = false;
     }
 }
 
