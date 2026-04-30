@@ -189,11 +189,12 @@ async function resetCountyData() {
         await fetch(`${WORKER_URL}/counties/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fips: [], processedIds: [] }),
+            body: JSON.stringify({ fips: [], processedIds: [], discoveries: {} }),
         });
         countyMapInitialized = false;
         visitedFips.clear();
         countyProcessedIds.clear();
+        countyDiscoveries = {};
         dbg('County data reset. Reopen the County Hunter map to re-detect.');
     } catch (err) {
         dbg(`County reset failed: ${err.message}`);
@@ -570,6 +571,7 @@ const STATE_ABBR = {
 let countyMap = null;
 let countyMapInitialized = false;
 let visitedFips = new Set();
+let countyDiscoveries = {};  // fips → { actId, actName, date }
 let countyProcessedIds = new Set();
 
 function toggleCountyMap() {
@@ -605,20 +607,36 @@ async function initCountyMap() {
     }
 
     // Filter out nulls — NaN serialises to null in JSON, guard against corrupt saves
-    visitedFips       = new Set((saved.fips         || []).filter(Boolean));
+    visitedFips        = new Set((saved.fips         || []).filter(Boolean));
     countyProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+    countyDiscoveries  = saved.discoveries || {};
     dbg(`County cache: ${visitedFips.size} counties, ${countyProcessedIds.size} processed activities`);
+
+    const counties = preprocessCounties(geojson);
+    const index = buildSpatialIndex(counties);
+
+    // One-time backfill: if we have visited counties but no discovery data,
+    // re-scan all activities oldest-first to build the discovery mapping.
+    const needsBackfill = visitedFips.size > 0 && Object.keys(countyDiscoveries).length === 0;
+    if (needsBackfill) {
+        dbg('County discoveries: backfilling from all activities…');
+        const allWithPolylines = [...currentSlim].filter(a => a.i && a.p)
+            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));  // oldest first
+        const backfillResult = await detectCountiesBackfill(allWithPolylines, counties, index);
+        countyDiscoveries = backfillResult;
+        dbg(`County discoveries backfill: ${Object.keys(countyDiscoveries).length} counties mapped`);
+        await saveCountiesToWorker();
+    }
 
     // Only process activities with polylines not yet analysed
     const unprocessed = currentSlim.filter(a => a.i && a.p && !countyProcessedIds.has(a.i));
     dbg(`County detection: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
-        const counties = preprocessCounties(geojson);
-        const index = buildSpatialIndex(counties);
-        const newFips = await detectCountiesAsync(unprocessed, counties, index);
+        const { newFips, newDiscoveries } = await detectCountiesAsync(unprocessed, counties, index);
 
         newFips.forEach(f => visitedFips.add(f));
+        Object.assign(countyDiscoveries, newDiscoveries);
         unprocessed.forEach(a => countyProcessedIds.add(a.i));
 
         dbg(`County detection done: +${newFips.size} new (${visitedFips.size} total)`);
@@ -697,12 +715,14 @@ function buildSpatialIndex(counties) {
 // county-level detection since summary polylines are already simplified.
 async function detectCountiesAsync(activities, counties, index) {
     const newFips = new Set();
+    const newDiscoveries = {};  // fips → { actId, actName, date }
     for (let i = 0; i < activities.length; i++) {
         if (i % 50 === 0) {
             setCountyStatus(`Detecting counties… ${i} / ${activities.length}`);
             await new Promise(r => setTimeout(r, 0));
         }
-        const points = decodePolyline(activities[i].p);
+        const act = activities[i];
+        const points = decodePolyline(act.p);
         for (let j = 0; j < points.length; j += 3) {
             const [lat, lng] = points[j];
             const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
@@ -711,11 +731,45 @@ async function detectCountiesAsync(activities, counties, index) {
                 if (visitedFips.has(county.fips) || newFips.has(county.fips)) continue;
                 const b = county.bbox;
                 if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
-                if (pointInFeature(lat, lng, county.feature)) newFips.add(county.fips);
+                if (pointInFeature(lat, lng, county.feature)) {
+                    newFips.add(county.fips);
+                    newDiscoveries[county.fips] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
             }
         }
     }
-    return newFips;
+    return { newFips, newDiscoveries };
+}
+
+// One-time backfill: scan all activities oldest-first to find which activity
+// first passed through each already-visited county.
+async function detectCountiesBackfill(activities, counties, index) {
+    const discoveries = {};
+    const found = new Set();
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setCountyStatus(`Building discovery history… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = activities[i];
+        const points = decodePolyline(act.p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const county of candidates) {
+                if (found.has(county.fips)) continue;
+                if (!visitedFips.has(county.fips)) continue;  // only backfill known-visited counties
+                const b = county.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, county.feature)) {
+                    found.add(county.fips);
+                    discoveries[county.fips] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
+            }
+        }
+    }
+    return discoveries;
 }
 
 function pointInFeature(lat, lng, feature) {
@@ -792,7 +846,7 @@ function renderCountyStats() {
 
 function renderRecentCounties(geojson) {
     const el = document.getElementById('county-recent-table');
-    if (!el) return;
+    if (!el || !Object.keys(countyDiscoveries).length) return;
 
     // Build a FIPS → county-info lookup from the GeoJSON
     const fipsInfo = {};
@@ -801,32 +855,11 @@ function renderRecentCounties(geojson) {
         fipsInfo[GEOID] = { name: NAME, state: STATE_ABBR[STATEFP] || STATEFP, lsad: LSAD_NAMES[LSAD] || 'County' };
     }
 
-    // Build a spatial index for fast point-in-county lookups (same as preprocessCounties)
-    const counties = preprocessCounties(geojson);
-    const index = buildSpatialIndex(counties);
-
-    // Walk activities newest-first, find unique counties
-    const sorted = [...currentSlim].filter(a => a.l && a.d).sort((a, b) => b.d.localeCompare(a.d));
-    const seen = new Set();
-    const rows = [];
-
-    for (const a of sorted) {
-        if (rows.length >= 20) break;
-        const [lat, lng] = a.l;
-        const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
-        if (!candidates) continue;
-        for (const county of candidates) {
-            if (seen.has(county.fips)) continue;
-            const b = county.bbox;
-            if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
-            if (pointInFeature(lat, lng, county.feature)) {
-                seen.add(county.fips);
-                const info = fipsInfo[county.fips];
-                if (info) rows.push({ fips: county.fips, info, activity: a });
-                break;
-            }
-        }
-    }
+    // Sort discoveries by date descending, take top 20
+    const rows = Object.entries(countyDiscoveries)
+        .filter(([fips]) => fipsInfo[fips])
+        .sort(([, a], [, b]) => (b.date || '').localeCompare(a.date || ''))
+        .slice(0, 20);
 
     if (!rows.length) return;
 
@@ -836,26 +869,27 @@ function renderRecentCounties(geojson) {
         <thead><tr>
             <th>County</th>
             <th>State</th>
-            <th>Activity</th>
+            <th>Discovered By</th>
             <th>Date</th>
         </tr></thead>`;
 
     const tbody = document.createElement('tbody');
-    for (const { info, activity } of rows) {
-        const href = activity.i ? `https://www.strava.com/activities/${activity.i}` : null;
+    for (const [fips, disc] of rows) {
+        const info = fipsInfo[fips];
+        const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${info.name} ${info.lsad}</td>
             <td>${info.state}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${activity.n || 'Untitled'}</a>`
-                : (activity.n || 'Untitled')}</td>
-            <td>${activity.d ? formatActivityDate(activity.d) : '—'}</td>`;
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
+                : disc.actName}</td>
+            <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
     }
     table.appendChild(tbody);
 
-    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Visited</h3>';
+    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
     el.appendChild(table);
 }
 
@@ -867,6 +901,7 @@ async function saveCountiesToWorker() {
             body: JSON.stringify({
                 fips: [...visitedFips],
                 processedIds: [...countyProcessedIds],
+                discoveries: countyDiscoveries,
             }),
         });
         const data = await res.json();
@@ -2881,6 +2916,7 @@ const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
 let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
 let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
+let summitProcessedIds = new Set();  // activity IDs already scanned for summits
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainHunterReady = false;
@@ -2931,6 +2967,47 @@ async function loadPeakCache() {
     } catch {}
     dbg('Peak cache: server unavailable — starting empty');
     peakCellCache = {};
+}
+
+async function loadSummitCache() {
+    try {
+        const res = await fetch(`${WORKER_URL}/summits/all`);
+        if (res.ok) {
+            const data = await res.json();
+            // Rebuild mountainVisits Map from saved object
+            mountainVisits = new Map();
+            for (const [peakId, pvs] of Object.entries(data.visits || {})) {
+                mountainVisits.set(Number(peakId), pvs);
+            }
+            summitProcessedIds = new Set(data.processedIds || []);
+            dbg(`Summit cache: ${mountainVisits.size} peaks, ${summitProcessedIds.size} processed activities`);
+            return true;
+        }
+    } catch {}
+    dbg('Summit cache: server unavailable — starting empty');
+    return false;
+}
+
+async function saveSummitCache() {
+    try {
+        // Convert Map to plain object for JSON serialization
+        const visits = {};
+        for (const [peakId, pvs] of mountainVisits) {
+            visits[peakId] = pvs;
+        }
+        const res = await fetch(`${WORKER_URL}/summits/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                visits,
+                processedIds: [...summitProcessedIds],
+            }),
+        });
+        const data = await res.json();
+        dbg(`Summit cache saved (${data.peaks} peaks)`);
+    } catch (err) {
+        dbg(`Warning: failed to save summit cache — ${err.message}`);
+    }
 }
 
 async function savePeakCache() {
@@ -3091,8 +3168,17 @@ async function fetchMountainPeaks(footActs) {
 }
 
 async function detectMountainSummits(peaks) {
-    const acts = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
-    if (!acts.length || !peaks.length) return new Map();
+    // Only scan activities not already processed
+    const allActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
+    const acts = allActs.filter(a => !summitProcessedIds.has(a.i));
+
+    if (!acts.length && summitProcessedIds.size > 0) {
+        dbg(`Summit detection: all ${allActs.length} activities already processed`);
+        return mountainVisits;
+    }
+    if (!allActs.length || !peaks.length) return mountainVisits;
+
+    dbg(`Summit detection: ${acts.length} new activities to scan (${summitProcessedIds.size} already done)`);
 
     // 0.5° grid index for fast candidate lookup
     const index = {};
@@ -3100,8 +3186,6 @@ async function detectMountainSummits(peaks) {
         const key = `${Math.floor(peak.lat * 2)},${Math.floor(peak.lng * 2)}`;
         (index[key] = index[key] || []).push(peak);
     }
-
-    const visits = new Map();
 
     for (let i = 0; i < acts.length; i++) {
         if (i % 25 === 0) {
@@ -3126,8 +3210,8 @@ async function detectMountainSummits(peaks) {
                         if (Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008) continue;
                         if (haversineM(lat, lng, peak.lat, peak.lng) <= SUMMIT_RADIUS_M) {
                             hit.add(peak.id);
-                            if (!visits.has(peak.id)) visits.set(peak.id, []);
-                            visits.get(peak.id).push({
+                            if (!mountainVisits.has(peak.id)) mountainVisits.set(peak.id, []);
+                            mountainVisits.get(peak.id).push({
                                 actId:   act.i,
                                 actName: act.n || 'Untitled',
                                 actType: act.t,
@@ -3138,9 +3222,13 @@ async function detectMountainSummits(peaks) {
                 }
             }
         }
+        summitProcessedIds.add(act.i);
     }
 
-    return visits;
+    // Save updated summit data to server
+    await saveSummitCache();
+
+    return mountainVisits;
 }
 
 // Renders elevation gain stat immediately (no Overpass needed) plus placeholder peak stats
@@ -3374,8 +3462,9 @@ function setMountainProgress(pct, label) {
 
 async function resetMountainData() {
     if (!confirm('Clear cached mountain peak data? Peaks will be re-fetched from OpenStreetMap.')) return;
-    // Clear server cache
+    // Clear server caches
     try { await fetch(`${WORKER_URL}/peaks/reset`, { method: 'POST' }); } catch {}
+    try { await fetch(`${WORKER_URL}/summits/reset`, { method: 'POST' }); } catch {}
     // Clear any legacy localStorage keys
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -3386,6 +3475,7 @@ async function resetMountainData() {
     peakCellCache = {};
     mountainPeaks = [];
     mountainVisits = new Map();
+    summitProcessedIds = new Set();
     mountainHunterReady = false;
     mountainMapInitialized = false;
     if (mountainMapInstance) { mountainMapInstance.remove(); mountainMapInstance = null; }
@@ -3427,6 +3517,7 @@ async function initMountainHunter() {
             return;
         }
 
+        await loadSummitCache();
         setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
         mountainVisits = await detectMountainSummits(mountainPeaks);
 
