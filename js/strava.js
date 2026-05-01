@@ -273,12 +273,28 @@ function newBucket() {
     return b;
 }
 
+// All 50 US states + DC — pre-populated so states with 0 activities still appear
+const US_STATES = [
+    'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
+    'Connecticut', 'Delaware', 'District of Columbia', 'Florida', 'Georgia',
+    'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
+    'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+    'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+    'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota',
+    'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island',
+    'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
+    'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming',
+];
+
 // Returns { countries, subdivisions }
 // subdivisions: { [configId]: { [regionName]: bucket } }
 function buildData(slim, cache) {
     const countries = {};
     const subdivisions = {};
     SUBDIVISION_CONFIG.forEach(cfg => subdivisions[cfg.id] = {});
+
+    // Pre-populate all US states so they show even with 0 activities
+    US_STATES.forEach(s => subdivisions['us'][s] = newBucket());
 
     slim.forEach(a => {
         const geo = cache[gridKey(a.l)] || { c: 'Unknown', s: '' };
@@ -475,6 +491,18 @@ function buildSortableTable(data, state, nameCol, onSort) {
     return table;
 }
 
+// Attach scroll-shadow detection to a .table-scroll-wrapper element
+function initScrollHint(wrapper) {
+    function check() {
+        const hasScroll = wrapper.scrollWidth > wrapper.clientWidth + 1;
+        wrapper.classList.toggle('has-scroll', hasScroll);
+        const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1;
+        wrapper.classList.toggle('scrolled-end', atEnd);
+    }
+    wrapper.addEventListener('scroll', check);
+    check();
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function renderSummary(slim, countries, total) {
@@ -514,9 +542,13 @@ function renderSummary(slim, countries, total) {
 function renderTable(countries) {
     const container = document.getElementById('strava-table-container');
     container.innerHTML = '';
-    container.appendChild(
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(
         buildSortableTable(countries, sortState, 'Country', () => renderTable(countries))
     );
+    container.appendChild(wrapper);
+    initScrollHint(wrapper);
 }
 
 function renderSubdivisions(subdivisions) {
@@ -538,13 +570,19 @@ function renderSubdivisions(subdivisions) {
 
         const state = getSortState(cfg.id);
         const rerender = () => {
-            const tableEl = section.querySelector('table');
-            if (tableEl) tableEl.remove();
-            section.appendChild(
-                buildSortableTable(data, state, cfg.colLabel, rerender)
-            );
+            const scrollEl = section.querySelector('.table-scroll-wrapper');
+            if (scrollEl) scrollEl.remove();
+            const sw = document.createElement('div');
+            sw.className = 'table-scroll-wrapper';
+            sw.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
+            section.appendChild(sw);
+            initScrollHint(sw);
         };
-        section.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
+        const sw = document.createElement('div');
+        sw.className = 'table-scroll-wrapper';
+        sw.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
+        section.appendChild(sw);
+        initScrollHint(sw);
         wrapper.appendChild(section);
     });
 }
@@ -844,38 +882,81 @@ function renderCountyStats() {
         </div>`;
 }
 
+const countySortState = { col: 'date', dir: 'desc' };
+let countyGeoJsonRef = null;  // stash for re-renders
+
 function renderRecentCounties(geojson) {
     const el = document.getElementById('county-recent-table');
     if (!el || !Object.keys(countyDiscoveries).length) return;
+    if (geojson) countyGeoJsonRef = geojson;
+    if (!countyGeoJsonRef) return;
 
     // Build a FIPS → county-info lookup from the GeoJSON
     const fipsInfo = {};
-    for (const f of geojson.features) {
+    for (const f of countyGeoJsonRef.features) {
         const { GEOID, STATEFP, NAME, LSAD } = f.properties;
         fipsInfo[GEOID] = { name: NAME, state: STATE_ABBR[STATEFP] || STATEFP, lsad: LSAD_NAMES[LSAD] || 'County' };
     }
 
-    // Sort discoveries by date descending, take top 20
-    const rows = Object.entries(countyDiscoveries)
+    let rows = Object.entries(countyDiscoveries)
         .filter(([fips]) => fipsInfo[fips])
-        .sort(([, a], [, b]) => (b.date || '').localeCompare(a.date || ''))
-        .slice(0, 20);
+        .map(([fips, disc]) => ({ fips, disc, info: fipsInfo[fips] }));
 
+    // Sort based on current state
+    rows.sort((a, b) => {
+        const dir = countySortState.dir === 'asc' ? 1 : -1;
+        switch (countySortState.col) {
+            case 'county': return dir * `${a.info.name} ${a.info.lsad}`.localeCompare(`${b.info.name} ${b.info.lsad}`);
+            case 'state': return dir * a.info.state.localeCompare(b.info.state);
+            case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
+            case 'date': return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            default: return 0;
+        }
+    });
+
+    rows = rows.slice(0, 20);
     if (!rows.length) return;
+
+    const headers = [
+        { label: 'County', col: 'county' },
+        { label: 'State', col: 'state' },
+        { label: 'Discovered By', col: 'activity' },
+        { label: 'Date', col: 'date' },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
-    table.innerHTML = `
-        <thead><tr>
-            <th>County</th>
-            <th>State</th>
-            <th>Discovered By</th>
-            <th>Date</th>
-        </tr></thead>`;
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = countySortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (countySortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (countySortState.col === col) {
+                countySortState.dir = countySortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                countySortState.col = col;
+                countySortState.dir = col === 'county' || col === 'state' ? 'asc' : 'desc';
+            }
+            renderRecentCounties();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    for (const [fips, disc] of rows) {
-        const info = fipsInfo[fips];
+    for (const { disc, info } of rows) {
         const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -890,7 +971,11 @@ function renderRecentCounties(geojson) {
     table.appendChild(tbody);
 
     el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
-    el.appendChild(table);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    el.appendChild(wrapper);
+    initScrollHint(wrapper);
 }
 
 async function saveCountiesToWorker() {
@@ -3071,7 +3156,13 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
 
         const data = await res.json();
         const peaks = (data.elements || [])
-            .filter(e => { const v = parseFloat(e.tags?.ele); return !isNaN(v) && v > 0; })
+            .filter(e => {
+                const v = parseFloat(e.tags?.ele);
+                if (isNaN(v) || v <= 0) return false;
+                // Exclude unnamed peaks — they clutter the list with no useful info
+                const name = e.tags?.name || e.tags?.['name:en'] || '';
+                return name !== '' && name !== 'Unnamed Peak';
+            })
             .map(e => ({
                 id: e.id,
                 name: e.tags?.name || e.tags?.['name:en'] || '',
@@ -3197,7 +3288,7 @@ async function detectMountainSummits(peaks) {
         const points = decodePolyline(act.p);
         const hit = new Set();
 
-        for (let j = 0; j < points.length; j += 4) {
+        for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
             const gr = Math.floor(lat * 2);
             const gc = Math.floor(lng * 2);
@@ -3267,15 +3358,17 @@ function renderMountainStats() {
     if (!mountainHunterReady) return;
 
     let tallestPeak = null, mostClimbedPeak = null, mostClimbedCount = 0;
+    let namedCount = 0;
     for (const [peakId, pvs] of mountainVisits) {
         const peak = mountainPeaks.find(p => p.id === peakId);
-        if (!peak) continue;
+        if (!peak || !peak.name) continue;
+        namedCount++;
         if (!tallestPeak || peak.ele > tallestPeak.ele) tallestPeak = peak;
         if (pvs.length > mostClimbedCount) { mostClimbedCount = pvs.length; mostClimbedPeak = peak; }
     }
 
     const peaksEl = document.getElementById('mh-peaks-stat');
-    if (peaksEl) peaksEl.querySelector('.county-stat-number').textContent = mountainVisits.size;
+    if (peaksEl) peaksEl.querySelector('.county-stat-number').textContent = namedCount;
 
     const tallestEl = document.getElementById('mh-tallest-stat');
     if (tallestEl && tallestPeak) {
@@ -3298,32 +3391,77 @@ function renderMountainStats() {
     renderMountainTable();
 }
 
+const mountainSortState = { col: 'elevation', dir: 'desc' };
+
 function renderMountainTable() {
     const tableEl = document.getElementById('mountain-table');
     if (!tableEl || !mountainVisits.size) return;
 
     const rows = [...mountainVisits.entries()]
-        .map(([id, pvs]) => ({ peak: mountainPeaks.find(p => p.id === id), pvs }))
-        .filter(r => r.peak)
-        .sort((a, b) => b.peak.ele - a.peak.ele);
+        .map(([id, pvs]) => {
+            const peak = mountainPeaks.find(p => p.id === id);
+            const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+            return { peak, pvs, last };
+        })
+        .filter(r => r.peak && r.peak.name);
+
+    // Sort based on current state
+    rows.sort((a, b) => {
+        const dir = mountainSortState.dir === 'asc' ? 1 : -1;
+        switch (mountainSortState.col) {
+            case 'peak': return dir * a.peak.name.localeCompare(b.peak.name);
+            case 'elevation': return dir * (a.peak.ele - b.peak.ele);
+            case 'summits': return dir * (a.pvs.length - b.pvs.length);
+            case 'last': return dir * (a.last.date || '').localeCompare(b.last.date || '');
+            default: return 0;
+        }
+    });
+
+    const headers = [
+        { label: 'Peak', col: 'peak' },
+        { label: 'Elevation', col: 'elevation' },
+        { label: 'Summits', col: 'summits' },
+        { label: 'Last Summit', col: 'last' },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
-    table.innerHTML = `
-        <thead><tr>
-            <th>Peak</th>
-            <th>Elevation</th>
-            <th style="text-align:center">Summits</th>
-            <th>Last Summit</th>
-        </tr></thead>`;
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = mountainSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+        if (col === 'summits') th.style.textAlign = 'center';
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (mountainSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (mountainSortState.col === col) {
+                mountainSortState.dir = mountainSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                mountainSortState.col = col;
+                mountainSortState.dir = col === 'peak' ? 'asc' : 'desc';
+            }
+            renderMountainTable();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach(({ peak, pvs }) => {
-        const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+    rows.forEach(({ peak, pvs, last }) => {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${peak.name || 'Unnamed Peak'}</td>
+            <td>${peak.name}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center">${pvs.length}</td>
             <td>${href
@@ -3334,31 +3472,81 @@ function renderMountainTable() {
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
+
     tableEl.innerHTML = '';
-    tableEl.appendChild(table);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    tableEl.appendChild(wrapper);
+    initScrollHint(wrapper);
 }
+
+const elevSortState = { col: 'elev', dir: 'desc' };
 
 function renderElevationLeaderboard() {
     const el = document.getElementById('mountain-elev-table');
     if (!el) return;
 
-    const rows = currentSlim
-        .filter(a => ELEVATION_ACTIVITY_TYPES.has(a.t) && (a.e || 0) > 0)
-        .sort((a, b) => b.e - a.e)
-        .slice(0, 20);
+    let rows = currentSlim
+        .filter(a => ELEVATION_ACTIVITY_TYPES.has(a.t) && (a.e || 0) > 0);
 
+    // Sort based on current state
+    rows.sort((a, b) => {
+        const dir = elevSortState.dir === 'asc' ? 1 : -1;
+        switch (elevSortState.col) {
+            case 'activity': return dir * (a.n || '').localeCompare(b.n || '');
+            case 'type': return dir * (a.t || '').localeCompare(b.t || '');
+            case 'elev': return dir * (a.e - b.e);
+            case 'date': return dir * (a.d || '').localeCompare(b.d || '');
+            default: return 0;
+        }
+    });
+
+    rows = rows.slice(0, 20);
     if (!rows.length) return;
+
+    const headers = [
+        { label: '#', col: null },
+        { label: 'Activity', col: 'activity' },
+        { label: 'Type', col: 'type' },
+        { label: 'Elev. Gain', col: 'elev' },
+        { label: 'Date', col: 'date' },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
-    table.innerHTML = `
-        <thead><tr>
-            <th>#</th>
-            <th>Activity</th>
-            <th>Type</th>
-            <th>Elev. Gain</th>
-            <th>Date</th>
-        </tr></thead>`;
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        if (col) {
+            const isActive = elevSortState.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (elevSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (elevSortState.col === col) {
+                    elevSortState.dir = elevSortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    elevSortState.col = col;
+                    elevSortState.dir = col === 'activity' || col === 'type' ? 'asc' : 'desc';
+                }
+                renderElevationLeaderboard();
+            });
+        } else {
+            th.textContent = label;
+        }
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
     rows.forEach((a, i) => {
@@ -3377,7 +3565,11 @@ function renderElevationLeaderboard() {
     table.appendChild(tbody);
 
     el.innerHTML = '<h3 style="margin:24px 0 8px">Biggest Climbs</h3>';
-    el.appendChild(table);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    el.appendChild(wrapper);
+    initScrollHint(wrapper);
 }
 
 function renderMountainMap() {
@@ -3408,6 +3600,7 @@ function renderMountainMap() {
     new LocationControl().addTo(mountainMapInstance);
 
     for (const peak of mountainPeaks) {
+        if (!peak.name) continue;
         const pvs   = mountainVisits.get(peak.id);
         const visited = !!pvs;
         const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
@@ -3642,7 +3835,7 @@ function setCacheInfo(gpsCount, total, syncedAt) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-// Geocode any new cells, save to server if needed, then render everything
+// Render immediately with cached data, then geocode missing cells in background
 async function geocodeAndRender(slim, total, syncedAt, cache) {
     setCacheInfo(slim.length, total, syncedAt);
 
@@ -3658,17 +3851,13 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     });
     dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);
 
-    const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
-    if (modified) await saveGeoToWorker(updatedCache);
-
+    // Render immediately with whatever we have cached
     hideLoader();
-
-    // Save to globals so filter re-renders can access them without refetching
     currentSlim = slim;
     currentTotal = total;
-    currentCache = updatedCache;
+    currentCache = cache;
 
-    const { countries, subdivisions } = buildData(slim, updatedCache);
+    const { countries, subdivisions } = buildData(slim, cache);
     const subCounts = SUBDIVISION_CONFIG
         .filter(cfg => Object.keys(subdivisions[cfg.id] ?? {}).length > 0)
         .map(cfg => `${cfg.flag} ${Object.keys(subdivisions[cfg.id]).length}`);
@@ -3681,11 +3870,31 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     renderSubdivisions(subdivisions);
     dbg('Render complete');
 
-    // Mountain Hunter — runs in background; elevation gain stat is instant,
-    // peak detection starts after a short yield so the main UI paints first
+    // Mountain Hunter — runs in background after main UI paints
     setTimeout(() => initMountainHunter().catch(err => dbg(`Mountain Hunter bg error: ${err.message}`)), 400);
 
-    return updatedCache;
+    // Geocode missing cells in background, re-render if anything resolved
+    if (needCountry > 0 || needSubdiv > 0) {
+        geocodeInBackground(cellKeys, cache, slim, total);
+    }
+
+    return cache;
+}
+
+// Background geocoding — runs after the initial render so the page feels instant
+async function geocodeInBackground(cellKeys, cache, slim, total) {
+    const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
+    if (!modified) return;
+
+    await saveGeoToWorker(updatedCache);
+
+    // Re-render with the now-complete data
+    currentCache = updatedCache;
+    const { countries, subdivisions } = buildData(slim, updatedCache);
+    dbg('Background geocoding done — re-rendering with updated data');
+    renderSummary(slim, countries, total);
+    renderTable(countries);
+    renderSubdivisions(subdivisions);
 }
 
 let pipelineRunning = false;  // prevent concurrent pipeline runs

@@ -289,6 +289,14 @@
     margin-top: 16px;
 }
 
+/* Scroll wrapper needs position context for the shadow gradient */
+#strava-table-container,
+#mountain-table,
+#mountain-elev-table,
+#county-recent-table {
+    position: relative;
+}
+
 /* Mountain Hunter progress bar */
 #mountain-progress-wrap {
     margin-top: 12px;
