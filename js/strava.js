@@ -3126,7 +3126,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
         }
     }
 
-    const query = `[out:json][timeout:25];node["natural"="peak"]["ele"](${south},${west},${north},${east});out body;`;
+    const query = `[out:json][timeout:25];(node["natural"="peak"]["ele"](${south},${west},${north},${east});node["natural"="volcano"]["ele"](${south},${west},${north},${east}););out body;`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
         // Rotate through mirrors on retries
