@@ -19,21 +19,25 @@ npx serve .
 
 **Deployment**: Pushing to `main` auto-deploys via GitHub Pages.
 
+**Cloudflare Worker**: The backend API lives in `worker.js` (ES module format). Deploy with `npx wrangler deploy worker.js`. Secrets/bindings: `STRAVA_DATA` (KV), `STRAVA_KV` (KV), `CLIENT_ID`, `CLIENT_SECRET`, `TRAVEL_PASSWORD`.
+
 ## Architecture
 
 ### Core Patterns
 
 - **Vanilla JS + HTML Web Components** — no frameworks. The `<nav-bar>` element (`js/navbar-component.js`) is a custom element used on every page.
-- **JSON-driven data** — all adventure/travel/geographic content lives in `/data/*.json` and is fetched client-side with the Fetch API.
+- **JSON-driven data** — adventure/travel/geographic content lives in `/data/*.json` and is fetched client-side with the Fetch API.
+- **Cloudflare KV-backed API** — Strava activity data, geocoding cache, hunter feature state, and travel tracking are all persisted in Cloudflare Workers KV via `worker.js`.
 - **Page-scoped JS files** — each major page has a corresponding JS file (e.g., `us-dashboard.html` → `js/dashboard.js`). Logic is typically wrapped in a class or IIFE loaded on `DOMContentLoaded`.
 
 ### Data Flow
 
-HTML page → `DOMContentLoaded` → fetch JSON from `/data/` → render into DOM → attach event listeners.
+- **Static pages**: HTML → `DOMContentLoaded` → fetch JSON from `/data/` → render into DOM → attach event listeners.
+- **Strava page**: HTML → `DOMContentLoaded` → fetch activities + geo cache from Cloudflare Worker → render immediately → background sync with Strava API if cooldown expired → background geocoding of missing cells → background Mountain Hunter processing.
 
 ### Key Libraries (CDN-loaded, no npm)
 
-- **Leaflet.js** — interactive 2D maps (US map, world map, trip report maps)
+- **Leaflet.js** — interactive 2D maps (US map, world map, trip report maps, hunter maps)
 - **Cesium.js v1.124** — 3D globe on `about.html` (life journey visualization)
 - **Google `<model-viewer>`** — 3D GLB model display on trip reports (e.g., Pico de Orizaba)
 
@@ -41,18 +45,67 @@ HTML page → `DOMContentLoaded` → fetch JSON from `/data/` → render into DO
 
 Component-based CSS files in `/css/` using CSS custom properties for theming (primary green: `#4CAF50`). Base styles: `base.css`, `layout.css`, `responsive.css`. Page-specific files follow the naming convention of their HTML counterpart.
 
+- `dashboard.css` — shared table styling (`.travel-table`, `.table-scroll-wrapper`, sortable headers) used by both travel dashboards and strava page
+- `strava.css` — strava-page-specific styles, loaded after `dashboard.css`
+
 ### Content Areas
 
 | Directory | Purpose |
 |-----------|---------|
 | `/data/` | JSON data files for adventures, geography, travel stats |
-| `/trip-reports/` | Individual HTML trip report pages (18 pages) |
+| `/trip-reports/` | Individual HTML trip report pages |
 | `/images/` | Photos organized by category (`/hiking`, `/cycling`) |
 | `/css/` | Stylesheets |
 | `/js/` | JavaScript files |
+
+### Main Pages
+
+| Page | Purpose |
+|------|---------|
+| `strava.html` | Strava activity dashboard with 5 hunter features |
+| `us-dashboard.html` | US travel tracking (metros, highpoints, parks, states) |
+| `world-dashboard.html` | World travel tracking (countries by continent) |
+| `us-map.html` | Interactive US map visualization |
+| `world-map.html` | Interactive world map visualization |
+| `adventures.html` | Adventure portfolio and trip reports |
+| `family-travels.html` | Family travel tracking |
+| `about.html` | About page with 3D Cesium globe |
+
+### Strava Page Architecture (`js/strava.js`)
+
+The strava page is the most complex, containing 5 "hunter" modules that share a common activity data pipeline:
+
+1. **County Hunter** — tracks US counties visited via activity polylines
+2. **City Hunter** — road/way completion tracking within selected cities
+3. **Tile Hunter** — z14 map tile coverage tracking with cluster/square detection
+4. **Trail Hunter** — trail completion for specific regions (Boulder County, RMNP)
+5. **Mountain Hunter** — peak summit detection using OSM Overpass data (peaks + volcanoes)
+
+**Shared infrastructure**:
+- Polyline cache (`polylineCache`) — decoded once, reused by all hunters
+- Activity pipeline (`runPipeline`) — loads activities, renders immediately, syncs in background
+- Geocoding (`geocodeAndRender`) — renders with cached data first, geocodes missing cells in background
+- All tables use `.travel-table` class with sortable headers and `.table-scroll-wrapper` for mobile
+
+### Cloudflare Worker API (`worker.js`)
+
+Base URL: `https://strava-worker.justinguyette.workers.dev`
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/activities/all` | GET | Get all cached slim activities |
+| `/activities/sync` | POST | Incremental sync from Strava API |
+| `/activities/rebuild` | POST | Full re-sync (deletes + syncs) |
+| `/geo/all`, `/geo/save`, `/geo/reset` | GET/POST | Geocoding cache |
+| `/counties/all`, `/counties/save` | GET/POST | County Hunter state |
+| `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |
+| `/peaks/all`, `/peaks/save`, `/peaks/reset` | GET/POST | Mountain peak cell cache |
+| `/summits/all`, `/summits/save`, `/summits/reset` | GET/POST | Summit detection cache |
+| `/travel/*` | GET/POST | Travel dashboard data (toggle, seed) |
 
 ### Adding Content
 
 - **New adventure category**: Add entries to `data/adventures.js`, create trip report HTML in `/trip-reports/`
 - **New map data**: Add JSON to `/data/`, fetch and render in the relevant JS file
 - **New page**: Create HTML file at root, link `js/navbar-component.js` and use `<nav-bar>` element, add corresponding CSS/JS files as needed
+- **New hunter feature**: Add section to `strava.html`, implement in `js/strava.js`, add KV key + endpoints to `worker.js`

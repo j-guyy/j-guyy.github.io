@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorado Ecoregions (Test) — Justin Guyette</title>
+    <meta name="description" content="Test page rendering EPA Level IV ecoregions for Colorado on an interactive Leaflet map.">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/colorado-ecoregions.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css"/>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css"/>
+</head>
+
+<body class="page eco-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>Colorado Ecoregions</h1>
+            <h2 id="hero-subtitle">EPA Level IV — Test Page</h2>
+        </div>
+
+        <div class="section">
+            <h2>Interactive Map</h2>
+            <p class="description">Click any polygon for ecoregion details. Colored by Level IV ecoregion; outlined by Level III group.</p>
+
+            <div class="eco-controls">
+                <label class="eco-toggle">
+                    <input type="checkbox" id="toggle-l3-outlines" checked>
+                    Show Level III outlines
+                </label>
+                <label class="eco-toggle">
+                    <input type="checkbox" id="toggle-fill" checked>
+                    Show Level IV fill
+                </label>
+                <span id="eco-status" class="eco-status"></span>
+            </div>
+
+            <div id="eco-map" class="map-container"></div>
+
+            <!-- Setup instructions, shown only if /data/colorado-ecoregions.geojson is missing -->
+            <div id="eco-setup" class="eco-setup" style="display:none;">
+                <h3>One-time data setup</h3>
+                <p>This page expects <code>/data/colorado-ecoregions.geojson</code>. Convert the EPA Level IV shapefile to WGS84 GeoJSON with mapshaper:</p>
+                <pre><code>npx mapshaper co_eco_l4.shp \
+  -proj wgs84 \
+  -simplify 5% keep-shapes \
+  -o format=geojson precision=0.00001 data/colorado-ecoregions.geojson</code></pre>
+                <p>Or with GDAL:</p>
+                <pre><code>ogr2ogr -t_srs EPSG:4326 -f GeoJSON data/colorado-ecoregions.geojson co_eco_l4.shp</code></pre>
+                <p>If you have the national CONUS file, clip to Colorado first:</p>
+                <pre><code>npx mapshaper us_eco_l4.shp \
+  -proj wgs84 \
+  -filter '"Colorado".indexOf(STATE_NAME) > -1' \
+  -simplify 5% keep-shapes \
+  -o data/colorado-ecoregions.geojson</code></pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Legend</h2>
+            <p class="description">Level III groups are listed first; Level IV swatches are nested under their parent.</p>
+            <div id="eco-legend" class="eco-legend"></div>
+        </div>
+
+        <div class="section">
+            <h2>Ecoregion Summary</h2>
+            <p class="description">Counts of distinct ecoregions in the loaded dataset.</p>
+            <div id="eco-summary" class="eco-summary"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="js/colorado-ecoregions.js"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

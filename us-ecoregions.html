@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Ecoregions — Justin Guyette</title>
+    <meta name="description" content="Interactive map of EPA Level IV ecoregions for the contiguous United States.">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/us-ecoregions.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.css"/>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css"/>
+</head>
+
+<body class="page eco-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>US Ecoregions</h1>
+            <h2 id="hero-subtitle">EPA Level IV — Contiguous United States</h2>
+        </div>
+
+        <div class="section">
+            <h2>Interactive Map</h2>
+            <p class="description">5,847 polygons across 967 Level IV ecoregions, colored by Level III parent group. Click any polygon for details, or click a legend row to zoom.</p>
+
+            <div class="eco-controls">
+                <label class="eco-toggle">
+                    <input type="checkbox" id="toggle-fill" checked>
+                    Show fill
+                </label>
+                <input type="search" id="eco-search" placeholder="Search Level III/IV name…" class="eco-search">
+                <span id="eco-status" class="eco-status"></span>
+            </div>
+
+            <div id="eco-map" class="map-container"></div>
+        </div>
+
+        <div class="section">
+            <h2>Legend</h2>
+            <p class="description">Grouped by Level I biome. Click a Level III row to zoom to it on the map.</p>
+            <div id="eco-legend" class="eco-legend"></div>
+        </div>
+
+        <div class="section">
+            <h2>Summary</h2>
+            <div id="eco-summary" class="eco-summary"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <script src="js/us-ecoregions.js"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

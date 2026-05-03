@@ -705,6 +705,16 @@
         gap: 4px;
     }
 
+    /* Tables — force overflow so scroll wrapper kicks in */
+    .strava-page .travel-table {
+        min-width: 550px;
+    }
+
+    .strava-page .travel-table th,
+    .strava-page .travel-table td {
+        white-space: nowrap;
+    }
+
     /* Maps — slightly shorter on small screens to avoid full-page scroll */
     #strava-map,
     #county-map,

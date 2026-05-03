@@ -1,0 +1,9 @@
+# Shapefile sources (converted to GeoJSON in /data/)
+*.shp
+*.shx
+*.dbf
+*.prj
+*.sbn
+*.sbx
+*.cpg
+*.shp.xml

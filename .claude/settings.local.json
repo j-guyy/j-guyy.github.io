@@ -16,7 +16,9 @@
       "Bash(node:*)",
       "WebSearch",
       "WebFetch(domain:gis.colorado.gov)",
-      "WebFetch(domain:strava-worker.justinguyette.workers.dev)"
+      "WebFetch(domain:strava-worker.justinguyette.workers.dev)",
+      "Bash(npx --yes mapshaper us_eco_l4_no_st.shp -proj wgs84 -simplify 2% keep-shapes -clean -filter-fields US_L4CODE,US_L4NAME,US_L3CODE,US_L3NAME -o format=topojson data/us-ecoregions.topojson)",
+      "Bash(gzip -c data/us-ecoregions.topojson)"
     ]
   }
 }
