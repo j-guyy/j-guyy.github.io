@@ -63,6 +63,17 @@
             </div>
         </div>
 
+        <!-- Park Hunter (US federal lands, lazy-loaded) -->
+        <div class="section">
+            <h2>Park Hunter <button class="cache-refresh-btn" id="park-toggle-btn" onclick="toggleParkMap()">Show map</button></h2>
+            <div id="park-section" style="display:none">
+                <div id="park-stats-bar" class="county-stats-bar"></div>
+                <div id="park-map"></div>
+                <div id="park-recent-table"></div>
+                <p id="park-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
+
         <!-- Tile Hunter (world, lazy-loaded) -->
         <div class="section">
             <h2>Tile Hunter <button class="cache-refresh-btn" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button></h2>

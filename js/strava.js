@@ -1015,6 +1015,396 @@ function setCountyStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Park Hunter ───────────────────────────────────────────────────────────────
+
+const PARK_AGENCY_COLORS = {
+    NPS:   '#FF7043',   // deep orange
+    USFS:  '#8BC34A',   // light green
+    USFWS: '#26C6DA',   // cyan
+};
+
+const PARK_TOTAL = 897;  // total units in federal-lands.geojson
+
+let parkMap = null;
+let parkMapInitialized = false;
+let visitedParkIds = new Set();
+let parkDiscoveries = {};   // id → { actId, actName, date }
+let parkProcessedIds = new Set();
+
+function toggleParkMap() {
+    const section = document.getElementById('park-section');
+    const btn = document.getElementById('park-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !parkMapInitialized) {
+        initParkMap();
+    } else if (opening && parkMap) {
+        setTimeout(() => parkMap.invalidateSize(), 50);
+    }
+}
+
+async function initParkMap() {
+    setParkStatus('Loading federal land boundaries…');
+    dbg('Park Hunter: loading GeoJSON + saved data…');
+
+    let geojson, saved;
+    try {
+        [geojson, saved] = await Promise.all([
+            fetch('/data/federal-lands.geojson').then(r => r.json()),
+            fetch(`${WORKER_URL}/parks/all`).then(r => r.json()),
+        ]);
+    } catch (err) {
+        dbg(`Park Hunter load error: ${err.message}`);
+        setParkStatus('Failed to load park data.');
+        return;
+    }
+
+    visitedParkIds   = new Set((saved.ids          || []).filter(Boolean));
+    parkProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+    parkDiscoveries  = saved.discoveries || {};
+    dbg(`Park Hunter cache: ${visitedParkIds.size} parks, ${parkProcessedIds.size} processed activities`);
+
+    const parks = preprocessParks(geojson);
+    const index = buildSpatialIndex(parks);
+
+    // One-time backfill: if we have visits but no discovery data, scan oldest-first
+    const needsBackfill = visitedParkIds.size > 0 && Object.keys(parkDiscoveries).length === 0;
+    if (needsBackfill) {
+        dbg('Park Hunter: backfilling discovery history…');
+        const sorted = [...currentSlim].filter(a => a.i && a.p)
+            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        parkDiscoveries = await detectParksBackfill(sorted, parks, index);
+        dbg(`Park Hunter backfill: ${Object.keys(parkDiscoveries).length} parks mapped`);
+        await saveParksToWorker();
+    }
+
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i));
+    dbg(`Park Hunter: ${unprocessed.length} new activities to process`);
+
+    if (unprocessed.length > 0) {
+        const { newIds, newDiscoveries } = await detectParksAsync(unprocessed, parks, index);
+        newIds.forEach(id => visitedParkIds.add(id));
+        Object.assign(parkDiscoveries, newDiscoveries);
+        unprocessed.forEach(a => parkProcessedIds.add(a.i));
+        dbg(`Park Hunter done: +${newIds.size} new (${visitedParkIds.size} total)`);
+        await saveParksToWorker();
+    }
+
+    parkMap = L.map('park-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([38, -96], 4);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 12,
+    }).addTo(parkMap);
+    new LocationControl().addTo(parkMap);
+
+    setParkStatus('Loading activity routes…');
+    await addPolylineOverlay(parkMap, { interactive: true });
+
+    renderParkMap(geojson);
+    renderParkStats();
+    renderRecentParks(geojson);
+
+    parkMapInitialized = true;
+    setParkStatus('');
+    dbg(`Park Hunter rendered: ${visitedParkIds.size} visited`);
+}
+
+// ── Park detection ────────────────────────────────────────────────────────────
+
+function preprocessParks(geojson) {
+    return geojson.features.map(feature => ({
+        id:      feature.properties.id,
+        name:    feature.properties.name,
+        agency:  feature.properties.agency,
+        type:    feature.properties.type,
+        feature,
+        bbox:    computeFeatureBbox(feature),
+    }));
+}
+
+async function detectParksAsync(activities, parks, index) {
+    const newIds = new Set();
+    const newDiscoveries = {};
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setParkStatus(`Detecting parks… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = activities[i];
+        const points = decodePolyline(act.p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const park of candidates) {
+                if (visitedParkIds.has(park.id) || newIds.has(park.id)) continue;
+                const b = park.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, park.feature)) {
+                    newIds.add(park.id);
+                    newDiscoveries[park.id] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
+            }
+        }
+    }
+    return { newIds, newDiscoveries };
+}
+
+async function detectParksBackfill(activities, parks, index) {
+    const discoveries = {};
+    const found = new Set();
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setParkStatus(`Building park discovery history… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = activities[i];
+        const points = decodePolyline(act.p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const park of candidates) {
+                if (found.has(park.id)) continue;
+                if (!visitedParkIds.has(park.id)) continue;
+                const b = park.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, park.feature)) {
+                    found.add(park.id);
+                    discoveries[park.id] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
+            }
+        }
+    }
+    return discoveries;
+}
+
+// ── Park rendering ─────────────────────────────────────────────────────────────
+
+function renderParkMap(geojson) {
+    L.geoJSON(geojson, {
+        style: feature => {
+            const { id, agency } = feature.properties;
+            const visited = visitedParkIds.has(id);
+            const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
+            return {
+                fillColor:   visited ? color : '#ffffff',
+                fillOpacity: visited ? 0.45 : 0,
+                color:       visited ? color : 'rgba(255,255,255,0.12)',
+                weight:      visited ? 0.8 : 0.4,
+            };
+        },
+        onEachFeature: (feature, layer) => {
+            const { id, name, agency, type } = feature.properties;
+            const visited = visitedParkIds.has(id);
+            const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
+            if (visited) {
+                const disc = parkDiscoveries[id];
+                const discLine = disc
+                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
+                    : '';
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:${color}">${agency} · ${type}</div>
+                        <div class="activity-popup-name">${name}</div>
+                        ${discLine}
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
+            } else {
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:#aaa">${agency} · ${type}</div>
+                        <div class="activity-popup-name">${name}</div>
+                        <div class="activity-popup-date" style="color:#888">Not yet visited</div>
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+            }
+        },
+    }).addTo(parkMap);
+}
+
+function renderParkStats() {
+    const el = document.getElementById('park-stats-bar');
+    if (!el) return;
+    const pct = ((visitedParkIds.size / PARK_TOTAL) * 100).toFixed(1);
+
+    // Count visits by agency
+    const byAgency = { NPS: 0, USFS: 0, USFWS: 0 };
+    for (const id of visitedParkIds) {
+        const prefix = id.split('-')[0].toUpperCase();
+        if (byAgency[prefix] !== undefined) byAgency[prefix]++;
+        else byAgency[prefix] = (byAgency[prefix] || 0) + 1;
+    }
+
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedParkIds.size.toLocaleString()}</span>
+            <span class="county-stat-label">Federal Lands Visited</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${PARK_TOTAL.toLocaleString()}</span>
+            <span class="county-stat-label">Total Units</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Complete</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.NPS}">${byAgency.NPS}</span>
+            <span class="county-stat-label">NPS Units</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.USFS}">${byAgency.USFS}</span>
+            <span class="county-stat-label">National Forests</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.USFWS}">${byAgency.USFWS}</span>
+            <span class="county-stat-label">Wildlife Refuges</span>
+        </div>`;
+}
+
+const parkSortState = { col: 'date', dir: 'desc' };
+let parkGeoJsonRef = null;
+
+function renderRecentParks(geojson) {
+    const el = document.getElementById('park-recent-table');
+    if (!el || !Object.keys(parkDiscoveries).length) return;
+    if (geojson) parkGeoJsonRef = geojson;
+    if (!parkGeoJsonRef) return;
+
+    const infoById = {};
+    for (const f of parkGeoJsonRef.features) {
+        const { id, name, agency, type } = f.properties;
+        infoById[id] = { name, agency, type };
+    }
+
+    let rows = Object.entries(parkDiscoveries)
+        .filter(([id]) => infoById[id])
+        .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
+
+    rows.sort((a, b) => {
+        const dir = parkSortState.dir === 'asc' ? 1 : -1;
+        switch (parkSortState.col) {
+            case 'name':     return dir * a.info.name.localeCompare(b.info.name);
+            case 'type':     return dir * a.info.type.localeCompare(b.info.type);
+            case 'agency':   return dir * a.info.agency.localeCompare(b.info.agency);
+            case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
+            case 'date':     return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            default: return 0;
+        }
+    });
+
+    rows = rows.slice(0, 25);
+    if (!rows.length) return;
+
+    const headers = [
+        { label: 'Name',       col: 'name' },
+        { label: 'Type',       col: 'type' },
+        { label: 'Agency',     col: 'agency' },
+        { label: 'Discovered By', col: 'activity' },
+        { label: 'Date',       col: 'date' },
+    ];
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = parkSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (parkSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (parkSortState.col === col) {
+                parkSortState.dir = parkSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                parkSortState.col = col;
+                parkSortState.dir = col === 'name' || col === 'type' || col === 'agency' ? 'asc' : 'desc';
+            }
+            renderRecentParks();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const { disc, info } of rows) {
+        const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
+        const color = PARK_AGENCY_COLORS[info.agency] || '#FF7043';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${info.name}</td>
+            <td>${info.type}</td>
+            <td style="color:${color};font-weight:600">${info.agency}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
+                : (disc.actName || '—')}</td>
+            <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    el.appendChild(wrapper);
+    initScrollHint(wrapper);
+}
+
+async function saveParksToWorker() {
+    try {
+        const res = await fetch(`${WORKER_URL}/parks/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ids:          [...visitedParkIds],
+                processedIds: [...parkProcessedIds],
+                discoveries:  parkDiscoveries,
+            }),
+        });
+        const data = await res.json();
+        dbg(`Park data saved: ${data.parks} parks`);
+    } catch (err) {
+        dbg(`Park save failed: ${err.message}`);
+    }
+}
+
+async function resetParkData() {
+    if (!confirm('Clear all park detection data from the server? This will force a full re-detection on next Park Hunter open.')) return;
+    try {
+        await fetch(`${WORKER_URL}/parks/reset`, { method: 'POST' });
+        parkMapInitialized = false;
+        visitedParkIds.clear();
+        parkProcessedIds.clear();
+        parkDiscoveries = {};
+        dbg('Park data reset. Reopen Park Hunter to re-detect.');
+    } catch (err) {
+        dbg(`Park reset failed: ${err.message}`);
+    }
+}
+
+function setParkStatus(msg) {
+    const el = document.getElementById('park-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Map ───────────────────────────────────────────────────────────────────────
 
 const GROUP_COLORS = {

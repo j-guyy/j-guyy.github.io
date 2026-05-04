@@ -22,6 +22,7 @@ const COUNTIES_KEY   = 'strava_counties';
 const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
 const SUMMITS_KEY    = 'strava_summits';
+const PARKS_KEY      = 'strava_parks';
 
 const TRAVEL_KEYS = {
     highpoints:    'travel_highpoints',
@@ -132,6 +133,23 @@ export default {
             }
             if (path === '/peaks/reset' && request.method === 'POST') {
                 await env.STRAVA_DATA.delete(PEAKS_KEY);
+                return json({ ok: true });
+            }
+
+            // ── Park Hunter ──
+            // Data: { ids: [...], processedIds: [...], discoveries: { id: { actId, actName, date } } }
+
+            if (path === '/parks/all') {
+                const data = await env.STRAVA_DATA.get(PARKS_KEY, 'json');
+                return json(data || { ids: [], processedIds: [], discoveries: {} });
+            }
+            if (path === '/parks/save' && request.method === 'POST') {
+                const data = await request.json();
+                await env.STRAVA_DATA.put(PARKS_KEY, JSON.stringify(data));
+                return json({ ok: true, parks: (data.ids || []).length });
+            }
+            if (path === '/parks/reset' && request.method === 'POST') {
+                await env.STRAVA_DATA.delete(PARKS_KEY);
                 return json({ ok: true });
             }
 
