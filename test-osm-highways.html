@@ -128,6 +128,24 @@
             line-height: 1;
         }
 
+        .sp-item .reorder {
+            cursor: pointer;
+            color: #4CAF50;
+            font-size: 1.1em;
+            line-height: 1;
+            padding: 0 2px;
+            user-select: none;
+        }
+
+        .sp-item .reorder:hover {
+            color: #fff;
+        }
+
+        .sp-item .reorder.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
         .sp-item .idx {
             color: #f1c40f;
             min-width: 20px;
@@ -197,6 +215,7 @@
             <input type="checkbox" id="snap-check" checked> Snap to route
         </label>
         <button class="sec" id="route-btn" onclick="buildRoute()" disabled>Build Route</button>
+        <button class="green" id="edit-routes-btn" onclick="toggleEditRoutes()" disabled>Edit Routes</button>
         <button class="sec" id="export-btn" onclick="showExport()" disabled>Export JSON</button>
         <button class="sec" id="transfer-btn" onclick="transferDrivenBy()" disabled>Transfer drivenBy</button>
         <button class="sec" onclick="clearAll()">Clear</button>
@@ -245,12 +264,16 @@
 
         const markerLayer = L.layerGroup().addTo(map);
         const routeLayer = L.layerGroup().addTo(map);
+        const intermediateLayer = L.layerGroup().addTo(map);
         const refLayer = L.layerGroup().addTo(map);
         const existingLayer = L.layerGroup().addTo(map);
 
         let splitting = false;
         let splitPoints = [];
         let builtSegments = null;
+        let segmentPolylines = []; // index = segment index → Leaflet polyline (or null)
+        let intermediatesByseg = []; // index = segment index → array of { latLng, marker }
+        let editingRoutes = false;
         let usCities = null;
         let refPoints = [];  // flat array of [lat,lng] from OSM reference, ordered along route
         let routeLabel = '';
@@ -562,10 +585,11 @@
             splitting = !splitting;
             const btn = document.getElementById('split-btn');
             if (splitting) {
+                if (editingRoutes) toggleEditRoutes();
                 await loadCities();
                 btn.textContent = 'Stop Splitting';
                 btn.style.background = '#c0392b';
-                document.getElementById('hint').textContent = 'Click the map to place points along the highway in order.';
+                document.getElementById('hint').textContent = 'Click the map to place points. New clicks are inserted at the closest spot in the chain — use the ↑↓ buttons to reorder.';
                 document.getElementById('split-panel').classList.add('visible');
                 map.getContainer().style.cursor = 'crosshair';
                 map.on('click', onMapClick);
@@ -592,13 +616,13 @@
                     if (d < bestDist) { bestDist = d; bestPt = pt; }
                 }
                 if (bestPt) {
-                    const distKm = Math.sqrt(bestDist) * 111;
-                    if (distKm < 20) {
+                    const dKm = Math.sqrt(bestDist) * 111;
+                    if (dKm < 20) {
                         lat = parseFloat(bestPt[0].toFixed(5));
                         lng = parseFloat(bestPt[1].toFixed(5));
                         snapped = true;
                     } else {
-                        document.getElementById('status').textContent = `Click closer to the route (${distKm.toFixed(0)}km away)`;
+                        document.getElementById('status').textContent = `Click closer to the route (${dKm.toFixed(0)}km away)`;
                         return;
                     }
                 }
@@ -606,14 +630,19 @@
 
             const city = nearestCity(lat, lng, 30);
             const name = city ? city.name : '';
+            const insertIdx = findInsertionIndex([lat, lng]);
 
-            addDraggableSplit([lat, lng], name);
+            addDraggableSplit([lat, lng], name, insertIdx);
             const snapLabel = snapped ? ' (snapped)' : '';
-            document.getElementById('status').textContent = `Point ${splitPoints.length}: ${name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${snapLabel}`;
+            const isAppend = insertIdx === splitPoints.length - 1;
+            const verb = (splitPoints.length <= 1 || isAppend) ? 'Added' : 'Inserted';
+            document.getElementById('status').textContent = `${verb} point at #${insertIdx + 1}: ${name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]${snapLabel}`;
         }
 
-        function addDraggableSplit(latLng, name) {
-            const idx = splitPoints.length;
+        function addDraggableSplit(latLng, name, insertIdx) {
+            const idx = (typeof insertIdx === 'number' && insertIdx >= 0 && insertIdx <= splitPoints.length)
+                ? insertIdx : splitPoints.length;
+
             const marker = L.marker(latLng, {
                 draggable: true,
                 icon: L.divIcon({
@@ -622,10 +651,9 @@
                     iconSize: [16, 16], iconAnchor: [8, 8]
                 })
             }).addTo(markerLayer);
-            marker.bindTooltip(name || `#${idx + 1}`, { permanent: true, direction: 'top', offset: [0, -12] });
 
             const sp = { latLng: [...latLng], name, marker };
-            splitPoints.push(sp);
+            splitPoints.splice(idx, 0, sp);
 
             marker.on('dragend', function (e) {
                 let lat = e.target.getLatLng().lat;
@@ -645,20 +673,18 @@
                     }
                 }
 
-                // Find this split point in the array
                 const spIdx = splitPoints.indexOf(sp);
                 if (spIdx >= 0) {
                     sp.latLng = [parseFloat(lat.toFixed(5)), parseFloat(lng.toFixed(5))];
-                    // Re-name from nearest city
                     const city = nearestCity(lat, lng, 30);
                     sp.name = city ? city.name : '';
-                    marker.unbindTooltip();
-                    marker.bindTooltip(sp.name || `#${spIdx + 1}`, { permanent: true, direction: 'top', offset: [0, -12] });
+                    refreshTooltips();
                     renderList();
                     document.getElementById('status').textContent = `Moved point ${spIdx + 1} to ${sp.name || 'unnamed'} [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
                 }
             });
 
+            refreshTooltips();
             renderList();
             document.getElementById('route-btn').disabled = splitPoints.length < 2;
         }
@@ -687,11 +713,14 @@
         function renderList() {
             const el = document.getElementById('sp-list');
             document.getElementById('sp-count').textContent = `(${splitPoints.length})`;
+            const last = splitPoints.length - 1;
             el.innerHTML = splitPoints.map((sp, i) => `
                 <div class="sp-item">
                     <span class="idx">${i + 1}.</span>
                     <input value="${sp.name}" onchange="renameSplit(${i}, this.value)" placeholder="City name">
                     <span class="coords">[${sp.latLng[0].toFixed(3)}, ${sp.latLng[1].toFixed(3)}]</span>
+                    <span class="reorder${i === 0 ? ' disabled' : ''}" onclick="moveSplitUp(${i})" title="Move up">↑</span>
+                    <span class="reorder${i === last ? ' disabled' : ''}" onclick="moveSplitDown(${i})" title="Move down">↓</span>
                     <span class="remove" onclick="removeSplit(${i})">×</span>
                 </div>
             `).join('');
@@ -712,41 +741,70 @@
         }
 
         // ========== BUILD ROUTE VIA OSRM ==========
+        const SEG_COLORS = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4', '#FF5722', '#8BC34A', '#E91E63', '#3F51B5', '#009688'];
+
+        async function routeSingleSegment(from, to, intermediates) {
+            const coordStr = [from, ...(intermediates || []), to]
+                .map(p => `${p[1]},${p[0]}`).join(';');
+            const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) return null;
+            const route = data.routes[0];
+            const latLngs = route.geometry.coordinates.map(c => [parseFloat(c[1].toFixed(4)), parseFloat(c[0].toFixed(4))]);
+            const simplified = douglasPeucker(latLngs, 0.001);
+            const miles = Math.round(route.distance * 0.000621371);
+            return { simplified, miles };
+        }
+
+        function drawSegmentPolyline(segIdx) {
+            const seg = builtSegments[segIdx];
+            if (!seg) return null;
+            const color = SEG_COLORS[segIdx % SEG_COLORS.length];
+            const polyline = L.polyline(seg.waypoints, { color, weight: 5, opacity: 0.8 }).addTo(routeLayer);
+            polyline.on('click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                if (splitting) { onMapClick(e); return; }
+                if (editingRoutes) {
+                    const latLng = [parseFloat(e.latlng.lat.toFixed(5)), parseFloat(e.latlng.lng.toFixed(5))];
+                    addIntermediate(segIdx, latLng);
+                    rebuildSegment(segIdx);
+                    return;
+                }
+                const cur = builtSegments[segIdx];
+                if (!cur) return;
+                L.popup().setLatLng(e.latlng)
+                    .setContent(`<b>[${segIdx}] ${cur.fromCity} → ${cur.toCity}</b><br>${cur.miles} mi | ${cur.waypoints.length} pts`)
+                    .openOn(map);
+            });
+            return polyline;
+        }
+
         async function buildRoute() {
             if (splitPoints.length < 2) return;
             routeLayer.clearLayers();
+            intermediateLayer.clearLayers();
             builtSegments = [];
+            segmentPolylines = [];
+            intermediatesByseg = [];
 
             document.getElementById('status').textContent = 'Building route via OSRM...';
-            const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#00BCD4', '#FF5722', '#8BC34A', '#E91E63', '#3F51B5', '#009688'];
 
             for (let i = 0; i < splitPoints.length - 1; i++) {
                 const from = splitPoints[i];
                 const to = splitPoints[i + 1];
-
                 document.getElementById('status').textContent = `Routing segment ${i + 1}/${splitPoints.length - 1}: ${from.name || '?'} → ${to.name || '?'}...`;
 
                 try {
-                    // OSRM expects lng,lat (not lat,lng)
-                    const url = `https://router.project-osrm.org/route/v1/driving/${from.latLng[1]},${from.latLng[0]};${to.latLng[1]},${to.latLng[0]}?overview=full&geometries=geojson`;
-                    const resp = await fetch(url);
-                    const data = await resp.json();
-
-                    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                        console.warn(`OSRM failed for segment ${i + 1}:`, data);
+                    const result = await routeSingleSegment(from.latLng, to.latLng, []);
+                    if (!result) {
+                        console.warn(`OSRM failed for segment ${i + 1}`);
                         builtSegments.push(null);
+                        segmentPolylines.push(null);
+                        intermediatesByseg.push([]);
                         continue;
                     }
-
-                    const route = data.routes[0];
-                    const coords = route.geometry.coordinates; // [lng, lat] pairs
-                    const latLngs = coords.map(c => [parseFloat(c[1].toFixed(4)), parseFloat(c[0].toFixed(4))]); // convert to [lat, lng]
-
-                    // Simplify
-                    const simplified = douglasPeucker(latLngs, 0.001);
-
-                    const miles = Math.round(route.distance * 0.000621371); // meters to miles
-
+                    const { simplified, miles } = result;
                     const segment = {
                         from: simplified[0],
                         to: simplified[simplified.length - 1],
@@ -759,19 +817,15 @@
                         drivenBy: []
                     };
                     builtSegments.push(segment);
-
-                    // Draw
-                    const color = colors[i % colors.length];
-                    L.polyline(simplified, { color, weight: 5, opacity: 0.8 })
-                        .bindPopup(`<b>[${i}] ${segment.fromCity} → ${segment.toCity}</b><br>${miles} mi | ${simplified.length} pts`)
-                        .addTo(routeLayer);
-
+                    intermediatesByseg.push([]);
+                    segmentPolylines.push(drawSegmentPolyline(i));
                 } catch (err) {
                     console.error(`Error routing segment ${i + 1}:`, err);
                     builtSegments.push(null);
+                    segmentPolylines.push(null);
+                    intermediatesByseg.push([]);
                 }
 
-                // Small delay to be nice to OSRM
                 if (i < splitPoints.length - 2) await new Promise(r => setTimeout(r, 300));
             }
 
@@ -780,6 +834,113 @@
             document.getElementById('status').textContent = `Built ${validSegs.length} segments, ${totalMiles.toLocaleString()} miles total.`;
             document.getElementById('export-btn').disabled = validSegs.length === 0;
             document.getElementById('transfer-btn').disabled = validSegs.length === 0;
+            document.getElementById('edit-routes-btn').disabled = validSegs.length === 0;
+        }
+
+        // ========== EDIT ROUTES ==========
+        async function rebuildSegment(segIdx) {
+            const from = splitPoints[segIdx];
+            const to = splitPoints[segIdx + 1];
+            if (!from || !to) return;
+
+            const intermediates = (intermediatesByseg[segIdx] || []).map(im => im.latLng);
+            const n = intermediates.length;
+            document.getElementById('status').textContent = `Rerouting segment ${segIdx + 1} via ${n} intermediate${n === 1 ? '' : 's'}...`;
+
+            const result = await routeSingleSegment(from.latLng, to.latLng, intermediates);
+            if (!result) {
+                document.getElementById('status').textContent = `OSRM failed for segment ${segIdx + 1}`;
+                return;
+            }
+
+            const { simplified, miles } = result;
+            if (!builtSegments[segIdx]) {
+                builtSegments[segIdx] = {
+                    from: simplified[0], to: simplified[simplified.length - 1],
+                    description: `${from.name || 'Point ' + (segIdx + 1)} to ${to.name || 'Point ' + (segIdx + 2)}`,
+                    miles, fromCity: from.name || '', toCity: to.name || '',
+                    states: [], waypoints: simplified, drivenBy: []
+                };
+            } else {
+                const seg = builtSegments[segIdx];
+                seg.from = simplified[0];
+                seg.to = simplified[simplified.length - 1];
+                seg.miles = miles;
+                seg.waypoints = simplified;
+            }
+
+            if (segmentPolylines[segIdx]) routeLayer.removeLayer(segmentPolylines[segIdx]);
+            segmentPolylines[segIdx] = drawSegmentPolyline(segIdx);
+
+            const totalMiles = builtSegments.filter(Boolean).reduce((s, sg) => s + sg.miles, 0);
+            document.getElementById('status').textContent = `Rerouted segment ${segIdx + 1}. Total: ${totalMiles.toLocaleString()} miles.`;
+        }
+
+        function findIntermediateInsertionIndex(segIdx, latLng) {
+            const ims = (intermediatesByseg[segIdx] || []).map(im => im.latLng);
+            const seq = [splitPoints[segIdx].latLng, ...ims, splitPoints[segIdx + 1].latLng];
+            let bestCost = Infinity, bestIdx = 0;
+            for (let k = 0; k < seq.length - 1; k++) {
+                const cost = distanceKm(latLng, seq[k]) + distanceKm(latLng, seq[k + 1]) - distanceKm(seq[k], seq[k + 1]);
+                if (cost < bestCost) { bestCost = cost; bestIdx = k; }
+            }
+            return bestIdx;
+        }
+
+        function addIntermediate(segIdx, latLng) {
+            if (!intermediatesByseg[segIdx]) intermediatesByseg[segIdx] = [];
+            const insertIdx = findIntermediateInsertionIndex(segIdx, latLng);
+
+            const marker = L.marker(latLng, {
+                draggable: true,
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="width:12px;height:12px;background:#9C27B0;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [12, 12], iconAnchor: [6, 6]
+                })
+            }).addTo(intermediateLayer);
+
+            const im = { latLng: [...latLng], marker };
+            intermediatesByseg[segIdx].splice(insertIdx, 0, im);
+
+            marker.on('dragend', function (ev) {
+                im.latLng = [parseFloat(ev.target.getLatLng().lat.toFixed(5)), parseFloat(ev.target.getLatLng().lng.toFixed(5))];
+                const arr = intermediatesByseg[segIdx];
+                const i = arr.indexOf(im);
+                if (i >= 0) {
+                    arr.splice(i, 1);
+                    arr.splice(findIntermediateInsertionIndex(segIdx, im.latLng), 0, im);
+                }
+                rebuildSegment(segIdx);
+            });
+
+            marker.on('contextmenu', function (ev) {
+                L.DomEvent.preventDefault(ev.originalEvent);
+                const arr = intermediatesByseg[segIdx];
+                const i = arr.indexOf(im);
+                if (i >= 0) {
+                    arr.splice(i, 1);
+                    intermediateLayer.removeLayer(marker);
+                    rebuildSegment(segIdx);
+                }
+            });
+
+            marker.bindTooltip('Drag to adjust • right-click to remove', { direction: 'top', offset: [0, -8] });
+        }
+
+        function toggleEditRoutes() {
+            editingRoutes = !editingRoutes;
+            const btn = document.getElementById('edit-routes-btn');
+            if (editingRoutes) {
+                if (splitting) toggleSplitMode();
+                btn.textContent = 'Stop Editing Routes';
+                btn.style.background = '#c0392b';
+                document.getElementById('hint').textContent = 'Click a colored route segment to force it through that point. Drag the purple waypoints to adjust, right-click to remove.';
+            } else {
+                btn.textContent = 'Edit Routes';
+                btn.style.background = '#27ae60';
+                document.getElementById('hint').textContent = '';
+            }
         }
 
         // ========== EXPORT ==========
@@ -935,6 +1096,32 @@
         }
 
         // ========== UTILS ==========
+        function distanceKm(a, b) {
+            const meanLat = (a[0] + b[0]) / 2;
+            const dLat = (a[0] - b[0]) * 111;
+            const dLng = (a[1] - b[1]) * 111 * Math.cos(meanLat * Math.PI / 180);
+            return Math.sqrt(dLat * dLat + dLng * dLng);
+        }
+
+        // Cheapest-insertion: find the index k such that inserting latLng before splitPoints[k]
+        // minimises the total added route length.
+        function findInsertionIndex(latLng) {
+            if (splitPoints.length === 0) return 0;
+            if (splitPoints.length === 1) return 1;
+            let bestCost = Infinity, bestIdx = splitPoints.length;
+            for (let k = 0; k <= splitPoints.length; k++) {
+                let cost;
+                if (k === 0) cost = distanceKm(latLng, splitPoints[0].latLng);
+                else if (k === splitPoints.length) cost = distanceKm(latLng, splitPoints[k - 1].latLng);
+                else {
+                    const a = splitPoints[k - 1].latLng, b = splitPoints[k].latLng;
+                    cost = distanceKm(latLng, a) + distanceKm(latLng, b) - distanceKm(a, b);
+                }
+                if (cost < bestCost) { bestCost = cost; bestIdx = k; }
+            }
+            return bestIdx;
+        }
+
         function douglasPeucker(pts, tol) {
             if (pts.length <= 2) return pts;
             let mx = 0, mi = 0;
@@ -962,15 +1149,22 @@
         function clearAll() {
             markerLayer.clearLayers();
             routeLayer.clearLayers();
+            intermediateLayer.clearLayers();
             refLayer.clearLayers();
             existingLayer.clearLayers();
             splitPoints = [];
             builtSegments = null;
+            segmentPolylines = [];
+            intermediatesByseg = [];
             refPoints = [];
             routeLabel = '';
             splitting = false;
+            editingRoutes = false;
             document.getElementById('split-btn').textContent = 'Start Splitting';
             document.getElementById('split-btn').style.background = '#27ae60';
+            document.getElementById('edit-routes-btn').textContent = 'Edit Routes';
+            document.getElementById('edit-routes-btn').style.background = '#27ae60';
+            document.getElementById('edit-routes-btn').disabled = true;
             document.getElementById('route-btn').disabled = true;
             document.getElementById('export-btn').disabled = true;
             document.getElementById('transfer-btn').disabled = true;

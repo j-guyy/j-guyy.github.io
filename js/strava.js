@@ -838,26 +838,40 @@ function renderCountyMap(geojson) {
         style: feature => {
             const visited = visitedFips.has(feature.properties.GEOID);
             return {
-                fillColor:   visited ? '#4CAF50' : 'transparent',
+                fillColor:   visited ? '#4CAF50' : '#ffffff',
                 fillOpacity: visited ? 0.45 : 0,
-                color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.1)',
+                color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.12)',
                 weight:      visited ? 0.8 : 0.4,
             };
         },
         onEachFeature: (feature, layer) => {
             const { GEOID, STATEFP, NAME, LSAD } = feature.properties;
             const visited = visitedFips.has(GEOID);
-            if (!visited) return;
             const state = STATE_ABBR[STATEFP] || STATEFP || '?';
             const lsad  = LSAD_NAMES[LSAD] || 'County';
-            layer.bindPopup(`
-                <div class="activity-popup-inner">
-                    <div class="activity-popup-type" style="color:#4CAF50">${state}</div>
-                    <div class="activity-popup-name">${NAME} ${lsad}</div>
-                    <div class="activity-popup-date">FIPS ${GEOID}</div>
-                </div>`, { className: 'activity-popup' });
-            layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
-            layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
+            if (visited) {
+                const disc = countyDiscoveries[GEOID];
+                const discLine = disc
+                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
+                    : `<div class="activity-popup-date">FIPS ${GEOID}</div>`;
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:#4CAF50">${state}</div>
+                        <div class="activity-popup-name">${NAME} ${lsad}</div>
+                        ${discLine}
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
+            } else {
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:#aaa">${state}</div>
+                        <div class="activity-popup-name">${NAME} ${lsad}</div>
+                        <div class="activity-popup-date" style="color:#888">Not yet visited</div>
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+            }
         },
     }).addTo(countyMap);
 }
