@@ -196,9 +196,10 @@
     margin-left: 4px;
 }
 
-/* ── County Hunter / Park Hunter ─────────────── */
+/* ── County Hunter / Park Hunter / Metro Hunter ─ */
 #county-map,
-#park-map {
+#park-map,
+#metro-map {
     width: 100%;
     height: 520px;
     border-radius: 8px;
@@ -720,6 +721,7 @@
     #strava-map,
     #county-map,
     #park-map,
+    #metro-map,
     #tile-map,
     #city-map,
     #trail-map,

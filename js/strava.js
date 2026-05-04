@@ -1405,6 +1405,372 @@ function setParkStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Metro Hunter ──────────────────────────────────────────────────────────────
+
+const METRO_TOTAL = 200;   // total metros in metros.json (3 PR metros have no polygon)
+const METRO_COLOR = '#FFC107';  // amber
+
+let metroMap = null;
+let metroMapInitialized = false;
+let visitedMetroIds = new Set();
+let metroDiscoveries = {};   // id → { actId, actName, date }
+let metroProcessedIds = new Set();
+
+function toggleMetroMap() {
+    const section = document.getElementById('metro-section');
+    const btn = document.getElementById('metro-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !metroMapInitialized) {
+        initMetroMap();
+    } else if (opening && metroMap) {
+        setTimeout(() => metroMap.invalidateSize(), 50);
+    }
+}
+
+async function initMetroMap() {
+    setMetroStatus('Loading metro area boundaries…');
+    dbg('Metro Hunter: loading GeoJSON + saved data…');
+
+    let geojson, saved;
+    try {
+        [geojson, saved] = await Promise.all([
+            fetch('/data/metro-areas.geojson').then(r => r.json()),
+            fetch(`${WORKER_URL}/metro-hunter/all`).then(r => r.json()),
+        ]);
+    } catch (err) {
+        dbg(`Metro Hunter load error: ${err.message}`);
+        setMetroStatus('Failed to load metro data.');
+        return;
+    }
+
+    visitedMetroIds   = new Set((saved.ids          || []).filter(Boolean));
+    metroProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+    metroDiscoveries  = saved.discoveries || {};
+    dbg(`Metro Hunter cache: ${visitedMetroIds.size} metros, ${metroProcessedIds.size} processed activities`);
+
+    const metros = preprocessMetros(geojson);
+    const index  = buildSpatialIndex(metros);
+
+    const needsBackfill = visitedMetroIds.size > 0 && Object.keys(metroDiscoveries).length === 0;
+    if (needsBackfill) {
+        dbg('Metro Hunter: backfilling discovery history…');
+        const sorted = [...currentSlim].filter(a => a.i && a.p)
+            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        metroDiscoveries = await detectMetrosBackfill(sorted, metros, index);
+        dbg(`Metro Hunter backfill: ${Object.keys(metroDiscoveries).length} metros mapped`);
+        await saveMetrosToWorker();
+    }
+
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !metroProcessedIds.has(a.i));
+    dbg(`Metro Hunter: ${unprocessed.length} new activities to process`);
+
+    if (unprocessed.length > 0) {
+        const { newIds, newDiscoveries } = await detectMetrosAsync(unprocessed, metros, index);
+        newIds.forEach(id => visitedMetroIds.add(id));
+        Object.assign(metroDiscoveries, newDiscoveries);
+        unprocessed.forEach(a => metroProcessedIds.add(a.i));
+        dbg(`Metro Hunter done: +${newIds.size} new (${visitedMetroIds.size} total)`);
+        await saveMetrosToWorker();
+    }
+
+    metroMap = L.map('metro-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([38, -96], 4);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 12,
+    }).addTo(metroMap);
+    new LocationControl().addTo(metroMap);
+
+    setMetroStatus('Loading activity routes…');
+    await addPolylineOverlay(metroMap, { interactive: true });
+
+    renderMetroMap(geojson);
+    renderMetroStats();
+    renderRecentMetros(geojson);
+
+    metroMapInitialized = true;
+    setMetroStatus('');
+    dbg(`Metro Hunter rendered: ${visitedMetroIds.size} visited`);
+}
+
+// ── Metro detection ───────────────────────────────────────────────────────────
+
+function preprocessMetros(geojson) {
+    return geojson.features.map(feature => ({
+        id:      feature.properties.id,
+        name:    feature.properties.name,
+        rank:    feature.properties.rank,
+        state:   feature.properties.state,
+        feature,
+        bbox:    computeFeatureBbox(feature),
+    }));
+}
+
+async function detectMetrosAsync(activities, metros, index) {
+    const newIds = new Set();
+    const newDiscoveries = {};
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setMetroStatus(`Detecting metros… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = activities[i];
+        const points = decodePolyline(act.p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const metro of candidates) {
+                if (visitedMetroIds.has(metro.id) || newIds.has(metro.id)) continue;
+                const b = metro.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, metro.feature)) {
+                    newIds.add(metro.id);
+                    newDiscoveries[metro.id] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
+            }
+        }
+    }
+    return { newIds, newDiscoveries };
+}
+
+async function detectMetrosBackfill(activities, metros, index) {
+    const discoveries = {};
+    const found = new Set();
+    for (let i = 0; i < activities.length; i++) {
+        if (i % 50 === 0) {
+            setMetroStatus(`Building metro discovery history… ${i} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const act = activities[i];
+        const points = decodePolyline(act.p);
+        for (let j = 0; j < points.length; j += 3) {
+            const [lat, lng] = points[j];
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (!candidates) continue;
+            for (const metro of candidates) {
+                if (found.has(metro.id)) continue;
+                if (!visitedMetroIds.has(metro.id)) continue;
+                const b = metro.bbox;
+                if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
+                if (pointInFeature(lat, lng, metro.feature)) {
+                    found.add(metro.id);
+                    discoveries[metro.id] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+                }
+            }
+        }
+    }
+    return discoveries;
+}
+
+// ── Metro rendering ───────────────────────────────────────────────────────────
+
+function renderMetroMap(geojson) {
+    L.geoJSON(geojson, {
+        style: feature => {
+            const { id } = feature.properties;
+            const visited = visitedMetroIds.has(id);
+            return {
+                fillColor:   visited ? METRO_COLOR : '#ffffff',
+                fillOpacity: visited ? 0.35 : 0,
+                color:       visited ? METRO_COLOR : 'rgba(255,255,255,0.12)',
+                weight:      visited ? 0.8 : 0.4,
+            };
+        },
+        onEachFeature: (feature, layer) => {
+            const { id, rank, name, census_name, state, population } = feature.properties;
+            const visited = visitedMetroIds.has(id);
+            const popStr = population
+                ? `<div class="activity-popup-date">Pop: ${Number(population).toLocaleString()}</div>`
+                : '';
+            if (visited) {
+                const disc = metroDiscoveries[id];
+                const discLine = disc
+                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
+                    : '';
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:${METRO_COLOR}">#${rank} · ${state}</div>
+                        <div class="activity-popup-name">${name}</div>
+                        <div class="activity-popup-date">${census_name}</div>
+                        ${popStr}${discLine}
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.6 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.35 }); });
+            } else {
+                layer.bindPopup(`
+                    <div class="activity-popup-inner">
+                        <div class="activity-popup-type" style="color:#aaa">#${rank} · ${state}</div>
+                        <div class="activity-popup-name">${name}</div>
+                        <div class="activity-popup-date">${census_name}</div>
+                        ${popStr}
+                        <div class="activity-popup-date" style="color:#888">Not yet visited</div>
+                    </div>`, { className: 'activity-popup' });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+            }
+        },
+    }).addTo(metroMap);
+}
+
+function renderMetroStats() {
+    const el = document.getElementById('metro-stats-bar');
+    if (!el) return;
+    const pct = ((visitedMetroIds.size / METRO_TOTAL) * 100).toFixed(1);
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedMetroIds.size.toLocaleString()}</span>
+            <span class="county-stat-label">Metros Visited</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${METRO_TOTAL.toLocaleString()}</span>
+            <span class="county-stat-label">Top US Metros</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Complete</span>
+        </div>`;
+}
+
+const metroSortState = { col: 'date', dir: 'desc' };
+let metroGeoJsonRef = null;
+
+function renderRecentMetros(geojson) {
+    const el = document.getElementById('metro-recent-table');
+    if (!el || !Object.keys(metroDiscoveries).length) return;
+    if (geojson) metroGeoJsonRef = geojson;
+    if (!metroGeoJsonRef) return;
+
+    const infoById = {};
+    for (const f of metroGeoJsonRef.features) {
+        const { id, rank, name, state } = f.properties;
+        infoById[id] = { rank, name, state };
+    }
+
+    let rows = Object.entries(metroDiscoveries)
+        .filter(([id]) => infoById[id])
+        .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
+
+    rows.sort((a, b) => {
+        const dir = metroSortState.dir === 'asc' ? 1 : -1;
+        switch (metroSortState.col) {
+            case 'rank':     return dir * (a.info.rank - b.info.rank);
+            case 'name':     return dir * a.info.name.localeCompare(b.info.name);
+            case 'state':    return dir * a.info.state.localeCompare(b.info.state);
+            case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
+            case 'date':     return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            default: return 0;
+        }
+    });
+
+    rows = rows.slice(0, 25);
+    if (!rows.length) return;
+
+    const headers = [
+        { label: 'Rank',         col: 'rank' },
+        { label: 'Metro',        col: 'name' },
+        { label: 'State',        col: 'state' },
+        { label: 'Discovered By', col: 'activity' },
+        { label: 'Date',         col: 'date' },
+    ];
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = metroSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (metroSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (metroSortState.col === col) {
+                metroSortState.dir = metroSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                metroSortState.col = col;
+                metroSortState.dir = (col === 'name' || col === 'state') ? 'asc' : 'desc';
+            }
+            renderRecentMetros();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const { disc, info } of rows) {
+        const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="color:${METRO_COLOR};font-weight:600">#${info.rank}</td>
+            <td>${info.name}</td>
+            <td>${info.state}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
+                : (disc.actName || '—')}</td>
+            <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    el.appendChild(wrapper);
+    initScrollHint(wrapper);
+}
+
+async function saveMetrosToWorker() {
+    try {
+        const res = await fetch(`${WORKER_URL}/metro-hunter/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ids:          [...visitedMetroIds],
+                processedIds: [...metroProcessedIds],
+                discoveries:  metroDiscoveries,
+            }),
+        });
+        const data = await res.json();
+        dbg(`Metro data saved: ${data.metros} metros`);
+    } catch (err) {
+        dbg(`Metro save failed: ${err.message}`);
+    }
+}
+
+async function resetMetroData() {
+    if (!confirm('Clear all metro detection data from the server? This will force a full re-detection on next Metro Hunter open.')) return;
+    try {
+        await fetch(`${WORKER_URL}/metro-hunter/reset`, { method: 'POST' });
+        metroMapInitialized = false;
+        visitedMetroIds.clear();
+        metroProcessedIds.clear();
+        metroDiscoveries = {};
+        dbg('Metro data reset. Reopen Metro Hunter to re-detect.');
+    } catch (err) {
+        dbg(`Metro reset failed: ${err.message}`);
+    }
+}
+
+function setMetroStatus(msg) {
+    const el = document.getElementById('metro-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Map ───────────────────────────────────────────────────────────────────────
 
 const GROUP_COLORS = {

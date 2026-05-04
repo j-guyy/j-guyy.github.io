@@ -23,6 +23,7 @@ const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
 const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY      = 'strava_parks';
+const METRO_HUNTER_KEY = 'strava_metro_hunter';
 
 const TRAVEL_KEYS = {
     highpoints:    'travel_highpoints',
@@ -150,6 +151,23 @@ export default {
             }
             if (path === '/parks/reset' && request.method === 'POST') {
                 await env.STRAVA_DATA.delete(PARKS_KEY);
+                return json({ ok: true });
+            }
+
+            // ── Metro Hunter ──
+            // Data: { ids: [...], processedIds: [...], discoveries: { id: { actId, actName, date } } }
+
+            if (path === '/metro-hunter/all') {
+                const data = await env.STRAVA_DATA.get(METRO_HUNTER_KEY, 'json');
+                return json(data || { ids: [], processedIds: [], discoveries: {} });
+            }
+            if (path === '/metro-hunter/save' && request.method === 'POST') {
+                const data = await request.json();
+                await env.STRAVA_DATA.put(METRO_HUNTER_KEY, JSON.stringify(data));
+                return json({ ok: true, metros: (data.ids || []).length });
+            }
+            if (path === '/metro-hunter/reset' && request.method === 'POST') {
+                await env.STRAVA_DATA.delete(METRO_HUNTER_KEY);
                 return json({ ok: true });
             }
 
