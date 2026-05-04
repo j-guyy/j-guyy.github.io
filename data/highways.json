@@ -38459,7 +38459,10 @@
                             -117.0057
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1",
+                        "person2"
+                    ]
                 },
                 {
                     "from": [
@@ -39017,7 +39020,10 @@
                             -119.0545
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1",
+                        "person2"
+                    ]
                 },
                 {
                     "from": [
@@ -39275,7 +39281,10 @@
                             -121.302
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1",
+                        "person2"
+                    ]
                 },
                 {
                     "from": [
@@ -39785,7 +39794,10 @@
                             -122.7373
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1",
+                        "person2"
+                    ]
                 },
                 {
                     "from": [
