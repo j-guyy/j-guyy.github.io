@@ -1196,8 +1196,8 @@ function renderParkMap(geojson) {
             const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
             return {
                 fillColor:   visited ? color : '#ffffff',
-                fillOpacity: visited ? 0.45 : 0,
-                color:       visited ? color : 'rgba(255,255,255,0.12)',
+                fillOpacity: visited ? 0.45 : 0.07,
+                color:       visited ? color : 'rgba(255,255,255,0.15)',
                 weight:      visited ? 0.8 : 0.4,
             };
         },
@@ -1225,8 +1225,8 @@ function renderParkMap(geojson) {
                         <div class="activity-popup-name">${name}</div>
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
-                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
-                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.18 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.07 }); });
             }
         },
     }).addTo(parkMap);
@@ -1579,8 +1579,8 @@ function renderMetroMap(geojson) {
             const visited = visitedMetroIds.has(id);
             return {
                 fillColor:   visited ? METRO_COLOR : '#ffffff',
-                fillOpacity: visited ? 0.35 : 0,
-                color:       visited ? METRO_COLOR : 'rgba(255,255,255,0.12)',
+                fillOpacity: visited ? 0.35 : 0.07,
+                color:       visited ? METRO_COLOR : 'rgba(255,255,255,0.15)',
                 weight:      visited ? 0.8 : 0.4,
             };
         },
@@ -1613,8 +1613,8 @@ function renderMetroMap(geojson) {
                         ${popStr}
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
-                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
-                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.18 }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.07 }); });
             }
         },
     }).addTo(metroMap);
