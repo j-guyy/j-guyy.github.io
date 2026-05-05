@@ -1053,15 +1053,20 @@ const PARK_AGENCY_COLORS = {
     NPS:   '#FF7043',   // deep orange
     USFS:  '#8BC34A',   // light green
     USFWS: '#26C6DA',   // cyan
+    STATE: '#AB47BC',   // medium purple
 };
 
-const PARK_TOTAL = 897;  // total units in federal-lands.geojson
+const FEDERAL_PARK_TOTAL = 897;   // total units in federal-lands.geojson
+const STATE_PARK_TOTAL   = 5895;  // total units in state-parks.geojson
 
 let parkMap = null;
 let parkMapInitialized = false;
 let visitedParkIds = new Set();
 let parkDiscoveries = {};   // id → { actId, actName, date }
 let parkProcessedIds = new Set();
+let visitedStateParkIds = new Set();
+let stateParkDiscoveries = {};
+let stateParkProcessedIds = new Set();
 
 function toggleParkMap() {
     const section = document.getElementById('park-section');
@@ -1078,14 +1083,16 @@ function toggleParkMap() {
 }
 
 async function initParkMap() {
-    setParkStatus('Loading federal land boundaries…');
+    setParkStatus('Loading park boundaries…');
     dbg('Park Hunter: loading GeoJSON + saved data…');
 
-    let geojson, saved;
+    let fedGeojson, spGeojson, savedFed, savedState;
     try {
-        [geojson, saved] = await Promise.all([
+        [fedGeojson, spGeojson, savedFed, savedState] = await Promise.all([
             fetch('/data/federal-lands.geojson').then(r => r.json()),
+            fetch('/data/state-parks.geojson').then(r => r.json()),
             fetch(`${WORKER_URL}/parks/all`).then(r => r.json()),
+            fetch(`${WORKER_URL}/state-parks/all`).then(r => r.json()),
         ]);
     } catch (err) {
         dbg(`Park Hunter load error: ${err.message}`);
@@ -1093,36 +1100,52 @@ async function initParkMap() {
         return;
     }
 
-    visitedParkIds   = new Set((saved.ids          || []).filter(Boolean));
-    parkProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
-    parkDiscoveries  = saved.discoveries || {};
-    dbg(`Park Hunter cache: ${visitedParkIds.size} parks, ${parkProcessedIds.size} processed activities`);
+    visitedParkIds        = new Set((savedFed.ids           || []).filter(Boolean));
+    parkProcessedIds      = new Set((savedFed.processedIds  || []).filter(Boolean));
+    parkDiscoveries       = savedFed.discoveries || {};
+    visitedStateParkIds   = new Set((savedState.ids          || []).filter(Boolean));
+    stateParkProcessedIds = new Set((savedState.processedIds || []).filter(Boolean));
+    stateParkDiscoveries  = savedState.discoveries || {};
+    dbg(`Park Hunter: ${visitedParkIds.size} federal, ${visitedStateParkIds.size} state cached`);
 
-    const parks = preprocessParks(geojson);
-    const index = buildSpatialIndex(parks);
+    const fedParks   = preprocessParks(fedGeojson);
+    const fedIndex   = buildSpatialIndex(fedParks);
+    const stateParks = preprocessParks(spGeojson);
+    const stateIndex = buildSpatialIndex(stateParks);
 
-    // One-time backfill: if we have visits but no discovery data, scan oldest-first
-    const needsBackfill = visitedParkIds.size > 0 && Object.keys(parkDiscoveries).length === 0;
-    if (needsBackfill) {
-        dbg('Park Hunter: backfilling discovery history…');
+    // Federal: one-time backfill if visits exist but no discovery history
+    const needsFedBackfill = visitedParkIds.size > 0 && Object.keys(parkDiscoveries).length === 0;
+    if (needsFedBackfill) {
+        dbg('Park Hunter: backfilling federal discovery history…');
         const sorted = [...currentSlim].filter(a => a.i && a.p)
             .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
-        parkDiscoveries = await detectParksBackfill(sorted, parks, index);
+        parkDiscoveries = await detectParksBackfill(sorted, fedParks, fedIndex, visitedParkIds);
         dbg(`Park Hunter backfill: ${Object.keys(parkDiscoveries).length} parks mapped`);
         await saveParksToWorker();
     }
 
-    const unprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i))
+    // Federal: detect unprocessed activities
+    const fedUnprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i))
         .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
-    dbg(`Park Hunter: ${unprocessed.length} new activities to process`);
-
-    if (unprocessed.length > 0) {
-        const { newIds, newDiscoveries } = await detectParksAsync(unprocessed, parks, index);
+    if (fedUnprocessed.length > 0) {
+        const { newIds, newDiscoveries } = await detectParksAsync(fedUnprocessed, fedParks, fedIndex, visitedParkIds);
         newIds.forEach(id => visitedParkIds.add(id));
         Object.assign(parkDiscoveries, newDiscoveries);
-        unprocessed.forEach(a => parkProcessedIds.add(a.i));
-        dbg(`Park Hunter done: +${newIds.size} new (${visitedParkIds.size} total)`);
+        fedUnprocessed.forEach(a => parkProcessedIds.add(a.i));
+        dbg(`Park Hunter: +${newIds.size} federal (${visitedParkIds.size} total)`);
         await saveParksToWorker();
+    }
+
+    // State parks: detect unprocessed activities
+    const spUnprocessed = currentSlim.filter(a => a.i && a.p && !stateParkProcessedIds.has(a.i))
+        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+    if (spUnprocessed.length > 0) {
+        const { newIds, newDiscoveries } = await detectParksAsync(spUnprocessed, stateParks, stateIndex, visitedStateParkIds);
+        newIds.forEach(id => visitedStateParkIds.add(id));
+        Object.assign(stateParkDiscoveries, newDiscoveries);
+        spUnprocessed.forEach(a => stateParkProcessedIds.add(a.i));
+        dbg(`Park Hunter: +${newIds.size} state parks (${visitedStateParkIds.size} total)`);
+        await saveStateParkData();
     }
 
     parkMap = L.map('park-map', {
@@ -1140,13 +1163,22 @@ async function initParkMap() {
     setParkStatus('Loading activity routes…');
     await addPolylineOverlay(parkMap, { interactive: true });
 
-    renderParkMap(geojson);
+    const fedLayer   = renderParkMapLayer(fedGeojson,  visitedParkIds,      parkDiscoveries);
+    const stateLayer = renderParkMapLayer(spGeojson,   visitedStateParkIds, stateParkDiscoveries);
+    fedLayer.addTo(parkMap);
+    stateLayer.addTo(parkMap);
+
+    L.control.layers(null, {
+        'Federal Lands': fedLayer,
+        'State Parks':   stateLayer,
+    }, { collapsed: false, position: 'topright' }).addTo(parkMap);
+
     renderParkStats();
-    renderRecentParks(geojson);
+    renderRecentParks(fedGeojson, spGeojson);
 
     parkMapInitialized = true;
     setParkStatus('');
-    dbg(`Park Hunter rendered: ${visitedParkIds.size} visited`);
+    dbg(`Park Hunter rendered: ${visitedParkIds.size} federal, ${visitedStateParkIds.size} state parks`);
 }
 
 // ── Park detection ────────────────────────────────────────────────────────────
@@ -1162,7 +1194,7 @@ function preprocessParks(geojson) {
     }));
 }
 
-async function detectParksAsync(activities, parks, index) {
+async function detectParksAsync(activities, parks, index, visitedSet) {
     const newIds = new Set();
     const newDiscoveries = {};
     for (let i = 0; i < activities.length; i++) {
@@ -1177,7 +1209,7 @@ async function detectParksAsync(activities, parks, index) {
             const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
             if (!candidates) continue;
             for (const park of candidates) {
-                if (visitedParkIds.has(park.id) || newIds.has(park.id)) continue;
+                if (visitedSet.has(park.id) || newIds.has(park.id)) continue;
                 const b = park.bbox;
                 if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
                 if (pointInFeature(lat, lng, park.feature)) {
@@ -1190,7 +1222,7 @@ async function detectParksAsync(activities, parks, index) {
     return { newIds, newDiscoveries };
 }
 
-async function detectParksBackfill(activities, parks, index) {
+async function detectParksBackfill(activities, parks, index, visitedSet) {
     const discoveries = {};
     const found = new Set();
     for (let i = 0; i < activities.length; i++) {
@@ -1206,7 +1238,7 @@ async function detectParksBackfill(activities, parks, index) {
             if (!candidates) continue;
             for (const park of candidates) {
                 if (found.has(park.id)) continue;
-                if (!visitedParkIds.has(park.id)) continue;
+                if (!visitedSet.has(park.id)) continue;
                 const b = park.bbox;
                 if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) continue;
                 if (pointInFeature(lat, lng, park.feature)) {
@@ -1221,11 +1253,11 @@ async function detectParksBackfill(activities, parks, index) {
 
 // ── Park rendering ─────────────────────────────────────────────────────────────
 
-function renderParkMap(geojson) {
-    L.geoJSON(geojson, {
+function renderParkMapLayer(geojson, visitedSet, discoveries) {
+    return L.geoJSON(geojson, {
         style: feature => {
             const { id, agency } = feature.properties;
-            const visited = visitedParkIds.has(id);
+            const visited = visitedSet.has(id);
             const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
             return {
                 fillColor:   visited ? color : '#ffffff',
@@ -1236,10 +1268,10 @@ function renderParkMap(geojson) {
         },
         onEachFeature: (feature, layer) => {
             const { id, name, agency, type } = feature.properties;
-            const visited = visitedParkIds.has(id);
+            const visited = visitedSet.has(id);
             const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
             if (visited) {
-                const disc = parkDiscoveries[id];
+                const disc = discoveries[id];
                 const discLine = disc
                     ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
                     : '';
@@ -1262,34 +1294,30 @@ function renderParkMap(geojson) {
                 layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.07 }); });
             }
         },
-    }).addTo(parkMap);
+    });
 }
 
 function renderParkStats() {
     const el = document.getElementById('park-stats-bar');
     if (!el) return;
-    const pct = ((visitedParkIds.size / PARK_TOTAL) * 100).toFixed(1);
 
-    // Count visits by agency
+    const fedPct = ((visitedParkIds.size / FEDERAL_PARK_TOTAL) * 100).toFixed(1);
+    const spPct  = ((visitedStateParkIds.size / STATE_PARK_TOTAL) * 100).toFixed(1);
+
     const byAgency = { NPS: 0, USFS: 0, USFWS: 0 };
     for (const id of visitedParkIds) {
         const prefix = id.split('-')[0].toUpperCase();
         if (byAgency[prefix] !== undefined) byAgency[prefix]++;
-        else byAgency[prefix] = (byAgency[prefix] || 0) + 1;
     }
 
     el.innerHTML = `
         <div class="county-stat-item">
             <span class="county-stat-number">${visitedParkIds.size.toLocaleString()}</span>
-            <span class="county-stat-label">Federal Lands Visited</span>
+            <span class="county-stat-label">Federal Lands</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${PARK_TOTAL.toLocaleString()}</span>
-            <span class="county-stat-label">Total Units</span>
-        </div>
-        <div class="county-stat-item">
-            <span class="county-stat-number">${pct}%</span>
-            <span class="county-stat-label">Complete</span>
+            <span class="county-stat-number">${fedPct}%</span>
+            <span class="county-stat-label">of ${FEDERAL_PARK_TOTAL}</span>
         </div>
         <div class="county-stat-item">
             <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.NPS}">${byAgency.NPS}</span>
@@ -1297,30 +1325,51 @@ function renderParkStats() {
         </div>
         <div class="county-stat-item">
             <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.USFS}">${byAgency.USFS}</span>
-            <span class="county-stat-label">National Forests</span>
+            <span class="county-stat-label">Nat'l Forests</span>
         </div>
         <div class="county-stat-item">
             <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.USFWS}">${byAgency.USFWS}</span>
             <span class="county-stat-label">Wildlife Refuges</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.STATE}">${visitedStateParkIds.size.toLocaleString()}</span>
+            <span class="county-stat-label">State Parks</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${PARK_AGENCY_COLORS.STATE}">${spPct}%</span>
+            <span class="county-stat-label">of ${STATE_PARK_TOTAL}</span>
         </div>`;
 }
 
 const parkSortState = { col: 'date', dir: 'desc' };
 let parkGeoJsonRef = null;
+let stateParkGeoJsonRef = null;
 
-function renderRecentParks(geojson) {
+function renderRecentParks(fedGeojson, spGeojson) {
     const el = document.getElementById('park-recent-table');
-    if (!el || !Object.keys(parkDiscoveries).length) return;
-    if (geojson) parkGeoJsonRef = geojson;
-    if (!parkGeoJsonRef) return;
+    if (!el) return;
+    if (fedGeojson) parkGeoJsonRef = fedGeojson;
+    if (spGeojson)  stateParkGeoJsonRef = spGeojson;
+    if (!parkGeoJsonRef && !stateParkGeoJsonRef) return;
 
     const infoById = {};
-    for (const f of parkGeoJsonRef.features) {
-        const { id, name, agency, type } = f.properties;
-        infoById[id] = { name, agency, type };
+    if (parkGeoJsonRef) {
+        for (const f of parkGeoJsonRef.features) {
+            const { id, name, agency, type } = f.properties;
+            infoById[id] = { name, agency, type };
+        }
+    }
+    if (stateParkGeoJsonRef) {
+        for (const f of stateParkGeoJsonRef.features) {
+            const { id, name, agency, type } = f.properties;
+            infoById[id] = { name, agency, type };
+        }
     }
 
-    let rows = Object.entries(parkDiscoveries)
+    const allDiscoveries = { ...parkDiscoveries, ...stateParkDiscoveries };
+    if (!Object.keys(allDiscoveries).length) return;
+
+    let rows = Object.entries(allDiscoveries)
         .filter(([id]) => infoById[id])
         .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
 
@@ -1420,14 +1469,38 @@ async function saveParksToWorker() {
     }
 }
 
+async function saveStateParkData() {
+    try {
+        const res = await fetch(`${WORKER_URL}/state-parks/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ids:          [...visitedStateParkIds],
+                processedIds: [...stateParkProcessedIds],
+                discoveries:  stateParkDiscoveries,
+            }),
+        });
+        const data = await res.json();
+        dbg(`State park data saved: ${data.parks} parks`);
+    } catch (err) {
+        dbg(`State park save failed: ${err.message}`);
+    }
+}
+
 async function resetParkData() {
     if (!confirm('Clear all park detection data from the server? This will force a full re-detection on next Park Hunter open.')) return;
     try {
-        await fetch(`${WORKER_URL}/parks/reset`, { method: 'POST' });
+        await Promise.all([
+            fetch(`${WORKER_URL}/parks/reset`,       { method: 'POST' }),
+            fetch(`${WORKER_URL}/state-parks/reset`, { method: 'POST' }),
+        ]);
         parkMapInitialized = false;
         visitedParkIds.clear();
         parkProcessedIds.clear();
         parkDiscoveries = {};
+        visitedStateParkIds.clear();
+        stateParkProcessedIds.clear();
+        stateParkDiscoveries = {};
         dbg('Park data reset. Reopen Park Hunter to re-detect.');
     } catch (err) {
         dbg(`Park reset failed: ${err.message}`);

@@ -22,7 +22,8 @@ const COUNTIES_KEY   = 'strava_counties';
 const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
 const SUMMITS_KEY    = 'strava_summits';
-const PARKS_KEY      = 'strava_parks';
+const PARKS_KEY       = 'strava_parks';
+const STATE_PARKS_KEY = 'strava_state_parks';
 const METRO_HUNTER_KEY = 'strava_metro_hunter';
 
 const TRAVEL_KEYS = {
@@ -106,6 +107,10 @@ export default {
                 await env.STRAVA_DATA.put(COUNTIES_KEY, JSON.stringify(data));
                 return json({ ok: true, counties: (data.fips || []).length });
             }
+            if (path === '/counties/reset' && request.method === 'POST') {
+                await env.STRAVA_DATA.delete(COUNTIES_KEY);
+                return json({ ok: true });
+            }
 
             // ── Tile Hunter ──
             // Data: { tiles: [...], processedIds: [...] }
@@ -151,6 +156,21 @@ export default {
             }
             if (path === '/parks/reset' && request.method === 'POST') {
                 await env.STRAVA_DATA.delete(PARKS_KEY);
+                return json({ ok: true });
+            }
+
+            // ── State Park Hunter ──
+            if (path === '/state-parks/all') {
+                const data = await env.STRAVA_DATA.get(STATE_PARKS_KEY, 'json');
+                return json(data || { ids: [], processedIds: [], discoveries: {} });
+            }
+            if (path === '/state-parks/save' && request.method === 'POST') {
+                const data = await request.json();
+                await env.STRAVA_DATA.put(STATE_PARKS_KEY, JSON.stringify(data));
+                return json({ ok: true, parks: (data.ids || []).length });
+            }
+            if (path === '/state-parks/reset' && request.method === 'POST') {
+                await env.STRAVA_DATA.delete(STATE_PARKS_KEY);
                 return json({ ok: true });
             }
 
