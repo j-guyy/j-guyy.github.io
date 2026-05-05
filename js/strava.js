@@ -1785,7 +1785,7 @@ async function renderMetroComparison() {
 
     let metrosData;
     try {
-        metrosData = await fetch('/data/metros.json').then(r => r.json());
+        metrosData = await fetch(`${WORKER_URL}/travel/metros`).then(r => r.json());
     } catch {
         return;
     }
