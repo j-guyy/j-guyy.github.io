@@ -696,8 +696,9 @@ async function initCountyMap() {
         await saveCountiesToWorker();
     }
 
-    // Only process activities with polylines not yet analysed
-    const unprocessed = currentSlim.filter(a => a.i && a.p && !countyProcessedIds.has(a.i));
+    // Only process activities with polylines not yet analysed — oldest-first so discovery date = first visit
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !countyProcessedIds.has(a.i))
+        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
     dbg(`County detection: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
@@ -1111,7 +1112,8 @@ async function initParkMap() {
         await saveParksToWorker();
     }
 
-    const unprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i));
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i))
+        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
     dbg(`Park Hunter: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
@@ -1496,7 +1498,8 @@ async function initMetroMap() {
         await saveMetrosToWorker();
     }
 
-    const unprocessed = currentSlim.filter(a => a.i && a.p && !metroProcessedIds.has(a.i));
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !metroProcessedIds.has(a.i))
+        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
     dbg(`Metro Hunter: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
