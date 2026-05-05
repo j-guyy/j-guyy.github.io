@@ -196,6 +196,41 @@
     margin-left: 4px;
 }
 
+/* ── Collapsible sections ────────────────────────── */
+.collapsible-section {
+    margin: 16px 0 4px;
+}
+
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-color);
+    transition: background 0.15s;
+}
+
+.collapsible-header:hover {
+    background: rgba(255,255,255,0.09);
+}
+
+.collapsible-arrow {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.collapsible-body {
+    padding-top: 8px;
+}
+
 /* ── County Hunter / Park Hunter / Metro Hunter ─ */
 #county-map,
 #park-map,

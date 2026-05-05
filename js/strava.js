@@ -503,6 +503,36 @@ function initScrollHint(wrapper) {
     check();
 }
 
+function makeCollapsible(title, contentEl, { collapsed = true } = {}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'collapsible-section';
+
+    const header = document.createElement('div');
+    header.className = 'collapsible-header';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'collapsible-arrow';
+    arrow.textContent = collapsed ? '▶' : '▼';
+
+    header.appendChild(arrow);
+    header.appendChild(document.createTextNode(' ' + title));
+
+    const body = document.createElement('div');
+    body.className = 'collapsible-body';
+    body.style.display = collapsed ? 'none' : 'block';
+    body.appendChild(contentEl);
+
+    header.addEventListener('click', () => {
+        const opening = body.style.display === 'none';
+        body.style.display = opening ? 'block' : 'none';
+        arrow.textContent = opening ? '▼' : '▶';
+    });
+
+    wrap.appendChild(header);
+    wrap.appendChild(body);
+    return wrap;
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function renderSummary(slim, countries, total) {
@@ -984,12 +1014,13 @@ function renderRecentCounties(geojson) {
     }
     table.appendChild(tbody);
 
-    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
-    el.appendChild(wrapper);
     initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Recently Discovered (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 async function saveCountiesToWorker() {
@@ -1360,12 +1391,13 @@ function renderRecentParks(geojson) {
     }
     table.appendChild(tbody);
 
-    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
-    el.appendChild(wrapper);
     initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Recently Discovered (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 async function saveParksToWorker() {
@@ -1493,6 +1525,7 @@ async function initMetroMap() {
 
     renderMetroMap(geojson);
     renderMetroStats();
+    renderMetroComparison();
     renderRecentMetros(geojson);
 
     metroMapInitialized = true;
@@ -1726,12 +1759,119 @@ function renderRecentMetros(geojson) {
     }
     table.appendChild(tbody);
 
-    el.innerHTML = '<h3 style="margin:24px 0 8px">Recently Discovered</h3>';
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
-    el.appendChild(wrapper);
     initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Recently Discovered (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+// ── Metro comparison dashboard ────────────────────────────────────────────────
+
+function metroIdFromEntry(m) {
+    let slug = m.name.toLowerCase();
+    for (const ch of [' ', '/', ',', "'", '.', '(', ')', '\\']) {
+        slug = slug.split(ch).join('-');
+    }
+    while (slug.includes('--')) slug = slug.replace(/--/g, '-');
+    return `metro-${slug.replace(/^-+|-+$/g, '')}-${m.state.toLowerCase()}`;
+}
+
+async function renderMetroComparison() {
+    const el = document.getElementById('metro-comparison');
+    if (!el) return;
+
+    let metrosData;
+    try {
+        metrosData = await fetch('/data/metros.json').then(r => r.json());
+    } catch {
+        return;
+    }
+
+    const manuallyVisited = metrosData.filter(m => m.visited);
+    const manualIds       = new Set(manuallyVisited.map(metroIdFromEntry));
+
+    const preStrava  = manuallyVisited.filter(m => !visitedMetroIds.has(metroIdFromEntry(m)));
+    const stravaOnly = metrosData.filter(m => !m.visited && visitedMetroIds.has(metroIdFromEntry(m)));
+    const confirmed  = manuallyVisited.filter(m => visitedMetroIds.has(metroIdFromEntry(m)));
+
+    const contentEl = document.createElement('div');
+
+    const stats = document.createElement('div');
+    stats.className = 'county-stats-bar';
+    stats.style.marginBottom = '16px';
+    stats.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${manuallyVisited.length}</span>
+            <span class="county-stat-label">Manually Marked</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedMetroIds.size}</span>
+            <span class="county-stat-label">Strava Detected</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:#4CAF50">${confirmed.length}</span>
+            <span class="county-stat-label">Confirmed (Both)</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:#FF9800">${preStrava.length}</span>
+            <span class="county-stat-label">Pre-Strava Only</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number" style="color:${METRO_COLOR}">${stravaOnly.length}</span>
+            <span class="county-stat-label">Strava Only</span>
+        </div>`;
+    contentEl.appendChild(stats);
+
+    if (preStrava.length) {
+        const h = document.createElement('h4');
+        h.textContent = `Pre-Strava Visits (${preStrava.length}) — manually marked but no recorded activity`;
+        h.style.cssText = 'margin:16px 0 8px;color:#FF9800';
+        contentEl.appendChild(h);
+        const w = document.createElement('div');
+        w.className = 'table-scroll-wrapper';
+        w.appendChild(buildMetroComparisonTable(preStrava, '#FF9800'));
+        contentEl.appendChild(w);
+        initScrollHint(w);
+    }
+
+    if (stravaOnly.length) {
+        const h = document.createElement('h4');
+        h.textContent = `Strava-Only Detections (${stravaOnly.length}) — activity detected but not manually marked`;
+        h.style.cssText = `margin:16px 0 8px;color:${METRO_COLOR}`;
+        contentEl.appendChild(h);
+        const w = document.createElement('div');
+        w.className = 'table-scroll-wrapper';
+        w.appendChild(buildMetroComparisonTable(stravaOnly, METRO_COLOR));
+        contentEl.appendChild(w);
+        initScrollHint(w);
+    }
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible('Comparison Dashboard', contentEl, { collapsed: !wasOpen }));
+}
+
+function buildMetroComparisonTable(metros, rankColor) {
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Rank</th><th>Metro</th><th>State</th><th>Full Name</th></tr>';
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    [...metros].sort((a, b) => a.rank - b.rank).forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="color:${rankColor};font-weight:600">#${m.rank}</td>
+            <td>${m.name}</td>
+            <td>${m.state}</td>
+            <td>${m.metro_name}</td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return table;
 }
 
 async function saveMetrosToWorker() {
