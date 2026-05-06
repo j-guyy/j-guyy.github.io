@@ -4098,6 +4098,10 @@ const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Sno
 const MOUNTAIN_CELL_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const SUMMIT_RADIUS_M = 300;
+// Hysteresis for lap counting: must be beyond this larger radius to be
+// considered "really left" the summit zone. Without it, GPS noise + ordinary
+// wandering near a peak causes one real lap to register as 2-3 entries.
+const LAP_EXIT_RADIUS_M = 600;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
@@ -4421,12 +4425,12 @@ async function detectMountainSummits(peaks) {
         for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
 
-            // First: any peaks we were inside of that we've now left?
+            // First: any peaks we were inside of that we've now really left?
+            // We use LAP_EXIT_RADIUS_M (larger than SUMMIT_RADIUS_M) so that
+            // ordinary movement near the summit doesn't flap and over-count laps.
             for (const peakId of inside) {
                 const peak = peakById.get(peakId);
-                if (!peak ||
-                    Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008 ||
-                    haversineM(lat, lng, peak.lat, peak.lng) > SUMMIT_RADIUS_M) {
+                if (!peak || haversineM(lat, lng, peak.lat, peak.lng) > LAP_EXIT_RADIUS_M) {
                     inside.delete(peakId);
                 }
             }
