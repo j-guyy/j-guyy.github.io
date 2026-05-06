@@ -297,26 +297,22 @@ async function handlePeaksFetch(url) {
         return json({ peaks: [], failed: true });
     }
 
-        const peaks = (data.elements || [])
-            .filter(el => {
-                const v = parseFloat(el.tags?.ele);
-                if (isNaN(v) || v <= 0) return false;
-                const name = el.tags?.name || el.tags?.['name:en'] || '';
-                return name !== '' && name !== 'Unnamed Peak';
-            })
-            .map(el => ({
-                id:   el.id,
-                name: el.tags?.name || el.tags?.['name:en'] || '',
-                lat:  el.lat,
-                lng:  el.lon,
-                ele:  parseFloat(el.tags.ele),
-            }));
-        console.log(`peaks/fetch ${cell}: ${peaks.length} peaks (attempt ${attempt + 1})`);
-        return json({ peaks });
-    }
-
-    console.log(`peaks/fetch ${cell}: all attempts failed`);
-    return json({ peaks: [], failed: true });
+    const peaks = (data.elements || [])
+        .filter(el => {
+            const v = parseFloat(el.tags?.ele);
+            if (isNaN(v) || v <= 0) return false;
+            const name = el.tags?.name || el.tags?.['name:en'] || '';
+            return name !== '' && name !== 'Unnamed Peak';
+        })
+        .map(el => ({
+            id:   el.id,
+            name: el.tags?.name || el.tags?.['name:en'] || '',
+            lat:  el.lat,
+            lng:  el.lon,
+            ele:  parseFloat(el.tags.ele),
+        }));
+    console.log(`peaks/fetch ${cell}: ${peaks.length} peaks from ${mirror}`);
+    return json({ peaks });
 }
 
 // ── Travel data handlers ─────────────────────────────────────────────────────
