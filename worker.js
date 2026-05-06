@@ -212,7 +212,7 @@ export default {
             // Fetches peaks for a 5°×5° cell from Overpass on behalf of the client,
             // avoiding browser IP rate-limits. Tries two mirrors with a short gap.
 
-            if (path === '/peaks/fetch' && method === 'GET') {
+            if (path === '/peaks/fetch' && request.method === 'GET') {
                 return await handlePeaksFetch(url);
             }
 
@@ -244,7 +244,7 @@ async function handlePeaksFetch(url) {
     const w = url.searchParams.get('west');
     const n = url.searchParams.get('north');
     const e = url.searchParams.get('east');
-    if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, { status: 400 });
+    if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, 400);
 
     const cell = `(${s},${w},${n},${e})`;
     // timeout:12 keeps each Overpass attempt under 14s; two mirrors back-to-back
