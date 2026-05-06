@@ -246,6 +246,7 @@ async function handlePeaksFetch(url) {
     const e = url.searchParams.get('east');
     if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, { status: 400 });
 
+    const cell = `(${s},${w},${n},${e})`;
     const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
@@ -253,19 +254,33 @@ async function handlePeaksFetch(url) {
     ];
 
     for (let attempt = 0; attempt < mirrors.length; attempt++) {
+        const mirror = mirrors[attempt];
         if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+
         let res;
         try {
-            res = await fetch(`${mirrors[attempt]}?data=${encodeURIComponent(query)}`, {
+            res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
                 headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
             });
-        } catch { continue; }
+        } catch (err) {
+            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: fetch error — ${err.message}`);
+            continue;
+        }
 
-        if (res.status === 429 || res.status === 504) continue;
-        if (!res.ok) break;
+        if (res.status === 429 || res.status === 504) {
+            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: ${res.status} from ${mirror}`);
+            continue;
+        }
+        if (!res.ok) {
+            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: ${res.status} from ${mirror} — aborting`);
+            break;
+        }
 
         const data = await res.json();
-        if (data.remark?.includes('timeout')) continue;
+        if (data.remark?.includes('timeout')) {
+            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: Overpass timeout remark — retrying`);
+            continue;
+        }
 
         const peaks = (data.elements || [])
             .filter(el => {
@@ -281,8 +296,11 @@ async function handlePeaksFetch(url) {
                 lng:  el.lon,
                 ele:  parseFloat(el.tags.ele),
             }));
+        console.log(`peaks/fetch ${cell}: ${peaks.length} peaks (attempt ${attempt + 1})`);
         return json({ peaks });
     }
+
+    console.log(`peaks/fetch ${cell}: all attempts failed`);
     return json({ peaks: [], failed: true });
 }
 
