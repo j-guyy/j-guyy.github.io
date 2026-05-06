@@ -4158,13 +4158,13 @@ async function savePeakCache() {
 async function fetchPeaksForCell(cellKey, south, west, north, east) {
     const cached = peakCellCache[cellKey];
     if (cached) {
-        if (Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
-            return cached.peaks;
-        }
         if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
             dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
             return [];
+        }
+        if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
+            return cached.peaks;
         }
     }
 
