@@ -4397,9 +4397,11 @@ async function detectMountainSummits(peaks) {
 
     // 0.5° grid index for fast candidate lookup
     const index = {};
+    const peakById = new Map();
     for (const peak of peaks) {
         const key = `${Math.floor(peak.lat * 2)},${Math.floor(peak.lng * 2)}`;
         (index[key] = index[key] || []).push(peak);
+        peakById.set(peak.id, peak);
     }
 
     for (let i = 0; i < acts.length; i++) {
@@ -4410,27 +4412,45 @@ async function detectMountainSummits(peaks) {
         }
         const act = acts[i];
         const points = decodePolyline(act.p);
-        const hit = new Set();
+        // Peaks the route is *currently* inside the radius of. Each time we
+        // transition outside → inside counts as a new summit visit, so lap-style
+        // activities (e.g. "5x Bennett") record one visit per lap.
+        const inside = new Set();
+        const lapCount = new Map();  // peakId → laps recorded so far for this act
 
         for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
+
+            // First: any peaks we were inside of that we've now left?
+            for (const peakId of inside) {
+                const peak = peakById.get(peakId);
+                if (!peak ||
+                    Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008 ||
+                    haversineM(lat, lng, peak.lat, peak.lng) > SUMMIT_RADIUS_M) {
+                    inside.delete(peakId);
+                }
+            }
+
+            // Then: nearby peaks we've now entered (new lap)
             const gr = Math.floor(lat * 2);
             const gc = Math.floor(lng * 2);
-
             for (let dl = -1; dl <= 1; dl++) {
                 for (let dk = -1; dk <= 1; dk++) {
                     const candidates = index[`${gr + dl},${gc + dk}`] || [];
                     for (const peak of candidates) {
-                        if (hit.has(peak.id)) continue;
+                        if (inside.has(peak.id)) continue;
                         if (Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008) continue;
                         if (haversineM(lat, lng, peak.lat, peak.lng) <= SUMMIT_RADIUS_M) {
-                            hit.add(peak.id);
+                            inside.add(peak.id);
+                            const lap = (lapCount.get(peak.id) || 0) + 1;
+                            lapCount.set(peak.id, lap);
                             if (!mountainVisits.has(peak.id)) mountainVisits.set(peak.id, []);
                             mountainVisits.get(peak.id).push({
                                 actId:   act.i,
                                 actName: act.n || 'Untitled',
                                 actType: act.t,
                                 date:    act.d || '',
+                                lap,
                             });
                         }
                     }
@@ -4523,8 +4543,14 @@ function showSummitListPopup(peak, visits) {
     const sorted = [...visits].sort((a, b) => {
         const dateCmp = (b.date || '').localeCompare(a.date || '');
         if (dateCmp !== 0) return dateCmp;
-        return (b.actId || 0) - (a.actId || 0);
+        const actCmp = (b.actId || 0) - (a.actId || 0);
+        if (actCmp !== 0) return actCmp;
+        return (b.lap || 0) - (a.lap || 0);  // higher lap = later in the activity
     });
+
+    // Count laps per activity so we only show "Lap N of M" when there's >1 lap.
+    const lapsByAct = new Map();
+    for (const v of sorted) lapsByAct.set(v.actId, (lapsByAct.get(v.actId) || 0) + 1);
 
     document.getElementById('summit-list-popup')?.remove();
 
@@ -4575,6 +4601,15 @@ function showSummitListPopup(peak, visits) {
 
         row.appendChild(dateSpan);
         row.appendChild(nameEl);
+
+        const totalLaps = lapsByAct.get(v.actId);
+        if (totalLaps > 1 && v.lap) {
+            const lapBadge = document.createElement('span');
+            lapBadge.className = 'summit-list-lap';
+            lapBadge.textContent = `Lap ${v.lap} of ${totalLaps}`;
+            row.appendChild(lapBadge);
+        }
+
         list.appendChild(row);
     });
 

@@ -557,6 +557,17 @@
     min-width: 110px;
 }
 
+.summit-list-lap {
+    margin-left: auto;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    background-color: rgba(76,175,80,0.12);
+    border: 1px solid rgba(76,175,80,0.3);
+    border-radius: 10px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
 /* Country flag column on Mountain Hunter tables — keep narrow + centered */
 .peak-country {
     text-align: center;
