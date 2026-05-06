@@ -247,7 +247,9 @@ async function handlePeaksFetch(url) {
     if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, { status: 400 });
 
     const cell = `(${s},${w},${n},${e})`;
-    const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
+    // timeout:12 keeps each Overpass attempt under 14s; two mirrors back-to-back
+    // stays under Cloudflare's 30s wall clock limit (14 + 14 = 28s worst case).
+    const query = `[out:json][timeout:12];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
@@ -255,17 +257,21 @@ async function handlePeaksFetch(url) {
 
     for (let attempt = 0; attempt < mirrors.length; attempt++) {
         const mirror = mirrors[attempt];
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+        const controller = new AbortController();
+        const abort = setTimeout(() => controller.abort(), 14000);
 
         let res;
         try {
             res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
+                signal: controller.signal,
                 headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
             });
         } catch (err) {
+            clearTimeout(abort);
             console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: fetch error — ${err.message}`);
             continue;
         }
+        clearTimeout(abort);
 
         if (res.status === 429 || res.status === 504) {
             console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: ${res.status} from ${mirror}`);
