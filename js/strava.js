@@ -571,14 +571,15 @@ function renderSummary(slim, countries, total) {
 
 function renderTable(countries) {
     const container = document.getElementById('strava-table-container');
+    const wasOpen = container.querySelector('.collapsible-body')?.style.display !== 'none';
     container.innerHTML = '';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(
         buildSortableTable(countries, sortState, 'Country', () => renderTable(countries))
     );
-    container.appendChild(wrapper);
     initScrollHint(wrapper);
+    container.appendChild(makeCollapsible('By Country', wrapper, { collapsed: !wasOpen }));
 }
 
 function renderSubdivisions(subdivisions) {
@@ -594,25 +595,20 @@ function renderSubdivisions(subdivisions) {
         section.className = 'section';
         section.id = `subdivision-${cfg.id}`;
 
-        const heading = document.createElement('h2');
-        heading.textContent = `${cfg.flag} By ${cfg.label}`;
-        section.appendChild(heading);
-
         const state = getSortState(cfg.id);
+        const tableContainer = document.createElement('div');
+
         const rerender = () => {
-            const scrollEl = section.querySelector('.table-scroll-wrapper');
-            if (scrollEl) scrollEl.remove();
+            tableContainer.innerHTML = '';
             const sw = document.createElement('div');
             sw.className = 'table-scroll-wrapper';
             sw.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
-            section.appendChild(sw);
+            tableContainer.appendChild(sw);
             initScrollHint(sw);
         };
-        const sw = document.createElement('div');
-        sw.className = 'table-scroll-wrapper';
-        sw.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
-        section.appendChild(sw);
-        initScrollHint(sw);
+        rerender();
+
+        section.appendChild(makeCollapsible(`${cfg.flag} By ${cfg.label}`, tableContainer, { collapsed: true }));
         wrapper.appendChild(section);
     });
 }
@@ -4043,7 +4039,7 @@ function setTrailStatus(msg) {
 const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 // Narrower set used only for deciding which geographic cells to query for peaks.
 // Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
-const MOUNTAIN_CELL_TYPES = new Set(['Hike', 'TrailRun', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
+const MOUNTAIN_CELL_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const SUMMIT_RADIUS_M = 300;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -4283,7 +4279,7 @@ async function fetchMountainPeaks(footActs) {
         // Only throttle between actual Overpass requests, not cached hits
         const c = peakCellCache[cellKey];
         const isCached = c && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
-        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
+        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 4000));
 
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         if (!isCached) {
@@ -4469,6 +4465,7 @@ function renderMountainTable() {
     });
 
     const headers = [
+        { label: '#', col: null },
         { label: 'Peak', col: 'peak' },
         { label: 'Elevation', col: 'elevation' },
         { label: 'Summits', col: 'summits' },
@@ -4482,36 +4479,41 @@ function renderMountainTable() {
     const headerRow = document.createElement('tr');
     headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        const isActive = mountainSortState.col === col;
-        th.classList.add('sortable');
-        if (isActive) th.classList.add('sort-active');
-        if (col === 'summits') th.style.textAlign = 'center';
+        if (col) {
+            const isActive = mountainSortState.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+            if (col === 'summits') th.style.textAlign = 'center';
 
-        const indicator = document.createElement('span');
-        indicator.className = 'sort-indicator';
-        indicator.textContent = isActive ? (mountainSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (mountainSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
 
-        th.appendChild(document.createTextNode(label));
-        th.appendChild(indicator);
-        th.addEventListener('click', () => {
-            if (mountainSortState.col === col) {
-                mountainSortState.dir = mountainSortState.dir === 'asc' ? 'desc' : 'asc';
-            } else {
-                mountainSortState.col = col;
-                mountainSortState.dir = col === 'peak' ? 'asc' : 'desc';
-            }
-            renderMountainTable();
-        });
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (mountainSortState.col === col) {
+                    mountainSortState.dir = mountainSortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    mountainSortState.col = col;
+                    mountainSortState.dir = col === 'peak' ? 'asc' : 'desc';
+                }
+                renderMountainTable();
+            });
+        } else {
+            th.textContent = label;
+        }
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach(({ peak, pvs, last }) => {
+    rows.forEach(({ peak, pvs, last }, i) => {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td>${i + 1}</td>
             <td>${peak.name}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center">${pvs.length}</td>
@@ -4530,7 +4532,7 @@ function renderMountainTable() {
     wrapper.appendChild(table);
     initScrollHint(wrapper);
     tableEl.innerHTML = '';
-    tableEl.appendChild(makeCollapsible(`Peaks Summited (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+    tableEl.appendChild(makeCollapsible(`Highest Peaks Summited (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 function renderRepeatSummitLeaderboard() {
@@ -4552,7 +4554,7 @@ function renderRepeatSummitLeaderboard() {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    [{ label: 'Peak' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
+    [{ label: '#' }, { label: 'Peak' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
         .forEach(({ label, center }) => {
             const th = document.createElement('th');
             th.textContent = label;
@@ -4563,11 +4565,12 @@ function renderRepeatSummitLeaderboard() {
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach(({ peak, pvs }) => {
+    rows.forEach(({ peak, pvs }, i) => {
         const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td>${i + 1}</td>
             <td>${peak.name}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center">${pvs.length}×</td>
@@ -4586,7 +4589,7 @@ function renderRepeatSummitLeaderboard() {
     wrapper.appendChild(table);
     initScrollHint(wrapper);
     el.innerHTML = '';
-    el.appendChild(makeCollapsible(`Repeat Summit Leaderboard (${rows.length} peaks)`, wrapper, { collapsed: !wasOpen }));
+    el.appendChild(makeCollapsible(`Most Summited Peaks (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 const elevSortState = { col: 'elev', dir: 'desc' };
@@ -4678,7 +4681,7 @@ function renderElevationLeaderboard() {
     wrapper.appendChild(table);
     initScrollHint(wrapper);
     el.innerHTML = '';
-    el.appendChild(makeCollapsible(`Biggest Climbs (Top ${rows.length})`, wrapper, { collapsed: !wasOpen }));
+    el.appendChild(makeCollapsible(`Most Elevation Gain Activities (Top ${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 function renderMountainMap() {
