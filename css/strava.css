@@ -576,6 +576,132 @@
     padding-right: 4px;
 }
 
+/* ── Mountain Hunter edit mode ─────────────────── */
+.mountain-edit-active {
+    border: 1px solid var(--primary-color);
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px rgba(76,175,80,0.15);
+}
+
+#mountain-edit-btn.active {
+    background-color: var(--primary-color);
+    color: #000;
+}
+
+.peak-name-link {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    padding: 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.4);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.peak-name-link:hover {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.peak-hide-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.7);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    line-height: 1;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.peak-hide-btn:hover {
+    background-color: #c62828;
+    color: #fff;
+    border-color: #c62828;
+}
+
+.peak-restore-btn {
+    background: none;
+    border: 1px solid rgba(76,175,80,0.5);
+    color: var(--primary-color);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.peak-restore-btn:hover {
+    background-color: var(--primary-color);
+    color: #000;
+}
+
+/* ── Peak map popup (edit mode) ────────────────── */
+.peak-map-popup {
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background-color: #1e1e1e;
+    color: #fff;
+    padding: 0;
+    width: 90vw;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.peak-map-popup::backdrop {
+    background-color: rgba(0,0,0,0.55);
+}
+
+.peak-map-canvas {
+    width: 100%;
+    height: 420px;
+    background-color: #000;
+}
+
+.peak-map-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    gap: 10px;
+}
+
+.peak-map-tile-btn,
+.peak-map-hide-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.peak-map-tile-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.peak-map-hide-btn {
+    border-color: rgba(198,40,40,0.5);
+    color: #ff8a80;
+}
+
+.peak-map-hide-btn:hover {
+    background-color: #c62828;
+    color: #fff;
+    border-color: #c62828;
+}
+
 /* ── Activity Type Filters ───────────────────── */
 .filter-bar {
     display: flex;

@@ -123,11 +123,15 @@
         <div class="section">
             <h2>Mountain Hunter
                 <button class="cache-refresh-btn" id="mountain-toggle-btn" onclick="toggleMountainMap()">Show map</button>
+                <button class="cache-refresh-btn" id="mountain-edit-btn" onclick="toggleMountainEditMode()">Edit peaks</button>
             </h2>
             <div id="mountain-stats-bar" class="county-stats-bar"></div>
             <div id="mountain-table"></div>
             <div id="mountain-repeat-table"></div>
             <div id="mountain-elev-table"></div>
+            <div id="mountain-hidden-section" style="display:none">
+                <div id="mountain-hidden-table"></div>
+            </div>
             <div id="mountain-map-section" style="display:none">
                 <div id="mountain-map"></div>
                 <div class="map-legend" style="margin-top:10px">

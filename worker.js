@@ -21,6 +21,7 @@ const GEO_KEY        = 'strava_geo';
 const COUNTIES_KEY   = 'strava_counties';
 const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
+const HIDDEN_PEAKS_KEY = 'strava_hidden_peaks';
 const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY       = 'strava_parks';
 const STATE_PARKS_KEY = 'strava_state_parks';
@@ -140,6 +141,19 @@ export default {
             if (path === '/peaks/reset' && request.method === 'POST') {
                 await env.STRAVA_DATA.delete(PEAKS_KEY);
                 return json({ ok: true });
+            }
+
+            // ── Mountain Hunter — hidden (sub-peak) list ──
+            // Data: { ids: [osmPeakId, ...] }
+
+            if (path === '/peaks/hidden/all') {
+                const data = await env.STRAVA_DATA.get(HIDDEN_PEAKS_KEY, 'json');
+                return json(data || { ids: [] });
+            }
+            if (path === '/peaks/hidden/save' && request.method === 'POST') {
+                const data = await request.json();
+                await env.STRAVA_DATA.put(HIDDEN_PEAKS_KEY, JSON.stringify({ ids: data.ids || [] }));
+                return json({ ok: true, count: (data.ids || []).length });
             }
 
             // ── Park Hunter ──

@@ -4108,6 +4108,8 @@ const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
 let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
 let summitProcessedIds = new Set();  // activity IDs already scanned for summits
+let hiddenPeakIds = new Set();   // OSM peak IDs the user has marked as sub-peaks (filtered from displays)
+let mountainEditMode = false;    // when true, tables expose hide buttons + clickable peak names
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainHunterReady = false;
@@ -4177,6 +4179,33 @@ async function loadSummitCache() {
     } catch {}
     dbg('Summit cache: server unavailable — starting empty');
     return false;
+}
+
+async function loadHiddenPeaks() {
+    try {
+        const res = await fetch(`${WORKER_URL}/peaks/hidden/all`);
+        if (res.ok) {
+            const data = await res.json();
+            hiddenPeakIds = new Set((data.ids || []).map(Number));
+            dbg(`Hidden peaks: ${hiddenPeakIds.size} from server`);
+            return true;
+        }
+    } catch {}
+    return false;
+}
+
+async function saveHiddenPeaks() {
+    try {
+        const res = await fetch(`${WORKER_URL}/peaks/hidden/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: [...hiddenPeakIds] }),
+        });
+        const data = await res.json();
+        dbg(`Hidden peaks saved (${data.count})`);
+    } catch (err) {
+        dbg(`Warning: failed to save hidden peaks — ${err.message}`);
+    }
 }
 
 async function saveSummitCache() {
@@ -4509,7 +4538,7 @@ function renderMountainStats() {
     let namedCount = 0;
     for (const [peakId, pvs] of mountainVisits) {
         const peak = mountainPeaks.find(p => p.id === peakId);
-        if (!peak || !peak.name) continue;
+        if (!peak || !peak.name || hiddenPeakIds.has(peak.id)) continue;
         namedCount++;
         if (!tallestPeak || peak.ele > tallestPeak.ele) tallestPeak = peak;
         if (pvs.length > mostClimbedCount) { mostClimbedCount = pvs.length; mostClimbedPeak = peak; }
@@ -4538,6 +4567,220 @@ function renderMountainStats() {
 
     renderMountainTable();
     renderRepeatSummitLeaderboard();
+    renderHiddenPeaksList();
+}
+
+function toggleMountainEditMode() {
+    mountainEditMode = !mountainEditMode;
+    const section = document.querySelector('#mountain-stats-bar')?.closest('.section');
+    if (section) section.classList.toggle('mountain-edit-active', mountainEditMode);
+    const btn = document.getElementById('mountain-edit-btn');
+    if (btn) {
+        btn.textContent = mountainEditMode ? 'Done editing' : 'Edit peaks';
+        btn.classList.toggle('active', mountainEditMode);
+    }
+    const hiddenSection = document.getElementById('mountain-hidden-section');
+    if (hiddenSection) hiddenSection.style.display = mountainEditMode ? 'block' : 'none';
+
+    renderMountainTable();
+    renderRepeatSummitLeaderboard();
+    renderHiddenPeaksList();
+}
+
+async function hidePeak(peakId) {
+    hiddenPeakIds.add(Number(peakId));
+    await saveHiddenPeaks();
+    renderMountainStats();        // peak counts update
+    renderMountainTable();
+    renderRepeatSummitLeaderboard();
+    renderHiddenPeaksList();
+    if (mountainMapInstance) {
+        mountainMapInstance.remove();
+        mountainMapInstance = null;
+        mountainMapInitialized = false;
+        const section = document.getElementById('mountain-map-section');
+        if (section && section.style.display !== 'none') renderMountainMap();
+    }
+}
+
+async function unhidePeak(peakId) {
+    hiddenPeakIds.delete(Number(peakId));
+    await saveHiddenPeaks();
+    renderMountainStats();
+    renderMountainTable();
+    renderRepeatSummitLeaderboard();
+    renderHiddenPeaksList();
+    if (mountainMapInstance) {
+        mountainMapInstance.remove();
+        mountainMapInstance = null;
+        mountainMapInitialized = false;
+        const section = document.getElementById('mountain-map-section');
+        if (section && section.style.display !== 'none') renderMountainMap();
+    }
+}
+
+function renderHiddenPeaksList() {
+    const el = document.getElementById('mountain-hidden-table');
+    if (!el) return;
+    if (!hiddenPeakIds.size) {
+        el.innerHTML = '<p class="no-location-note" style="margin:8px 0">No peaks hidden yet. While in edit mode, click × on any peak to hide it from the leaderboards.</p>';
+        return;
+    }
+
+    const rows = [...hiddenPeakIds]
+        .map(id => mountainPeaks.find(p => p.id === id))
+        .filter(Boolean)
+        .sort((a, b) => (b.ele || 0) - (a.ele || 0));
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Peak', 'Elevation', ''].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(peak => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${peak.name || 'Unnamed'}</td>
+            <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
+            <td style="text-align:right"><button type="button" class="peak-restore-btn">Restore</button></td>`;
+        tr.querySelector('.peak-restore-btn').addEventListener('click', () => unhidePeak(peak.id));
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Hidden Peaks (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+// Small map popup centered on a peak. Activity polylines that detected this
+// peak are overlaid so the user can visually verify whether their track went
+// directly over it (real summit) or just passed near (sub-peak).
+function showPeakMapPopup(peak, visits) {
+    document.getElementById('peak-map-popup')?.remove();
+
+    const dialog = document.createElement('dialog');
+    dialog.id = 'peak-map-popup';
+    dialog.className = 'peak-map-popup';
+
+    const header = document.createElement('div');
+    header.className = 'summit-list-header';
+
+    const title = document.createElement('h3');
+    title.className = 'summit-list-title';
+    title.textContent = peak.name || 'Unnamed Peak';
+
+    const subtitle = document.createElement('span');
+    subtitle.className = 'summit-list-subtitle';
+    subtitle.textContent = `${mToFt(peak.ele).toLocaleString()} ft · ${visits.length} visit${visits.length === 1 ? '' : 's'}`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'summit-list-close';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    header.appendChild(closeBtn);
+
+    const mapEl = document.createElement('div');
+    mapEl.className = 'peak-map-canvas';
+
+    // Basemap toggle (OSM ↔ OpenTopoMap) + hide button row
+    const controls = document.createElement('div');
+    controls.className = 'peak-map-controls';
+
+    const tileBtn = document.createElement('button');
+    tileBtn.type = 'button';
+    tileBtn.className = 'peak-map-tile-btn';
+    tileBtn.textContent = 'Topo view';
+
+    const hideBtn = document.createElement('button');
+    hideBtn.type = 'button';
+    hideBtn.className = 'peak-map-hide-btn';
+    hideBtn.textContent = 'Hide this peak';
+
+    controls.appendChild(tileBtn);
+    controls.appendChild(hideBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(mapEl);
+    dialog.appendChild(controls);
+    document.body.appendChild(dialog);
+
+    closeBtn.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => {
+        if (mapInstance) mapInstance.remove();
+        dialog.remove();
+    });
+    dialog.showModal();
+
+    const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    });
+    const topoTiles = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenTopoMap (CC-BY-SA)',
+        maxZoom: 17,
+    });
+
+    const mapInstance = L.map(mapEl, { center: [peak.lat, peak.lng], zoom: 14, layers: [osmTiles] });
+
+    L.circleMarker([peak.lat, peak.lng], {
+        radius: 8, color: '#FF5722', fillColor: '#FF5722', fillOpacity: 0.85, weight: 2,
+    }).addTo(mapInstance).bindTooltip(peak.name || 'Unnamed Peak', { permanent: false });
+
+    // 300m summit-detection radius circle so user sees what counts as "on the peak"
+    L.circle([peak.lat, peak.lng], {
+        radius: SUMMIT_RADIUS_M, color: '#FF5722', fillOpacity: 0.05, weight: 1, dashArray: '4,4',
+    }).addTo(mapInstance);
+
+    // Overlay polylines for the activities that detected this peak
+    const visitedActIds = new Set(visits.map(v => v.actId));
+    for (const act of currentSlim) {
+        if (!visitedActIds.has(act.i) || !act.p) continue;
+        const points = decodePolyline(act.p);
+        if (!points.length) continue;
+        L.polyline(points, { color: '#4CAF50', weight: 3, opacity: 0.85 }).addTo(mapInstance);
+    }
+
+    // Resize once layout settles (dialog appears after a tick)
+    setTimeout(() => mapInstance.invalidateSize(), 60);
+
+    // Topo / OSM toggle
+    let usingTopo = false;
+    tileBtn.addEventListener('click', () => {
+        if (usingTopo) {
+            mapInstance.removeLayer(topoTiles);
+            mapInstance.addLayer(osmTiles);
+            tileBtn.textContent = 'Topo view';
+        } else {
+            mapInstance.removeLayer(osmTiles);
+            mapInstance.addLayer(topoTiles);
+            tileBtn.textContent = 'OSM view';
+        }
+        usingTopo = !usingTopo;
+    });
+
+    hideBtn.addEventListener('click', async () => {
+        await hidePeak(peak.id);
+        dialog.close();
+    });
 }
 
 // Opens a modal listing every summit visit for a peak, newest first.
@@ -4639,7 +4882,7 @@ function renderMountainTable() {
             const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
             return { peak, pvs, last };
         })
-        .filter(r => r.peak && r.peak.name);
+        .filter(r => r.peak && r.peak.name && !hiddenPeakIds.has(r.peak.id));
 
     // Sort based on current state
     rows.sort((a, b) => {
@@ -4661,6 +4904,7 @@ function renderMountainTable() {
         { label: 'Summits', col: 'summits' },
         { label: 'Last Summit', col: 'last' },
     ];
+    if (mountainEditMode) headers.push({ label: '', col: null });  // hide button column
 
     const table = document.createElement('table');
     table.className = 'travel-table';
@@ -4703,10 +4947,16 @@ function renderMountainTable() {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
+        const peakNameCell = mountainEditMode
+            ? `<button type="button" class="peak-name-link">${peak.name}</button>`
+            : peak.name;
+        const hideCell = mountainEditMode
+            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${peak.name}">×</button></td>`
+            : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
-            <td>${peak.name}</td>
+            <td>${peakNameCell}</td>
             <td class="peak-country" title="${country || ''}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}</button></td>
@@ -4714,8 +4964,10 @@ function renderMountainTable() {
                 ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
                 : (last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
-            </td>`;
+            </td>${hideCell}`;
         tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
+        tr.querySelector('.peak-name-link')?.addEventListener('click', () => showPeakMapPopup(peak, pvs));
+        tr.querySelector('.peak-hide-btn')?.addEventListener('click', () => hidePeak(peak.id));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -4738,7 +4990,7 @@ function renderRepeatSummitLeaderboard() {
             const peak = mountainPeaks.find(p => p.id === id);
             return { peak, pvs };
         })
-        .filter(r => r.peak && r.peak.name && r.pvs.length >= 2)
+        .filter(r => r.peak && r.peak.name && r.pvs.length >= 2 && !hiddenPeakIds.has(r.peak.id))
         .sort((a, b) => b.pvs.length - a.pvs.length);
 
     if (!rows.length) { el.innerHTML = ''; return; }
@@ -4748,13 +5000,17 @@ function renderRepeatSummitLeaderboard() {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    [{ label: '#' }, { label: 'Peak' }, { label: '' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
-        .forEach(({ label, center }) => {
-            const th = document.createElement('th');
-            th.textContent = label;
-            if (center) th.style.textAlign = 'center';
-            headerRow.appendChild(th);
-        });
+    const headerSpec = [
+        { label: '#' }, { label: 'Peak' }, { label: '' }, { label: 'Elevation' },
+        { label: 'Times Climbed', center: true }, { label: 'Last Summit' },
+    ];
+    if (mountainEditMode) headerSpec.push({ label: '' });
+    headerSpec.forEach(({ label, center }) => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        if (center) th.style.textAlign = 'center';
+        headerRow.appendChild(th);
+    });
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
@@ -4764,10 +5020,16 @@ function renderRepeatSummitLeaderboard() {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
+        const peakNameCell = mountainEditMode
+            ? `<button type="button" class="peak-name-link">${peak.name}</button>`
+            : peak.name;
+        const hideCell = mountainEditMode
+            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${peak.name}">×</button></td>`
+            : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
-            <td>${peak.name}</td>
+            <td>${peakNameCell}</td>
             <td class="peak-country" title="${country || ''}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}×</button></td>
@@ -4775,8 +5037,10 @@ function renderRepeatSummitLeaderboard() {
                 ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
                 : (last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
-            </td>`;
+            </td>${hideCell}`;
         tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
+        tr.querySelector('.peak-name-link')?.addEventListener('click', () => showPeakMapPopup(peak, pvs));
+        tr.querySelector('.peak-hide-btn')?.addEventListener('click', () => hidePeak(peak.id));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -4910,7 +5174,7 @@ function renderMountainMap() {
     new LocationControl().addTo(mountainMapInstance);
 
     for (const peak of mountainPeaks) {
-        if (!peak.name) continue;
+        if (!peak.name || hiddenPeakIds.has(peak.id)) continue;
         const pvs   = mountainVisits.get(peak.id);
         const visited = !!pvs;
         const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
@@ -5021,6 +5285,7 @@ async function initMountainHunter() {
         }
 
         await loadSummitCache();
+        await loadHiddenPeaks();
         setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
         mountainVisits = await detectMountainSummits(mountainPeaks);
 
