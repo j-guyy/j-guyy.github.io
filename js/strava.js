@@ -4097,11 +4097,11 @@ const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Sno
 // Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
 const MOUNTAIN_CELL_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
-const SUMMIT_RADIUS_M = 200;
+const SUMMIT_RADIUS_M = 50;
 // Hysteresis for lap counting: must be beyond this larger radius to be
 // considered "really left" the summit zone. Without it, GPS noise + ordinary
 // wandering near a peak causes one real lap to register as 2-3 entries.
-const LAP_EXIT_RADIUS_M = 500;
+const LAP_EXIT_RADIUS_M = 750;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
