@@ -276,7 +276,13 @@ async function handlePeaksFetch(url) {
             break;
         }
 
-        const data = await res.json();
+        let data;
+        try {
+            data = await res.json();
+        } catch (err) {
+            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: invalid JSON from ${mirror} — ${err.message}`);
+            continue;
+        }
         if (data.remark?.includes('timeout')) {
             console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: Overpass timeout remark — retrying`);
             continue;
