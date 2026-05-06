@@ -208,6 +208,14 @@ export default {
                 return json({ ok: true });
             }
 
+            // ── Mountain Hunter — server-side Overpass proxy ──
+            // Fetches peaks for a 5°×5° cell from Overpass on behalf of the client,
+            // avoiding browser IP rate-limits. Tries two mirrors with a short gap.
+
+            if (path === '/peaks/fetch' && method === 'GET') {
+                return await handlePeaksFetch(url);
+            }
+
             // ── Legacy Strava proxy (keep for /athlete, /athlete/stats) ──
 
             const allowed = ['/athlete', '/athlete/stats'];
@@ -228,6 +236,55 @@ export default {
         }
     }
 };
+
+// ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────
+
+async function handlePeaksFetch(url) {
+    const s = url.searchParams.get('south');
+    const w = url.searchParams.get('west');
+    const n = url.searchParams.get('north');
+    const e = url.searchParams.get('east');
+    if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, { status: 400 });
+
+    const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
+    const mirrors = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+    ];
+
+    for (let attempt = 0; attempt < mirrors.length; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+        let res;
+        try {
+            res = await fetch(`${mirrors[attempt]}?data=${encodeURIComponent(query)}`, {
+                headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
+            });
+        } catch { continue; }
+
+        if (res.status === 429 || res.status === 504) continue;
+        if (!res.ok) break;
+
+        const data = await res.json();
+        if (data.remark?.includes('timeout')) continue;
+
+        const peaks = (data.elements || [])
+            .filter(el => {
+                const v = parseFloat(el.tags?.ele);
+                if (isNaN(v) || v <= 0) return false;
+                const name = el.tags?.name || el.tags?.['name:en'] || '';
+                return name !== '' && name !== 'Unnamed Peak';
+            })
+            .map(el => ({
+                id:   el.id,
+                name: el.tags?.name || el.tags?.['name:en'] || '',
+                lat:  el.lat,
+                lng:  el.lon,
+                ele:  parseFloat(el.tags.ele),
+            }));
+        return json({ peaks });
+    }
+    return json({ peaks: [], failed: true });
+}
 
 // ── Travel data handlers ─────────────────────────────────────────────────────
 

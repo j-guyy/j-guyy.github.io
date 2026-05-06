@@ -2315,7 +2315,6 @@ const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is wi
 const OVERPASS_MIRRORS = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 
 let cityMap = null;
@@ -4157,73 +4156,47 @@ async function savePeakCache() {
 
 // Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with mirror fallback
 async function fetchPeaksForCell(cellKey, south, west, north, east) {
-    // Check server-backed cache first
     const cached = peakCellCache[cellKey];
     if (cached) {
-        // Valid cache hit
         if (Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
             dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
             return cached.peaks;
         }
-        // Recently failed — skip for now so we don't re-hammer Overpass
         if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
             dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
             return [];
         }
     }
 
-    const query = `[out:json][timeout:25];(node["natural"="peak"]["ele"](${south},${west},${north},${east});node["natural"="volcano"]["ele"](${south},${west},${north},${east}););out body;`;
+    const workerUrl = `${WORKER_URL}/peaks/fetch?south=${south}&west=${west}&north=${north}&east=${east}`;
 
     for (let attempt = 0; attempt < 3; attempt++) {
-        // Rotate through mirrors on retries
-        const mirror = OVERPASS_MIRRORS[attempt % OVERPASS_MIRRORS.length];
-        const url = `${mirror}?data=${encodeURIComponent(query)}`;
-
         if (attempt > 0) {
-            const wait = (attempt + 1) * 5000;  // 10s, 15s — give Overpass time to cool down
-            dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} (${mirror.split('/')[2]}) — waiting ${wait / 1000}s`);
+            const wait = attempt * 10000;  // 10s, 20s
+            dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} — waiting ${wait / 1000}s`);
             await new Promise(r => setTimeout(r, wait));
         }
 
-        let res;
-        try { res = await fetch(url); } catch (err) {
-            dbg(`Mountain peaks cell ${cellKey}: fetch error — ${err.message}`);
+        let res, data;
+        try {
+            res = await fetch(workerUrl);
+            data = await res.json();
+        } catch (err) {
+            dbg(`Mountain peaks cell ${cellKey}: worker error — ${err.message}`);
             continue;
         }
 
-        if (res.status === 429 || res.status === 504) {
-            dbg(`Mountain peaks cell ${cellKey}: ${res.status} — will retry`);
+        if (!res.ok || data.failed) {
+            dbg(`Mountain peaks cell ${cellKey}: worker returned failure — will retry`);
             continue;
         }
-        if (!res.ok) {
-            dbg(`Mountain peaks cell ${cellKey}: Overpass ${res.status} — skipping`);
-            return [];
-        }
 
-        const data = await res.json();
-        const peaks = (data.elements || [])
-            .filter(e => {
-                const v = parseFloat(e.tags?.ele);
-                if (isNaN(v) || v <= 0) return false;
-                // Exclude unnamed peaks — they clutter the list with no useful info
-                const name = e.tags?.name || e.tags?.['name:en'] || '';
-                return name !== '' && name !== 'Unnamed Peak';
-            })
-            .map(e => ({
-                id: e.id,
-                name: e.tags?.name || e.tags?.['name:en'] || '',
-                lat: e.lat,
-                lng: e.lon,
-                ele: parseFloat(e.tags.ele),
-            }));
-
-        dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} from Overpass`);
-        peakCellCache[cellKey] = { peaks, ts: Date.now() };
-        return peaks;
+        dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks`);
+        peakCellCache[cellKey] = { peaks: data.peaks, ts: Date.now() };
+        return data.peaks;
     }
 
-    // Cache the failure so we don't retry this cell for an hour
-    dbg(`Mountain peaks cell ${cellKey}: all retries failed — skipping for 1h`);
+    dbg(`Mountain peaks cell ${cellKey}: all attempts failed — skipping for 1h`);
     peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
     return [];
 }
