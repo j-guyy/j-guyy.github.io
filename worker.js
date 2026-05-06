@@ -247,52 +247,55 @@ async function handlePeaksFetch(url) {
     if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, 400);
 
     const cell = `(${s},${w},${n},${e})`;
-    // timeout:12 keeps each Overpass attempt under 14s; two mirrors back-to-back
-    // stays under Cloudflare's 30s wall clock limit (14 + 14 = 28s worst case).
-    const query = `[out:json][timeout:12];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
+    // Single attempt per worker call (client retries on failure), 20s Overpass
+    // timeout + 22s abort keeps us well under Cloudflare's 30s wall clock limit
+    // and gives Overpass enough time for dense regions like Sierra Nevada / Cascades.
+    // Mirror is chosen randomly so retries from the client land on different ones.
+    const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
     ];
+    const mirror = mirrors[Math.floor(Math.random() * mirrors.length)];
 
-    for (let attempt = 0; attempt < mirrors.length; attempt++) {
-        const mirror = mirrors[attempt];
-        const controller = new AbortController();
-        const abort = setTimeout(() => controller.abort(), 14000);
+    const controller = new AbortController();
+    const abort = setTimeout(() => controller.abort(), 22000);
 
-        let res;
-        try {
-            res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
-                signal: controller.signal,
-                headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
-            });
-        } catch (err) {
-            clearTimeout(abort);
-            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: fetch error — ${err.message}`);
-            continue;
-        }
+    let res;
+    try {
+        res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
+        });
+    } catch (err) {
         clearTimeout(abort);
+        console.log(`peaks/fetch ${cell}: fetch error from ${mirror} — ${err.message}`);
+        return json({ peaks: [], failed: true });
+    }
+    clearTimeout(abort);
 
-        if (res.status === 429 || res.status === 504) {
-            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: ${res.status} from ${mirror}`);
-            continue;
-        }
-        if (!res.ok) {
-            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: ${res.status} from ${mirror} — aborting`);
-            break;
-        }
+    if (res.status === 429 || res.status === 504) {
+        console.log(`peaks/fetch ${cell}: ${res.status} from ${mirror}`);
+        return json({ peaks: [], failed: true });
+    }
+    if (!res.ok) {
+        console.log(`peaks/fetch ${cell}: ${res.status} from ${mirror}`);
+        return json({ peaks: [], failed: true });
+    }
 
-        let data;
-        try {
-            data = await res.json();
-        } catch (err) {
-            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: invalid JSON from ${mirror} — ${err.message}`);
-            continue;
-        }
-        if (data.remark?.includes('timeout')) {
-            console.log(`peaks/fetch ${cell} attempt ${attempt + 1}: Overpass timeout remark — retrying`);
-            continue;
-        }
+    let data;
+    try {
+        data = await res.json();
+    } catch (err) {
+        console.log(`peaks/fetch ${cell}: invalid JSON from ${mirror} — ${err.message}`);
+        return json({ peaks: [], failed: true });
+    }
+    // Any remark means the query didn't complete cleanly (timeout, OOM, runtime error).
+    // Successful Overpass queries never include a remark.
+    if (data.remark) {
+        console.log(`peaks/fetch ${cell}: Overpass remark from ${mirror} — ${data.remark}`);
+        return json({ peaks: [], failed: true });
+    }
 
         const peaks = (data.elements || [])
             .filter(el => {
