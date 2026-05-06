@@ -557,6 +557,14 @@
     min-width: 110px;
 }
 
+/* Country flag column on Mountain Hunter tables — keep narrow + centered */
+.peak-country {
+    text-align: center;
+    width: 1.5em;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
 /* ── Activity Type Filters ───────────────────── */
 .filter-bar {
     display: flex;

@@ -57,6 +57,63 @@ function gridKey(latlng) {
     return `${latlng[0].toFixed(2)},${latlng[1].toFixed(2)}`;
 }
 
+// Country name (as Nominatim returns it) → ISO 3166-1 alpha-2 code.
+// The flag emoji is derived from the code via regional indicator codepoints.
+const COUNTRY_ISO = {
+    'United States': 'US', 'United States of America': 'US', 'United States of America (the)': 'US',
+    'Canada': 'CA', 'Mexico': 'MX', 'Guatemala': 'GT', 'Costa Rica': 'CR', 'Panama': 'PA',
+    'Belize': 'BZ', 'Honduras': 'HN', 'Nicaragua': 'NI', 'El Salvador': 'SV', 'Cuba': 'CU',
+    'Dominican Republic': 'DO', 'Haiti': 'HT', 'Jamaica': 'JM', 'Puerto Rico': 'PR',
+    'Argentina': 'AR', 'Bolivia': 'BO', 'Brazil': 'BR', 'Chile': 'CL', 'Colombia': 'CO',
+    'Ecuador': 'EC', 'Peru': 'PE', 'Uruguay': 'UY', 'Venezuela': 'VE', 'Paraguay': 'PY',
+    'United Kingdom': 'GB', 'Ireland': 'IE', 'France': 'FR', 'Germany': 'DE', 'Spain': 'ES',
+    'Portugal': 'PT', 'Italy': 'IT', 'Netherlands': 'NL', 'Belgium': 'BE', 'Switzerland': 'CH',
+    'Austria': 'AT', 'Greece': 'GR', 'Sweden': 'SE', 'Norway': 'NO', 'Finland': 'FI',
+    'Denmark': 'DK', 'Iceland': 'IS', 'Poland': 'PL', 'Czechia': 'CZ', 'Czech Republic': 'CZ',
+    'Slovakia': 'SK', 'Hungary': 'HU', 'Romania': 'RO', 'Bulgaria': 'BG', 'Croatia': 'HR',
+    'Slovenia': 'SI', 'Serbia': 'RS', 'Bosnia and Herzegovina': 'BA', 'Montenegro': 'ME',
+    'Albania': 'AL', 'North Macedonia': 'MK', 'Russia': 'RU', 'Ukraine': 'UA', 'Belarus': 'BY',
+    'Estonia': 'EE', 'Latvia': 'LV', 'Lithuania': 'LT', 'Türkiye': 'TR', 'Turkey': 'TR',
+    'Luxembourg': 'LU', 'Liechtenstein': 'LI', 'Andorra': 'AD', 'Monaco': 'MC',
+    'China': 'CN', 'Japan': 'JP', 'South Korea': 'KR', 'Korea': 'KR', 'North Korea': 'KP',
+    'India': 'IN', 'Pakistan': 'PK', 'Nepal': 'NP', 'Bhutan': 'BT', 'Bangladesh': 'BD',
+    'Sri Lanka': 'LK', 'Thailand': 'TH', 'Vietnam': 'VN', 'Cambodia': 'KH', 'Laos': 'LA',
+    'Malaysia': 'MY', 'Singapore': 'SG', 'Indonesia': 'ID', 'Philippines': 'PH', 'Taiwan': 'TW',
+    'Mongolia': 'MN', 'Kazakhstan': 'KZ', 'Kyrgyzstan': 'KG', 'Tajikistan': 'TJ',
+    'Uzbekistan': 'UZ', 'Turkmenistan': 'TM', 'Afghanistan': 'AF', 'Iran': 'IR', 'Iraq': 'IQ',
+    'Israel': 'IL', 'Jordan': 'JO', 'Lebanon': 'LB', 'Syria': 'SY', 'Saudi Arabia': 'SA',
+    'United Arab Emirates': 'AE', 'Oman': 'OM', 'Qatar': 'QA', 'Kuwait': 'KW', 'Bahrain': 'BH',
+    'Yemen': 'YE',
+    'Australia': 'AU', 'New Zealand': 'NZ', 'Fiji': 'FJ', 'Papua New Guinea': 'PG',
+    'Egypt': 'EG', 'Morocco': 'MA', 'Tunisia': 'TN', 'Algeria': 'DZ', 'Libya': 'LY',
+    'South Africa': 'ZA', 'Kenya': 'KE', 'Tanzania': 'TZ', 'Ethiopia': 'ET', 'Nigeria': 'NG',
+    'Ghana': 'GH', 'Uganda': 'UG', 'Rwanda': 'RW', 'Madagascar': 'MG', 'Namibia': 'NA',
+    'Botswana': 'BW', 'Zimbabwe': 'ZW', 'Mozambique': 'MZ', 'Zambia': 'ZM',
+};
+
+function countryFlag(name) {
+    const code = COUNTRY_ISO[name];
+    if (!code) return '';
+    return code.replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+// Best-effort country lookup for a peak. Tries the peak's own grid cell in
+// the geocoding cache first (handles border cases correctly); falls back to
+// the country of the activity that summited it (always available since the
+// activity is geocoded). Returns the country name or empty string.
+function peakCountry(peak, pvs) {
+    const peakGeo = currentCache[gridKey([peak.lat, peak.lng])];
+    if (peakGeo?.c && peakGeo.c !== 'Unknown') return peakGeo.c;
+    for (const v of pvs || []) {
+        const act = currentSlim.find(a => a.i === v.actId);
+        if (act?.l) {
+            const actGeo = currentCache[gridKey(act.l)];
+            if (actGeo?.c && actGeo.c !== 'Unknown') return actGeo.c;
+        }
+    }
+    return '';
+}
+
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 // Load all stored activities from the worker (one fast KV read, no Strava call)
@@ -4560,6 +4617,7 @@ function renderMountainTable() {
     const headers = [
         { label: '#', col: null },
         { label: 'Peak', col: 'peak' },
+        { label: '', col: null },                    // country flag
         { label: 'Elevation', col: 'elevation' },
         { label: 'Summits', col: 'summits' },
         { label: 'Last Summit', col: 'last' },
@@ -4604,10 +4662,13 @@ function renderMountainTable() {
     const tbody = document.createElement('tbody');
     rows.forEach(({ peak, pvs, last }, i) => {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
+        const country = peakCountry(peak, pvs);
+        const flag = countryFlag(country);
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${peak.name}</td>
+            <td class="peak-country" title="${country || ''}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}</button></td>
             <td>${href
@@ -4648,7 +4709,7 @@ function renderRepeatSummitLeaderboard() {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    [{ label: '#' }, { label: 'Peak' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
+    [{ label: '#' }, { label: 'Peak' }, { label: '' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
         .forEach(({ label, center }) => {
             const th = document.createElement('th');
             th.textContent = label;
@@ -4662,10 +4723,13 @@ function renderRepeatSummitLeaderboard() {
     rows.forEach(({ peak, pvs }, i) => {
         const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
+        const country = peakCountry(peak, pvs);
+        const flag = countryFlag(country);
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${peak.name}</td>
+            <td class="peak-country" title="${country || ''}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}×</button></td>
             <td>${href
