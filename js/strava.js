@@ -641,6 +641,7 @@ let countyMapInitialized = false;
 let visitedFips = new Set();
 let countyDiscoveries = {};  // fips → { actId, actName, date }
 let countyProcessedIds = new Set();
+let stateCountyTotals = null;  // stateAbbr → total county count — computed once from GeoJSON
 
 function toggleCountyMap() {
     const section = document.getElementById('county-section');
@@ -682,6 +683,14 @@ async function initCountyMap() {
 
     const counties = preprocessCounties(geojson);
     const index = buildSpatialIndex(counties);
+
+    if (!stateCountyTotals) {
+        stateCountyTotals = {};
+        for (const f of geojson.features) {
+            const abbr = STATE_ABBR[f.properties.STATEFP] || f.properties.STATEFP;
+            stateCountyTotals[abbr] = (stateCountyTotals[abbr] || 0) + 1;
+        }
+    }
 
     // One-time backfill: if we have visited counties but no discovery data,
     // re-scan all activities oldest-first to build the discovery mapping.
@@ -732,6 +741,7 @@ async function initCountyMap() {
     renderCountyMap(geojson);
     renderCountyStats();
     renderRecentCounties(geojson);
+    renderStateCompletion();
 
     countyMapInitialized = true;
     setCountyStatus('');
@@ -1040,6 +1050,60 @@ async function saveCountiesToWorker() {
     } catch (err) {
         dbg(`County save failed: ${err.message}`);
     }
+}
+
+function renderStateCompletion() {
+    const el = document.getElementById('county-state-table');
+    if (!el || !stateCountyTotals) return;
+
+    const visitedPerState = {};
+    for (const fips of visitedFips) {
+        const abbr = STATE_ABBR[fips.slice(0, 2)] || fips.slice(0, 2);
+        visitedPerState[abbr] = (visitedPerState[abbr] || 0) + 1;
+    }
+
+    const rows = Object.entries(visitedPerState)
+        .map(([abbr, visited]) => ({ abbr, visited, total: stateCountyTotals[abbr] || 0 }))
+        .filter(r => r.total > 0)
+        .sort((a, b) => (b.visited / b.total) - (a.visited / a.total));
+
+    if (!rows.length) return;
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['State', 'Visited', 'Total', '% Complete'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        if (label !== 'State') th.style.textAlign = 'center';
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const { abbr, visited, total } of rows) {
+        const pct = ((visited / total) * 100).toFixed(1);
+        const complete = visited === total;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${abbr}${complete ? ' <span style="color:#4CAF50">✓</span>' : ''}</td>
+            <td style="text-align:center">${visited}</td>
+            <td style="text-align:center">${total}</td>
+            <td style="text-align:center">${pct}%</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`State Progress (${rows.length} states)`, wrapper, { collapsed: !wasOpen }));
 }
 
 function setCountyStatus(msg) {
@@ -4375,6 +4439,7 @@ function renderMountainStats() {
     }
 
     renderMountainTable();
+    renderRepeatSummitLeaderboard();
 }
 
 const mountainSortState = { col: 'elevation', dir: 'desc' };
@@ -4459,12 +4524,69 @@ function renderMountainTable() {
     });
     table.appendChild(tbody);
 
-    tableEl.innerHTML = '';
+    const wasOpen = tableEl.querySelector('.collapsible-body')?.style.display !== 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
-    tableEl.appendChild(wrapper);
     initScrollHint(wrapper);
+    tableEl.innerHTML = '';
+    tableEl.appendChild(makeCollapsible(`Peaks Summited (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+function renderRepeatSummitLeaderboard() {
+    const el = document.getElementById('mountain-repeat-table');
+    if (!el) return;
+
+    const rows = [...mountainVisits.entries()]
+        .map(([id, pvs]) => {
+            const peak = mountainPeaks.find(p => p.id === id);
+            return { peak, pvs };
+        })
+        .filter(r => r.peak && r.peak.name && r.pvs.length >= 2)
+        .sort((a, b) => b.pvs.length - a.pvs.length);
+
+    if (!rows.length) { el.innerHTML = ''; return; }
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    [{ label: 'Peak' }, { label: 'Elevation' }, { label: 'Times Climbed', center: true }, { label: 'Last Summit' }]
+        .forEach(({ label, center }) => {
+            const th = document.createElement('th');
+            th.textContent = label;
+            if (center) th.style.textAlign = 'center';
+            headerRow.appendChild(th);
+        });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(({ peak, pvs }) => {
+        const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+        const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${peak.name}</td>
+            <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
+            <td style="text-align:center">${pvs.length}×</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
+                : (last.actName || '—')}
+                ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Repeat Summit Leaderboard (${rows.length} peaks)`, wrapper, { collapsed: !wasOpen }));
 }
 
 const elevSortState = { col: 'elev', dir: 'desc' };
@@ -4550,12 +4672,13 @@ function renderElevationLeaderboard() {
     });
     table.appendChild(tbody);
 
-    el.innerHTML = '<h3 style="margin:24px 0 8px">Biggest Climbs</h3>';
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
-    el.appendChild(wrapper);
     initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Biggest Climbs (Top ${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 function renderMountainMap() {
