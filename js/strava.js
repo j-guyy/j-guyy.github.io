@@ -4155,22 +4155,28 @@ async function savePeakCache() {
 }
 
 // Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with mirror fallback
-async function fetchPeaksForCell(cellKey, south, west, north, east) {
-    const cached = peakCellCache[cellKey];
-    if (cached) {
-        if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
-            dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
-            return [];
-        }
-        if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
-            return cached.peaks;
+async function fetchPeaksForCell(cellKey, south, west, north, east, depth = 0) {
+    // Only top-level cells (depth 0) are cached on the server. Sub-cells from
+    // splitting are merged into the parent's cache entry, so we don't pollute
+    // the cache with thousands of micro-cells that wouldn't be reused on reload.
+    if (depth === 0) {
+        const cached = peakCellCache[cellKey];
+        if (cached) {
+            if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
+                dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
+                return [];
+            }
+            if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+                dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
+                return cached.peaks;
+            }
         }
     }
 
     const workerUrl = `${WORKER_URL}/peaks/fetch?south=${south}&west=${west}&north=${north}&east=${east}`;
+    const maxAttempts = depth === 0 ? 3 : 2;  // sub-cells get fewer retries since we'll split further if they fail
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
         if (attempt > 0) {
             const wait = attempt * 10000;  // 10s, 20s
             dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} — waiting ${wait / 1000}s`);
@@ -4191,13 +4197,41 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
             continue;
         }
 
-        dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks`);
-        peakCellCache[cellKey] = { peaks: data.peaks, ts: Date.now() };
+        dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks${depth > 0 ? ` (sub-cell d${depth})` : ''}`);
+        if (depth === 0) peakCellCache[cellKey] = { peaks: data.peaks, ts: Date.now() };
         return data.peaks;
     }
 
-    dbg(`Mountain peaks cell ${cellKey}: all attempts failed — skipping for 1h`);
-    peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
+    // All retries failed. If we still have splitting headroom, recurse into 4 quadrants.
+    // Each split halves bbox dimensions, so depth 2 = 16 sub-cells each ~1/16 the original area.
+    const MAX_DEPTH = 2;
+    if (depth < MAX_DEPTH) {
+        const midLat = (south + north) / 2;
+        const midLng = (west + east) / 2;
+        dbg(`Mountain peaks cell ${cellKey}: splitting into 4 sub-cells (depth ${depth + 1})`);
+        const quadrants = [
+            { s: south,  w: west,   n: midLat, e: midLng },
+            { s: south,  w: midLng, n: midLat, e: east   },
+            { s: midLat, w: west,   n: north,  e: midLng },
+            { s: midLat, w: midLng, n: north,  e: east   },
+        ];
+        const merged = [];
+        const seen = new Set();
+        for (const q of quadrants) {
+            await new Promise(r => setTimeout(r, 1500));  // small gap so we don't hammer Overpass
+            const subKey = `${cellKey}/${q.s},${q.w}`;
+            const subPeaks = await fetchPeaksForCell(subKey, q.s, q.w, q.n, q.e, depth + 1);
+            for (const p of subPeaks) {
+                if (!seen.has(p.id)) { seen.add(p.id); merged.push(p); }
+            }
+        }
+        dbg(`Mountain peaks cell ${cellKey}: ${merged.length} peaks (merged from 4 sub-cells)`);
+        if (depth === 0) peakCellCache[cellKey] = { peaks: merged, ts: Date.now() };
+        return merged;
+    }
+
+    dbg(`Mountain peaks cell ${cellKey}: all attempts failed at depth ${depth} — giving up`);
+    if (depth === 0) peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
     return [];
 }
 
