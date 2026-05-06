@@ -4459,6 +4459,78 @@ function renderMountainStats() {
     renderRepeatSummitLeaderboard();
 }
 
+// Opens a modal listing every summit visit for a peak, newest first.
+// Tiebreaks same-day visits by Strava activity ID descending — Strava IDs are
+// auto-incrementing, so higher ID = activity created later in the day.
+function showSummitListPopup(peak, visits) {
+    const sorted = [...visits].sort((a, b) => {
+        const dateCmp = (b.date || '').localeCompare(a.date || '');
+        if (dateCmp !== 0) return dateCmp;
+        return (b.actId || 0) - (a.actId || 0);
+    });
+
+    document.getElementById('summit-list-popup')?.remove();
+
+    const dialog = document.createElement('dialog');
+    dialog.id = 'summit-list-popup';
+    dialog.className = 'summit-list-popup';
+
+    const header = document.createElement('div');
+    header.className = 'summit-list-header';
+
+    const title = document.createElement('h3');
+    title.className = 'summit-list-title';
+    title.textContent = peak.name || 'Unnamed Peak';
+
+    const subtitle = document.createElement('span');
+    subtitle.className = 'summit-list-subtitle';
+    subtitle.textContent = `${sorted.length} summit${sorted.length === 1 ? '' : 's'}`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'summit-list-close';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    header.appendChild(closeBtn);
+
+    const list = document.createElement('div');
+    list.className = 'summit-list-rows';
+    sorted.forEach(v => {
+        const row = document.createElement('div');
+        row.className = 'summit-list-row';
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'summit-list-date';
+        dateSpan.textContent = v.date ? formatActivityDate(v.date) : '—';
+
+        const nameEl = v.actId
+            ? Object.assign(document.createElement('a'), {
+                href: `https://www.strava.com/activities/${v.actId}`,
+                target: '_blank',
+                rel: 'noopener',
+                className: 'activity-popup-link',
+                textContent: v.actName || 'Untitled',
+            })
+            : Object.assign(document.createElement('span'), { textContent: v.actName || 'Untitled' });
+
+        row.appendChild(dateSpan);
+        row.appendChild(nameEl);
+        list.appendChild(row);
+    });
+
+    dialog.appendChild(header);
+    dialog.appendChild(list);
+    document.body.appendChild(dialog);
+
+    closeBtn.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.showModal();
+}
+
 const mountainSortState = { col: 'elevation', dir: 'desc' };
 
 function renderMountainTable() {
@@ -4537,12 +4609,13 @@ function renderMountainTable() {
             <td>${i + 1}</td>
             <td>${peak.name}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
-            <td style="text-align:center">${pvs.length}</td>
+            <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}</button></td>
             <td>${href
                 ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
                 : (last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
             </td>`;
+        tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -4594,12 +4667,13 @@ function renderRepeatSummitLeaderboard() {
             <td>${i + 1}</td>
             <td>${peak.name}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
-            <td style="text-align:center">${pvs.length}×</td>
+            <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}×</button></td>
             <td>${href
                 ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
                 : (last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
             </td>`;
+        tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
