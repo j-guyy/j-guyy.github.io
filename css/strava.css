@@ -640,6 +640,29 @@
     color: #000;
 }
 
+/* Show all / Show top 100 toggle below Highest Peaks Summited table */
+.peaks-table-toggle {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.peaks-table-toggle-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.peaks-table-toggle-btn:hover {
+    background-color: rgba(76,175,80,0.15);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 /* ── Peak map popup (edit mode) ────────────────── */
 .peak-map-popup {
     border: 1px solid rgba(255,255,255,0.15);

@@ -4097,11 +4097,11 @@ const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Sno
 // Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
 const MOUNTAIN_CELL_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
-const SUMMIT_RADIUS_M = 300;
+const SUMMIT_RADIUS_M = 200;
 // Hysteresis for lap counting: must be beyond this larger radius to be
 // considered "really left" the summit zone. Without it, GPS noise + ordinary
 // wandering near a peak causes one real lap to register as 2-3 entries.
-const LAP_EXIT_RADIUS_M = 600;
+const LAP_EXIT_RADIUS_M = 500;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
@@ -4745,10 +4745,18 @@ function showPeakMapPopup(peak, visits) {
         radius: 8, color: '#FF5722', fillColor: '#FF5722', fillOpacity: 0.85, weight: 2,
     }).addTo(mapInstance).bindTooltip(peak.name || 'Unnamed Peak', { permanent: false });
 
-    // 300m summit-detection radius circle so user sees what counts as "on the peak"
+    // Two radii so the user can see what triggers a summit and what's
+    // required to "really leave" before the next lap is counted.
+    // Entry radius (solid): a track point inside this counts as a summit.
     L.circle([peak.lat, peak.lng], {
-        radius: SUMMIT_RADIUS_M, color: '#FF5722', fillOpacity: 0.05, weight: 1, dashArray: '4,4',
-    }).addTo(mapInstance);
+        radius: SUMMIT_RADIUS_M, color: '#FF5722', fillColor: '#FF5722',
+        fillOpacity: 0.08, weight: 2,
+    }).addTo(mapInstance).bindTooltip(`Summit radius (${SUMMIT_RADIUS_M}m)`, { sticky: true });
+    // Exit radius (dashed): you must travel beyond this before re-entering counts as another lap.
+    L.circle([peak.lat, peak.lng], {
+        radius: LAP_EXIT_RADIUS_M, color: '#FFC107', fillOpacity: 0,
+        weight: 1.5, dashArray: '6,5',
+    }).addTo(mapInstance).bindTooltip(`Lap-exit radius (${LAP_EXIT_RADIUS_M}m)`, { sticky: true });
 
     // Overlay polylines for the activities that detected this peak
     const visitedActIds = new Set(visits.map(v => v.actId));
@@ -4871,6 +4879,8 @@ function showSummitListPopup(peak, visits) {
 }
 
 const mountainSortState = { col: 'elevation', dir: 'desc' };
+const PEAKS_TABLE_DEFAULT_LIMIT = 100;
+let peaksTableExpanded = false;
 
 function renderMountainTable() {
     const tableEl = document.getElementById('mountain-table');
@@ -4942,8 +4952,12 @@ function renderMountainTable() {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
+    const totalRows = rows.length;
+    const showAll = peaksTableExpanded || totalRows <= PEAKS_TABLE_DEFAULT_LIMIT;
+    const visibleRows = showAll ? rows : rows.slice(0, PEAKS_TABLE_DEFAULT_LIMIT);
+
     const tbody = document.createElement('tbody');
-    rows.forEach(({ peak, pvs, last }, i) => {
+    visibleRows.forEach(({ peak, pvs, last }, i) => {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
@@ -4977,8 +4991,30 @@ function renderMountainTable() {
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
     initScrollHint(wrapper);
+
+    // Combine the table + a Show More/Less toggle into a single content element
+    // so the makeCollapsible body holds both.
+    const body = document.createElement('div');
+    body.appendChild(wrapper);
+    if (totalRows > PEAKS_TABLE_DEFAULT_LIMIT) {
+        const toggleWrap = document.createElement('div');
+        toggleWrap.className = 'peaks-table-toggle';
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'peaks-table-toggle-btn';
+        toggleBtn.textContent = peaksTableExpanded
+            ? `Show top ${PEAKS_TABLE_DEFAULT_LIMIT}`
+            : `Show all ${totalRows}`;
+        toggleBtn.addEventListener('click', () => {
+            peaksTableExpanded = !peaksTableExpanded;
+            renderMountainTable();
+        });
+        toggleWrap.appendChild(toggleBtn);
+        body.appendChild(toggleWrap);
+    }
+
     tableEl.innerHTML = '';
-    tableEl.appendChild(makeCollapsible(`Highest Peaks Summited (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+    tableEl.appendChild(makeCollapsible(`Highest Peaks Summited (${totalRows})`, body, { collapsed: !wasOpen }));
 }
 
 function renderRepeatSummitLeaderboard() {
