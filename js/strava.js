@@ -4308,6 +4308,18 @@ async function fetchMountainPeaks(footActs) {
     // Final save if we fetched anything new
     if (fetchedCount > 0) await savePeakCache();
 
+    // If we fetched any new cells, the previously-saved summit "processed" set
+    // is stale: those activities were scanned against fewer peaks. Force a full
+    // re-scan by clearing both the processed-ids set and the existing visit
+    // map (which we'll rebuild from scratch). Without this, peaks added later
+    // (e.g. via cell splitting or shrinking cell size) will never be summited
+    // because the activities passing over them are already marked "processed".
+    if (fetchedCount > 0 && summitProcessedIds.size > 0) {
+        dbg(`Mountain peaks: ${fetchedCount} new cells fetched — invalidating summit cache for full re-scan`);
+        summitProcessedIds.clear();
+        mountainVisits.clear();
+    }
+
     setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
     dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
     return allPeaks;
