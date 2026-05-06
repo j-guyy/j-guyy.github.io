@@ -239,6 +239,27 @@ export default {
 
 // ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────
 
+async function tryOverpass(mirror, query, cell) {
+    const controller = new AbortController();
+    const abort = setTimeout(() => controller.abort(), 22000);
+    try {
+        const res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
+        });
+        clearTimeout(abort);
+        if (!res.ok) throw new Error(`HTTP ${res.status} from ${mirror}`);
+        const data = await res.json();
+        if (data.remark) throw new Error(`remark from ${mirror}: ${data.remark}`);
+        return { mirror, data };
+    } catch (err) {
+        clearTimeout(abort);
+        // Re-throw with the mirror tagged for clean per-mirror logging in the caller.
+        if (err.name === 'AbortError') throw new Error(`aborted (22s) from ${mirror}`);
+        throw err;
+    }
+}
+
 async function handlePeaksFetch(url) {
     const s = url.searchParams.get('south');
     const w = url.searchParams.get('west');
@@ -247,57 +268,28 @@ async function handlePeaksFetch(url) {
     if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, 400);
 
     const cell = `(${s},${w},${n},${e})`;
-    // Single attempt per worker call (client retries on failure), 20s Overpass
-    // timeout + 22s abort keeps us well under Cloudflare's 30s wall clock limit
-    // and gives Overpass enough time for dense regions like Sierra Nevada / Cascades.
-    // Mirror is chosen randomly so retries from the client land on different ones.
+    // Race both mirrors in parallel — first success wins. Wall clock max is one
+    // attempt's worth (~22s), well under Cloudflare's 30s limit, and we get the
+    // benefit of either mirror responding fast without random-mirror bad luck.
     const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
     ];
-    const mirror = mirrors[Math.floor(Math.random() * mirrors.length)];
 
-    const controller = new AbortController();
-    const abort = setTimeout(() => controller.abort(), 22000);
-
-    let res;
+    let winner;
     try {
-        res = await fetch(`${mirror}?data=${encodeURIComponent(query)}`, {
-            signal: controller.signal,
-            headers: { 'User-Agent': 'MountainHunter/1.0 (j-guyy.github.io)' },
-        });
+        winner = await Promise.any(mirrors.map(m => tryOverpass(m, query, cell)));
     } catch (err) {
-        clearTimeout(abort);
-        console.log(`peaks/fetch ${cell}: fetch error from ${mirror} — ${err.message}`);
-        return json({ peaks: [], failed: true });
-    }
-    clearTimeout(abort);
-
-    if (res.status === 429 || res.status === 504) {
-        console.log(`peaks/fetch ${cell}: ${res.status} from ${mirror}`);
-        return json({ peaks: [], failed: true });
-    }
-    if (!res.ok) {
-        console.log(`peaks/fetch ${cell}: ${res.status} from ${mirror}`);
+        // AggregateError — every mirror failed. Log each so we know whether it
+        // was rate-limit, timeout, or remark.
+        for (const e of err.errors || [err]) {
+            console.log(`peaks/fetch ${cell}: ${e.message}`);
+        }
         return json({ peaks: [], failed: true });
     }
 
-    let data;
-    try {
-        data = await res.json();
-    } catch (err) {
-        console.log(`peaks/fetch ${cell}: invalid JSON from ${mirror} — ${err.message}`);
-        return json({ peaks: [], failed: true });
-    }
-    // Any remark means the query didn't complete cleanly (timeout, OOM, runtime error).
-    // Successful Overpass queries never include a remark.
-    if (data.remark) {
-        console.log(`peaks/fetch ${cell}: Overpass remark from ${mirror} — ${data.remark}`);
-        return json({ peaks: [], failed: true });
-    }
-
-    const peaks = (data.elements || [])
+    const peaks = (winner.data.elements || [])
         .filter(el => {
             const v = parseFloat(el.tags?.ele);
             if (isNaN(v) || v <= 0) return false;
@@ -311,7 +303,7 @@ async function handlePeaksFetch(url) {
             lng:  el.lon,
             ele:  parseFloat(el.tags.ele),
         }));
-    console.log(`peaks/fetch ${cell}: ${peaks.length} peaks from ${mirror}`);
+    console.log(`peaks/fetch ${cell}: ${peaks.length} peaks from ${winner.mirror}`);
     return json({ peaks });
 }
 

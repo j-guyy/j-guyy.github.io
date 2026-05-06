@@ -4215,15 +4215,17 @@ async function fetchMountainPeaks(footActs) {
         return [];
     }
 
-    // Build unique set of 5° grid cells covered by those activity starts
+    // Build unique set of 2.5° grid cells covered by those activity starts.
+    // 2.5° (with 0.5° pad → 3.5° bbox query) keeps Overpass query work small
+    // enough that even dense regions like Wyoming/Utah complete reliably.
     const cells = new Map(); // cellKey → {south, west, north, east}
     for (const a of cellActs) {
-        const lat5 = Math.floor(a.l[0] / 5) * 5;
-        const lng5 = Math.floor(a.l[1] / 5) * 5;
-        const key = `${lat5},${lng5}`;
+        const lat = Math.floor(a.l[0] / 2.5) * 2.5;
+        const lng = Math.floor(a.l[1] / 2.5) * 2.5;
+        const key = `${lat},${lng}`;
         if (!cells.has(key)) {
             // Add 0.5° pad on each side so peaks on cell edges aren't missed
-            cells.set(key, { south: lat5 - 0.5, west: lng5 - 0.5, north: lat5 + 5.5, east: lng5 + 5.5 });
+            cells.set(key, { south: lat - 0.5, west: lng - 0.5, north: lat + 3.0, east: lng + 3.0 });
         }
     }
 
@@ -4252,7 +4254,7 @@ async function fetchMountainPeaks(footActs) {
         // Only throttle between actual Overpass requests, not cached hits
         const c = peakCellCache[cellKey];
         const isCached = c && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
-        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 4000));
+        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
 
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         if (!isCached) {
