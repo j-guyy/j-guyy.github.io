@@ -4102,6 +4102,10 @@ const SUMMIT_RADIUS_M = 50;
 // considered "really left" the summit zone. Without it, GPS noise + ordinary
 // wandering near a peak causes one real lap to register as 2-3 entries.
 const LAP_EXIT_RADIUS_M = 750;
+// In edit mode, peaks within this radius (but outside SUMMIT_RADIUS_M)
+// are flagged as 'near misses' so the user can manually verify whether
+// imperfect OSM peak coordinates are hiding a real summit.
+const NEAR_MISS_RADIUS_M = 100;
 const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
@@ -4110,6 +4114,8 @@ let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
 let summitProcessedIds = new Set();  // activity IDs already scanned for summits
 let hiddenPeakIds = new Set();   // OSM peak IDs the user has marked as sub-peaks (filtered from displays)
 let mountainEditMode = false;    // when true, tables expose hide buttons + clickable peak names
+let nearMissPeaks = new Map();   // peakId → [{actId, actName, date, distance}] — within 100m but not summited
+let nearMissComputed = false;    // lazy compute on first edit-mode entry
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainHunterReady = false;
@@ -4570,6 +4576,58 @@ function renderMountainStats() {
     renderHiddenPeaksList();
 }
 
+// Scans every foot activity for peaks that came within NEAR_MISS_RADIUS_M
+// but never within SUMMIT_RADIUS_M. These are likely candidates where OSM
+// peak coordinates are slightly off from the true summit. Lazily computed
+// on first edit-mode entry; results live in memory only (no server round-trip).
+function detectNearMisses() {
+    nearMissPeaks = new Map();
+    if (!mountainPeaks.length) return;
+
+    // 0.5° spatial index — same approach as detectMountainSummits
+    const index = {};
+    for (const peak of mountainPeaks) {
+        if (!peak.name) continue;
+        const key = `${Math.floor(peak.lat * 2)},${Math.floor(peak.lng * 2)}`;
+        (index[key] = index[key] || []).push(peak);
+    }
+
+    const allActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
+    for (const act of allActs) {
+        const points = decodePolyline(act.p);
+        const recordedThisAct = new Set();  // dedupe per-activity
+
+        for (let j = 0; j < points.length; j++) {
+            const [lat, lng] = points[j];
+            const gr = Math.floor(lat * 2);
+            const gc = Math.floor(lng * 2);
+            for (let dl = -1; dl <= 1; dl++) {
+                for (let dk = -1; dk <= 1; dk++) {
+                    const candidates = index[`${gr + dl},${gc + dk}`] || [];
+                    for (const peak of candidates) {
+                        if (recordedThisAct.has(peak.id)) continue;
+                        if (mountainVisits.has(peak.id)) continue;       // actually summited — not a near miss
+                        if (Math.abs(lat - peak.lat) > 0.002 || Math.abs(lng - peak.lng) > 0.002) continue;
+                        const d = haversineM(lat, lng, peak.lat, peak.lng);
+                        if (d <= NEAR_MISS_RADIUS_M) {
+                            recordedThisAct.add(peak.id);
+                            if (!nearMissPeaks.has(peak.id)) nearMissPeaks.set(peak.id, []);
+                            nearMissPeaks.get(peak.id).push({
+                                actId:    act.i,
+                                actName:  act.n || 'Untitled',
+                                actType:  act.t,
+                                date:     act.d || '',
+                                distance: Math.round(d),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    dbg(`Near-miss detection: ${nearMissPeaks.size} peaks within ${NEAR_MISS_RADIUS_M}m but not summited`);
+}
+
 function toggleMountainEditMode() {
     mountainEditMode = !mountainEditMode;
     const section = document.querySelector('#mountain-stats-bar')?.closest('.section');
@@ -4581,6 +4639,22 @@ function toggleMountainEditMode() {
     }
     const hiddenSection = document.getElementById('mountain-hidden-section');
     if (hiddenSection) hiddenSection.style.display = mountainEditMode ? 'block' : 'none';
+    const nearMissLegend = document.getElementById('mountain-near-miss-legend');
+    if (nearMissLegend) nearMissLegend.style.display = mountainEditMode ? 'inline-flex' : 'none';
+
+    if (mountainEditMode && !nearMissComputed) {
+        detectNearMisses();
+        nearMissComputed = true;
+    }
+
+    // Re-render the mountain map so near-miss markers appear/disappear
+    if (mountainMapInstance) {
+        mountainMapInstance.remove();
+        mountainMapInstance = null;
+        mountainMapInitialized = false;
+        const mapSection = document.getElementById('mountain-map-section');
+        if (mapSection && mapSection.style.display !== 'none') renderMountainMap();
+    }
 
     renderMountainTable();
     renderRepeatSummitLeaderboard();
@@ -5213,19 +5287,27 @@ function renderMountainMap() {
         if (!peak.name || hiddenPeakIds.has(peak.id)) continue;
         const pvs   = mountainVisits.get(peak.id);
         const visited = !!pvs;
+        const isNearMiss = !visited && mountainEditMode && nearMissPeaks.has(peak.id);
         const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
         const href  = last?.actId ? `https://www.strava.com/activities/${last.actId}` : null;
 
-        L.circleMarker([peak.lat, peak.lng], {
-            radius:      visited ? 7 : 4,
-            color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.25)',
-            fillColor:   visited ? '#4CAF50' : 'rgba(255,255,255,0.1)',
-            fillOpacity: visited ? 0.85 : 0.35,
-            weight:      visited ? 2 : 1,
+        // Three states: summited (green), near-miss in edit mode (orange), unsummited (faint white)
+        let stroke, fill, fillOp, weight, radius;
+        if (visited)        { stroke = '#4CAF50'; fill = '#4CAF50'; fillOp = 0.85; weight = 2; radius = 7; }
+        else if (isNearMiss){ stroke = '#FF9800'; fill = '#FF9800'; fillOp = 0.7;  weight = 2; radius = 6; }
+        else                { stroke = 'rgba(255,255,255,0.25)'; fill = 'rgba(255,255,255,0.1)'; fillOp = 0.35; weight = 1; radius = 4; }
+
+        const nearMissVisits = isNearMiss ? nearMissPeaks.get(peak.id) : null;
+        const closestMiss = nearMissVisits
+            ? nearMissVisits.reduce((best, v) => (!best || v.distance < best.distance) ? v : best, null)
+            : null;
+
+        const marker = L.circleMarker([peak.lat, peak.lng], {
+            radius, color: stroke, fillColor: fill, fillOpacity: fillOp, weight,
         })
         .bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${visited ? '#4CAF50' : 'rgba(255,255,255,0.4)'}">
+                <div class="activity-popup-type" style="color:${stroke}">
                     ▲ ${mToFt(peak.ele).toLocaleString()} ft (${Math.round(peak.ele).toLocaleString()}m)
                 </div>
                 <div class="activity-popup-name">${peak.name || 'Unnamed Peak'}</div>
@@ -5233,10 +5315,19 @@ function renderMountainMap() {
                     ${visited
                         ? `Summited ${pvs.length}× · Last: ${last.date ? formatActivityDate(last.date) : '?'}
                            ${href ? `<br><a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>` : ''}`
-                        : 'Not yet summited'}
+                        : isNearMiss
+                            ? `Near miss — closest pass: ${closestMiss.distance}m
+                               <br><span class="mh-sublabel">${nearMissVisits.length} activit${nearMissVisits.length === 1 ? 'y' : 'ies'} came within ${NEAR_MISS_RADIUS_M}m</span>`
+                            : 'Not yet summited'}
                 </div>
-            </div>`, { className: 'activity-popup' })
-        .addTo(mountainMapInstance);
+            </div>`, { className: 'activity-popup' });
+
+        // In edit mode, clicking a near-miss marker opens the peak map popup so
+        // the user can verify whether the trail actually went over the summit.
+        if (isNearMiss) {
+            marker.on('click', () => showPeakMapPopup(peak, nearMissVisits));
+        }
+        marker.addTo(mountainMapInstance);
     }
 
     mountainMapInitialized = true;
