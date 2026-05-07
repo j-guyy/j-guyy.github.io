@@ -135,9 +135,9 @@
             <div id="mountain-map-section" style="display:none">
                 <div id="mountain-map"></div>
                 <div class="map-legend" style="margin-top:10px">
-                    <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Summited</span>
-                    <span class="map-legend-item" id="mountain-near-miss-legend" style="display:none"><span class="map-legend-dot" style="background:#FF9800"></span>Near miss (edit mode)</span>
-                    <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.3)"></span>Not yet summited</span>
+                    <button type="button" class="map-legend-item map-legend-filter" data-mountain-filter="summited" onclick="toggleMountainMapFilter('summited')"><span class="map-legend-dot" style="background:#4CAF50"></span>Summited</button>
+                    <button type="button" class="map-legend-item map-legend-filter" id="mountain-near-miss-legend" data-mountain-filter="nearMiss" style="display:none" onclick="toggleMountainMapFilter('nearMiss')"><span class="map-legend-dot" style="background:#FF9800"></span>Near miss (edit mode)</button>
+                    <button type="button" class="map-legend-item map-legend-filter" data-mountain-filter="unvisited" onclick="toggleMountainMapFilter('unvisited')"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet summited</button>
                 </div>
             </div>
             <div id="mountain-progress-wrap" style="display:none">

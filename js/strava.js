@@ -4116,6 +4116,10 @@ let hiddenPeakIds = new Set();   // OSM peak IDs the user has marked as sub-peak
 let mountainEditMode = false;    // when true, tables expose hide buttons + clickable peak names
 let nearMissPeaks = new Map();   // peakId → [{actId, actName, date, distance}] — within 100m but not summited
 let nearMissComputed = false;    // lazy compute on first edit-mode entry
+const mountainMapFilters = { summited: true, nearMiss: true, unvisited: true };
+let mountainSummitedLayer = null;
+let mountainNearMissLayer = null;
+let mountainUnvisitedLayer = null;
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainHunterReady = false;
@@ -5283,6 +5287,12 @@ function renderMountainMap() {
     }).addTo(mountainMapInstance);
     new LocationControl().addTo(mountainMapInstance);
 
+    // Three layer groups so the legend filter buttons can toggle visibility
+    // instantly without re-rendering all peak markers.
+    mountainSummitedLayer = L.layerGroup();
+    mountainNearMissLayer = L.layerGroup();
+    mountainUnvisitedLayer = L.layerGroup();
+
     for (const peak of mountainPeaks) {
         if (!peak.name || hiddenPeakIds.has(peak.id)) continue;
         const pvs   = mountainVisits.get(peak.id);
@@ -5327,11 +5337,36 @@ function renderMountainMap() {
         if (isNearMiss) {
             marker.on('click', () => showPeakMapPopup(peak, nearMissVisits));
         }
-        marker.addTo(mountainMapInstance);
+        if (visited)         marker.addTo(mountainSummitedLayer);
+        else if (isNearMiss) marker.addTo(mountainNearMissLayer);
+        else                 marker.addTo(mountainUnvisitedLayer);
     }
+
+    // Add layers based on current filter state
+    if (mountainMapFilters.summited)  mountainSummitedLayer.addTo(mountainMapInstance);
+    if (mountainMapFilters.nearMiss)  mountainNearMissLayer.addTo(mountainMapInstance);
+    if (mountainMapFilters.unvisited) mountainUnvisitedLayer.addTo(mountainMapInstance);
 
     mountainMapInitialized = true;
     setMountainStatus('');
+}
+
+// Called by the legend filter buttons to toggle marker visibility.
+// `kind` is 'summited' | 'nearMiss' | 'unvisited'.
+function toggleMountainMapFilter(kind) {
+    mountainMapFilters[kind] = !mountainMapFilters[kind];
+    const layer = kind === 'summited' ? mountainSummitedLayer
+                : kind === 'nearMiss' ? mountainNearMissLayer
+                : mountainUnvisitedLayer;
+    if (mountainMapInstance && layer) {
+        if (mountainMapFilters[kind]) layer.addTo(mountainMapInstance);
+        else mountainMapInstance.removeLayer(layer);
+    }
+    // Reflect in the legend buttons' visual state
+    document.querySelectorAll('[data-mountain-filter]').forEach(el => {
+        const k = el.getAttribute('data-mountain-filter');
+        el.classList.toggle('off', !mountainMapFilters[k]);
+    });
 }
 
 function setMountainStatus(msg) {

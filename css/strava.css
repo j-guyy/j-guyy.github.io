@@ -663,6 +663,32 @@
     color: var(--primary-color);
 }
 
+/* Mountain Hunter map legend → clickable filter buttons */
+.map-legend-filter {
+    background: none;
+    border: 1px solid transparent;
+    color: inherit;
+    font: inherit;
+    padding: 4px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.map-legend-filter:hover {
+    background-color: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.map-legend-filter.off {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+
+.map-legend-filter.off .map-legend-dot {
+    opacity: 0.4;
+}
+
 /* ── Peak map popup (edit mode) ────────────────── */
 .peak-map-popup {
     border: 1px solid rgba(255,255,255,0.15);
