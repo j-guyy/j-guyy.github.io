@@ -4578,6 +4578,7 @@ function renderMountainStats() {
     renderMountainTable();
     renderRepeatSummitLeaderboard();
     renderHiddenPeaksList();
+    renderNearMissList();
 }
 
 // Scans every foot activity for peaks that came within NEAR_MISS_RADIUS_M
@@ -4643,6 +4644,8 @@ function toggleMountainEditMode() {
     }
     const hiddenSection = document.getElementById('mountain-hidden-section');
     if (hiddenSection) hiddenSection.style.display = mountainEditMode ? 'block' : 'none';
+    const nearMissSection = document.getElementById('mountain-near-miss-section');
+    if (nearMissSection) nearMissSection.style.display = mountainEditMode ? 'block' : 'none';
     const nearMissLegend = document.getElementById('mountain-near-miss-legend');
     if (nearMissLegend) nearMissLegend.style.display = mountainEditMode ? 'inline-flex' : 'none';
 
@@ -4663,6 +4666,7 @@ function toggleMountainEditMode() {
     renderMountainTable();
     renderRepeatSummitLeaderboard();
     renderHiddenPeaksList();
+    renderNearMissList();
 }
 
 async function hidePeak(peakId) {
@@ -4672,6 +4676,7 @@ async function hidePeak(peakId) {
     renderMountainTable();
     renderRepeatSummitLeaderboard();
     renderHiddenPeaksList();
+    renderNearMissList();
     if (mountainMapInstance) {
         mountainMapInstance.remove();
         mountainMapInstance = null;
@@ -4688,6 +4693,7 @@ async function unhidePeak(peakId) {
     renderMountainTable();
     renderRepeatSummitLeaderboard();
     renderHiddenPeaksList();
+    renderNearMissList();
     if (mountainMapInstance) {
         mountainMapInstance.remove();
         mountainMapInstance = null;
@@ -4695,6 +4701,70 @@ async function unhidePeak(peakId) {
         const section = document.getElementById('mountain-map-section');
         if (section && section.style.display !== 'none') renderMountainMap();
     }
+}
+
+function renderNearMissList() {
+    const el = document.getElementById('mountain-near-miss-table');
+    if (!el) return;
+    if (!nearMissComputed) {
+        el.innerHTML = '<p class="no-location-note" style="margin:8px 0">Near misses haven\'t been scanned yet.</p>';
+        return;
+    }
+    if (!nearMissPeaks.size) {
+        el.innerHTML = `<p class="no-location-note" style="margin:8px 0">No near misses — every peak within ${NEAR_MISS_RADIUS_M}m of one of your activities was successfully summited.</p>`;
+        return;
+    }
+
+    // Each entry: { peak, visits, closest } sorted by closest distance asc
+    const rows = [...nearMissPeaks.entries()]
+        .map(([id, visits]) => {
+            const peak = mountainPeaks.find(p => p.id === id);
+            if (!peak) return null;
+            const closest = visits.reduce((best, v) => (!best || v.distance < best.distance) ? v : best, null);
+            return { peak, visits, closest };
+        })
+        .filter(Boolean)
+        .filter(r => !hiddenPeakIds.has(r.peak.id))
+        .sort((a, b) => a.closest.distance - b.closest.distance);
+
+    if (!rows.length) {
+        el.innerHTML = '<p class="no-location-note" style="margin:8px 0">No near misses to show.</p>';
+        return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Peak', 'Elevation', 'Closest', 'Activities'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(({ peak, visits, closest }) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><button type="button" class="peak-name-link">${peak.name || 'Unnamed'}</button></td>
+            <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
+            <td>${closest.distance}m</td>
+            <td>${visits.length}</td>`;
+        tr.querySelector('.peak-name-link').addEventListener('click', () => showPeakMapPopup(peak, visits));
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Near Misses (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 function renderHiddenPeaksList() {
