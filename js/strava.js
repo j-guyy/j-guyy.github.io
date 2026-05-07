@@ -4136,6 +4136,25 @@ function haversineM(lat1, lng1, lat2, lng2) {
     return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// Closest distance from peak P to the line segment between polyline vertices A and B.
+// Strava's summary_polyline is heavily simplified, so a long segment can pass within
+// metres of a peak even when neither endpoint is close. Locally-flat projection at P's
+// latitude is plenty accurate for the small distances (sub-km) we care about.
+function pointToSegmentM(pLat, pLng, aLat, aLng, bLat, bLng) {
+    const mPerDegLat = 111000;
+    const mPerDegLng = 111000 * Math.cos(pLat * Math.PI / 180);
+    // Project A and B into local metres with P at the origin
+    const ax = (aLng - pLng) * mPerDegLng, ay = (aLat - pLat) * mPerDegLat;
+    const bx = (bLng - pLng) * mPerDegLng, by = (bLat - pLat) * mPerDegLat;
+    const dx = bx - ax, dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(ax, ay);
+    // Parametric position of the perpendicular foot, clamped to [0,1] for a segment
+    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq));
+    const cx = ax + t * dx, cy = ay + t * dy;
+    return Math.hypot(cx, cy);
+}
+
 function toggleMountainMap() {
     const section = document.getElementById('mountain-map-section');
     const btn = document.getElementById('mountain-toggle-btn');
@@ -4461,6 +4480,7 @@ async function detectMountainSummits(peaks) {
         const inside = new Set();
         const lapCount = new Map();  // peakId → laps recorded so far for this act
 
+        let prevLat = null, prevLng = null;
         for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
 
@@ -4474,7 +4494,10 @@ async function detectMountainSummits(peaks) {
                 }
             }
 
-            // Then: nearby peaks we've now entered (new lap)
+            // Then: nearby peaks the segment from the previous vertex to this
+            // one comes within SUMMIT_RADIUS_M of. Segment-based (not just
+            // vertex-based) so that long simplified-polyline jumps that pass
+            // over a peak still register a summit.
             const gr = Math.floor(lat * 2);
             const gc = Math.floor(lng * 2);
             for (let dl = -1; dl <= 1; dl++) {
@@ -4482,8 +4505,10 @@ async function detectMountainSummits(peaks) {
                     const candidates = index[`${gr + dl},${gc + dk}`] || [];
                     for (const peak of candidates) {
                         if (inside.has(peak.id)) continue;
-                        if (Math.abs(lat - peak.lat) > 0.006 || Math.abs(lng - peak.lng) > 0.008) continue;
-                        if (haversineM(lat, lng, peak.lat, peak.lng) <= SUMMIT_RADIUS_M) {
+                        const d = (prevLat === null)
+                            ? haversineM(lat, lng, peak.lat, peak.lng)
+                            : pointToSegmentM(peak.lat, peak.lng, prevLat, prevLng, lat, lng);
+                        if (d <= SUMMIT_RADIUS_M) {
                             inside.add(peak.id);
                             const lap = (lapCount.get(peak.id) || 0) + 1;
                             lapCount.set(peak.id, lap);
@@ -4499,6 +4524,8 @@ async function detectMountainSummits(peaks) {
                     }
                 }
             }
+            prevLat = lat;
+            prevLng = lng;
         }
         summitProcessedIds.add(act.i);
     }
@@ -4600,8 +4627,9 @@ function detectNearMisses() {
     const allActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
     for (const act of allActs) {
         const points = decodePolyline(act.p);
-        const recordedThisAct = new Set();  // dedupe per-activity
+        const closestPerPeak = new Map();  // peakId → smallest segment distance for this activity
 
+        let prevLat = null, prevLng = null;
         for (let j = 0; j < points.length; j++) {
             const [lat, lng] = points[j];
             const gr = Math.floor(lat * 2);
@@ -4610,24 +4638,30 @@ function detectNearMisses() {
                 for (let dk = -1; dk <= 1; dk++) {
                     const candidates = index[`${gr + dl},${gc + dk}`] || [];
                     for (const peak of candidates) {
-                        if (recordedThisAct.has(peak.id)) continue;
                         if (mountainVisits.has(peak.id)) continue;       // actually summited — not a near miss
-                        if (Math.abs(lat - peak.lat) > 0.002 || Math.abs(lng - peak.lng) > 0.002) continue;
-                        const d = haversineM(lat, lng, peak.lat, peak.lng);
-                        if (d <= NEAR_MISS_RADIUS_M) {
-                            recordedThisAct.add(peak.id);
-                            if (!nearMissPeaks.has(peak.id)) nearMissPeaks.set(peak.id, []);
-                            nearMissPeaks.get(peak.id).push({
-                                actId:    act.i,
-                                actName:  act.n || 'Untitled',
-                                actType:  act.t,
-                                date:     act.d || '',
-                                distance: Math.round(d),
-                            });
-                        }
+                        const d = (prevLat === null)
+                            ? haversineM(lat, lng, peak.lat, peak.lng)
+                            : pointToSegmentM(peak.lat, peak.lng, prevLat, prevLng, lat, lng);
+                        if (d > NEAR_MISS_RADIUS_M) continue;
+                        const prev = closestPerPeak.get(peak.id);
+                        if (prev === undefined || d < prev) closestPerPeak.set(peak.id, d);
                     }
                 }
             }
+            prevLat = lat;
+            prevLng = lng;
+        }
+
+        // Record one near-miss entry per peak per activity (using the closest approach)
+        for (const [peakId, d] of closestPerPeak) {
+            if (!nearMissPeaks.has(peakId)) nearMissPeaks.set(peakId, []);
+            nearMissPeaks.get(peakId).push({
+                actId:    act.i,
+                actName:  act.n || 'Untitled',
+                actType:  act.t,
+                date:     act.d || '',
+                distance: Math.round(d),
+            });
         }
     }
     dbg(`Near-miss detection: ${nearMissPeaks.size} peaks within ${NEAR_MISS_RADIUS_M}m but not summited`);
