@@ -797,22 +797,26 @@ async function initCountyMap() {
         attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
         maxZoom: 17,
     });
-    // OpenCycleMap requires a free Thunderforest API key. Sign up at
-    // https://www.thunderforest.com/docs/apikeys/ and replace YOUR_KEY below
-    // to enable the option in the layer switcher.
-    const THUNDERFOREST_KEY = '';
-    const cycleLayer = THUNDERFOREST_KEY
-        ? L.tileLayer(`https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${THUNDERFOREST_KEY}`, {
-            attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
-            maxZoom: 22, subdomains: 'abc',
-        })
-        : null;
+    // Thunderforest styles (key shared with colorado-ranges.js and leaflet.js)
+    const TF_KEY = 'bc2ceac04cab454da559aaacefe3582f';
+    const cycleLayer = L.tileLayer(`https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
+        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
+        maxZoom: 22,
+    });
+    const outdoorsLayer = L.tileLayer(`https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
+        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
+        maxZoom: 22,
+    });
 
     darkLayer.addTo(countyMap);
 
-    const baseLayers = { 'Dark (default)': darkLayer, 'OpenStreetMap': osmLayer, 'OpenTopoMap': topoLayer };
-    if (cycleLayer) baseLayers['OpenCycleMap'] = cycleLayer;
-    L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(countyMap);
+    L.control.layers({
+        'Dark (default)': darkLayer,
+        'OpenStreetMap':  osmLayer,
+        'OpenTopoMap':    topoLayer,
+        'OpenCycleMap':   cycleLayer,
+        'Outdoors':       outdoorsLayer,
+    }, null, { position: 'topright', collapsed: true }).addTo(countyMap);
 
     new LocationControl().addTo(countyMap);
 
