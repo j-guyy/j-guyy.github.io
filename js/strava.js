@@ -782,11 +782,38 @@ async function initCountyMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Basemap layers. Dark stays default since the green / gold county fills
+    // contrast best against it. OSM standard and OpenTopoMap render county
+    // boundaries more prominently for orientation.
+    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 12,
-    }).addTo(countyMap);
+        subdomains: 'abcd', maxZoom: 18,
+    });
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+    });
+    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+        maxZoom: 17,
+    });
+    // OpenCycleMap requires a free Thunderforest API key. Sign up at
+    // https://www.thunderforest.com/docs/apikeys/ and replace YOUR_KEY below
+    // to enable the option in the layer switcher.
+    const THUNDERFOREST_KEY = '';
+    const cycleLayer = THUNDERFOREST_KEY
+        ? L.tileLayer(`https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${THUNDERFOREST_KEY}`, {
+            attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
+            maxZoom: 22, subdomains: 'abc',
+        })
+        : null;
+
+    darkLayer.addTo(countyMap);
+
+    const baseLayers = { 'Dark (default)': darkLayer, 'OpenStreetMap': osmLayer, 'OpenTopoMap': topoLayer };
+    if (cycleLayer) baseLayers['OpenCycleMap'] = cycleLayer;
+    L.control.layers(baseLayers, null, { position: 'topright', collapsed: true }).addTo(countyMap);
+
     new LocationControl().addTo(countyMap);
 
     setCountyStatus('Loading activity routes…');
