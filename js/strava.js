@@ -696,6 +696,8 @@ let countyDiscoveries = {};  // fips → { actId, actName, date }
 let countyProcessedIds = new Set();
 let stateCountyTotals = null;  // stateAbbr → total county count — computed once from GeoJSON
 let stateFocusLayer = null;    // currently-focused state outline overlay (cleared on next map interaction)
+let countyGeoJsonLayer = null; // GeoJSON layer reference so we can restyle on basemap change
+let countyMapIsDark = true;    // tracks active basemap so unvisited county strokes contrast
 
 function toggleCountyMap() {
     const section = document.getElementById('county-section');
@@ -817,6 +819,13 @@ async function initCountyMap() {
         'OpenCycleMap':   cycleLayer,
         'Outdoors':       outdoorsLayer,
     }, null, { position: 'topright', collapsed: true }).addTo(countyMap);
+
+    // Re-style unvisited counties when the basemap changes so their outlines
+    // stay readable on both dark and light tiles.
+    countyMap.on('baselayerchange', (e) => {
+        countyMapIsDark = (e.layer === darkLayer);
+        restyleUnvisitedCounties();
+    });
 
     new LocationControl().addTo(countyMap);
 
@@ -982,22 +991,35 @@ function getCompletedStateFips() {
     return completedFips;
 }
 
+// Style for a single county feature. Centralised so basemap-change events
+// can re-apply it without duplicating the rules.
+function countyStyle(feature, completedFips) {
+    const visited = visitedFips.has(feature.properties.GEOID);
+    const goldState = visited && completedFips.has(feature.properties.STATEFP);
+    if (goldState) {
+        return { fillColor: '#FFD700', fillOpacity: 0.55, color: '#FFD700', weight: 0.8 };
+    }
+    if (visited) {
+        return { fillColor: '#4CAF50', fillOpacity: 0.45, color: '#4CAF50', weight: 0.8 };
+    }
+    // Unvisited county outlines need to contrast with whichever basemap is
+    // active: faint white against dark, darker grey at higher weight against
+    // any of the light basemaps.
+    return countyMapIsDark
+        ? { fillColor: '#ffffff', fillOpacity: 0, color: 'rgba(255,255,255,0.12)', weight: 0.4 }
+        : { fillColor: '#ffffff', fillOpacity: 0, color: 'rgba(30,30,30,0.55)',    weight: 0.6 };
+}
+
+function restyleUnvisitedCounties() {
+    if (!countyGeoJsonLayer) return;
+    const completedFips = getCompletedStateFips();
+    countyGeoJsonLayer.setStyle(feature => countyStyle(feature, completedFips));
+}
+
 function renderCountyMap(geojson) {
     const completedFips = getCompletedStateFips();
-    L.geoJSON(geojson, {
-        style: feature => {
-            const visited = visitedFips.has(feature.properties.GEOID);
-            const goldState = visited && completedFips.has(feature.properties.STATEFP);
-            if (goldState) {
-                return { fillColor: '#FFD700', fillOpacity: 0.55, color: '#FFD700', weight: 0.8 };
-            }
-            return {
-                fillColor:   visited ? '#4CAF50' : '#ffffff',
-                fillOpacity: visited ? 0.45 : 0,
-                color:       visited ? '#4CAF50' : 'rgba(255,255,255,0.12)',
-                weight:      visited ? 0.8 : 0.4,
-            };
-        },
+    countyGeoJsonLayer = L.geoJSON(geojson, {
+        style: feature => countyStyle(feature, completedFips),
         onEachFeature: (feature, layer) => {
             const { GEOID, STATEFP, NAME, LSAD } = feature.properties;
             const visited = visitedFips.has(GEOID);
@@ -1027,8 +1049,14 @@ function renderCountyMap(geojson) {
                         <div class="activity-popup-name">${NAME} ${lsad}</div>
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
-                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.08 }); });
-                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0 }); });
+                layer.on('mouseover', function () {
+                    // Stronger hover on light maps so the county actually highlights
+                    this.setStyle({
+                        fillColor:   countyMapIsDark ? '#ffffff' : '#1e1e1e',
+                        fillOpacity: countyMapIsDark ? 0.08 : 0.18,
+                    });
+                });
+                layer.on('mouseout', function () { this.setStyle({ fillOpacity: 0 }); });
             }
         },
     }).addTo(countyMap);
