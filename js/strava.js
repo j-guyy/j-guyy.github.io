@@ -1109,7 +1109,12 @@ function renderRecentCounties(geojson) {
             case 'county': return dir * `${a.info.name} ${a.info.lsad}`.localeCompare(`${b.info.name} ${b.info.lsad}`);
             case 'state': return dir * a.info.state.localeCompare(b.info.state);
             case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
-            case 'date': return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            case 'date': {
+                const dateCmp = (a.disc.date || '').localeCompare(b.disc.date || '');
+                if (dateCmp !== 0) return dir * dateCmp;
+                // Same date — tiebreak by activity ID (Strava IDs are auto-incrementing)
+                return dir * ((a.disc.actId || 0) - (b.disc.actId || 0));
+            }
             default: return 0;
         }
     });
@@ -1630,7 +1635,11 @@ function renderRecentParks(fedGeojson, spGeojson) {
             case 'type':     return dir * a.info.type.localeCompare(b.info.type);
             case 'agency':   return dir * a.info.agency.localeCompare(b.info.agency);
             case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
-            case 'date':     return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            case 'date': {
+                const dateCmp = (a.disc.date || '').localeCompare(b.disc.date || '');
+                if (dateCmp !== 0) return dir * dateCmp;
+                return dir * ((a.disc.actId || 0) - (b.disc.actId || 0));
+            }
             default: return 0;
         }
     });
@@ -2024,7 +2033,11 @@ function renderRecentMetros(geojson) {
             case 'name':     return dir * a.info.name.localeCompare(b.info.name);
             case 'state':    return dir * a.info.state.localeCompare(b.info.state);
             case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
-            case 'date':     return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            case 'date': {
+                const dateCmp = (a.disc.date || '').localeCompare(b.disc.date || '');
+                if (dateCmp !== 0) return dir * dateCmp;
+                return dir * ((a.disc.actId || 0) - (b.disc.actId || 0));
+            }
             default: return 0;
         }
     });
@@ -5421,7 +5434,11 @@ function renderElevationLeaderboard() {
             case 'activity': return dir * (a.n || '').localeCompare(b.n || '');
             case 'type': return dir * (a.t || '').localeCompare(b.t || '');
             case 'elev': return dir * (a.e - b.e);
-            case 'date': return dir * (a.d || '').localeCompare(b.d || '');
+            case 'date': {
+                const dateCmp = (a.d || '').localeCompare(b.d || '');
+                if (dateCmp !== 0) return dir * dateCmp;
+                return dir * ((a.i || 0) - (b.i || 0));
+            }
             default: return 0;
         }
     });
