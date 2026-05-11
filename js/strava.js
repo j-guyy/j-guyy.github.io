@@ -695,6 +695,7 @@ let visitedFips = new Set();
 let countyDiscoveries = {};  // fips → { actId, actName, date }
 let countyProcessedIds = new Set();
 let stateCountyTotals = null;  // stateAbbr → total county count — computed once from GeoJSON
+let stateFocusLayer = null;    // currently-focused state outline overlay (cleared on next map interaction)
 
 function toggleCountyMap() {
     const section = document.getElementById('county-section');
@@ -927,10 +928,38 @@ function pointInRing(lat, lng, ring) {
 
 // ── County rendering ──────────────────────────────────────────────────────────
 
+// Returns a Set of state FIPS codes (e.g. '08' for Colorado) where every
+// county has been visited. Used to highlight fully-completed states in gold
+// on the map.
+function getCompletedStateFips() {
+    if (!stateCountyTotals) return new Set();
+    const visitedPerState = {};
+    for (const fips of visitedFips) {
+        const abbr = STATE_ABBR[fips.slice(0, 2)] || fips.slice(0, 2);
+        visitedPerState[abbr] = (visitedPerState[abbr] || 0) + 1;
+    }
+    const completedAbbrs = new Set(
+        Object.entries(visitedPerState)
+            .filter(([abbr, n]) => n >= (stateCountyTotals[abbr] || Infinity))
+            .map(([abbr]) => abbr)
+    );
+    // Convert back to FIPS prefixes for fast lookup against feature.STATEFP
+    const completedFips = new Set();
+    for (const [fp, abbr] of Object.entries(STATE_ABBR)) {
+        if (completedAbbrs.has(abbr)) completedFips.add(fp);
+    }
+    return completedFips;
+}
+
 function renderCountyMap(geojson) {
+    const completedFips = getCompletedStateFips();
     L.geoJSON(geojson, {
         style: feature => {
             const visited = visitedFips.has(feature.properties.GEOID);
+            const goldState = visited && completedFips.has(feature.properties.STATEFP);
+            if (goldState) {
+                return { fillColor: '#FFD700', fillOpacity: 0.55, color: '#FFD700', weight: 0.8 };
+            }
             return {
                 fillColor:   visited ? '#4CAF50' : '#ffffff',
                 fillOpacity: visited ? 0.45 : 0,
@@ -941,6 +970,7 @@ function renderCountyMap(geojson) {
         onEachFeature: (feature, layer) => {
             const { GEOID, STATEFP, NAME, LSAD } = feature.properties;
             const visited = visitedFips.has(GEOID);
+            const goldState = visited && completedFips.has(STATEFP);
             const state = STATE_ABBR[STATEFP] || STATEFP || '?';
             const lsad  = LSAD_NAMES[LSAD] || 'County';
             if (visited) {
@@ -948,14 +978,17 @@ function renderCountyMap(geojson) {
                 const discLine = disc
                     ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
                     : `<div class="activity-popup-date">FIPS ${GEOID}</div>`;
+                const tagColor = goldState ? '#FFD700' : '#4CAF50';
+                const baseFill = goldState ? 0.55 : 0.45;
+                const hoverFill = goldState ? 0.85 : 0.72;
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:#4CAF50">${state}</div>
+                        <div class="activity-popup-type" style="color:${tagColor}">${state}${goldState ? ' ★' : ''}</div>
                         <div class="activity-popup-name">${NAME} ${lsad}</div>
                         ${discLine}
                     </div>`, { className: 'activity-popup' });
-                layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
-                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: 0.45 }); });
+                layer.on('mouseover', function () { this.setStyle({ fillOpacity: hoverFill }); });
+                layer.on('mouseout',  function () { this.setStyle({ fillOpacity: baseFill }); });
             } else {
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
@@ -1105,6 +1138,44 @@ async function saveCountiesToWorker() {
     }
 }
 
+// Animate the county map to fit a state and outline it. Any user interaction
+// (drag, click, zoom) on the map clears the highlight and lets them pan freely.
+function focusOnState(stateAbbr) {
+    if (!countyMap || !countyGeoJsonRef) return;
+    clearStateFocus();
+
+    const stateFp = Object.entries(STATE_ABBR).find(([, abbr]) => abbr === stateAbbr)?.[0];
+    if (!stateFp) return;
+    const features = countyGeoJsonRef.features.filter(f => f.properties.STATEFP === stateFp);
+    if (!features.length) return;
+
+    // Bright cyan stroke that sits on top of both green and gold counties
+    stateFocusLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+        style: { color: '#00E5FF', weight: 3, fillOpacity: 0, opacity: 0.95 },
+        interactive: false,
+    }).addTo(countyMap);
+    stateFocusLayer.bringToFront();
+
+    countyMap.flyToBounds(stateFocusLayer.getBounds(), { padding: [40, 40], duration: 0.8 });
+
+    // Wait for the programmatic flight to finish, then attach user-interaction
+    // listeners that clear the focus on the next pan/click/zoom.
+    countyMap.once('moveend', () => {
+        countyMap.on('dragstart', clearStateFocus);
+        countyMap.on('zoomstart', clearStateFocus);
+        countyMap.on('click',      clearStateFocus);
+    });
+}
+
+function clearStateFocus() {
+    if (!stateFocusLayer || !countyMap) return;
+    countyMap.off('dragstart', clearStateFocus);
+    countyMap.off('zoomstart', clearStateFocus);
+    countyMap.off('click',      clearStateFocus);
+    countyMap.removeLayer(stateFocusLayer);
+    stateFocusLayer = null;
+}
+
 function renderStateCompletion() {
     const el = document.getElementById('county-state-table');
     if (!el || !stateCountyTotals) return;
@@ -1141,11 +1212,14 @@ function renderStateCompletion() {
         const pct = ((visited / total) * 100).toFixed(1);
         const complete = visited === total;
         const tr = document.createElement('tr');
+        tr.className = 'state-row';
         tr.innerHTML = `
-            <td>${abbr}${complete ? ' <span style="color:#4CAF50">✓</span>' : ''}</td>
+            <td>${abbr}${complete ? ' <span style="color:#FFD700">★</span>' : ''}</td>
             <td style="text-align:center">${visited}</td>
             <td style="text-align:center">${total}</td>
             <td style="text-align:center">${pct}%</td>`;
+        tr.title = `Click to focus the map on ${abbr}`;
+        tr.addEventListener('click', () => focusOnState(abbr));
         tbody.appendChild(tr);
     }
     table.appendChild(tbody);

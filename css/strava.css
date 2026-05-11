@@ -663,6 +663,16 @@
     color: var(--primary-color);
 }
 
+/* Clickable State Progress rows in County Hunter */
+.state-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.state-row:hover {
+    background-color: rgba(76,175,80,0.12);
+}
+
 /* Mountain Hunter map legend → clickable filter buttons */
 .map-legend-filter {
     background: none;
