@@ -1063,10 +1063,10 @@
         height: 420px;
     }
 
-    /* Location control panel — ensure it doesn't clip off left edge */
+    /* Location control panel — drop below the button, anchored to its right
+       edge so the panel doesn't extend off-screen on narrow/fullscreen maps. */
     .loc-panel {
-        right: auto;
-        left: 0;
+        right: 0;
         top: 34px;
     }
 
