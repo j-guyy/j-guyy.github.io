@@ -784,41 +784,7 @@ async function initCountyMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
 
-    // Basemap layers. Dark stays default since the green / gold county fills
-    // contrast best against it. OSM standard and OpenTopoMap render county
-    // boundaries more prominently for orientation.
-    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd', maxZoom: 18,
-    });
-    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-    });
-    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
-        maxZoom: 17,
-    });
-    // Thunderforest styles (key shared with colorado-ranges.js and leaflet.js)
-    const TF_KEY = 'bc2ceac04cab454da559aaacefe3582f';
-    const cycleLayer = L.tileLayer(`https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
-        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
-        maxZoom: 22,
-    });
-    const outdoorsLayer = L.tileLayer(`https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
-        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
-        maxZoom: 22,
-    });
-
-    darkLayer.addTo(countyMap);
-
-    L.control.layers({
-        'Dark (default)': darkLayer,
-        'OpenStreetMap':  osmLayer,
-        'OpenTopoMap':    topoLayer,
-        'OpenCycleMap':   cycleLayer,
-        'Outdoors':       outdoorsLayer,
-    }, null, { position: 'topright', collapsed: true }).addTo(countyMap);
+    const { darkLayer } = setupStravaBasemaps(countyMap);
 
     // Re-style unvisited counties when the basemap changes so their outlines
     // stay readable on both dark and light tiles.
@@ -1408,11 +1374,6 @@ async function initParkMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 12,
-    }).addTo(parkMap);
     new LocationControl().addTo(parkMap);
 
     setParkStatus('Loading activity routes…');
@@ -1423,10 +1384,12 @@ async function initParkMap() {
     fedLayer.addTo(parkMap);
     stateLayer.addTo(parkMap);
 
-    L.control.layers(null, {
-        'Federal Lands': fedLayer,
-        'State Parks':   stateLayer,
-    }, { collapsed: false, position: 'topright' }).addTo(parkMap);
+    setupStravaBasemaps(parkMap, {
+        overlays: {
+            'Federal Lands': fedLayer,
+            'State Parks':   stateLayer,
+        },
+    });
 
     renderParkStats();
     renderRecentParks(fedGeojson, spGeojson);
@@ -1848,11 +1811,7 @@ async function initMetroMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 12,
-    }).addTo(metroMap);
+    setupStravaBasemaps(metroMap);
     new LocationControl().addTo(metroMap);
 
     setMetroStatus('Loading activity routes…');
@@ -2339,11 +2298,7 @@ async function initMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([30, 0], 2);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-    }).addTo(stravaMap);
+    setupStravaBasemaps(stravaMap);
     new LocationControl().addTo(stravaMap);
 
     // Lazy-fetch polylines via shared cache
@@ -2607,11 +2562,7 @@ async function initCityMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).fitBounds([[cfg.bbox[0], cfg.bbox[1]], [cfg.bbox[2], cfg.bbox[3]]]);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-    }).addTo(cityMap);
+    setupStravaBasemaps(cityMap);
     new LocationControl().addTo(cityMap);
 
     renderCityMap(completedWays);
@@ -3171,11 +3122,7 @@ async function initTileMap() {
         tileMap.setView([38, -96], 6);
     }
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-    }).addTo(tileMap);
+    setupStravaBasemaps(tileMap);
     new LocationControl().addTo(tileMap);
 
     setTileStatus('Computing clusters & squares…');
@@ -3646,6 +3593,50 @@ function setTileStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Basemap switcher ──────────────────────────────────────────────────────────
+//
+// Every hunter map gets the same Dark / OSM / OpenTopoMap / OpenCycleMap /
+// Outdoors set with a Leaflet layer control. Dark is the default so green and
+// gold feature fills contrast well; users can flip to a topo or cycling style
+// when they want road / trail context. Pass `overlays` to merge feature
+// toggles into the same control (e.g. Park Hunter's Federal Lands / State
+// Parks). Returns the layer references so callers can hook baselayerchange.
+function setupStravaBasemaps(map, { overlays = null } = {}) {
+    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 19,
+    });
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+    });
+    const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+        maxZoom: 17,
+    });
+    const TF_KEY = 'bc2ceac04cab454da559aaacefe3582f';
+    const cycleLayer = L.tileLayer(`https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
+        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
+        maxZoom: 22,
+    });
+    const outdoorsLayer = L.tileLayer(`https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=${TF_KEY}`, {
+        attribution: 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors',
+        maxZoom: 22,
+    });
+
+    darkLayer.addTo(map);
+
+    L.control.layers({
+        'Dark (default)': darkLayer,
+        'OpenStreetMap':  osmLayer,
+        'OpenTopoMap':    topoLayer,
+        'OpenCycleMap':   cycleLayer,
+        'Outdoors':       outdoorsLayer,
+    }, overlays, { position: 'topright', collapsed: true }).addTo(map);
+
+    return { darkLayer, osmLayer, topoLayer, cycleLayer, outdoorsLayer };
+}
+
 // ── Location Control ──────────────────────────────────────────────────────────
 //
 // Custom Leaflet control for real-time location tracking. Renders a crosshair
@@ -3889,11 +3880,7 @@ async function initTrailMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView(cfg.center, cfg.zoom);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-    }).addTo(trailMap);
+    setupStravaBasemaps(trailMap);
     new LocationControl().addTo(trailMap);
 
     trailCompletedWays = completedWays;
@@ -5535,10 +5522,7 @@ function renderMountainMap() {
     }
 
     mountainMapInstance = L.map('mountain-map', { center: [clat, clng], zoom: czoom });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-    }).addTo(mountainMapInstance);
+    setupStravaBasemaps(mountainMapInstance);
     new LocationControl().addTo(mountainMapInstance);
 
     // Three layer groups so the legend filter buttons can toggle visibility
