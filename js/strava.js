@@ -2290,9 +2290,11 @@ async function initMap() {
 
     setMapStatus('Initializing map…');
 
-    // Canvas renderer handles thousands of polylines far better than SVG
+    // Canvas renderer handles thousands of polylines far better than SVG.
+    // Bump click tolerance so the thin (weight 1.5) lines are tappable on touch.
+    const activityRenderer = L.canvas({ tolerance: L.Browser.touch ? 15 : 4 });
     stravaMap = L.map('strava-map', {
-        renderer: L.canvas(),
+        renderer: activityRenderer,
         preferCanvas: true,
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
@@ -2333,6 +2335,7 @@ async function initMap() {
             color,
             weight: 1.5,
             opacity: visible ? 0.55 : 0,
+            interactive: visible,
         }).addTo(stravaMap);
 
         layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
@@ -2359,7 +2362,9 @@ async function initMap() {
 function updateMapFilters() {
     if (!mapInitialized) return;
     mapLayers.forEach(({ layer, type }) => {
-        layer.setStyle({ opacity: deactivatedTypes.has(type) ? 0 : 0.55 });
+        const visible = !deactivatedTypes.has(type);
+        layer.setStyle({ opacity: visible ? 0.55 : 0 });
+        layer.options.interactive = visible;
     });
 }
 
