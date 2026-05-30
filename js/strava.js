@@ -1282,6 +1282,9 @@ const STATE_PARK_TOTAL   = 5895;  // total units in state-parks.geojson
 
 let parkMap = null;
 let parkMapInitialized = false;
+let parkMapIsDark = true;       // tracks active basemap so unvisited park styling contrasts
+let parkFedLayer = null;        // geoJSON layer refs kept for basemap-change restyling
+let parkStateLayer = null;
 let visitedParkIds = new Set();
 let parkDiscoveries = {};   // id → { actId, actName, date }
 let parkProcessedIds = new Set();
@@ -1379,16 +1382,18 @@ async function initParkMap() {
     setParkStatus('Loading activity routes…');
     await addPolylineOverlay(parkMap, { interactive: true });
 
-    const fedLayer   = renderParkMapLayer(fedGeojson,  visitedParkIds,      parkDiscoveries);
-    const stateLayer = renderParkMapLayer(spGeojson,   visitedStateParkIds, stateParkDiscoveries);
-    fedLayer.addTo(parkMap);
-    stateLayer.addTo(parkMap);
+    parkMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap; style fns read this
+    parkFedLayer   = renderParkMapLayer(fedGeojson,  visitedParkIds,      parkDiscoveries);
+    parkStateLayer = renderParkMapLayer(spGeojson,   visitedStateParkIds, stateParkDiscoveries);
+    parkFedLayer.addTo(parkMap);
+    parkStateLayer.addTo(parkMap);
 
     setupStravaBasemaps(parkMap, {
         overlays: {
-            'Federal Lands': fedLayer,
-            'State Parks':   stateLayer,
+            'Federal Lands': parkFedLayer,
+            'State Parks':   parkStateLayer,
         },
+        onThemeChange: (isDark) => { parkMapIsDark = isDark; restyleUnvisitedParks(); },
     });
 
     renderParkStats();
@@ -1471,19 +1476,24 @@ async function detectParksBackfill(activities, parks, index, visitedSet) {
 
 // ── Park rendering ─────────────────────────────────────────────────────────────
 
+function parkFeatureStyle(feature, visitedSet) {
+    const { id, agency } = feature.properties;
+    const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
+    if (visitedSet.has(id)) {
+        return { fillColor: color, fillOpacity: 0.45, color, weight: 0.8 };
+    }
+    return faintPolyStyle(parkMapIsDark);
+}
+
+// Re-apply unvisited styling when the basemap switches dark↔light.
+function restyleUnvisitedParks() {
+    if (parkFedLayer)   parkFedLayer.setStyle(f => parkFeatureStyle(f, visitedParkIds));
+    if (parkStateLayer) parkStateLayer.setStyle(f => parkFeatureStyle(f, visitedStateParkIds));
+}
+
 function renderParkMapLayer(geojson, visitedSet, discoveries) {
     return L.geoJSON(geojson, {
-        style: feature => {
-            const { id, agency } = feature.properties;
-            const visited = visitedSet.has(id);
-            const color = PARK_AGENCY_COLORS[agency] || '#FF7043';
-            return {
-                fillColor:   visited ? color : '#ffffff',
-                fillOpacity: visited ? 0.45 : 0.07,
-                color:       visited ? color : 'rgba(255,255,255,0.15)',
-                weight:      visited ? 0.8 : 0.4,
-            };
-        },
+        style: feature => parkFeatureStyle(feature, visitedSet),
         onEachFeature: (feature, layer) => {
             const { id, name, agency, type } = feature.properties;
             const visited = visitedSet.has(id);
@@ -1741,6 +1751,8 @@ const METRO_COLOR = '#FFC107';  // amber
 
 let metroMap = null;
 let metroMapInitialized = false;
+let metroMapIsDark = true;      // tracks active basemap so unvisited metro styling contrasts
+let metroGeoJsonLayer = null;   // layer ref kept for basemap-change restyling
 let visitedMetroIds = new Set();
 let metroDiscoveries = {};   // id → { actId, actName, date }
 let metroProcessedIds = new Set();
@@ -1811,7 +1823,10 @@ async function initMetroMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
 
-    setupStravaBasemaps(metroMap);
+    metroMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap; style fn reads this
+    setupStravaBasemaps(metroMap, {
+        onThemeChange: (isDark) => { metroMapIsDark = isDark; restyleUnvisitedMetros(); },
+    });
     new LocationControl().addTo(metroMap);
 
     setMetroStatus('Loading activity routes…');
@@ -1899,18 +1914,22 @@ async function detectMetrosBackfill(activities, metros, index) {
 
 // ── Metro rendering ───────────────────────────────────────────────────────────
 
+function metroFeatureStyle(feature) {
+    const visited = visitedMetroIds.has(feature.properties.id);
+    if (visited) {
+        return { fillColor: METRO_COLOR, fillOpacity: 0.35, color: METRO_COLOR, weight: 0.8 };
+    }
+    return faintPolyStyle(metroMapIsDark);
+}
+
+// Re-apply unvisited styling when the basemap switches dark↔light.
+function restyleUnvisitedMetros() {
+    if (metroGeoJsonLayer) metroGeoJsonLayer.setStyle(metroFeatureStyle);
+}
+
 function renderMetroMap(geojson) {
-    L.geoJSON(geojson, {
-        style: feature => {
-            const { id } = feature.properties;
-            const visited = visitedMetroIds.has(id);
-            return {
-                fillColor:   visited ? METRO_COLOR : '#ffffff',
-                fillOpacity: visited ? 0.35 : 0.07,
-                color:       visited ? METRO_COLOR : 'rgba(255,255,255,0.15)',
-                weight:      visited ? 0.8 : 0.4,
-            };
-        },
+    metroGeoJsonLayer = L.geoJSON(geojson, {
+        style: metroFeatureStyle,
         onEachFeature: (feature, layer) => {
             const { id, rank, name, census_name, state, population } = feature.properties;
             const visited = visitedMetroIds.has(id);
@@ -2221,6 +2240,7 @@ const GROUP_COLORS = {
 
 let stravaMap = null;
 let mapInitialized = false;
+let stravaMapIsDark = true;   // tracks active basemap so routes can pop on light tiles
 // Each entry: { layer: L.polyline, type: string }
 let mapLayers = [];
 
@@ -2242,12 +2262,15 @@ async function loadPolylines() {
 // Options:
 //   color       — fixed colour string; omit to use per-group colours
 //   interactive — if true, adds popups + hover highlight (like Activity Map)
+// Returns the array of created polyline layers so callers can restyle them
+// later (e.g. swap a fixed white overlay to dark when the basemap goes light).
 async function addPolylineOverlay(targetMap, { color = null, interactive = false } = {}) {
     let polylines;
     try { polylines = await loadPolylines(); }
-    catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return; }
+    catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return []; }
 
     const renderer = L.canvas();
+    const layers = [];
     polylines.forEach((encoded, i) => {
         if (!encoded) return;
         const slim = currentSlim[i];
@@ -2257,6 +2280,7 @@ async function addPolylineOverlay(targetMap, { color = null, interactive = false
         const c = color || GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
         const layer = L.polyline(points, { color: c, weight: 1.2, opacity: 0.45, renderer })
             .addTo(targetMap);
+        layers.push(layer);
 
         if (interactive) {
             layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
@@ -2264,6 +2288,7 @@ async function addPolylineOverlay(targetMap, { color = null, interactive = false
             layer.on('mouseout',  function () { this.setStyle({ opacity: 0.45, weight: 1.2 }); });
         }
     });
+    return layers;
 }
 
 function toggleMap() {
@@ -2300,7 +2325,10 @@ async function initMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([30, 0], 2);
 
-    setupStravaBasemaps(stravaMap);
+    stravaMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
+    setupStravaBasemaps(stravaMap, {
+        onThemeChange: (isDark) => { stravaMapIsDark = isDark; restyleActivityMapTheme(); },
+    });
     new LocationControl().addTo(stravaMap);
 
     // Lazy-fetch polylines via shared cache
@@ -2333,14 +2361,14 @@ async function initMap() {
 
         const layer = L.polyline(points, {
             color,
-            weight: 1.5,
-            opacity: visible ? 0.55 : 0,
+            weight: routeBaseWeight(stravaMapIsDark),
+            opacity: visible ? routeBaseOpacity(stravaMapIsDark) : 0,
             interactive: visible,
         }).addTo(stravaMap);
 
         layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
-        layer.on('mouseover', function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.9, weight: 3 }); });
-        layer.on('mouseout',  function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.55, weight: 1.5 }); });
+        layer.on('mouseover', function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.95, weight: routeBaseWeight(stravaMapIsDark) + 1.5 }); });
+        layer.on('mouseout',  function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: routeBaseOpacity(stravaMapIsDark), weight: routeBaseWeight(stravaMapIsDark) }); });
 
         mapLayers.push({ layer, type: slim.t });
         if (visible) points.forEach(p => allPoints.push(p));
@@ -2361,10 +2389,24 @@ async function initMap() {
 // Show/hide polylines to match the current deactivatedTypes filter state
 function updateMapFilters() {
     if (!mapInitialized) return;
+    const op = routeBaseOpacity(stravaMapIsDark);
+    const w  = routeBaseWeight(stravaMapIsDark);
     mapLayers.forEach(({ layer, type }) => {
         const visible = !deactivatedTypes.has(type);
-        layer.setStyle({ opacity: visible ? 0.55 : 0 });
+        layer.setStyle({ opacity: visible ? op : 0, weight: w });
         layer.options.interactive = visible;
+    });
+}
+
+// Re-apply route opacity/weight when the basemap switches dark↔light so routes
+// stay punchy on light tiles. Respects the current activity-type filter state.
+function restyleActivityMapTheme() {
+    if (!mapInitialized) return;
+    const op = routeBaseOpacity(stravaMapIsDark);
+    const w  = routeBaseWeight(stravaMapIsDark);
+    mapLayers.forEach(({ layer, type }) => {
+        const visible = !deactivatedTypes.has(type);
+        layer.setStyle({ opacity: visible ? op : 0, weight: w });
     });
 }
 
@@ -2484,6 +2526,9 @@ let cityMap = null;
 let cityMapInitialized = false;
 let cityNodeLayer = null;       // L.LayerGroup of unvisited node markers
 let cityActivityLayer = null;   // L.LayerGroup of activity polylines
+let cityMapIsDark = true;       // tracks active basemap so not-started roads + boundary contrast
+let cityNotStartedLayers = [];  // pct===0 road lines kept for basemap-change restyling
+let cityBoundaryLayers = [];    // boundary polylines kept for basemap-change restyling
 let cityNodesVisible = false;
 let cityActivitiesVisible = false;
 
@@ -2567,21 +2612,25 @@ async function initCityMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).fitBounds([[cfg.bbox[0], cfg.bbox[1]], [cfg.bbox[2], cfg.bbox[3]]]);
 
-    setupStravaBasemaps(cityMap);
+    cityMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap; renderCityMap reads this
+    setupStravaBasemaps(cityMap, {
+        onThemeChange: (isDark) => { cityMapIsDark = isDark; restyleCityMapTheme(); },
+    });
     new LocationControl().addTo(cityMap);
 
     renderCityMap(completedWays);
     renderCityStats(completedWays);
 
     // Draw boundary on the now-ready map (data already in hand — no second fetch)
+    cityBoundaryLayers = [];
     if (boundaryPolygons.length) {
         boundaryPolygons.forEach(ring => {
-            L.polyline(ring, {
-                color: '#ffffff',
+            cityBoundaryLayers.push(L.polyline(ring, {
+                color: routeOverlayColor(cityMapIsDark),
                 weight: 3,
                 opacity: 0.85,
                 interactive: false,
-            }).addTo(cityMap);
+            }).addTo(cityMap));
         });
         dbg(`City boundary: ${boundaryPolygons.length} polygon(s) drawn`);
     }
@@ -2872,18 +2921,20 @@ function computeWayCompletion(ways, pointIndex) {
 
 // ── City rendering ────────────────────────────────────────────────────────────
 
-function wayColor(pct) {
+function wayColor(pct, isDark = true) {
     if (pct === 1) return '#4CAF50';              // complete  — green
     if (pct > 0)   return '#FF9800';              // partial   — orange
-    return 'rgba(255,255,255,0.25)';              // untouched — faint
+    // untouched — faint; white on dark basemap, dark grey on light so it shows
+    return isDark ? 'rgba(255,255,255,0.25)' : 'rgba(30,30,30,0.45)';
 }
 
 function renderCityMap(completedWays) {
     const renderer = L.canvas();
     const unvisitedMarkers = [];
+    cityNotStartedLayers = [];
 
     completedWays.forEach(way => {
-        const color       = wayColor(way.pct);
+        const color       = wayColor(way.pct, cityMapIsDark);
         const complete    = way.pct === 1;
         const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
         const baseWeight  = complete ? 3 : 2;
@@ -2892,6 +2943,7 @@ function renderCityMap(completedWays) {
         const visibleLayer = L.polyline(way.coords, {
             color, weight: baseWeight, opacity: baseOpacity, interactive: false,
         }).addTo(cityMap);
+        if (way.pct === 0) cityNotStartedLayers.push(visibleLayer);
 
         // Wide transparent hit target — easy to tap on mobile
         const layer = L.polyline(way.coords, {
@@ -2902,9 +2954,12 @@ function renderCityMap(completedWays) {
         const nameHtml = way.name
             ? way.name
             : `<em style="opacity:0.6">${way.highway}</em>`;
+        // Popup heading uses a fixed readable colour (popup bg is always dark) so
+        // a not-started road's dark-grey line colour doesn't vanish in the popup.
+        const headColor = way.pct === 0 ? '#bbb' : color;
         layer.bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${color}">${way.highway}</div>
+                <div class="activity-popup-type" style="color:${headColor}">${way.highway}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
@@ -2928,6 +2983,15 @@ function renderCityMap(completedWays) {
     });
 
     cityNodeLayer = L.layerGroup(unvisitedMarkers);
+}
+
+// Recolour not-started roads + boundary lines when the basemap switches
+// dark↔light. Complete (green) / partial (orange) roads contrast on either.
+function restyleCityMapTheme() {
+    const faint = wayColor(0, cityMapIsDark);
+    cityNotStartedLayers.forEach(l => l.setStyle({ color: faint }));
+    const bc = routeOverlayColor(cityMapIsDark);
+    cityBoundaryLayers.forEach(l => l.setStyle({ color: bc }));
 }
 
 function renderCityStats(completedWays) {
@@ -3069,6 +3133,8 @@ let tileSquareMembership = null;// tile key → largest square tile actually bel
 let tileMaxCluster = 0;
 let tileMaxSquare  = 0;
 let tileGridLayer  = null;
+let tileMapIsDark  = true;      // tracks active basemap so route overlay + gridlines contrast
+let tileRouteLayers = [];       // route polylines kept for basemap-change restyling
 
 const SQUARE_THRESHOLD = 10;   // only highlight squares ≥ this size
 
@@ -3127,7 +3193,10 @@ async function initTileMap() {
         tileMap.setView([38, -96], 6);
     }
 
-    setupStravaBasemaps(tileMap);
+    tileMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
+    setupStravaBasemaps(tileMap, {
+        onThemeChange: (isDark) => { tileMapIsDark = isDark; restyleTileMapTheme(); },
+    });
     new LocationControl().addTo(tileMap);
 
     setTileStatus('Computing clusters & squares…');
@@ -3154,7 +3223,7 @@ async function initTileMap() {
     });
 
     setTileStatus('Loading activity routes…');
-    await addPolylineOverlay(tileMap, { color: '#ffffff', interactive: true });
+    tileRouteLayers = await addPolylineOverlay(tileMap, { color: routeOverlayColor(tileMapIsDark), interactive: true });
 
     renderTileStats();
     tileMapInitialized = true;
@@ -3485,7 +3554,7 @@ const TileGridLayer = L.Layer.extend({
         if (tilePx < 8) return;
 
         const ctx = this._canvas.getContext('2d');
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.strokeStyle = tileMapIsDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
         ctx.lineWidth   = 0.5;
 
         const bounds = map.getBounds();
@@ -3508,6 +3577,14 @@ const TileGridLayer = L.Layer.extend({
         ctx.stroke();
     },
 });
+
+// Swap the white route overlay → dark and redraw gridlines when the basemap
+// switches dark↔light. Tile fills (red/green/blue) contrast on either.
+function restyleTileMapTheme() {
+    const c = routeOverlayColor(tileMapIsDark);
+    tileRouteLayers.forEach(l => l.setStyle({ color: c }));
+    if (tileGridLayer && tileGridLayer._map) tileGridLayer._redraw();
+}
 
 function toggleTileGrid(show) {
     if (!tileMap) return;
@@ -3606,7 +3683,11 @@ function setTileStatus(msg) {
 // when they want road / trail context. Pass `overlays` to merge feature
 // toggles into the same control (e.g. Park Hunter's Federal Lands / State
 // Parks). Returns the layer references so callers can hook baselayerchange.
-function setupStravaBasemaps(map, { overlays = null } = {}) {
+//
+// `onThemeChange(isDark)` is invoked whenever the basemap switches, so callers
+// can restyle "not yet reached" features (faint white reads on the dark
+// basemap but vanishes on the light ones — see faint* helpers below).
+function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}) {
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
@@ -3639,7 +3720,38 @@ function setupStravaBasemaps(map, { overlays = null } = {}) {
         'Outdoors':       outdoorsLayer,
     }, overlays, { position: 'topright', collapsed: true }).addTo(map);
 
+    if (onThemeChange) {
+        map.on('baselayerchange', (e) => onThemeChange(e.layer === darkLayer));
+    }
+
     return { darkLayer, osmLayer, topoLayer, cycleLayer, outdoorsLayer };
+}
+
+// Styling for "not yet reached" features (unvisited parks/metros, un-summited
+// peaks, un-climbed passes). On the dark basemap a translucent white reads well;
+// on the light basemaps it disappears, so we swap to translucent dark. Visited
+// features keep their bright green/gold/amber fills, which contrast on either.
+function faintStroke(isDark) { return isDark ? 'rgba(255,255,255,0.25)' : 'rgba(30,30,30,0.6)';  }
+function faintFill(isDark)   { return isDark ? 'rgba(255,255,255,0.1)'  : 'rgba(30,30,30,0.3)';  }
+
+// White activity-route / boundary lines read on the dark basemap but vanish on
+// light tiles, so swap to near-black there. Used by the Tile and City maps,
+// whose overlays are a fixed white (the Activity/County/Park/Metro overlays use
+// per-activity-type colours that already contrast on either basemap).
+function routeOverlayColor(isDark) { return isDark ? '#ffffff' : '#1a1a1a'; }
+
+// Activity-map routes are thin & semi-transparent so many of them layer nicely
+// on the dark basemap; on light tiles they wash out, so make them bolder and
+// more opaque there to keep the routes legible.
+function routeBaseOpacity(isDark) { return isDark ? 0.55 : 0.85; }
+function routeBaseWeight(isDark)  { return isDark ? 1.5  : 2.2;  }
+
+// Polygon wash for unvisited geoJSON features (Park / Metro). Faint fill plus a
+// slightly heavier outline on light maps so the boundary stays legible.
+function faintPolyStyle(isDark) {
+    return isDark
+        ? { fillColor: '#ffffff', fillOpacity: 0.07, color: 'rgba(255,255,255,0.15)', weight: 0.4 }
+        : { fillColor: '#1e1e1e', fillOpacity: 0.10, color: 'rgba(30,30,30,0.5)',     weight: 0.6 };
 }
 
 // ── Location Control ──────────────────────────────────────────────────────────
@@ -3808,6 +3920,8 @@ let trailNodesVisible = false;
 let trailActivitiesVisible = false;
 let trailCompletedWays = [];   // full computed set, kept for filter re-renders
 let trailWayLayers = [];       // [{layer, way}] — lets us show/hide without re-fetching
+let trailMapIsDark = true;     // tracks active basemap so not-started trails + boundary contrast
+let trailBoundaryLayers = [];  // boundary polylines kept for basemap-change restyling
 const deactivatedTrailSurfaces = new Set();
 
 function toggleTrailMap() {
@@ -3885,7 +3999,10 @@ async function initTrailMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView(cfg.center, cfg.zoom);
 
-    setupStravaBasemaps(trailMap);
+    trailMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap; renderTrailMap reads this
+    setupStravaBasemaps(trailMap, {
+        onThemeChange: (isDark) => { trailMapIsDark = isDark; restyleTrailMapTheme(); },
+    });
     new LocationControl().addTo(trailMap);
 
     trailCompletedWays = completedWays;
@@ -3893,14 +4010,15 @@ async function initTrailMap() {
     renderTrailStats(completedWays);
     renderTrailSurfaceFilters();
 
+    trailBoundaryLayers = [];
     if (boundaryPolygons.length) {
         boundaryPolygons.forEach(ring => {
-            L.polyline(ring, {
-                color: '#ffffff',
+            trailBoundaryLayers.push(L.polyline(ring, {
+                color: routeOverlayColor(trailMapIsDark),
                 weight: 3,
                 opacity: 0.85,
                 interactive: false,
-            }).addTo(trailMap);
+            }).addTo(trailMap));
         });
         dbg(`Trail boundary: ${boundaryPolygons.length} polygon(s) drawn`);
     }
@@ -3983,13 +4101,27 @@ async function fetchCOTrexTrails(cfg) {
     return ways;
 }
 
+// Recolour not-started trails + boundary lines when the basemap switches
+// dark↔light. Complete (green) / partial (orange) segments contrast on either.
+function restyleTrailMapTheme() {
+    const faint = wayColor(0, trailMapIsDark);
+    trailWayLayers.forEach(({ visibleLayer, hitLayer, way }) => {
+        if (way.pct === 0) {
+            visibleLayer.setStyle({ color: faint });
+            hitLayer.setStyle({ color: faint });
+        }
+    });
+    const bc = routeOverlayColor(trailMapIsDark);
+    trailBoundaryLayers.forEach(l => l.setStyle({ color: bc }));
+}
+
 function renderTrailMap(completedWays) {
     const renderer = L.canvas();
     const markersBySurface = {};  // surface → [L.circleMarker, ...]
     trailWayLayers = [];
 
     completedWays.forEach(way => {
-        const color       = wayColor(way.pct);
+        const color       = wayColor(way.pct, trailMapIsDark);
         const complete    = way.pct === 1;
         const baseOpacity = way.pct === 0 ? 0.35 : 0.9;
         const baseWeight  = complete ? 3 : 2;
@@ -4009,9 +4141,12 @@ function renderTrailMap(completedWays) {
             ? way.name
             : `<em style="opacity:0.6">${way.highway}</em>`;
         const surfaceNote = way.surface ? ` · ${way.surface}` : '';
+        // Fixed readable heading colour so a not-started trail's dark-grey line
+        // colour doesn't vanish against the always-dark popup background.
+        const headColor = way.pct === 0 ? '#bbb' : color;
         hitLayer.bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${color}">${way.highway}${surfaceNote}</div>
+                <div class="activity-popup-type" style="color:${headColor}">${way.highway}${surfaceNote}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
@@ -4260,6 +4395,7 @@ let mountainNearMissLayer = null;
 let mountainUnvisitedLayer = null;
 let mountainMapInstance = null;
 let mountainMapInitialized = false;
+let mountainMapIsDark = true;   // tracks active basemap so un-summited peak markers contrast
 let mountainHunterReady = false;
 let mountainHunterRunning = false;  // concurrency guard — only one run at a time
 
@@ -5531,7 +5667,10 @@ function renderMountainMap() {
     }
 
     mountainMapInstance = L.map('mountain-map', { center: [clat, clng], zoom: czoom });
-    setupStravaBasemaps(mountainMapInstance);
+    mountainMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
+    setupStravaBasemaps(mountainMapInstance, {
+        onThemeChange: (isDark) => { mountainMapIsDark = isDark; restyleUnvisitedPeaks(); },
+    });
     new LocationControl().addTo(mountainMapInstance);
 
     // Three layer groups so the legend filter buttons can toggle visibility
@@ -5552,7 +5691,7 @@ function renderMountainMap() {
         let stroke, fill, fillOp, weight, radius;
         if (visited)        { stroke = '#4CAF50'; fill = '#4CAF50'; fillOp = 0.85; weight = 2; radius = 7; }
         else if (isNearMiss){ stroke = '#FF9800'; fill = '#FF9800'; fillOp = 0.7;  weight = 2; radius = 6; }
-        else                { stroke = 'rgba(255,255,255,0.25)'; fill = 'rgba(255,255,255,0.1)'; fillOp = 0.35; weight = 1; radius = 4; }
+        else                { stroke = faintStroke(mountainMapIsDark); fill = faintFill(mountainMapIsDark); fillOp = 0.5; weight = 1; radius = 4; }
 
         const nearMissVisits = isNearMiss ? nearMissPeaks.get(peak.id) : null;
         const closestMiss = nearMissVisits
@@ -5614,6 +5753,16 @@ function toggleMountainMapFilter(kind) {
         const k = el.getAttribute('data-mountain-filter');
         el.classList.toggle('off', !mountainMapFilters[k]);
     });
+}
+
+// Re-color un-summited peak markers when the basemap switches dark↔light.
+// Summited (green) and near-miss (orange) markers contrast on either basemap.
+function restyleUnvisitedPeaks() {
+    if (!mountainUnvisitedLayer) return;
+    mountainUnvisitedLayer.eachLayer(m => m.setStyle({
+        color:     faintStroke(mountainMapIsDark),
+        fillColor: faintFill(mountainMapIsDark),
+    }));
 }
 
 function setMountainStatus(msg) {
@@ -5736,6 +5885,7 @@ let passHunterRunning = false;     // concurrency guard — only one run at a ti
 let passMapInstance = null;
 let passMapInitialized = false;
 let passMapIsDark = true;
+let passUnclimbedMarkers = [];  // not-yet-climbed markers, kept for basemap-change restyling
 
 function ftToM(ft) { return Math.round(ft / 3.28084); }
 
@@ -6092,25 +6242,30 @@ function renderPassMap() {
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([39.2, -106.0], 7);
 
-    const { darkLayer } = setupStravaBasemaps(passMapInstance);
-    passMapInstance.on('baselayerchange', (e) => { passMapIsDark = (e.layer === darkLayer); });
+    passMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
+    setupStravaBasemaps(passMapInstance, {
+        onThemeChange: (isDark) => { passMapIsDark = isDark; restyleUnclimbedPasses(); },
+    });
     new LocationControl().addTo(passMapInstance);
 
+    passUnclimbedMarkers = [];
     for (const pass of coloradoPasses) {
         const disc    = passDiscoveries[pass.id];
         const climbed = !!disc;
         const href    = disc?.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
 
-        const stroke = climbed ? '#4CAF50' : 'rgba(255,255,255,0.35)';
-        const fill   = climbed ? '#4CAF50' : 'rgba(255,255,255,0.15)';
+        // Popup heading uses a fixed readable colour (the popup background is
+        // always dark); only the on-map marker swaps to dark grey on light tiles.
+        const headColor = climbed ? '#4CAF50' : '#aaa';
         const marker = L.circleMarker([pass.lat, pass.lng], {
             radius: climbed ? 7 : 5,
-            color: stroke, fillColor: fill,
-            fillOpacity: climbed ? 0.85 : 0.4,
+            color:       climbed ? '#4CAF50' : faintStroke(passMapIsDark),
+            fillColor:   climbed ? '#4CAF50' : faintFill(passMapIsDark),
+            fillOpacity: climbed ? 0.85 : 0.5,
             weight: climbed ? 2 : 1,
         }).bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${stroke}">
+                <div class="activity-popup-type" style="color:${headColor}">
                     ▲ ${pass.ele.toLocaleString()} ft (${ftToM(pass.ele).toLocaleString()}m)${pass.road ? ` · ${pass.road}` : ''}
                 </div>
                 <div class="activity-popup-name">${pass.name}</div>
@@ -6122,10 +6277,19 @@ function renderPassMap() {
                 </div>
             </div>`, { className: 'activity-popup' });
         marker.addTo(passMapInstance);
+        if (!climbed) passUnclimbedMarkers.push(marker);
     }
 
     passMapInitialized = true;
     setPassStatus('');
+}
+
+// Re-color not-yet-climbed pass markers when the basemap switches dark↔light.
+function restyleUnclimbedPasses() {
+    passUnclimbedMarkers.forEach(m => m.setStyle({
+        color:     faintStroke(passMapIsDark),
+        fillColor: faintFill(passMapIsDark),
+    }));
 }
 
 async function resetPassData() {
