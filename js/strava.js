@@ -5306,7 +5306,9 @@ function renderMountainTable() {
     });
     table.appendChild(tbody);
 
-    const wasOpen = tableEl.querySelector('.collapsible-body')?.style.display !== 'none';
+    // Collapsed on first render; preserve the user's open/closed choice on re-renders
+    const existing = tableEl.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
@@ -5401,7 +5403,8 @@ function renderRepeatSummitLeaderboard() {
     });
     table.appendChild(tbody);
 
-    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const existing = el.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
@@ -5497,7 +5500,8 @@ function renderElevationLeaderboard() {
     });
     table.appendChild(tbody);
 
-    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const existing = el.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
@@ -6015,7 +6019,8 @@ function renderRecentPasses() {
     }
     table.appendChild(tbody);
 
-    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const existing = el.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
@@ -6066,7 +6071,8 @@ function renderHighestPasses() {
     });
     table.appendChild(tbody);
 
-    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const existing = el.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
