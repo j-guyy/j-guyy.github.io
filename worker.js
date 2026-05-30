@@ -26,6 +26,7 @@ const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY       = 'strava_parks';
 const STATE_PARKS_KEY = 'strava_state_parks';
 const METRO_HUNTER_KEY = 'strava_metro_hunter';
+const PASSES_KEY      = 'strava_passes';
 
 const TRAVEL_KEYS = {
     highpoints:    'travel_highpoints',
@@ -202,6 +203,23 @@ export default {
             }
             if (path === '/metro-hunter/reset' && request.method === 'POST') {
                 await env.STRAVA_DATA.delete(METRO_HUNTER_KEY);
+                return json({ ok: true });
+            }
+
+            // ── Pass Hunter — Colorado mountain pass crossings (cycling) ──
+            // Data: { ids: [...], processedIds: [...], discoveries: { passId: { actId, actName, date } } }
+
+            if (path === '/passes/all') {
+                const data = await env.STRAVA_DATA.get(PASSES_KEY, 'json');
+                return json(data || { ids: [], processedIds: [], discoveries: {} });
+            }
+            if (path === '/passes/save' && request.method === 'POST') {
+                const data = await request.json();
+                await env.STRAVA_DATA.put(PASSES_KEY, JSON.stringify(data));
+                return json({ ok: true, passes: (data.ids || []).length });
+            }
+            if (path === '/passes/reset' && request.method === 'POST') {
+                await env.STRAVA_DATA.delete(PASSES_KEY);
                 return json({ ok: true });
             }
 

@@ -150,6 +150,24 @@
             <p id="mountain-status" class="no-location-note" style="margin-top:4px"></p>
         </div>
 
+        <!-- Pass Hunter (Colorado cycling passes, auto-initialises after activities load) -->
+        <div class="section">
+            <h2>Pass Hunter
+                <button class="cache-refresh-btn" id="pass-toggle-btn" onclick="togglePassMap()">Show map</button>
+            </h2>
+            <div id="pass-stats-bar" class="county-stats-bar"></div>
+            <div id="pass-recent-table"></div>
+            <div id="pass-highest-table"></div>
+            <div id="pass-map-section" style="display:none">
+                <div id="pass-map"></div>
+                <div class="map-legend" style="margin-top:10px">
+                    <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Climbed</span>
+                    <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet climbed</span>
+                </div>
+            </div>
+            <p id="pass-status" class="no-location-note" style="margin-top:8px"></p>
+        </div>
+
         <!-- Trail Hunter (region-based, lazy-loaded) -->
         <div class="section">
             <h2>Trail Hunter

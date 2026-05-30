@@ -5709,6 +5709,431 @@ async function initMountainHunter() {
     }
 }
 
+// ── Pass Hunter ───────────────────────────────────────────────────────────────
+//
+// Tracks Colorado mountain passes climbed by bike. Loads a curated list from
+// data/colorado-passes.json and checks each Ride polyline for a crossing within
+// PASS_RADIUS_M of the pass point. Mirrors County Hunter's discovery model:
+// rides are processed oldest-first so a pass's recorded date = first time climbed.
+// Crossing data is persisted in CloudFlare KV via /passes/*.
+
+// VirtualRide excluded — indoor trainer rides have no real-world GPS track.
+const PASS_ACTIVITY_TYPES = new Set(['Ride', 'GravelRide', 'EBikeRide', 'MountainBikeRide', 'Handcycle', 'Velomobile']);
+// A pass is a single point a road crosses, and seeded coords are best-effort, so
+// 1 km comfortably absorbs coordinate error without false positives — you don't
+// pass within 1 km of a summit pass without going over it.
+const PASS_RADIUS_M = 1000;
+
+let coloradoPasses = [];           // [{id, name, lat, lng, ele, road}] — ele in feet
+let passDiscoveries = {};          // passId → { actId, actName, date }
+let passProcessedIds = new Set();  // Ride activity IDs already scanned
+let passHunterReady = false;
+let passHunterRunning = false;     // concurrency guard — only one run at a time
+let passMapInstance = null;
+let passMapInitialized = false;
+let passMapIsDark = true;
+
+function ftToM(ft) { return Math.round(ft / 3.28084); }
+
+function passById(id) { return coloradoPasses.find(p => p.id === id); }
+
+function togglePassMap() {
+    const section = document.getElementById('pass-map-section');
+    const btn = document.getElementById('pass-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !passMapInitialized) {
+        renderPassMap();
+    } else if (opening && passMapInstance) {
+        setTimeout(() => passMapInstance.invalidateSize(), 50);
+    }
+}
+
+function setPassStatus(msg) {
+    const el = document.getElementById('pass-status');
+    if (el) el.textContent = msg;
+}
+
+// Scan each ride's polyline for crossings within PASS_RADIUS_M of a pass.
+// Passes already in passDiscoveries are skipped so an earlier (older) climb
+// keeps its date. Uses the same 0.5° spatial index + segment-distance test as
+// summit detection so simplified-polyline jumps over a pass still register.
+function detectPassCrossings(passes, activities) {
+    const index = {};
+    for (const pass of passes) {
+        const key = `${Math.floor(pass.lat * 2)},${Math.floor(pass.lng * 2)}`;
+        (index[key] = index[key] || []).push(pass);
+    }
+
+    const newDiscoveries = {};
+    for (const act of activities) {
+        const points = decodePolyline(act.p);
+        const crossed = new Set();   // passes already credited within this ride
+        let prevLat = null, prevLng = null;
+        for (let j = 0; j < points.length; j++) {
+            const [lat, lng] = points[j];
+            const gr = Math.floor(lat * 2), gc = Math.floor(lng * 2);
+            for (let dl = -1; dl <= 1; dl++) {
+                for (let dk = -1; dk <= 1; dk++) {
+                    const candidates = index[`${gr + dl},${gc + dk}`] || [];
+                    for (const pass of candidates) {
+                        if (crossed.has(pass.id)) continue;
+                        if (passDiscoveries[pass.id] || newDiscoveries[pass.id]) continue;
+                        const d = (prevLat === null)
+                            ? haversineM(lat, lng, pass.lat, pass.lng)
+                            : pointToSegmentM(pass.lat, pass.lng, prevLat, prevLng, lat, lng);
+                        if (d <= PASS_RADIUS_M) {
+                            crossed.add(pass.id);
+                            newDiscoveries[pass.id] = {
+                                actId:   act.i,
+                                actName: act.n || 'Untitled',
+                                date:    act.d || '',
+                            };
+                        }
+                    }
+                }
+            }
+            prevLat = lat; prevLng = lng;
+        }
+    }
+    return newDiscoveries;
+}
+
+async function savePassData(catalogIds) {
+    try {
+        const res = await fetch(`${WORKER_URL}/passes/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ids: Object.keys(passDiscoveries),
+                processedIds: [...passProcessedIds],
+                discoveries: passDiscoveries,
+                catalogIds: catalogIds || coloradoPasses.map(p => p.id),
+            }),
+        });
+        const data = await res.json();
+        dbg(`Pass data saved: ${data.passes} passes`);
+    } catch (err) {
+        dbg(`Pass save failed: ${err.message}`);
+    }
+}
+
+async function initPassHunter() {
+    if (!currentSlim.length) return;
+    if (passHunterReady) { renderPassStats(); return; }
+    if (passHunterRunning) {
+        dbg('Pass Hunter: already running — skipping duplicate');
+        return;
+    }
+    passHunterRunning = true;
+
+    try {
+        let catalog, saved;
+        try {
+            [catalog, saved] = await Promise.all([
+                fetch('/data/colorado-passes.json').then(r => r.json()),
+                fetch(`${WORKER_URL}/passes/all`).then(r => r.json()),
+            ]);
+        } catch (err) {
+            setPassStatus('Failed to load pass data.');
+            dbg(`Pass Hunter load error: ${err.message}`);
+            return;
+        }
+
+        coloradoPasses  = catalog.passes || [];
+        passDiscoveries = saved.discoveries || {};
+        passProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+
+        // If the curated catalog changed since the last scan (passes added,
+        // removed, or coordinates moved), discard cached results and re-scan
+        // every ride from scratch so new passes get back-filled correctly.
+        const currentCatalogIds = coloradoPasses.map(p => p.id).slice().sort();
+        const savedCatalogIds   = (saved.catalogIds || []).slice().sort();
+        const catalogChanged = currentCatalogIds.join(',') !== savedCatalogIds.join(',');
+        if (catalogChanged && passProcessedIds.size > 0) {
+            dbg('Pass Hunter: catalog changed — re-scanning all rides');
+            passProcessedIds = new Set();
+            passDiscoveries = {};
+        }
+        // Drop discoveries for any pass no longer in the catalog
+        const catalogIdSet = new Set(currentCatalogIds);
+        for (const id of Object.keys(passDiscoveries)) {
+            if (!catalogIdSet.has(id)) delete passDiscoveries[id];
+        }
+
+        const rides = currentSlim.filter(a => PASS_ACTIVITY_TYPES.has(a.t) && a.i && a.p);
+        if (!rides.length) {
+            passHunterReady = true;
+            setPassStatus('No outdoor rides found yet.');
+            renderPassStats();
+            return;
+        }
+
+        // Oldest-first so a pass's recorded date is its first climb
+        const unprocessed = rides.filter(a => !passProcessedIds.has(a.i))
+            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        dbg(`Pass Hunter: ${coloradoPasses.length} passes, ${unprocessed.length} new rides to scan`);
+
+        if (unprocessed.length > 0) {
+            const newDisc = detectPassCrossings(coloradoPasses, unprocessed);
+            Object.assign(passDiscoveries, newDisc);
+            unprocessed.forEach(a => passProcessedIds.add(a.i));
+            await savePassData(currentCatalogIds);
+        } else if (catalogChanged) {
+            await savePassData(currentCatalogIds);
+        }
+
+        passHunterReady = true;
+        setPassStatus('');
+        renderPassStats();
+        dbg(`Pass Hunter: ${Object.keys(passDiscoveries).length}/${coloradoPasses.length} passes climbed`);
+    } catch (err) {
+        setPassStatus(`Error: ${err.message}`);
+        dbg(`Pass Hunter error: ${err.message}`);
+    } finally {
+        passHunterRunning = false;
+    }
+}
+
+function renderPassStats() {
+    const el = document.getElementById('pass-stats-bar');
+    if (!el || !passHunterReady) return;
+
+    const climbedIds = Object.keys(passDiscoveries);
+    const total = coloradoPasses.length;
+    const pct = total ? ((climbedIds.length / total) * 100).toFixed(0) : '0';
+
+    let highest = null;
+    for (const id of climbedIds) {
+        const p = passById(id);
+        if (p && (!highest || p.ele > highest.ele)) highest = p;
+    }
+
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${climbedIds.length}</span>
+            <span class="county-stat-label">Passes Climbed</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${total}</span>
+            <span class="county-stat-label">Total CO Passes</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${highest ? highest.ele.toLocaleString() + ' ft' : '—'}</span>
+            <span class="county-stat-label">Highest Climbed${highest
+                ? `<br><span class="mh-sublabel">${highest.name}</span>`
+                : ''}</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${pct}%</span>
+            <span class="county-stat-label">Complete</span>
+        </div>`;
+
+    renderRecentPasses();
+    renderHighestPasses();
+}
+
+const passSortState = { col: 'date', dir: 'desc' };
+
+function renderRecentPasses() {
+    const el = document.getElementById('pass-recent-table');
+    if (!el) return;
+    if (!Object.keys(passDiscoveries).length) {
+        el.innerHTML = '<p class="no-location-note" style="margin:8px 0">No Colorado passes climbed yet — go ride one!</p>';
+        return;
+    }
+
+    let rows = Object.entries(passDiscoveries)
+        .map(([id, disc]) => ({ pass: passById(id), disc }))
+        .filter(r => r.pass);
+
+    rows.sort((a, b) => {
+        const dir = passSortState.dir === 'asc' ? 1 : -1;
+        switch (passSortState.col) {
+            case 'pass': return dir * a.pass.name.localeCompare(b.pass.name);
+            case 'elevation': return dir * (a.pass.ele - b.pass.ele);
+            case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
+            case 'date': {
+                const cmp = (a.disc.date || '').localeCompare(b.disc.date || '');
+                if (cmp !== 0) return dir * cmp;
+                return dir * ((a.disc.actId || 0) - (b.disc.actId || 0));
+            }
+            default: return 0;
+        }
+    });
+
+    const headers = [
+        { label: 'Pass', col: 'pass' },
+        { label: 'Elevation', col: 'elevation' },
+        { label: 'First Climbed By', col: 'activity' },
+        { label: 'Date', col: 'date' },
+    ];
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = passSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (passSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (passSortState.col === col) {
+                passSortState.dir = passSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                passSortState.col = col;
+                passSortState.dir = (col === 'pass' || col === 'activity') ? 'asc' : 'desc';
+            }
+            renderRecentPasses();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const { pass, disc } of rows) {
+        const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${pass.name}${pass.road ? ` <span class="mh-sublabel">${pass.road}</span>` : ''}</td>
+            <td>${pass.ele.toLocaleString()} ft <span class="mh-ele-m">(${ftToM(pass.ele).toLocaleString()}m)</span></td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
+                : (disc.actName || '—')}</td>
+            <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Recently Climbed (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+function renderHighestPasses() {
+    const el = document.getElementById('pass-highest-table');
+    if (!el) return;
+
+    const rows = Object.entries(passDiscoveries)
+        .map(([id, disc]) => ({ pass: passById(id), disc }))
+        .filter(r => r.pass)
+        .sort((a, b) => b.pass.ele - a.pass.ele);
+
+    if (!rows.length) { el.innerHTML = ''; return; }
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['#', 'Pass', 'Road', 'Elevation', 'First Climbed'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(({ pass, disc }, i) => {
+        const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${pass.name}</td>
+            <td>${pass.road || '—'}</td>
+            <td>${pass.ele.toLocaleString()} ft <span class="mh-ele-m">(${ftToM(pass.ele).toLocaleString()}m)</span></td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
+                : (disc.actName || '—')}
+                ${disc.date ? `<div class="activity-popup-date">${formatActivityDate(disc.date)}</div>` : ''}
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Highest Passes Climbed (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+function renderPassMap() {
+    if (!passHunterReady) {
+        setPassStatus('Pass data not ready yet — try again in a moment.');
+        return;
+    }
+
+    passMapInstance = L.map('pass-map', {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([39.2, -106.0], 7);
+
+    const { darkLayer } = setupStravaBasemaps(passMapInstance);
+    passMapInstance.on('baselayerchange', (e) => { passMapIsDark = (e.layer === darkLayer); });
+    new LocationControl().addTo(passMapInstance);
+
+    for (const pass of coloradoPasses) {
+        const disc    = passDiscoveries[pass.id];
+        const climbed = !!disc;
+        const href    = disc?.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
+
+        const stroke = climbed ? '#4CAF50' : 'rgba(255,255,255,0.35)';
+        const fill   = climbed ? '#4CAF50' : 'rgba(255,255,255,0.15)';
+        const marker = L.circleMarker([pass.lat, pass.lng], {
+            radius: climbed ? 7 : 5,
+            color: stroke, fillColor: fill,
+            fillOpacity: climbed ? 0.85 : 0.4,
+            weight: climbed ? 2 : 1,
+        }).bindPopup(`
+            <div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:${stroke}">
+                    ▲ ${pass.ele.toLocaleString()} ft (${ftToM(pass.ele).toLocaleString()}m)${pass.road ? ` · ${pass.road}` : ''}
+                </div>
+                <div class="activity-popup-name">${pass.name}</div>
+                <div class="activity-popup-date">
+                    ${climbed
+                        ? `Climbed ${disc.date ? formatActivityDate(disc.date) : ''}
+                           ${href ? `<br><a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>` : ''}`
+                        : 'Not yet climbed'}
+                </div>
+            </div>`, { className: 'activity-popup' });
+        marker.addTo(passMapInstance);
+    }
+
+    passMapInitialized = true;
+    setPassStatus('');
+}
+
+async function resetPassData() {
+    if (!confirm('Clear cached Colorado pass progress? It will be re-detected from your rides.')) return;
+    try { await fetch(`${WORKER_URL}/passes/reset`, { method: 'POST' }); } catch {}
+    passDiscoveries = {};
+    passProcessedIds = new Set();
+    passHunterReady = false;
+    passMapInitialized = false;
+    if (passMapInstance) { passMapInstance.remove(); passMapInstance = null; }
+    dbg('Pass cache cleared — re-initialising…');
+    initPassHunter().catch(err => dbg(`Pass reset error: ${err.message}`));
+}
+
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
 const debugLog = [];
@@ -5767,6 +6192,7 @@ function renderDebugPanel() {
                 <button class="dbg-clear" onclick="resetCityData()" title="Clear city road cache from localStorage — forces fresh Overpass fetch">Reset city</button>
                 <button class="dbg-clear" onclick="resetTrailData()" title="Clear trail network cache from localStorage — forces fresh Overpass fetch">Reset trails</button>
                 <button class="dbg-clear" onclick="resetMountainData()" title="Clear mountain peak cache from localStorage — forces fresh Overpass fetch">Reset mountains</button>
+                <button class="dbg-clear" onclick="resetPassData()" title="Clear Colorado pass progress — forces full re-detection from rides">Reset passes</button>
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
@@ -5852,6 +6278,9 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
 
     // Mountain Hunter — runs in background after main UI paints
     setTimeout(() => initMountainHunter().catch(err => dbg(`Mountain Hunter bg error: ${err.message}`)), 400);
+
+    // Pass Hunter — cheap (no Overpass), runs in background after main UI paints
+    setTimeout(() => initPassHunter().catch(err => dbg(`Pass Hunter bg error: ${err.message}`)), 500);
 
     // Geocode missing cells in background, re-render if anything resolved
     if (needCountry > 0 || needSubdiv > 0) {
