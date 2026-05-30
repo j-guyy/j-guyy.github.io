@@ -313,7 +313,8 @@
 }
 
 /* ── Mountain Hunter ─────────────────────────── */
-#mountain-map {
+#mountain-map,
+#pass-map {
     width: 100%;
     height: 520px;
     border-radius: 8px;
@@ -1059,7 +1060,8 @@
     #tile-map,
     #city-map,
     #trail-map,
-    #mountain-map {
+    #mountain-map,
+    #pass-map {
         height: 420px;
     }
 
