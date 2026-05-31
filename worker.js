@@ -471,13 +471,23 @@ async function handleSync(env) {
             if (!newestTime || ts > newestTime) newestTime = ts;
         }
 
-        newTotal += batch.length;
-        newSlim = newSlim.concat(slimActivities(batch));
+        // Strava's `after` filter is inclusive at the second boundary, so the
+        // previous sync's most-recent activity is re-fetched every time. Drop
+        // anything at/before the stored boundary before counting. GPS re-fetches
+        // were already deduped by ID below, but non-GPS ones (no ID stored)
+        // weren't — so each sync silently inflated the total by 1 whenever the
+        // newest activity had no GPS. Filtering by timestamp fixes both.
+        const fresh = stored.lastActivityTime
+            ? batch.filter(a => Math.floor(new Date(a.start_date).getTime() / 1000) > stored.lastActivityTime)
+            : batch;
+
+        newTotal += fresh.length;
+        newSlim = newSlim.concat(slimActivities(fresh));
         page++;
     }
 
-    // Deduplicate by activity ID — the `after` param is inclusive, so the
-    // boundary activity can be re-fetched on every sync, inflating counts.
+    // Safety-net dedup by activity ID in case any GPS activity still overlaps
+    // (e.g. two activities sharing the boundary second).
     const seenIds = new Set(newSlim.map(a => a.i));
     const deduped = [...newSlim, ...stored.slim.filter(a => !seenIds.has(a.i))];
 
