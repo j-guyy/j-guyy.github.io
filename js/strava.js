@@ -5849,27 +5849,31 @@ async function initMountainHunter() {
     // Elevation gain stat is instant — show it right away
     renderMountainQuickStats();
 
-    if (mountainHunterReady) {
-        renderMountainStats();
-        return;
-    }
-
     // Concurrency guard — if already running (e.g. from a prior geocodeAndRender),
     // skip this call. The in-progress run will finish and set mountainHunterReady.
     if (mountainHunterRunning) {
         dbg('Mountain Hunter: already running — skipping duplicate');
         return;
     }
-    mountainHunterRunning = true;
 
     const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
     if (!footActs.length) {
-        mountainHunterRunning = false;
         setMountainStatus('No hiking or running activities found.');
         return;
     }
 
+    // Already initialised: only do work if a sync brought in foot activities we
+    // haven't scanned for summits yet — otherwise just re-render from memory.
+    if (mountainHunterReady) {
+        const hasNew = currentSlim.some(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p && !summitProcessedIds.has(a.i));
+        if (!hasNew) { renderMountainStats(); return; }
+        dbg('Mountain Hunter: new activities detected — rescanning summits');
+    }
+
+    mountainHunterRunning = true;
     try {
+        // fetchMountainPeaks is cache-first; new activities in already-fetched
+        // cells are cheap, and it only hits Overpass for genuinely new regions.
         mountainPeaks = await fetchMountainPeaks(footActs);
 
         if (!mountainPeaks.length) {
@@ -5877,8 +5881,12 @@ async function initMountainHunter() {
             return;
         }
 
-        await loadSummitCache();
-        await loadHiddenPeaks();
+        // Load summit/hidden caches only on the first run; on a rescan they're
+        // already in memory and detectMountainSummits picks up where it left off.
+        if (!mountainHunterReady) {
+            await loadSummitCache();
+            await loadHiddenPeaks();
+        }
         setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
         mountainVisits = await detectMountainSummits(mountainPeaks);
 
@@ -5887,6 +5895,7 @@ async function initMountainHunter() {
         setTimeout(() => setMountainProgress(null), 2000);
         setMountainStatus('');
         renderMountainStats();
+        if (mountainMapInitialized) rebuildMountainMap();  // refresh markers if the map is open
         dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
     } catch (err) {
         setMountainProgress(null);
@@ -5895,6 +5904,19 @@ async function initMountainHunter() {
     } finally {
         mountainHunterRunning = false;
     }
+}
+
+// Rebuild the mountain map in place (preserving the user's pan/zoom) so newly
+// summited peaks recolor after a sync.
+function rebuildMountainMap() {
+    if (!mountainMapInstance) return;
+    const center = mountainMapInstance.getCenter();
+    const zoom   = mountainMapInstance.getZoom();
+    mountainMapInstance.remove();
+    mountainMapInstance = null;
+    mountainMapInitialized = false;
+    renderMountainMap();
+    if (mountainMapInstance) mountainMapInstance.setView(center, zoom, { animate: false });
 }
 
 // ── Pass Hunter ───────────────────────────────────────────────────────────────
@@ -6011,7 +6033,6 @@ async function savePassData(catalogIds) {
 
 async function initPassHunter() {
     if (!currentSlim.length) return;
-    if (passHunterReady) { renderPassStats(); return; }
     if (passHunterRunning) {
         dbg('Pass Hunter: already running — skipping duplicate');
         return;
@@ -6019,37 +6040,41 @@ async function initPassHunter() {
     passHunterRunning = true;
 
     try {
-        let catalog, saved;
-        try {
-            [catalog, saved] = await Promise.all([
-                fetch('/data/colorado-passes.json').then(r => r.json()),
-                fetch(`${WORKER_URL}/passes/all`).then(r => r.json()),
-            ]);
-        } catch (err) {
-            setPassStatus('Failed to load pass data.');
-            dbg(`Pass Hunter load error: ${err.message}`);
-            return;
-        }
+        // First run loads the catalog + saved state; later runs (e.g. after a
+        // sync brings in new rides) reuse what's already in memory and just scan
+        // the newly-arrived activities.
+        if (!passHunterReady) {
+            let catalog, saved;
+            try {
+                [catalog, saved] = await Promise.all([
+                    fetch('/data/colorado-passes.json').then(r => r.json()),
+                    fetch(`${WORKER_URL}/passes/all`).then(r => r.json()),
+                ]);
+            } catch (err) {
+                setPassStatus('Failed to load pass data.');
+                dbg(`Pass Hunter load error: ${err.message}`);
+                return;
+            }
 
-        coloradoPasses  = catalog.passes || [];
-        passDiscoveries = saved.discoveries || {};
-        passProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+            coloradoPasses  = catalog.passes || [];
+            passDiscoveries = saved.discoveries || {};
+            passProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
 
-        // If the curated catalog changed since the last scan (passes added,
-        // removed, or coordinates moved), discard cached results and re-scan
-        // every ride from scratch so new passes get back-filled correctly.
-        const currentCatalogIds = coloradoPasses.map(p => p.id).slice().sort();
-        const savedCatalogIds   = (saved.catalogIds || []).slice().sort();
-        const catalogChanged = currentCatalogIds.join(',') !== savedCatalogIds.join(',');
-        if (catalogChanged && passProcessedIds.size > 0) {
-            dbg('Pass Hunter: catalog changed — re-scanning all rides');
-            passProcessedIds = new Set();
-            passDiscoveries = {};
-        }
-        // Drop discoveries for any pass no longer in the catalog
-        const catalogIdSet = new Set(currentCatalogIds);
-        for (const id of Object.keys(passDiscoveries)) {
-            if (!catalogIdSet.has(id)) delete passDiscoveries[id];
+            // If the curated catalog changed since the last scan (passes added,
+            // removed, or coordinates moved), discard cached results and re-scan
+            // every ride from scratch so new passes get back-filled correctly.
+            const currentCatalogIds = coloradoPasses.map(p => p.id).slice().sort();
+            const savedCatalogIds   = (saved.catalogIds || []).slice().sort();
+            if (currentCatalogIds.join(',') !== savedCatalogIds.join(',') && passProcessedIds.size > 0) {
+                dbg('Pass Hunter: catalog changed — re-scanning all rides');
+                passProcessedIds = new Set();
+                passDiscoveries = {};
+            }
+            // Drop discoveries for any pass no longer in the catalog
+            const catalogIdSet = new Set(currentCatalogIds);
+            for (const id of Object.keys(passDiscoveries)) {
+                if (!catalogIdSet.has(id)) delete passDiscoveries[id];
+            }
         }
 
         const rides = currentSlim.filter(a => PASS_ACTIVITY_TYPES.has(a.t) && a.i && a.p);
@@ -6063,15 +6088,18 @@ async function initPassHunter() {
         // Oldest-first so a pass's recorded date is its first climb
         const unprocessed = rides.filter(a => !passProcessedIds.has(a.i))
             .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
-        dbg(`Pass Hunter: ${coloradoPasses.length} passes, ${unprocessed.length} new rides to scan`);
 
         if (unprocessed.length > 0) {
+            dbg(`Pass Hunter: scanning ${unprocessed.length} new ride(s)`);
+            const before = Object.keys(passDiscoveries).length;
             const newDisc = detectPassCrossings(coloradoPasses, unprocessed);
             Object.assign(passDiscoveries, newDisc);
             unprocessed.forEach(a => passProcessedIds.add(a.i));
-            await savePassData(currentCatalogIds);
-        } else if (catalogChanged) {
-            await savePassData(currentCatalogIds);
+            await savePassData();
+            // Refresh the map markers if it's open and a new pass was climbed
+            if (passMapInitialized && Object.keys(passDiscoveries).length !== before) {
+                rebuildPassMap();
+            }
         }
 
         passHunterReady = true;
@@ -6084,6 +6112,19 @@ async function initPassHunter() {
     } finally {
         passHunterRunning = false;
     }
+}
+
+// Rebuild the pass map in place (preserving the user's pan/zoom) so newly
+// climbed passes recolor after a sync.
+function rebuildPassMap() {
+    if (!passMapInstance) return;
+    const center = passMapInstance.getCenter();
+    const zoom   = passMapInstance.getZoom();
+    passMapInstance.remove();
+    passMapInstance = null;
+    passMapInitialized = false;
+    renderPassMap();
+    if (passMapInstance) passMapInstance.setView(center, zoom, { animate: false });
 }
 
 function renderPassStats() {
@@ -6511,6 +6552,72 @@ async function geocodeInBackground(cellKeys, cache, slim, total) {
     renderSubdivisions(subdivisions);
 }
 
+// ── Post-sync hunter refresh ───────────────────────────────────────────────────
+// When a manual / cooldown sync pulls in new activities, any hunter the user has
+// open should recompute against the new data. Mountain & Pass refresh through
+// their own init (fired from geocodeAndRender, now reprocessing-aware). The
+// map-based hunters below are torn down and rebuilt — their detection is
+// incremental (processedIds), so the only real cost is redrawing the map — with
+// the user's current pan/zoom preserved so the view doesn't jump.
+
+async function resyncMapHunter(getMap, teardown, init) {
+    const map = getMap();
+    if (!map) return;
+    const center = map.getCenter(), zoom = map.getZoom();
+    teardown();
+    try {
+        await init();
+    } catch (err) {
+        dbg(`Hunter resync error: ${err.message}`);
+        return;
+    }
+    const fresh = getMap();
+    if (fresh) fresh.setView(center, zoom, { animate: false });
+}
+
+function refreshOpenMapHunters() {
+    if (countyMapInitialized) {
+        resyncMapHunter(() => countyMap,
+            () => { countyMap.remove(); countyMap = null; countyMapInitialized = false; },
+            initCountyMap);
+    }
+    if (parkMapInitialized) {
+        resyncMapHunter(() => parkMap,
+            () => { parkMap.remove(); parkMap = null; parkMapInitialized = false; },
+            initParkMap);
+    }
+    if (metroMapInitialized) {
+        resyncMapHunter(() => metroMap,
+            () => { metroMap.remove(); metroMap = null; metroMapInitialized = false; },
+            initMetroMap);
+    }
+    if (tileMapInitialized) {
+        resyncMapHunter(() => tileMap,
+            () => { tileMap.remove(); tileMap = null; tileMapInitialized = false; tileGridLayer = null; },
+            initTileMap);
+    }
+    if (cityMapInitialized) {
+        resyncMapHunter(() => cityMap,
+            () => {
+                cityMap.remove(); cityMap = null; cityMapInitialized = false;
+                cityNodeLayer = null; cityActivityLayer = null;
+                cityNodesVisible = false; cityActivitiesVisible = false;
+            },
+            initCityMap);
+    }
+    if (trailMapInitialized) {
+        resyncMapHunter(() => trailMap,
+            () => {
+                trailMap.remove(); trailMap = null; trailMapInitialized = false;
+                trailNodeLayers = []; trailActivityLayer = null;
+                trailNodesVisible = false; trailActivitiesVisible = false;
+                trailCompletedWays = []; trailWayLayers = [];
+                deactivatedTrailSurfaces.clear();
+            },
+            initTrailMap);
+    }
+}
+
 let pipelineRunning = false;  // prevent concurrent pipeline runs
 
 async function runPipeline(forceSync = false) {
@@ -6549,7 +6656,14 @@ async function runPipeline(forceSync = false) {
             const result = await syncWithWorker();
             if (result.newActivities > 0) {
                 dbg(`${result.newActivities} new activities — re-rendering`);
+                // The shared polyline cache is now stale and mis-aligned with the
+                // new currentSlim — drop it so overlays/coverage refetch fresh,
+                // index-aligned data. geocodeAndRender re-fires Mountain & Pass
+                // (which reprocess when already initialised).
+                cachedPolylines = null;
                 cache = await geocodeAndRender(result.slim, result.total, result.syncedAt, cache);
+                // Rebuild any open map-based hunter against the new activities.
+                refreshOpenMapHunters();
             } else {
                 // Update the sync timestamp in the bar even if no new activities
                 setCacheInfo(slim.length, total, result.syncedAt);
