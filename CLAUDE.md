@@ -96,6 +96,7 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/activities/all` | GET | Get all cached slim activities |
 | `/activities/sync` | POST | Incremental sync from Strava API |
 | `/activities/rebuild` | POST | Full re-sync (deletes + syncs) |
+| `/activities/backfill-elev` | POST | Backfill ride high points (`elev_high`) one batch at a time via detail calls |
 | `/geo/all`, `/geo/save`, `/geo/reset` | GET/POST | Geocoding cache |
 | `/counties/all`, `/counties/save` | GET/POST | County Hunter state |
 | `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |

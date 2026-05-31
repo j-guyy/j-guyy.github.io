@@ -5943,6 +5943,10 @@ let passMapInstance = null;
 let passMapInitialized = false;
 let passMapIsDark = true;
 let passUnclimbedMarkers = [];  // not-yet-climbed markers, kept for basemap-change restyling
+let rideElevBackfilling = false;  // concurrency guard for the elev_high backfill loop
+
+// Top-N cap for the ride leaderboards (highest high point, most elevation gain)
+const RIDE_LEADERBOARD_LIMIT = 25;
 
 function ftToM(ft) { return Math.round(ft / 3.28084); }
 
@@ -6105,6 +6109,9 @@ async function initPassHunter() {
         passHunterReady = true;
         setPassStatus('');
         renderPassStats();
+        // Populate each ride's high point (elev_high) in the background — it's not
+        // in the bulk activity list, so it's fetched per-ride and cached in KV.
+        backfillRideElev();
         dbg(`Pass Hunter: ${Object.keys(passDiscoveries).length}/${coloradoPasses.length} passes climbed`);
     } catch (err) {
         setPassStatus(`Error: ${err.message}`);
@@ -6163,6 +6170,8 @@ function renderPassStats() {
 
     renderRecentPasses();
     renderHighestPasses();
+    renderHighestRideElev();
+    renderRideElevGain();
 }
 
 const passSortState = { col: 'date', dir: 'desc' };
@@ -6305,6 +6314,127 @@ function renderHighestPasses() {
     initScrollHint(wrapper);
     el.innerHTML = '';
     el.appendChild(makeCollapsible(`Highest Passes Climbed (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+// Shared renderer for the two ride leaderboards. `metric` picks the slim field
+// (`eh` = high point, `e` = elevation gain); rides without a value for it are
+// dropped. One row per activity, so each ride contributes at most once.
+function renderRideElevLeaderboard({ elId, metric, valueLabel, title }) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+
+    const rows = currentSlim
+        .filter(a => PASS_ACTIVITY_TYPES.has(a.t) && typeof a[metric] === 'number' && a[metric] > 0)
+        .sort((a, b) => b[metric] - a[metric])
+        .slice(0, RIDE_LEADERBOARD_LIMIT);
+
+    if (!rows.length) { el.innerHTML = ''; return; }
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['#', 'Activity', 'Type', valueLabel, 'Date'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach((a, i) => {
+        const href = a.i ? `https://www.strava.com/activities/${a.i}` : null;
+        const m = a[metric];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${a.n || 'Untitled'}</a>`
+                : (a.n || 'Untitled')}</td>
+            <td>${typeLabel(a.t)}</td>
+            <td>${mToFt(m).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(m).toLocaleString()}m)</span></td>
+            <td>${a.d ? formatActivityDate(a.d) : '—'}</td>`;
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const existing = el.querySelector('.collapsible-body');
+    const wasOpen = existing ? existing.style.display !== 'none' : false;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`${title} (Top ${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+// Leaderboard of the highest high point reached on a ride (elev_high), backfilled
+// per-ride from Strava detail calls. Empty until the backfill starts landing.
+function renderHighestRideElev() {
+    renderRideElevLeaderboard({
+        elId: 'pass-highest-ride-table',
+        metric: 'eh',
+        valueLabel: 'High Point',
+        title: 'Highest Elevation Rides',
+    });
+}
+
+// Leaderboard of the rides with the most elevation gain (total_elevation_gain).
+function renderRideElevGain() {
+    renderRideElevLeaderboard({
+        elId: 'pass-ride-gain-table',
+        metric: 'e',
+        valueLabel: 'Elev. Gain',
+        title: 'Most Elevation Gain Rides',
+    });
+}
+
+// Strava's bulk activity list omits each ride's high point (elev_high), so we
+// fetch it per-ride via the worker's detail-backed backfill endpoint. The worker
+// processes a small batch per call and persists results to KV; we loop until
+// done (or Strava rate-limits us), merging high points into currentSlim and
+// re-rendering the leaderboard as they arrive. Progress survives reloads.
+async function backfillRideElev() {
+    if (rideElevBackfilling) return;
+    const needsAny = currentSlim.some(a => PASS_ACTIVITY_TYPES.has(a.t) && a.i && a.eh === undefined);
+    if (!needsAny) return;
+
+    rideElevBackfilling = true;
+    try {
+        const byId = new Map(currentSlim.map(a => [a.i, a]));
+        while (true) {
+            let data;
+            try {
+                const res = await fetch(`${WORKER_URL}/activities/backfill-elev`, { method: 'POST' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                data = await res.json();
+            } catch (err) {
+                dbg(`Ride elev backfill error: ${err.message}`);
+                break;
+            }
+
+            for (const { i, eh } of (data.updated || [])) {
+                const a = byId.get(i);
+                if (a) a.eh = eh;
+            }
+            if (data.updated && data.updated.length) renderHighestRideElev();
+
+            if (data.rateLimited) {
+                dbg('Ride elev backfill: Strava rate-limited — will resume next load');
+                break;
+            }
+            if (!data.remaining) {
+                dbg('Ride elev backfill: complete');
+                break;
+            }
+            // Pace calls so the batch of detail fetches doesn't burn the rate budget too fast
+            await new Promise(r => setTimeout(r, 1500));
+        }
+    } finally {
+        rideElevBackfilling = false;
+    }
 }
 
 function renderPassMap() {

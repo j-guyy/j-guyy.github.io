@@ -75,6 +75,9 @@ export default {
                 await env.STRAVA_DATA.delete(ACTIVITIES_KEY);
                 return await handleSync(env);
             }
+            if (path === '/activities/backfill-elev' && request.method === 'POST') {
+                return await handleBackfillElev(env);
+            }
             if (path === '/polylines/all') {
                 const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
                 if (!stored) return json([]);
@@ -516,6 +519,67 @@ function slimActivities(activities) {
             i: a.id,
             e: a.total_elevation_gain ?? 0,
         }));
+}
+
+// Outdoor ride types whose high point (elev_high) we backfill for the Pass
+// Hunter leaderboards. Mirrors PASS_ACTIVITY_TYPES on the client; VirtualRide
+// is excluded since indoor rides have no real-world altitude.
+const RIDE_TYPES = new Set(['Ride', 'GravelRide', 'EBikeRide', 'MountainBikeRide', 'Handcycle', 'Velomobile']);
+
+// How many ride detail calls to make per backfill request. Kept well under the
+// Workers subrequest cap (one Strava fetch each) and small enough that the
+// client can pace calls to respect Strava's rate limit.
+const ELEV_BACKFILL_BATCH = 20;
+
+// The bulk activity list omits elev_high, so we fetch it per ride from the
+// detail endpoint. Each slim ride gains an `eh` field: a number (high point in
+// metres), or null once fetched with no elevation data — null is never retried.
+// Rides with `eh === undefined` are still pending. Processes one batch per call
+// and persists to KV so progress survives reloads; the client loops until done.
+async function handleBackfillElev(env) {
+    const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
+    if (!stored || !Array.isArray(stored.slim)) {
+        return json({ processed: 0, remaining: 0, rateLimited: false, updated: [] });
+    }
+
+    const pending = stored.slim.filter(a => RIDE_TYPES.has(a.t) && a.i && a.eh === undefined);
+    if (!pending.length) {
+        return json({ processed: 0, remaining: 0, rateLimited: false, updated: [] });
+    }
+
+    const token = await getAccessToken(env);
+    const byId = new Map(stored.slim.map(a => [a.i, a]));
+    const batch = pending.slice(0, ELEV_BACKFILL_BATCH);
+    const updated = [];
+    let rateLimited = false;
+
+    for (const ride of batch) {
+        const res = await fetch(`https://www.strava.com/api/v3/activities/${ride.i}?include_all_efforts=false`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 429) { rateLimited = true; break; }
+
+        // On any other failure (404/403/etc.) mark the ride as attempted (null)
+        // so a permanently-unfetchable activity can't wedge the backfill loop.
+        let eh = null;
+        if (res.ok) {
+            const detail = await res.json();
+            if (typeof detail.elev_high === 'number') eh = detail.elev_high;
+        }
+        const slim = byId.get(ride.i);
+        if (slim) { slim.eh = eh; updated.push({ i: ride.i, eh }); }
+    }
+
+    if (updated.length) {
+        await env.STRAVA_DATA.put(ACTIVITIES_KEY, JSON.stringify(stored));
+    }
+
+    return json({
+        processed: updated.length,
+        remaining: pending.length - updated.length,
+        rateLimited,
+        updated,
+    });
 }
 
 // ── Strava OAuth ─────────────────────────────────────────────────────────────
