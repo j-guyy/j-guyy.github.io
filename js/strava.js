@@ -3204,6 +3204,7 @@ async function initTileMap() {
     computeTileStats();
 
     new TileHunterLayer(visitedTiles).addTo(tileMap);
+    toggleTileGrid(true);  // gridlines on by default
 
     // Click any visited tile → show cluster + square info
     tileMap.on('click', e => {
@@ -3423,43 +3424,77 @@ function computeTileStats() {
     for (const v of tileSquareMap.values())  if (v > tileMaxSquare)  tileMaxSquare  = v;
 
     tileSquareMembership = new Map();
-
-    // Pass 1: spread max-square tiles and record their footprint.
-    const maxSquareFootprint = new Set();
-    for (const [key, dp] of tileSquareMap) {
-        if (dp < tileMaxSquare) continue;
-        const [bx, by] = key.split(',').map(Number);
-        for (let dx = 0; dx < dp; dx++) {
-            for (let dy = 0; dy < dp; dy++) {
-                const tk = `${bx - dx},${by - dy}`;
-                maxSquareFootprint.add(tk);
-                tileSquareMembership.set(tk, dp);
-            }
-        }
+    if (tileMaxSquare < SQUARE_THRESHOLD) {
+        dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare} (none ≥${SQUARE_THRESHOLD})`);
+        return;
     }
 
-    // Pass 2: spread other large squares (≥ SQUARE_THRESHOLD but < max).
-    // Skip any square whose footprint touches the max-square region — those
-    // tiles should fall through to cluster / tile coloring instead.
+    // tile → most recent activity date that started in it — used only as the
+    // final tiebreak ("most recently achieved") between otherwise-equal squares.
+    const tileLatestDate = new Map();
+    for (const a of currentSlim) {
+        if (!a.l || !a.d) continue;
+        const [tx, ty] = latLngToTileXY(a.l[0], a.l[1]);
+        const k = `${tx},${ty}`;
+        const cur = tileLatestDate.get(k);
+        if (!cur || a.d > cur) tileLatestDate.set(k, a.d);
+    }
+
+    // Build one candidate square per bottom-right corner whose largest all-visited
+    // square is ≥ threshold (top-left = corner − size + 1). Score each so we can
+    // pick a NON-overlapping set and never stack concentric/overlapping squares:
+    //   1. bigger size wins (an 11×11 beats an overlapping 10×10)
+    //   2. then most visited tiles ringing it (closest to growing a level)
+    //   3. then most recently ridden
+    const candidates = [];
     for (const [key, dp] of tileSquareMap) {
-        if (dp < SQUARE_THRESHOLD || dp >= tileMaxSquare) continue;
+        if (dp < SQUARE_THRESHOLD) continue;
         const [bx, by] = key.split(',').map(Number);
+        const x0 = bx - dp + 1, y0 = by - dp + 1;
+        let perim = 0, recency = '';
+        for (let x = x0 - 1; x <= x0 + dp; x++) {
+            for (let y = y0 - 1; y <= y0 + dp; y++) {
+                const inside = x >= x0 && x <= x0 + dp - 1 && y >= y0 && y <= y0 + dp - 1;
+                if (inside) {
+                    const d = tileLatestDate.get(`${x},${y}`);
+                    if (d && d > recency) recency = d;
+                } else if (visitedTiles.has(`${x},${y}`)) {
+                    perim++;   // visited tile in the surrounding ring
+                }
+            }
+        }
+        candidates.push({ x0, y0, size: dp, perim, recency });
+    }
+
+    candidates.sort((a, b) =>
+        b.size - a.size ||
+        b.perim - a.perim ||
+        (b.recency > a.recency ? 1 : b.recency < a.recency ? -1 : 0)
+    );
+
+    // Greedy placement: take each candidate in priority order, but only if it
+    // doesn't overlap a square already placed. Winners' tiles get a membership =
+    // their size (drives the blue / dark-blue coloring); everything else falls
+    // through to cluster / tile coloring, so no two squares are ever overlaid.
+    const placed = new Set();
+    for (const c of candidates) {
         let overlaps = false;
-        outer: for (let dx = 0; dx < dp; dx++) {
-            for (let dy = 0; dy < dp; dy++) {
-                if (maxSquareFootprint.has(`${bx - dx},${by - dy}`)) { overlaps = true; break outer; }
+        outer: for (let dx = 0; dx < c.size; dx++) {
+            for (let dy = 0; dy < c.size; dy++) {
+                if (placed.has(`${c.x0 + dx},${c.y0 + dy}`)) { overlaps = true; break outer; }
             }
         }
         if (overlaps) continue;
-        for (let dx = 0; dx < dp; dx++) {
-            for (let dy = 0; dy < dp; dy++) {
-                const tk = `${bx - dx},${by - dy}`;
-                if ((tileSquareMembership.get(tk) || 0) < dp) tileSquareMembership.set(tk, dp);
+        for (let dx = 0; dx < c.size; dx++) {
+            for (let dy = 0; dy < c.size; dy++) {
+                const tk = `${c.x0 + dx},${c.y0 + dy}`;
+                placed.add(tk);
+                tileSquareMembership.set(tk, c.size);
             }
         }
     }
 
-    dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare}`);
+    dbg(`Tile stats: max cluster ${tileMaxCluster} tiles, max square ${tileMaxSquare}×${tileMaxSquare}, ${candidates.length} square candidates placed non-overlapping`);
 }
 
 // Find the center of the largest square. If multiple squares share the max size,
@@ -3616,7 +3651,7 @@ function renderTileStats() {
         </div>
         <div class="stats-bar-actions" style="flex-direction:column;align-items:flex-end">
             <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:rgba(255,255,255,0.55);cursor:pointer;white-space:nowrap">
-                <input type="checkbox" id="tile-grid-checkbox" onchange="toggleTileGrid(this.checked)" style="cursor:pointer;accent-color:var(--primary-color)">
+                <input type="checkbox" id="tile-grid-checkbox" checked onchange="toggleTileGrid(this.checked)" style="cursor:pointer;accent-color:var(--primary-color)">
                 Gridlines
             </label>
             <div class="map-legend" style="margin:0">
