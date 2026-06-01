@@ -542,7 +542,12 @@ async function handleBackfillElev(env) {
         return json({ processed: 0, remaining: 0, rateLimited: false, updated: [] });
     }
 
-    const pending = stored.slim.filter(a => RIDE_TYPES.has(a.t) && a.i && a.eh === undefined);
+    // Highest elevation-gain rides first: they're the ones most likely to top the
+    // high-point leaderboard, so the visible top-25 stabilizes within a couple of
+    // batches even when a full backfill of every ride would take many windows.
+    const pending = stored.slim
+        .filter(a => RIDE_TYPES.has(a.t) && a.i && a.eh === undefined)
+        .sort((a, b) => (b.e || 0) - (a.e || 0));
     if (!pending.length) {
         return json({ processed: 0, remaining: 0, rateLimited: false, updated: [] });
     }
