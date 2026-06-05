@@ -31,6 +31,7 @@ let currentSlim = [];
 let currentTotal = 0;
 let currentCache = {};
 let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the controls bar
+let syncing = false;     // true while a manual force-sync is in flight (drives the button state)
 
 // ── Admin auth ──────────────────────────────────────────────────────────────
 // The Strava admin controls (manual force-sync + the debug-menu resets) are
@@ -6659,8 +6660,13 @@ function setCacheInfo(gpsCount, total, syncedAt) {
     const syncNote = syncedAt ? `Synced ${relativeTime(syncedAt)}` : 'Never synced';
     // Admin controls (force-sync + debug) only show when logged in; everyone else
     // sees just a small lock to log in. The worker enforces the real protection.
+    // While a sync is in flight the button shows a disabled "Syncing…" state — a
+    // full refresh re-fetches every page from Strava, so it's not instant.
+    const syncBtn = syncing
+        ? `<button class="cache-refresh-btn" id="refresh-btn" disabled>⏳ Syncing…</button>`
+        : `<button class="cache-refresh-btn" id="refresh-btn">Sync now</button>`;
     const controls = isLoggedIn()
-        ? `<button class="cache-refresh-btn" id="refresh-btn">Sync now</button>
+        ? `${syncBtn}
            <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
            <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`
         : `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login">🔒</button>`;
@@ -6668,7 +6674,21 @@ function setCacheInfo(gpsCount, total, syncedAt) {
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
         ${controls}
     `;
-    document.getElementById('refresh-btn')?.addEventListener('click', () => runPipeline(true));
+    document.getElementById('refresh-btn')?.addEventListener('click', runManualSync);
+}
+
+// Manual force-sync wrapper that drives the button's in-flight state so the user
+// gets visual feedback (the full refresh takes several seconds).
+async function runManualSync() {
+    if (syncing) return;
+    syncing = true;
+    refreshAdminUI(); // repaint the button as "Syncing…"
+    try {
+        await runPipeline(true);
+    } finally {
+        syncing = false;
+        refreshAdminUI(); // back to "Sync now", with the updated "Synced just now"
+    }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
