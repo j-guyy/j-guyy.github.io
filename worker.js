@@ -11,8 +11,23 @@ const ALLOWED_ORIGIN = 'https://j-guyy.github.io';
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password',
 };
+
+// ── Admin auth ───────────────────────────────────────────────────────────────
+// Destructive / expensive endpoints (manual force-sync, rebuild, ride-elev
+// backfill, and every hunter reset) require the admin password, supplied via the
+// X-Admin-Password header. Same secret as travel edits (TRAVEL_PASSWORD).
+// Read-only GETs and the incremental /save endpoints stay open so the page
+// renders and persists visitor-driven detection without a login.
+function isAdmin(request, env) {
+    const pw = request.headers.get('X-Admin-Password');
+    return Boolean(pw) && pw === env.TRAVEL_PASSWORD;
+}
+
+function unauthorized() {
+    return json({ error: 'Unauthorized' }, 401);
+}
 
 // ── KV keys ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +63,13 @@ export default {
         const path = url.pathname;
 
         try {
+            // ── Admin auth check ──
+            // Lets the client verify a password at login time without mutating
+            // anything. Returns 200 if the header matches, 401 otherwise.
+            if (path === '/auth/check' && request.method === 'POST') {
+                return isAdmin(request, env) ? json({ ok: true }) : unauthorized();
+            }
+
             // ── Travel data endpoints ──
 
             if (path === '/travel/highpoints')      return await handleTravelGet(env, 'highpoints');
@@ -69,13 +91,16 @@ export default {
                 return await handleGetAll(env);
             }
             if (path === '/activities/sync' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 return await handleSync(env);
             }
             if (path === '/activities/rebuild' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(ACTIVITIES_KEY);
                 return await handleSync(env);
             }
             if (path === '/activities/backfill-elev' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 return await handleBackfillElev(env);
             }
             if (path === '/polylines/all') {
@@ -96,6 +121,7 @@ export default {
                 return json({ ok: true, keys: Object.keys(geo).length });
             }
             if (path === '/geo/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(GEO_KEY);
                 return json({ ok: true });
             }
@@ -113,6 +139,7 @@ export default {
                 return json({ ok: true, counties: (data.fips || []).length });
             }
             if (path === '/counties/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(COUNTIES_KEY);
                 return json({ ok: true });
             }
@@ -129,6 +156,11 @@ export default {
                 await env.STRAVA_DATA.put(TILES_KEY, JSON.stringify(data));
                 return json({ ok: true, tiles: (data.tiles || []).length });
             }
+            if (path === '/tiles/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
+                await env.STRAVA_DATA.delete(TILES_KEY);
+                return json({ ok: true });
+            }
 
             // ── Mountain Hunter — peak cell cache ──
             // Data: { cells: { "lat,lng": { peaks: [...], ts, failed? } } }
@@ -143,6 +175,7 @@ export default {
                 return json({ ok: true, cells: Object.keys(data.cells || {}).length });
             }
             if (path === '/peaks/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(PEAKS_KEY);
                 return json({ ok: true });
             }
@@ -173,6 +206,7 @@ export default {
                 return json({ ok: true, parks: (data.ids || []).length });
             }
             if (path === '/parks/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(PARKS_KEY);
                 return json({ ok: true });
             }
@@ -188,6 +222,7 @@ export default {
                 return json({ ok: true, parks: (data.ids || []).length });
             }
             if (path === '/state-parks/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(STATE_PARKS_KEY);
                 return json({ ok: true });
             }
@@ -205,6 +240,7 @@ export default {
                 return json({ ok: true, metros: (data.ids || []).length });
             }
             if (path === '/metro-hunter/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(METRO_HUNTER_KEY);
                 return json({ ok: true });
             }
@@ -222,6 +258,7 @@ export default {
                 return json({ ok: true, passes: (data.ids || []).length });
             }
             if (path === '/passes/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(PASSES_KEY);
                 return json({ ok: true });
             }
@@ -239,6 +276,7 @@ export default {
                 return json({ ok: true, peaks: Object.keys(data.visits || {}).length });
             }
             if (path === '/summits/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(SUMMITS_KEY);
                 return json({ ok: true });
             }
@@ -269,7 +307,21 @@ export default {
         } catch (err) {
             return json({ error: err.message }, 500);
         }
-    }
+    },
+
+    // ── Scheduled (cron) automatic sync ──────────────────────────────────────
+    // Keeps KV fresh server-side, independent of anyone loading the page. The
+    // page no longer auto-syncs on load, so this is the sole automatic sync.
+    // Configure the cadence as a Cron Trigger in the Cloudflare dashboard
+    // (Workers → strava-worker → Settings → Triggers), e.g. every 6 hours:
+    // `0 */6 * * *`.
+    async scheduled(event, env, ctx) {
+        ctx.waitUntil(
+            handleSync(env)
+                .then(() => console.log('scheduled sync: done'))
+                .catch(err => console.log(`scheduled sync failed: ${err.message}`))
+        );
+    },
 };
 
 // ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────

@@ -30,6 +30,62 @@ const deactivatedTypes = new Set();
 let currentSlim = [];
 let currentTotal = 0;
 let currentCache = {};
+let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the controls bar
+
+// ── Admin auth ──────────────────────────────────────────────────────────────
+// The Strava admin controls (manual force-sync + the debug-menu resets) are
+// gated behind the same password used for travel edits. The password is held in
+// sessionStorage for the tab session and sent as the X-Admin-Password header on
+// protected worker calls. The worker is the real gate — it rejects those calls
+// without a valid password, so hiding the buttons is just UX.
+const ADMIN_PW_KEY = 'strava_admin_pw';
+
+function getAdminPw() { return sessionStorage.getItem(ADMIN_PW_KEY) || ''; }
+function isLoggedIn() { return Boolean(getAdminPw()); }
+function adminHeaders() {
+    const pw = getAdminPw();
+    return pw ? { 'X-Admin-Password': pw } : {};
+}
+
+// POST to a protected worker endpoint with the admin password attached.
+function adminPost(path, body = null) {
+    const opts = { method: 'POST', headers: { ...adminHeaders() } };
+    if (body !== null) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+    }
+    return fetch(`${WORKER_URL}${path}`, opts);
+}
+
+async function adminLogin() {
+    const pw = prompt('Enter Strava admin password:');
+    if (!pw) return;
+    try {
+        const res = await fetch(`${WORKER_URL}/auth/check`, {
+            method: 'POST',
+            headers: { 'X-Admin-Password': pw },
+        });
+        if (!res.ok) { alert('Incorrect password.'); return; }
+        sessionStorage.setItem(ADMIN_PW_KEY, pw);
+        dbg('Admin: logged in');
+        refreshAdminUI();
+    } catch (err) {
+        alert('Login failed: ' + err.message);
+    }
+}
+
+function adminLogout() {
+    sessionStorage.removeItem(ADMIN_PW_KEY);
+    const panel = document.getElementById('debug-panel');
+    if (panel) panel.hidden = true;
+    dbg('Admin: logged out');
+    refreshAdminUI();
+}
+
+// Re-render the controls bar to reflect the current login state.
+function refreshAdminUI() {
+    setCacheInfo(currentSlim.length, currentTotal, lastSyncedAt);
+}
 
 // Countries with regional breakdowns.
 // `names` covers variations BigDataCloud may return for the same country.
@@ -140,7 +196,7 @@ async function syncWithWorker() {
     setStatus('Syncing new activities…');
     dbg('POST /activities/sync — fetching new from Strava…');
     const t0 = Date.now();
-    const res = await fetch(`${WORKER_URL}/activities/sync`, { method: 'POST' });
+    const res = await adminPost('/activities/sync');
     if (!res.ok) throw new Error(`Sync error: ${res.status}`);
     const data = await res.json();
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
@@ -231,7 +287,7 @@ async function saveGeoToWorker(cache) {
 async function resetGeoCache() {
     if (!confirm('Clear all geocoded location data from the server? This will force a full re-geocode on next load.')) return;
     try {
-        await fetch(`${WORKER_URL}/geo/reset`, { method: 'POST' });
+        await adminPost('/geo/reset');
         localStorage.removeItem(GEO_CACHE_KEY);
         dbg('Geo cache reset on server and locally. Reloading…');
         setTimeout(() => location.reload(), 800);
@@ -243,11 +299,7 @@ async function resetGeoCache() {
 async function resetCountyData() {
     if (!confirm('Clear all county detection data from the server? This will force a full re-detection on next county map open.')) return;
     try {
-        await fetch(`${WORKER_URL}/counties/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fips: [], processedIds: [], discoveries: {} }),
-        });
+        await adminPost('/counties/reset');
         countyMapInitialized = false;
         visitedFips.clear();
         countyProcessedIds.clear();
@@ -1723,8 +1775,8 @@ async function resetParkData() {
     if (!confirm('Clear all park detection data from the server? This will force a full re-detection on next Park Hunter open.')) return;
     try {
         await Promise.all([
-            fetch(`${WORKER_URL}/parks/reset`,       { method: 'POST' }),
-            fetch(`${WORKER_URL}/state-parks/reset`, { method: 'POST' }),
+            adminPost('/parks/reset'),
+            adminPost('/state-parks/reset'),
         ]);
         parkMapInitialized = false;
         visitedParkIds.clear();
@@ -2212,7 +2264,7 @@ async function saveMetrosToWorker() {
 async function resetMetroData() {
     if (!confirm('Clear all metro detection data from the server? This will force a full re-detection on next Metro Hunter open.')) return;
     try {
-        await fetch(`${WORKER_URL}/metro-hunter/reset`, { method: 'POST' });
+        await adminPost('/metro-hunter/reset');
         metroMapInitialized = false;
         visitedMetroIds.clear();
         metroProcessedIds.clear();
@@ -3684,11 +3736,7 @@ async function saveTilesToWorker() {
 async function resetTileData() {
     if (!confirm('Clear all tile detection data? Forces full re-detection on next open.')) return;
     try {
-        await fetch(`${WORKER_URL}/tiles/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tiles: [], processedIds: [] }),
-        });
+        await adminPost('/tiles/reset');
         tileMapInitialized = false;
         visitedTiles.clear();
         tileProcessedIds.clear();
@@ -5823,8 +5871,8 @@ function setMountainProgress(pct, label) {
 async function resetMountainData() {
     if (!confirm('Clear cached mountain peak data? Peaks will be re-fetched from OpenStreetMap.')) return;
     // Clear server caches
-    try { await fetch(`${WORKER_URL}/peaks/reset`, { method: 'POST' }); } catch {}
-    try { await fetch(`${WORKER_URL}/summits/reset`, { method: 'POST' }); } catch {}
+    try { await adminPost('/peaks/reset'); } catch {}
+    try { await adminPost('/summits/reset'); } catch {}
     // Clear any legacy localStorage keys
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -6398,6 +6446,9 @@ function renderRideElevGain() {
 // re-rendering the leaderboard as they arrive. Progress survives reloads.
 async function backfillRideElev() {
     if (rideElevBackfilling) return;
+    // Pulls per-ride detail from Strava (the owner's API quota) and is a
+    // protected endpoint, so only run it when logged in as admin.
+    if (!isLoggedIn()) return;
     const needsAny = currentSlim.some(a => PASS_ACTIVITY_TYPES.has(a.t) && a.i && a.eh === undefined);
     if (!needsAny) return;
 
@@ -6407,7 +6458,7 @@ async function backfillRideElev() {
         while (true) {
             let data;
             try {
-                const res = await fetch(`${WORKER_URL}/activities/backfill-elev`, { method: 'POST' });
+                const res = await adminPost('/activities/backfill-elev');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 data = await res.json();
             } catch (err) {
@@ -6500,7 +6551,7 @@ function restyleUnclimbedPasses() {
 
 async function resetPassData() {
     if (!confirm('Clear cached Colorado pass progress? It will be re-detected from your rides.')) return;
-    try { await fetch(`${WORKER_URL}/passes/reset`, { method: 'POST' }); } catch {}
+    try { await adminPost('/passes/reset'); } catch {}
     passDiscoveries = {};
     passProcessedIds = new Set();
     passHunterReady = false;
@@ -6589,8 +6640,6 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
-const SYNC_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
-
 function relativeTime(ts) {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
@@ -6605,14 +6654,21 @@ function relativeTime(ts) {
 function setCacheInfo(gpsCount, total, syncedAt) {
     const el = document.getElementById('cache-info');
     if (!el) return;
+    lastSyncedAt = syncedAt;
     const gpsNote = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
     const syncNote = syncedAt ? `Synced ${relativeTime(syncedAt)}` : 'Never synced';
+    // Admin controls (force-sync + debug) only show when logged in; everyone else
+    // sees just a small lock to log in. The worker enforces the real protection.
+    const controls = isLoggedIn()
+        ? `<button class="cache-refresh-btn" id="refresh-btn">Sync now</button>
+           <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
+           <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`
+        : `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login">🔒</button>`;
     el.innerHTML = `
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
-        <button class="cache-refresh-btn" id="refresh-btn">Sync now</button>
-        <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
+        ${controls}
     `;
-    document.getElementById('refresh-btn').addEventListener('click', () => runPipeline(true));
+    document.getElementById('refresh-btn')?.addEventListener('click', () => runPipeline(true));
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -6768,8 +6824,10 @@ async function runPipeline(forceSync = false) {
         let { slim, total, syncedAt } = activityData;
         let cache = geoCache;
 
-        // First-ever load: KV is empty, run initial sync before rendering
-        if (slim.length === 0 && total === 0) {
+        // First-ever load: KV is empty. Automatic syncs run server-side on a
+        // cron trigger, but if there's truly nothing cached and an admin is
+        // logged in, kick off an initial sync so the page isn't blank.
+        if (slim.length === 0 && total === 0 && isLoggedIn()) {
             setStatus('No data yet — running initial sync…');
             dbg('KV empty — triggering initial sync');
             ({ slim, total, syncedAt } = await syncWithWorker());
@@ -6778,11 +6836,11 @@ async function runPipeline(forceSync = false) {
         // Render with current cached data immediately
         cache = await geocodeAndRender(slim, total, syncedAt, cache);
 
-        // Auto-sync if cooldown expired, or always if forced by the button
-        const cooldownExpired = !syncedAt || (Date.now() - syncedAt) > SYNC_COOLDOWN_MS;
-        if (forceSync || cooldownExpired) {
-            const reason = forceSync ? 'manual' : `last sync ${relativeTime(syncedAt)}`;
-            dbg(`Syncing with Strava (${reason})…`);
+        // Routine syncs are now handled server-side by the worker's cron trigger,
+        // so the page no longer auto-syncs on load. Only a manual force-sync (the
+        // admin "Sync now" button) hits Strava from here.
+        if (forceSync) {
+            dbg('Syncing with Strava (manual)…');
             const result = await syncWithWorker();
             if (result.newActivities > 0) {
                 dbg(`${result.newActivities} new activities — re-rendering`);
@@ -6798,8 +6856,6 @@ async function runPipeline(forceSync = false) {
                 // Update the sync timestamp in the bar even if no new activities
                 setCacheInfo(slim.length, total, result.syncedAt);
             }
-        } else {
-            dbg(`Auto-sync skipped — last synced ${relativeTime(syncedAt)}, cooldown is ${SYNC_COOLDOWN_MS / 3600000}h`);
         }
 
     } catch (err) {
