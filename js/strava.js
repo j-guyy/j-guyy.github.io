@@ -6842,20 +6842,17 @@ async function runPipeline(forceSync = false) {
         if (forceSync) {
             dbg('Syncing with Strava (manual)…');
             const result = await syncWithWorker();
-            if (result.newActivities > 0) {
-                dbg(`${result.newActivities} new activities — re-rendering`);
-                // The shared polyline cache is now stale and mis-aligned with the
-                // new currentSlim — drop it so overlays/coverage refetch fresh,
-                // index-aligned data. geocodeAndRender re-fires Mountain & Pass
-                // (which reprocess when already initialised).
-                cachedPolylines = null;
-                cache = await geocodeAndRender(result.slim, result.total, result.syncedAt, cache);
-                // Rebuild any open map-based hunter against the new activities.
-                refreshOpenMapHunters();
-            } else {
-                // Update the sync timestamp in the bar even if no new activities
-                setCacheInfo(slim.length, total, result.syncedAt);
-            }
+            // A full-refresh sync returns authoritative data, so always re-render:
+            // edits (renames, corrected elevation) and deletions change the data
+            // even when there are zero brand-new activities. The shared polyline
+            // cache is dropped so overlays/coverage stay index-aligned with the
+            // rebuilt currentSlim; geocodeAndRender re-fires Mountain & Pass (which
+            // reprocess when already initialised).
+            dbg(`${result.newActivities} new — refreshing view`);
+            cachedPolylines = null;
+            cache = await geocodeAndRender(result.slim, result.total, result.syncedAt, cache);
+            // Rebuild any open map-based hunter against the refreshed activities.
+            refreshOpenMapHunters();
         }
 
     } catch (err) {

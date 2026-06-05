@@ -500,63 +500,67 @@ async function handleGetAll(env) {
     return json(stored);
 }
 
+// Full list refresh: re-fetch the athlete's entire activity list (200 per call,
+// cheap) and rebuild the slim store from scratch. This captures edits — renames,
+// corrected elevation, sport-type changes — and deletions on existing
+// activities, not just brand-new ones, because we no longer rely on Strava's
+// `after` filter or carry stale copies forward. The only enriched field is each
+// ride's `eh` (elev_high), which isn't in the list payload — that costs one
+// detail call per ride — so we preserve it by activity ID across the refresh.
 async function handleSync(env) {
     const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json')
         || { slim: [], total: 0, lastActivityTime: null };
 
     const token = await getAccessToken(env);
 
-    let newSlim = [];
-    let newTotal = 0;
-    let newestTime = stored.lastActivityTime;
+    const all = [];
     let page = 1;
-
     while (true) {
         const params = new URLSearchParams({ per_page: '200', page: String(page) });
-        if (stored.lastActivityTime) params.set('after', String(stored.lastActivityTime));
-
         const res = await fetch(`https://www.strava.com/api/v3/activities?${params}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
+        // Bail on any error (rate limit, auth, transient) WITHOUT writing, so a
+        // partial fetch can never clobber the good data already in KV.
+        if (!res.ok) throw new Error(`Strava list error ${res.status} on page ${page}`);
         const batch = await res.json();
-        if (!Array.isArray(batch) || batch.length === 0) break;
-
-        if (page === 1 && batch[0]?.start_date) {
-            const ts = Math.floor(new Date(batch[0].start_date).getTime() / 1000);
-            if (!newestTime || ts > newestTime) newestTime = ts;
-        }
-
-        // Strava's `after` filter is inclusive at the second boundary, so the
-        // previous sync's most-recent activity is re-fetched every time. Drop
-        // anything at/before the stored boundary before counting. GPS re-fetches
-        // were already deduped by ID below, but non-GPS ones (no ID stored)
-        // weren't — so each sync silently inflated the total by 1 whenever the
-        // newest activity had no GPS. Filtering by timestamp fixes both.
-        const fresh = stored.lastActivityTime
-            ? batch.filter(a => Math.floor(new Date(a.start_date).getTime() / 1000) > stored.lastActivityTime)
-            : batch;
-
-        newTotal += fresh.length;
-        newSlim = newSlim.concat(slimActivities(fresh));
+        if (!Array.isArray(batch)) throw new Error(`Strava returned non-array on page ${page}`);
+        if (batch.length === 0) break;
+        all.push(...batch);
+        if (batch.length < 200) break; // last (short) page — no need for one more call
         page++;
     }
 
-    // Safety-net dedup by activity ID in case any GPS activity still overlaps
-    // (e.g. two activities sharing the boundary second).
-    const seenIds = new Set(newSlim.map(a => a.i));
-    const deduped = [...newSlim, ...stored.slim.filter(a => !seenIds.has(a.i))];
+    // Safety net: never let an unexpectedly empty response wipe a populated store.
+    if (all.length === 0 && stored.slim.length > 0) {
+        return json({ ...stored, newActivities: 0, skipped: 'empty response' });
+    }
 
-    // Total = GPS activities we keep + non-GPS activities we counted but filtered.
-    // non-GPS count = raw API results minus the GPS ones we kept from those results.
-    const nonGpsCount = newTotal - newSlim.length;
-    const storedNonGps = (stored.total || 0) - stored.slim.length;
-    const total = deduped.length + storedNonGps + nonGpsCount;
+    const total = all.length;
+    const slim = slimActivities(all);
 
-    const updated = { slim: deduped, total, lastActivityTime: newestTime, syncedAt: Date.now() };
+    // Preserve backfilled high points (and the "fetched, no data" null sentinel)
+    // across the refresh — re-deriving eh would mean a detail call per ride.
+    const prevEh = new Map(stored.slim.map(a => [a.i, a.eh]));
+    for (const a of slim) {
+        const eh = prevEh.get(a.i);
+        if (eh !== undefined) a.eh = eh;
+    }
 
+    let newestTime = null;
+    for (const a of all) {
+        const ts = Math.floor(new Date(a.start_date).getTime() / 1000);
+        if (ts && (!newestTime || ts > newestTime)) newestTime = ts;
+    }
+
+    // "New" = GPS activity IDs we hadn't stored before (drives the status message).
+    const prevIds = new Set(stored.slim.map(a => a.i));
+    const newActivities = slim.reduce((n, a) => n + (prevIds.has(a.i) ? 0 : 1), 0);
+
+    const updated = { slim, total, lastActivityTime: newestTime, syncedAt: Date.now() };
     await env.STRAVA_DATA.put(ACTIVITIES_KEY, JSON.stringify(updated));
 
-    return json({ ...updated, newActivities: newTotal });
+    return json({ ...updated, newActivities });
 }
 
 function slimActivities(activities) {
