@@ -313,8 +313,8 @@ export default {
     // Keeps KV fresh server-side, independent of anyone loading the page. The
     // page no longer auto-syncs on load, so this is the sole automatic sync.
     // Configure the cadence as a Cron Trigger in the Cloudflare dashboard
-    // (Workers → strava-worker → Settings → Triggers), e.g. every 6 hours:
-    // `0 */6 * * *`.
+    // (Workers → strava-worker → Settings → Triggers). Currently set to once
+    // daily at 00:00 UTC: `0 0 * * *`.
     async scheduled(event, env, ctx) {
         ctx.waitUntil(
             handleSync(env)
