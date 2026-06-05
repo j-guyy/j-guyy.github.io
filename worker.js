@@ -92,7 +92,7 @@ export default {
             }
             if (path === '/activities/sync' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
-                return await handleSync(env);
+                return handleSyncStream(env);
             }
             if (path === '/activities/rebuild' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -317,8 +317,8 @@ export default {
     // daily at 00:00 UTC: `0 0 * * *`.
     async scheduled(event, env, ctx) {
         ctx.waitUntil(
-            handleSync(env)
-                .then(() => console.log('scheduled sync: done'))
+            syncActivities(env)
+                .then(r => console.log(`scheduled sync: ${r.newActivities} new, ${r.updated} updated, ${r.removed} removed`))
                 .catch(err => console.log(`scheduled sync failed: ${err.message}`))
         );
     },
@@ -507,7 +507,12 @@ async function handleGetAll(env) {
 // `after` filter or carry stale copies forward. The only enriched field is each
 // ride's `eh` (elev_high), which isn't in the list payload — that costs one
 // detail call per ride — so we preserve it by activity ID across the refresh.
-async function handleSync(env) {
+// Core sync routine, shared by the JSON, streaming, and cron entry points.
+// `onProgress(fetched, page)` (optional) is called after each page is fetched so
+// callers can stream progress. Returns the stored record plus new/updated/removed
+// tallies. Throws (without writing) on any list error so a partial fetch can
+// never clobber good data.
+async function syncActivities(env, onProgress) {
     const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json')
         || { slim: [], total: 0, lastActivityTime: null };
 
@@ -520,31 +525,31 @@ async function handleSync(env) {
         const res = await fetch(`https://www.strava.com/api/v3/activities?${params}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        // Bail on any error (rate limit, auth, transient) WITHOUT writing, so a
-        // partial fetch can never clobber the good data already in KV.
         if (!res.ok) throw new Error(`Strava list error ${res.status} on page ${page}`);
         const batch = await res.json();
         if (!Array.isArray(batch)) throw new Error(`Strava returned non-array on page ${page}`);
         if (batch.length === 0) break;
         all.push(...batch);
+        if (onProgress) onProgress(all.length, page);
         if (batch.length < 200) break; // last (short) page — no need for one more call
         page++;
     }
 
     // Safety net: never let an unexpectedly empty response wipe a populated store.
     if (all.length === 0 && stored.slim.length > 0) {
-        return json({ ...stored, newActivities: 0, skipped: 'empty response' });
+        return { ...stored, newActivities: 0, updated: 0, removed: 0, skipped: 'empty response' };
     }
 
     const total = all.length;
     const slim = slimActivities(all);
 
-    // Preserve backfilled high points (and the "fetched, no data" null sentinel)
-    // across the refresh — re-deriving eh would mean a detail call per ride.
-    const prevEh = new Map(stored.slim.map(a => [a.i, a.eh]));
+    // Index the previous store by id to preserve each ride's backfilled high
+    // point (re-deriving eh would mean a detail call per ride) and to tally what
+    // changed for the post-sync summary.
+    const prevById = new Map(stored.slim.map(a => [a.i, a]));
     for (const a of slim) {
-        const eh = prevEh.get(a.i);
-        if (eh !== undefined) a.eh = eh;
+        const prev = prevById.get(a.i);
+        if (prev && prev.eh !== undefined) a.eh = prev.eh;
     }
 
     let newestTime = null;
@@ -553,12 +558,18 @@ async function handleSync(env) {
         if (ts && (!newestTime || ts > newestTime)) newestTime = ts;
     }
 
-    // "New" = GPS activity IDs we hadn't stored before (drives the status message).
-    const prevIds = new Set(stored.slim.map(a => a.i));
-    const newActivities = slim.reduce((n, a) => n + (prevIds.has(a.i) ? 0 : 1), 0);
+    let newActivities = 0, updated = 0;
+    for (const a of slim) {
+        const prev = prevById.get(a.i);
+        if (!prev) newActivities++;
+        else if (prev.n !== a.n || prev.e !== a.e || prev.t !== a.t) updated++;
+    }
+    const slimIds = new Set(slim.map(a => a.i));
+    let removed = 0;
+    for (const id of prevById.keys()) if (!slimIds.has(id)) removed++;
 
-    const updated = { slim, total, lastActivityTime: newestTime, syncedAt: Date.now() };
-    await env.STRAVA_DATA.put(ACTIVITIES_KEY, JSON.stringify(updated));
+    const record = { slim, total, lastActivityTime: newestTime, syncedAt: Date.now() };
+    await env.STRAVA_DATA.put(ACTIVITIES_KEY, JSON.stringify(record));
 
     // Keep hunter discovery attribution (the activity name shown for a county/
     // park/metro/pass discovery or peak summit) in step with renames. Best-effort
@@ -570,7 +581,37 @@ async function handleSync(env) {
         console.log(`attribution refresh failed: ${e.message}`);
     }
 
-    return json({ ...updated, newActivities });
+    return { ...record, newActivities, updated, removed };
+}
+
+// Non-streaming entry point (used by /activities/rebuild).
+async function handleSync(env) {
+    return json(await syncActivities(env));
+}
+
+// Streaming entry point for the manual force-sync: emits one NDJSON line per
+// page fetched ({type:'progress', fetched}) so the client can drive a real
+// progress bar, then a final {type:'done', …result} (or {type:'error'}).
+function handleSyncStream(env) {
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const enc = new TextEncoder();
+    const send = (obj) => writer.write(enc.encode(JSON.stringify(obj) + '\n')).catch(() => {});
+
+    (async () => {
+        try {
+            const result = await syncActivities(env, (fetched) => send({ type: 'progress', fetched }));
+            send({ type: 'done', ...result });
+        } catch (e) {
+            send({ type: 'error', error: e.message });
+        } finally {
+            await writer.close().catch(() => {});
+        }
+    })();
+
+    return new Response(readable, {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/x-ndjson' },
+    });
 }
 
 // Re-resolve the denormalized `actName` stored in each hunter's discovery blob

@@ -31,7 +31,9 @@ let currentSlim = [];
 let currentTotal = 0;
 let currentCache = {};
 let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the controls bar
-let syncing = false;     // true while a manual force-sync is in flight (drives the button state)
+let syncing = false;       // true while a manual force-sync is in flight (drives the button state)
+let syncProgress = null;   // { fetched, pct } during a sync, for the progress bar
+let lastSyncResult = null; // transient "Synced — N new, M updated" line shown after a sync
 
 // ── Admin auth ──────────────────────────────────────────────────────────────
 // The Strava admin controls (manual force-sync + the debug-menu resets) are
@@ -192,29 +194,83 @@ async function loadFromWorker() {
     return data;
 }
 
-// Tell the worker to fetch new activities from Strava and merge them into KV
+// Tell the worker to fetch all activities from Strava and merge them into KV.
+// The worker streams NDJSON: one {type:'progress', fetched} line per page so we
+// can drive a real progress bar, then a final {type:'done', …result}.
 async function syncWithWorker() {
     setStatus('Syncing new activities…');
-    dbg('POST /activities/sync — fetching new from Strava…');
+    dbg('POST /activities/sync — fetching from Strava…');
     const t0 = Date.now();
     const res = await adminPost('/activities/sync');
     if (!res.ok) throw new Error(`Sync error: ${res.status}`);
-    const data = await res.json();
+
+    // Estimate total pages from the activity count we already have, so the bar
+    // advances meaningfully as each 200-activity page lands.
+    const estTotal = currentTotal || 0;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let data = null;
+
+    const handleLine = (line) => {
+        line = line.trim();
+        if (!line) return;
+        let msg;
+        try { msg = JSON.parse(line); } catch { return; }
+        if (msg.type === 'progress') {
+            updateSyncProgress(msg.fetched, estTotal);
+        } else if (msg.type === 'done') {
+            data = msg;
+        } else if (msg.type === 'error') {
+            throw new Error(msg.error || 'sync failed');
+        }
+    };
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+            handleLine(buf.slice(0, nl));
+            buf = buf.slice(nl + 1);
+        }
+    }
+    if (buf) handleLine(buf); // trailing line without a newline, just in case
+    if (!data) throw new Error('sync ended without a result');
+
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
     dbg(`Sync complete in ${elapsed}s`, {
         newActivities: data.newActivities,
+        updated: data.updated,
+        removed: data.removed,
         total: data.total,
         slimCount: data.slim?.length ?? 0,
         lastActivityTime: data.lastActivityTime
             ? new Date(data.lastActivityTime * 1000).toLocaleString()
             : null,
     });
-    if (data.newActivities === 0) {
-        setStatus('Up to date — no new activities');
-    } else {
-        setStatus(`Synced ${data.newActivities} new ${data.newActivities === 1 ? 'activity' : 'activities'}`);
-    }
+    lastSyncResult = formatSyncResult(data);
+    setStatus(lastSyncResult);
     return data;
+}
+
+// Human-readable one-liner for the post-sync summary shown in the controls bar.
+function formatSyncResult(r) {
+    const parts = [];
+    if (r.newActivities) parts.push(`${r.newActivities} new`);
+    if (r.updated)       parts.push(`${r.updated} updated`);
+    if (r.removed)       parts.push(`${r.removed} removed`);
+    return parts.length ? `Synced — ${parts.join(', ')}` : 'Up to date';
+}
+
+// Move the progress bar fill directly (no full re-render) as pages arrive.
+function updateSyncProgress(fetched, estTotal) {
+    const pct = estTotal > 0 ? Math.min(99, Math.round((fetched / estTotal) * 100)) : 0;
+    syncProgress = { fetched, pct };
+    const fill = document.getElementById('sync-progress-fill');
+    if (fill) fill.style.width = `${pct}%`;
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -6670,9 +6726,19 @@ function setCacheInfo(gpsCount, total, syncedAt) {
            <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
            <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`
         : `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login">🔒</button>`;
+    // A full-width progress bar (its own flex row) while syncing, or a transient
+    // result line once a sync finishes.
+    let extra = '';
+    if (syncing) {
+        const pct = syncProgress?.pct ?? 0;
+        extra = `<div class="sync-progress"><div class="sync-progress-fill" id="sync-progress-fill" style="width:${pct}%"></div></div>`;
+    } else if (lastSyncResult) {
+        extra = `<span class="sync-result">${lastSyncResult}</span>`;
+    }
     el.innerHTML = `
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
         ${controls}
+        ${extra}
     `;
     document.getElementById('refresh-btn')?.addEventListener('click', runManualSync);
 }
@@ -6682,12 +6748,22 @@ function setCacheInfo(gpsCount, total, syncedAt) {
 async function runManualSync() {
     if (syncing) return;
     syncing = true;
-    refreshAdminUI(); // repaint the button as "Syncing…"
+    syncProgress = { fetched: 0, pct: 0 };
+    lastSyncResult = null;
+    refreshAdminUI(); // repaint the button as "Syncing…" with an empty progress bar
     try {
         await runPipeline(true);
     } finally {
         syncing = false;
-        refreshAdminUI(); // back to "Sync now", with the updated "Synced just now"
+        syncProgress = null;
+        refreshAdminUI(); // back to "Sync now", showing the result line + "Synced just now"
+        // Clear the transient result line after a few seconds.
+        if (lastSyncResult) {
+            const shown = lastSyncResult;
+            setTimeout(() => {
+                if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
+            }, 8000);
+        }
     }
 }
 
