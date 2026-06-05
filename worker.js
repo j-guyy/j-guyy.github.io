@@ -560,7 +560,57 @@ async function handleSync(env) {
     const updated = { slim, total, lastActivityTime: newestTime, syncedAt: Date.now() };
     await env.STRAVA_DATA.put(ACTIVITIES_KEY, JSON.stringify(updated));
 
+    // Keep hunter discovery attribution (the activity name shown for a county/
+    // park/metro/pass discovery or peak summit) in step with renames. Best-effort
+    // — never fail the sync over it.
+    const nameById = new Map(slim.map(a => [a.i, a.n]));
+    try {
+        await refreshAttribution(env, nameById);
+    } catch (e) {
+        console.log(`attribution refresh failed: ${e.message}`);
+    }
+
     return json({ ...updated, newActivities });
+}
+
+// Re-resolve the denormalized `actName` stored in each hunter's discovery blob
+// against the freshly-synced activity names, keyed by activity id, and rewrite
+// the blob only if something changed. This couples the worker to the discovery
+// shapes the client writes:
+//   counties/parks/state-parks/metro-hunter/passes → { discoveries: { key: { actId, actName, … } } }
+//   summits → { visits: { peakId: [ { actId, actName, … } ] } }
+async function refreshAttribution(env, nameById) {
+    const apply = (entry) => {
+        if (!entry || entry.actId == null) return false;
+        const live = nameById.get(entry.actId);
+        // Only overwrite with a real name; keep the existing label for deleted
+        // activities (id no longer in the store) or blank names.
+        if (live && live !== entry.actName) { entry.actName = live; return true; }
+        return false;
+    };
+
+    const flatKeys = [COUNTIES_KEY, PARKS_KEY, STATE_PARKS_KEY, METRO_HUNTER_KEY, PASSES_KEY];
+    for (const key of flatKeys) {
+        const blob = await env.STRAVA_DATA.get(key, 'json');
+        if (!blob || !blob.discoveries) continue;
+        let changed = false;
+        for (const d of Object.values(blob.discoveries)) {
+            if (apply(d)) changed = true;
+        }
+        if (changed) await env.STRAVA_DATA.put(key, JSON.stringify(blob));
+    }
+
+    const summits = await env.STRAVA_DATA.get(SUMMITS_KEY, 'json');
+    if (summits && summits.visits) {
+        let changed = false;
+        for (const visits of Object.values(summits.visits)) {
+            if (!Array.isArray(visits)) continue;
+            for (const v of visits) {
+                if (apply(v)) changed = true;
+            }
+        }
+        if (changed) await env.STRAVA_DATA.put(SUMMITS_KEY, JSON.stringify(summits));
+    }
 }
 
 function slimActivities(activities) {
