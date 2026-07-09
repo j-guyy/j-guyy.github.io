@@ -591,11 +591,11 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js"></script>
     <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="../js/travel-api.js"></script>
     <script src="../js/leaflet.js"></script>
     <script src="../js/navbar-component.js"></script>
     <script>
-        fetch('../data/colorado14ers.json')
-            .then(r => r.json())
+        TravelAPI.fetchPeaksWithFallback('colorado14ers', '../data/colorado14ers.json')
             .then(data => {
                 const climbed = data.filter(p => p.climbed).length;
                 const total = data.length;
@@ -606,6 +606,21 @@
                 document.getElementById('progress-stats').innerHTML =
                     '<div><span>' + climbed + '</span> Summited</div>' +
                     '<div><span>' + remaining + '</span> Remaining</div>';
+
+                // Sync the static peak-card badges with live climbed state
+                const climbedByName = new Map(data.map(p => [p.name, p.climbed]));
+                document.querySelectorAll('.peak-card').forEach(card => {
+                    const heading = card.querySelector('h3');
+                    const badge = card.querySelector('.peak-badge');
+                    if (!heading || !badge) return;
+                    const name = heading.textContent.trim();
+                    if (!climbedByName.has(name)) return;
+                    const isClimbed = climbedByName.get(name);
+                    card.classList.toggle('summited', isClimbed);
+                    badge.classList.toggle('summited', isClimbed);
+                    badge.classList.toggle('not-yet', !isClimbed);
+                    badge.textContent = isClimbed ? 'Summited' : 'Not Yet';
+                });
             });
     </script>
 </body>

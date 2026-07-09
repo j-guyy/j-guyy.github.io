@@ -49,6 +49,8 @@ const TRAVEL_KEYS = {
     parks:         'travel_parks',
     countries:     'travel_countries',
     visitedStates: 'travel_visited_states',
+    adk46ers:      'travel_adk46ers',
+    colorado14ers: 'travel_colorado14ers',
 };
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -77,6 +79,8 @@ export default {
             if (path === '/travel/parks')            return await handleTravelGet(env, 'parks');
             if (path === '/travel/countries')         return await handleTravelGet(env, 'countries');
             if (path === '/travel/visited-states')    return await handleTravelGet(env, 'visitedStates');
+            if (path === '/travel/adk46ers')          return await handleTravelGet(env, 'adk46ers');
+            if (path === '/travel/colorado14ers')     return await handleTravelGet(env, 'colorado14ers');
 
             if (path === '/travel/toggle' && request.method === 'POST') {
                 return await handleTravelToggle(request, env);
@@ -464,6 +468,14 @@ async function handleTravelToggle(request, env) {
         const item = data.find(p => p.name === key);
         if (item) {
             item.visited = !item.visited;
+            toggled = true;
+        }
+    } else if (type === 'adk46ers' || type === 'colorado14ers') {
+        // Peak lists use `climbed` rather than `visited` so the stored shape
+        // matches the static /data JSON files that map/quest pages fall back to.
+        const item = data.find(p => p.name === key);
+        if (item) {
+            item.climbed = !item.climbed;
             toggled = true;
         }
     }

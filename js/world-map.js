@@ -14,8 +14,8 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/skiResorts.json').then(response => response.json()),
         fetch('data/sevenWonders.json').then(response => response.json()),
         fetch('data/british-isles-high-five.json').then(response => response.json()),
-        fetch('data/adirondack46ers.json').then(response => response.json()),
-        fetch('data/colorado14ers.json').then(response => response.json()),
+        TravelAPI.fetchPeaksWithFallback('adk46ers', 'data/adirondack46ers.json'),
+        TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json'),
         fetch('data/forbes100cities.json').then(response => response.json()),
         fetch('data/interstateHighways.json').then(response => response.json()),
         fetch('data/highways.json').then(response => response.json())
