@@ -57,7 +57,7 @@
         <div class="section-divider">
             <h2>Summited ✓</h2>
         </div>
-        <div class="peaks-grid">
+        <div class="peaks-grid" id="summited-grid">
 
             <div class="peak-card summited">
                 <div class="peak-card-header">
@@ -206,7 +206,7 @@
         <div class="section-divider">
             <h2>Remaining</h2>
         </div>
-        <div class="peaks-grid">
+        <div class="peaks-grid" id="remaining-grid">
 
             <div class="peak-card">
                 <div class="peak-card-header">
@@ -474,34 +474,9 @@
     <script src="../js/travel-api.js"></script>
     <script src="../js/leaflet.js"></script>
     <script src="../js/navbar-component.js"></script>
+    <script src="../js/trip-report-peaks.js"></script>
     <script>
-        TravelAPI.fetchPeaksWithFallback('adk46ers', '../data/adirondack46ers.json')
-            .then(data => {
-                const climbed = data.filter(p => p.climbed).length;
-                const total = data.length;
-                const pct = ((climbed / total) * 100).toFixed(1);
-                const remaining = total - climbed;
-                document.getElementById('progress-bar').style.width = pct + '%';
-                document.getElementById('progress-bar').textContent = climbed + ' / ' + total;
-                document.getElementById('progress-stats').innerHTML =
-                    '<div><span>' + climbed + '</span> Summited</div>' +
-                    '<div><span>' + remaining + '</span> Remaining</div>';
-
-                // Sync the static peak-card badges with live climbed state
-                const climbedByName = new Map(data.map(p => [p.name, p.climbed]));
-                document.querySelectorAll('.peak-card').forEach(card => {
-                    const heading = card.querySelector('h3');
-                    const badge = card.querySelector('.peak-badge');
-                    if (!heading || !badge) return;
-                    const name = heading.textContent.trim();
-                    if (!climbedByName.has(name)) return;
-                    const isClimbed = climbedByName.get(name);
-                    card.classList.toggle('summited', isClimbed);
-                    badge.classList.toggle('summited', isClimbed);
-                    badge.classList.toggle('not-yet', !isClimbed);
-                    badge.textContent = isClimbed ? 'Summited' : 'Not Yet';
-                });
-            });
+        initPeakTripReport('adk46ers', '../data/adirondack46ers.json');
     </script>
 </body>
 
