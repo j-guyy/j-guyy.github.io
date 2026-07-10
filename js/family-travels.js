@@ -1098,8 +1098,8 @@ async function mergeAdditionalPerson1Data(ftData) {
         fetch('data/skiResorts.json').then(r => r.json()),
         fetch('data/sevenWonders.json').then(r => r.json()),
         fetch('data/british-isles-high-five.json').then(r => r.json()),
-        fetch('data/adirondack46ers.json').then(r => r.json()),
-        fetch('data/colorado14ers.json').then(r => r.json())
+        TravelAPI.fetchPeaksWithFallback('adk46ers', 'data/adirondack46ers.json'),
+        TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json')
     ]);
 
     // World cities (all are visited)
