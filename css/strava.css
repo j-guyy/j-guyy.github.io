@@ -151,18 +151,15 @@
     width: 480px;
     max-width: calc(100vw - 32px);
     max-height: 50vh;
-    background: rgba(20, 20, 22, 0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px;
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     font-size: 0.75rem;
+    font-family: monospace;
     z-index: 9999;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
-    overflow: hidden;
-    animation: dbg-panel-in 0.18s ease-out;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
 }
 
 /* The hidden attribute has no built-in specificity edge over an ID rule, so
@@ -172,116 +169,52 @@
     display: none;
 }
 
-@keyframes dbg-panel-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
 .dbg-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.75);
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
     flex-shrink: 0;
     user-select: none;
-    cursor: pointer;
-    transition: background 0.15s ease;
 }
 
 .dbg-header:hover {
-    background: rgba(255,255,255,0.06);
-}
-
-.dbg-expand-icon {
-    display: inline-block;
-    margin-left: 2px;
-    transition: transform 0.15s ease;
-}
-
-.dbg-expand-icon.dbg-expanded {
-    transform: rotate(90deg);
-}
-
-.dbg-action-btns {
-    display: none;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.dbg-action-btns.dbg-action-btns-visible {
-    display: flex;
+    background: rgba(255,255,255,0.04);
 }
 
 .dbg-clear {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.14);
-    color: rgba(255,255,255,0.55);
-    border-radius: 6px;
-    padding: 4px 10px;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.4);
+    border-radius: 3px;
+    padding: 2px 8px;
     cursor: pointer;
     font-size: 0.7rem;
-    transition: all 0.15s ease;
 }
 
-.dbg-clear:hover {
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-    background: rgba(76, 175, 80, 0.1);
-}
+.dbg-clear:hover { color: #fff; border-color: #fff; }
 
 #debug-log {
     list-style: none;
     margin: 0;
-    padding: 10px 14px;
+    padding: 8px 12px;
     overflow-y: auto;
-    max-height: 320px;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    font-family: 'SFMono-Regular', Consolas, monospace;
-    transition: max-height 0.2s ease, padding 0.2s ease;
-}
-
-#debug-log.dbg-log-collapsed {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-}
-
-#debug-log::-webkit-scrollbar {
-    width: 6px;
-}
-
-#debug-log::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.15);
-    border-radius: 3px;
-}
-
-#debug-log::-webkit-scrollbar-track {
-    background: transparent;
+    gap: 4px;
 }
 
 #debug-log li {
-    color: rgba(255,255,255,0.8);
-    line-height: 1.5;
-    padding: 3px 6px;
-    border-radius: 4px;
-    transition: background 0.15s ease;
-}
-
-#debug-log li:hover {
-    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
 }
 
 .dbg-ts {
     color: var(--primary-color);
     margin-right: 6px;
-    font-weight: 600;
 }
 
 .dbg-data {
@@ -289,7 +222,6 @@
     padding: 4px 8px;
     background: rgba(255,255,255,0.05);
     border-left: 2px solid rgba(255,255,255,0.1);
-    border-radius: 0 4px 4px 0;
     color: rgba(255,255,255,0.5);
     white-space: pre-wrap;
     word-break: break-all;
