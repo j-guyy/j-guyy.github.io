@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <title>JG Strava</title>
+    <meta name="description" content="Strava activity dashboard app shell.">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/strava.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css" rel="stylesheet" />
+</head>
+
+<body class="page strava-page app-page">
+    <div class="content app-content">
+
+        <!-- ============ Home ============ -->
+        <div id="screen-home" class="app-screen">
+            <header class="app-home-header">
+                <h1>Strava</h1>
+                <p id="home-status">Loading activities…</p>
+            </header>
+            <div class="home-grid">
+                <a class="home-card" href="#dashboard"><span class="home-card-icon">📊</span><span class="home-card-name">Dashboard</span><em id="stat-dashboard">—</em></a>
+                <a class="home-card" href="#map"><span class="home-card-icon">🗺️</span><span class="home-card-name">Activity Map</span><em id="stat-map">—</em></a>
+                <a class="home-card" href="#county"><span class="home-card-icon">🇺🇸</span><span class="home-card-name">County Hunter</span><em id="stat-county">—</em></a>
+                <a class="home-card" href="#park"><span class="home-card-icon">🏞️</span><span class="home-card-name">Park Hunter</span><em id="stat-park"></em></a>
+                <a class="home-card" href="#metro"><span class="home-card-icon">🏙️</span><span class="home-card-name">Metro Hunter</span><em id="stat-metro"></em></a>
+                <a class="home-card" href="#tile"><span class="home-card-icon">🔳</span><span class="home-card-name">Tile Hunter</span><em id="stat-tile"></em></a>
+                <a class="home-card" href="#city"><span class="home-card-icon">🛣️</span><span class="home-card-name">City Hunter</span><em id="stat-city"></em></a>
+                <a class="home-card" href="#mountain"><span class="home-card-icon">⛰️</span><span class="home-card-name">Mountain Hunter</span><em id="stat-mountain"></em></a>
+                <a class="home-card" href="#pass"><span class="home-card-icon">🚵</span><span class="home-card-name">Pass Hunter</span><em id="stat-pass"></em></a>
+                <a class="home-card" href="#trail"><span class="home-card-icon">🥾</span><span class="home-card-name">Trail Hunter</span><em id="stat-trail"></em></a>
+            </div>
+        </div>
+
+        <!-- ============ Dashboard ============ -->
+        <div id="screen-dashboard" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Dashboard</h1>
+            </header>
+
+            <!-- Loading -->
+            <div id="loading-section" class="strava-loading">
+                <div class="loading-spinner"></div>
+                <p id="loading-status">Loading activities…</p>
+            </div>
+
+            <!-- Summary -->
+            <div class="section" id="strava-summary-section">
+                <div id="strava-summary"></div>
+                <div id="cache-info" class="cache-info-bar"></div>
+            </div>
+
+            <!-- Activity type filters -->
+            <div id="strava-filters" class="section"></div>
+
+            <!-- By Country table -->
+            <div class="section">
+                <div id="strava-table-container"></div>
+            </div>
+
+            <!-- Regional breakdowns (US states, Canadian provinces, etc.) — rendered by JS -->
+            <div id="strava-subdivisions"></div>
+        </div>
+
+        <!-- ============ Activity Map ============ -->
+        <div id="screen-map" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Activity Map</h1>
+            </header>
+            <div class="section">
+                <h2>Activity Map <button class="cache-refresh-btn" id="map-toggle-btn" onclick="toggleMap()">Show map</button></h2>
+                <div id="map-section" style="display:none">
+                    <div id="strava-map"></div>
+                    <div id="map-legend" class="map-legend"></div>
+                    <p id="map-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ County Hunter ============ -->
+        <div id="screen-county" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>County Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>County Hunter <button class="cache-refresh-btn" id="county-toggle-btn" onclick="toggleCountyMap()">Show map</button></h2>
+                <div id="county-section" style="display:none">
+                    <div id="county-stats-bar"></div>
+                    <div id="county-map"></div>
+                    <div id="county-recent-table"></div>
+                    <div id="county-state-table"></div>
+                    <p id="county-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Park Hunter ============ -->
+        <div id="screen-park" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Park Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Park Hunter <button class="cache-refresh-btn" id="park-toggle-btn" onclick="toggleParkMap()">Show map</button></h2>
+                <div id="park-section" style="display:none">
+                    <div id="park-stats-bar" class="county-stats-bar"></div>
+                    <div id="park-map"></div>
+                    <div id="park-recent-table"></div>
+                    <p id="park-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Metro Hunter ============ -->
+        <div id="screen-metro" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Metro Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Metro Hunter <button class="cache-refresh-btn" id="metro-toggle-btn" onclick="toggleMetroMap()">Show map</button></h2>
+                <div id="metro-section" style="display:none">
+                    <div id="metro-stats-bar" class="county-stats-bar"></div>
+                    <div id="metro-map"></div>
+                    <div id="metro-comparison"></div>
+                    <div id="metro-recent-table"></div>
+                    <p id="metro-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Tile Hunter ============ -->
+        <div id="screen-tile" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Tile Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Tile Hunter <button class="cache-refresh-btn" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button></h2>
+                <div id="tile-section" style="display:none">
+                    <div id="tile-stats-bar" class="county-stats-bar"></div>
+                    <div id="tile-map"></div>
+                    <p id="tile-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ City Hunter ============ -->
+        <div id="screen-city" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>City Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>City Hunter
+                    <select id="city-select" class="city-select" onchange="switchCity(this.value)">
+                        <option value="superior-co">Superior, CO</option>
+                        <option value="boulder-co">Boulder, CO</option>
+                        <option value="boulder-county-co">Boulder County, CO</option>
+                    </select>
+                    <button class="cache-refresh-btn" id="city-toggle-btn" onclick="toggleCityMap()">Show map</button>
+                </h2>
+                <div id="city-section" style="display:none">
+                    <div id="city-stats-bar" class="county-stats-bar"></div>
+                    <div id="city-map"></div>
+                    <div class="map-legend" style="margin-top:10px">
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Complete</span>
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
+                    </div>
+                    <p id="city-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Mountain Hunter ============ -->
+        <div id="screen-mountain" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Mountain Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Mountain Hunter
+                    <button class="cache-refresh-btn" id="mountain-toggle-btn" onclick="toggleMountainMap()">Show map</button>
+                    <button class="cache-refresh-btn" id="mountain-edit-btn" onclick="toggleMountainEditMode()">Edit peaks</button>
+                </h2>
+                <div id="mountain-stats-bar" class="county-stats-bar"></div>
+                <div id="mountain-table"></div>
+                <div id="mountain-repeat-table"></div>
+                <div id="mountain-elev-table"></div>
+                <div id="mountain-near-miss-section" style="display:none">
+                    <div id="mountain-near-miss-table"></div>
+                </div>
+                <div id="mountain-hidden-section" style="display:none">
+                    <div id="mountain-hidden-table"></div>
+                </div>
+                <div id="mountain-map-section" style="display:none">
+                    <div id="mountain-map"></div>
+                    <div class="map-legend" style="margin-top:10px">
+                        <button type="button" class="map-legend-item map-legend-filter" data-mountain-filter="summited" onclick="toggleMountainMapFilter('summited')"><span class="map-legend-dot" style="background:#4CAF50"></span>Summited</button>
+                        <button type="button" class="map-legend-item map-legend-filter" id="mountain-near-miss-legend" data-mountain-filter="nearMiss" style="display:none" onclick="toggleMountainMapFilter('nearMiss')"><span class="map-legend-dot" style="background:#FF9800"></span>Near miss (edit mode)</button>
+                        <button type="button" class="map-legend-item map-legend-filter" data-mountain-filter="unvisited" onclick="toggleMountainMapFilter('unvisited')"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet summited</button>
+                    </div>
+                </div>
+                <div id="mountain-progress-wrap" style="display:none">
+                    <div id="mountain-progress-bar"></div>
+                    <p id="mountain-progress-label" class="no-location-note"></p>
+                </div>
+                <p id="mountain-status" class="no-location-note" style="margin-top:4px"></p>
+            </div>
+        </div>
+
+        <!-- ============ Pass Hunter ============ -->
+        <div id="screen-pass" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Pass Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Pass Hunter
+                    <button class="cache-refresh-btn" id="pass-toggle-btn" onclick="togglePassMap()">Show map</button>
+                </h2>
+                <div id="pass-stats-bar" class="county-stats-bar"></div>
+                <div id="pass-recent-table"></div>
+                <div id="pass-highest-table"></div>
+                <div id="pass-highest-ride-table"></div>
+                <div id="pass-ride-gain-table"></div>
+                <div id="pass-map-section" style="display:none">
+                    <div id="pass-map"></div>
+                    <div class="map-legend" style="margin-top:10px">
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Climbed</span>
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet climbed</span>
+                    </div>
+                </div>
+                <p id="pass-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
+
+        <!-- ============ Trail Hunter ============ -->
+        <div id="screen-trail" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back">←</button>
+                <h1>Trail Hunter</h1>
+            </header>
+            <div class="section">
+                <h2>Trail Hunter
+                    <select id="trail-select" class="city-select" onchange="switchTrail(this.value)">
+                        <option value="boulder-county">Boulder County, CO</option>
+                        <option value="rmnp">Rocky Mountain NP</option>
+                    </select>
+                    <button class="cache-refresh-btn" id="trail-toggle-btn" onclick="toggleTrailMap()">Show map</button>
+                </h2>
+                <div id="trail-section" style="display:none">
+                    <div id="trail-stats-bar" class="county-stats-bar"></div>
+                    <div id="trail-surface-filters" style="margin-bottom:12px"></div>
+                    <div id="trail-map"></div>
+                    <div class="map-legend" style="margin-top:10px">
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:#4CAF50"></span>Complete</span>
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
+                        <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
+                    </div>
+                    <p id="trail-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js"></script>
+    <script src="/js/strava.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+
+</html>

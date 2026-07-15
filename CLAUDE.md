@@ -8,7 +8,7 @@ Personal portfolio and adventure/travel blog for Justin Guyette, hosted on GitHu
 
 ## Development Workflow
 
-**No build process** — this is a plain static site with no npm, bundler, or compilation step. Edit files and push to deploy.
+**No build process** — this is a plain static site with no npm, bundler, or compilation step. Edit files and push to deploy. (The only npm usage is the Capacitor Android shell — see "Android App" below — which does not affect the website.)
 
 **Local development**: Open HTML files directly in a browser, or serve with any static file server:
 ```bash
@@ -20,6 +20,8 @@ npx serve .
 **Deployment**: Pushing to `main` auto-deploys via GitHub Pages.
 
 **Cloudflare Worker**: The backend API lives in `worker.js` (ES module format). Deploy with `npx wrangler deploy worker.js`. Secrets/bindings: `STRAVA_DATA` (KV), `STRAVA_KV` (KV), `CLIENT_ID`, `CLIENT_SECRET`, `TRAVEL_PASSWORD`.
+
+**Android App (Capacitor remote shell)**: `/app/index.html` + `js/app.js` + `css/app.css` are a phone-optimized shell around the Strava page — every feature (dashboard, activity map, and all hunters) gets its own hash-routed screen (`#home`, `#county`, `#tiles`, …) reusing `js/strava.js` unmodified. The APK (`/android`, `capacitor.config.json`, `package.json`) is a thin Capacitor WebView that loads `https://j-guyy.github.io/app/` remotely — site pushes update the app instantly with no rebuild. Rebuild the APK (only needed when `/android` or Capacitor config changes) via the manually-triggerable `.github/workflows/android.yml`, which uploads `app-debug.apk` as an artifact for sideloading. Debug APKs are signed with a per-run key: uninstall the old app before installing a new APK.
 
 ## Architecture
 

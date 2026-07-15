@@ -1,3 +1,8 @@
+# Android app (Capacitor)
+node_modules/
+*.keystore
+*.jks
+
 # Shapefile sources (converted to GeoJSON in /data/)
 *.shp
 *.shx
