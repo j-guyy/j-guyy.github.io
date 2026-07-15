@@ -1,0 +1,54 @@
+# Builds the sideloadable Android APK for the Strava dashboard app.
+#
+# The app is a Capacitor remote shell: its WebView loads https://j-guyy.github.io/app/
+# live, so ordinary site pushes update the app with NO rebuild. This workflow only
+# needs to run when the native shell itself changes (android/, capacitor config,
+# dependencies) — hence the path filter — or on demand via workflow_dispatch.
+#
+# The debug build is signed with a keystore generated fresh each run, so Android
+# treats APKs from different runs as different signers: uninstall the old app
+# before installing a newer APK. If that gets annoying, switch to assembleRelease
+# with a persistent self-signed keystore stored in repo secrets.
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Android SDK preinstalled, ANDROID_HOME set
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx cap sync android
+
+      - run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jg-strava-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

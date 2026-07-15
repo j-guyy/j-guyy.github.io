@@ -1,0 +1,9 @@
+{
+  "appId": "io.github.jguyy.strava",
+  "appName": "JG Strava",
+  "webDir": "www",
+  "server": {
+    "url": "https://j-guyy.github.io/app/",
+    "androidScheme": "https"
+  }
+}

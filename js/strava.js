@@ -38,12 +38,13 @@ let lastSyncResult = null; // transient "Synced — N new, M updated" line shown
 // ── Admin auth ──────────────────────────────────────────────────────────────
 // The Strava admin controls (manual force-sync + the debug-menu resets) are
 // gated behind the same password used for travel edits. The password is held in
-// sessionStorage for the tab session and sent as the X-Admin-Password header on
+// localStorage (so it survives Android app restarts, where sessionStorage is
+// cleared with the process) and sent as the X-Admin-Password header on
 // protected worker calls. The worker is the real gate — it rejects those calls
 // without a valid password, so hiding the buttons is just UX.
 const ADMIN_PW_KEY = 'strava_admin_pw';
 
-function getAdminPw() { return sessionStorage.getItem(ADMIN_PW_KEY) || ''; }
+function getAdminPw() { return localStorage.getItem(ADMIN_PW_KEY) || ''; }
 function isLoggedIn() { return Boolean(getAdminPw()); }
 function adminHeaders() {
     const pw = getAdminPw();
@@ -69,7 +70,7 @@ async function adminLogin() {
             headers: { 'X-Admin-Password': pw },
         });
         if (!res.ok) { alert('Incorrect password.'); return; }
-        sessionStorage.setItem(ADMIN_PW_KEY, pw);
+        localStorage.setItem(ADMIN_PW_KEY, pw);
         dbg('Admin: logged in');
         refreshAdminUI();
     } catch (err) {
@@ -78,7 +79,7 @@ async function adminLogin() {
 }
 
 function adminLogout() {
-    sessionStorage.removeItem(ADMIN_PW_KEY);
+    localStorage.removeItem(ADMIN_PW_KEY);
     const panel = document.getElementById('debug-panel');
     if (panel) panel.hidden = true;
     dbg('Admin: logged out');
