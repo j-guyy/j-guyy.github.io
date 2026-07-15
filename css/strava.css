@@ -162,6 +162,13 @@
     box-shadow: 0 4px 24px rgba(0,0,0,0.6);
 }
 
+/* The hidden attribute has no built-in specificity edge over an ID rule, so
+   without this the panel above would render (just invisible-looking-empty)
+   for every visitor, not only logged-in admins toggling it open. */
+#debug-panel[hidden] {
+    display: none;
+}
+
 .dbg-header {
     display: flex;
     justify-content: space-between;
