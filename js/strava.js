@@ -890,6 +890,7 @@ async function initCountyMap() {
     // Build Leaflet map centred on the contiguous US
     // SVG renderer (default) — GeoJSON mouse events don't work reliably on canvas
     countyMap = L.map('county-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
@@ -1483,6 +1484,7 @@ async function initParkMap() {
     }
 
     parkMap = L.map('park-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
@@ -1929,6 +1931,7 @@ async function initMetroMap() {
     }
 
     metroMap = L.map('metro-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([38, -96], 4);
@@ -2431,6 +2434,7 @@ async function initMap() {
     stravaMap = L.map('strava-map', {
         renderer: activityRenderer,
         preferCanvas: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([30, 0], 2);
@@ -2718,6 +2722,7 @@ async function initCityMap() {
     const completedWays = computeWayCompletion(ways, pointIndex);
 
     cityMap = L.map('city-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).fitBounds([[cfg.bbox[0], cfg.bbox[1]], [cfg.bbox[2], cfg.bbox[3]]]);
@@ -3291,6 +3296,7 @@ async function initTileMap() {
     }
 
     tileMap = L.map('tile-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     });
@@ -4136,6 +4142,7 @@ async function initTrailMap() {
     const completedWays = computeWayCompletion(ways, pointIndex);
 
     trailMap = L.map('trail-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView(cfg.center, cfg.zoom);
@@ -6553,6 +6560,7 @@ function renderPassMap() {
     }
 
     passMapInstance = L.map('pass-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
     }).setView([39.2, -106.0], 7);

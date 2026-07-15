@@ -96,6 +96,7 @@ async function initMap() {
 
     map = L.map('family-map', {
         gestureHandling: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true
     }).setView([20, 0], 2);
 

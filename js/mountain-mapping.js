@@ -33,6 +33,7 @@ class MountainRangeMapper {
 
         const map = L.map('rocky-mountains-map', {
             gestureHandling: true,
+            tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
             fullscreenControl: true
         }).setView([44.0, -110.0], 4);
 
