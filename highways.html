@@ -517,6 +517,7 @@
         function initMap() {
             map = L.map('highway-map', {
                 gestureHandling: true,
+                tap: false, // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
                 fullscreenControl: true
             }).setView([39.8283, -98.5795], 4);
 

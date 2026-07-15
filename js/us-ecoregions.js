@@ -38,6 +38,7 @@ function initMap() {
         zoom: CONUS_ZOOM,
         preferCanvas: true, // critical for 5,847 polygons
         gestureHandling: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         worldCopyJump: false
     });

@@ -91,6 +91,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120,
         gestureHandling: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true
     });
 

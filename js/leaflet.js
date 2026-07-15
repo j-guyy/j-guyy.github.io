@@ -25,7 +25,8 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, tileStyle) {
         zoomSnap: 0.1,
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120,
-        gestureHandling: true // Enable gesture handling
+        gestureHandling: true, // Enable gesture handling
+        tap: false // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
     });
 
     // Add fullscreen control using Leaflet.fullscreen
@@ -75,7 +76,8 @@ function createBritishIslesMap(mapId, peaks) {
         zoomSnap: 0.1,
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120,
-        gestureHandling: true
+        gestureHandling: true,
+        tap: false // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
     });
 
     // Add fullscreen control

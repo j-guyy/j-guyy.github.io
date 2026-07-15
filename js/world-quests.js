@@ -150,6 +150,7 @@ function initializeForbesMap() {
     // Initialize the Forbes cities map
     forbesMap = L.map('forbes-cities-map', {
         gestureHandling: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true
     }).setView([20, 0], 2);
 
@@ -177,6 +178,7 @@ function initializeWondersMap() {
     // Initialize the combined Wonders map
     wondersMap = L.map('wonders-map', {
         gestureHandling: true,
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true
     }).setView([20, 0], 2);
 

@@ -91,7 +91,8 @@ function initMap() {
         zoom: 7,
         minZoom: 6,
         maxZoom: 18,
-        gestureHandling: true
+        gestureHandling: true,
+        tap: false // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
     });
 
     // Fullscreen control is optional — guard so a missing plugin doesn't abort init
