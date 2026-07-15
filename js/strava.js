@@ -6662,10 +6662,10 @@ function toggleDebugExpand() {
     const btns = document.getElementById('dbg-action-btns');
     const lbl  = document.getElementById('dbg-expand-lbl');
     if (!log) return;
-    const collapsed = log.style.display === 'none';
-    log.style.display   = collapsed ? '' : 'none';
-    if (btns) btns.style.display = collapsed ? 'flex' : 'none';
-    if (lbl)  lbl.textContent    = collapsed ? '▾' : '▸';
+    const collapsed = log.classList.contains('dbg-log-collapsed');
+    log.classList.toggle('dbg-log-collapsed', !collapsed);
+    if (btns) btns.classList.toggle('dbg-action-btns-visible', collapsed);
+    if (lbl)  lbl.classList.toggle('dbg-expanded', collapsed);
 }
 
 function renderDebugPanel() {
@@ -6676,9 +6676,9 @@ function renderDebugPanel() {
     panel.id = 'debug-panel';
     panel.hidden = true;
     panel.innerHTML = `
-        <div class="dbg-header" onclick="toggleDebugExpand()" style="cursor:pointer" title="Click to expand / collapse">
-            <strong>Debug Log <span id="dbg-expand-lbl">▸</span></strong>
-            <div id="dbg-action-btns" style="display:none;gap:6px" onclick="event.stopPropagation()">
+        <div class="dbg-header" onclick="toggleDebugExpand()" title="Click to expand / collapse">
+            <strong>Debug Log <span id="dbg-expand-lbl" class="dbg-expand-icon">›</span></strong>
+            <div id="dbg-action-btns" class="dbg-action-btns" onclick="event.stopPropagation()">
                 <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data — forces full re-geocode">Reset geo cache</button>
                 <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
                 <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
@@ -6689,7 +6689,7 @@ function renderDebugPanel() {
                 <button class="dbg-clear" onclick="document.getElementById('debug-log').innerHTML=''">Clear log</button>
             </div>
         </div>
-        <ul id="debug-log" style="display:none"></ul>
+        <ul id="debug-log" class="dbg-log-collapsed"></ul>
     `;
     document.body.appendChild(panel);
 }
