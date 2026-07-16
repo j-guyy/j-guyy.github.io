@@ -1,9 +1,42 @@
-/* App shell styles for /app/ — the Android (Capacitor) wrapper page.
-   Loaded after strava.css/responsive.css; everything is scoped to .app-page
-   so the website pages are unaffected. */
+/* App design system for /app/ — the Android (Capacitor) wrapper page.
+
+   Contract with the shared code: js/strava.js runs unmodified and renders into
+   the same element ids and component classes used on strava.html (.section,
+   .travel-table, .county-stats-bar, .filter-pill, .map-legend, …). The website
+   keeps styling those in dashboard.css/strava.css; this file gives every one of
+   them a separate app-native look. Loaded last and scoped to .app-page, so the
+   website pages are unaffected and no shared logic needs to change.
+
+   Palette: same green family as the site (#4CAF50) but shifted to a brighter
+   modern accent on near-black green-tinted surfaces. Map feature colors stay
+   the strava.js greens so legends keep matching the drawn layers. */
 
 .app-page {
-    background: var(--bg-color);
+    /* ── Design tokens ──────────────────────────────────────────────────── */
+    --app-bg: #0a0d0b;
+    --app-surface: #131715;
+    --app-surface-2: #1b201d;
+    --app-border: rgba(255, 255, 255, 0.08);
+    --app-accent: #3ddc84;
+    --app-accent-strong: #2fc172;
+    --app-accent-soft: rgba(61, 220, 132, 0.14);
+    --app-accent-border: rgba(61, 220, 132, 0.38);
+    --app-text: #eef2ef;
+    --app-text-dim: rgba(238, 242, 239, 0.55);
+    --app-radius: 16px;
+    --app-radius-sm: 12px;
+
+    /* Shared stylesheets (base/dashboard/strava.css) color links, active pills,
+       stat numbers, spinners etc. with --primary-color — repointing it here
+       reskins all of them at once. */
+    --primary-color: var(--app-accent);
+    --primary-hover-color: var(--app-accent-strong);
+
+    background: var(--app-bg);
+    color: var(--app-text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
 }
 
 .app-page .app-content {
@@ -11,113 +44,435 @@
     max-width: 100%;
 }
 
+/* ── Screen transitions ──────────────────────────────────────────────────── */
+.app-screen.screen-enter {
+    animation: app-screen-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@keyframes app-screen-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-screen.screen-enter { animation: none; }
+}
+
 /* ── Home screen ─────────────────────────────────────────────────────────── */
 .app-home-header {
-    padding: calc(24px + env(safe-area-inset-top)) 20px 8px;
+    padding: calc(28px + env(safe-area-inset-top)) 20px 4px;
 }
 
 .app-home-header h1 {
     margin: 0;
-    font-size: 1.8rem;
-    color: var(--primary-color);
+    font-size: 1.9rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    color: var(--app-text);
 }
 
 .app-home-header p {
     margin: 4px 0 0;
     min-height: 1.2em;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--app-text-dim);
+}
+
+.home-section-label {
+    margin: 0;
+    padding: 20px 20px 10px;
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--app-text-dim);
 }
 
 .home-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    padding: 16px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    gap: 10px;
+    padding: 0 16px;
+}
+
+.home-grid:last-of-type {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
 .home-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: 108px;
-    padding: 18px 8px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(76, 175, 80, 0.35);
-    color: var(--text-color);
+    gap: 8px;
+    padding: 16px 10px 14px;
+    border-radius: var(--app-radius);
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
     text-decoration: none;
     text-align: center;
-    -webkit-tap-highlight-color: rgba(76, 175, 80, 0.2);
+    transition: transform 0.12s ease, background 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .home-card:active {
-    background: rgba(76, 175, 80, 0.15);
+    transform: scale(0.965);
+    background: var(--app-surface-2);
 }
 
 .home-card-icon {
-    font-size: 2rem;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--app-accent-soft);
+    font-size: 1.4rem;
     line-height: 1;
 }
 
 .home-card-name {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 600;
 }
 
 .home-card em {
     min-height: 1em;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-style: normal;
-    color: var(--primary-color);
+    font-weight: 550;
+    color: var(--app-accent);
 }
 
-/* ── Feature screens ─────────────────────────────────────────────────────── */
+/* ── Feature screen app bar ──────────────────────────────────────────────── */
 .app-screen-header {
     position: sticky;
     top: 0;
     z-index: 1100; /* above Leaflet panes (max ~1000) */
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
-    background: rgba(0, 0, 0, 0.92);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+    background: rgba(10, 13, 11, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--app-border);
 }
 
 .app-screen-header h1 {
     margin: 0;
-    font-size: 1.15rem;
-    color: var(--text-color);
+    font-size: 1.12rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--app-text);
 }
 
 .app-back {
-    min-width: 44px;
-    min-height: 44px;
-    border: none;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--primary-color);
-    font-size: 1.4rem;
-    line-height: 1;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    color: var(--app-text);
     cursor: pointer;
+    transition: transform 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.app-screen .section {
+.app-back:hover { background: var(--app-surface-2); }
+.app-back:active { transform: scale(0.92); }
+
+/* ── Cards (shared .section, incl. ones strava.js creates dynamically) ───── */
+.app-page .app-screen .section {
+    display: block;
+    width: auto;
+    max-width: none;
+    margin: 12px 12px 0;
+    padding: 16px 14px 18px;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    box-shadow: none;
+    text-align: left;
+}
+
+.app-page .app-screen > .section:last-of-type,
+.app-page #strava-subdivisions .section:last-of-type {
+    margin-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+/* Until the shared renderer fills them, mount-point-only cards (dashboard
+   summary/filters/tables) are empty shells — keep them off screen so the
+   loading state doesn't show blank cards. */
+.app-page .app-screen .section:not(:has(*)),
+.app-page .app-screen .section:has(> div:empty):not(:has(> div:not(:empty))) {
+    display: none;
+}
+
+.app-page .app-screen .section h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+/* Row of feature controls (selects + toggle buttons) at the top of a card */
+.app-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.app-page .cache-refresh-btn {
+    min-height: 38px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 999px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: transform 0.12s ease, background 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-page .cache-refresh-btn:hover {
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+}
+
+.app-page .cache-refresh-btn:active { transform: scale(0.95); }
+
+.app-page .cache-refresh-btn:disabled {
+    background: var(--app-surface-2);
+    color: var(--app-text-dim);
+}
+
+.app-page #mountain-edit-btn.active {
+    background: var(--app-accent);
+    color: #08130c;
+}
+
+/* ── Selects (city/trail pickers) ────────────────────────────────────────── */
+.app-page .city-select {
+    appearance: none;
+    -webkit-appearance: none;
+    min-height: 38px;
+    padding: 7px 34px 7px 15px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23eef2ef' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+        no-repeat right 14px center,
+        var(--app-surface-2);
+    color: var(--app-text);
+    font-size: 16px; /* prevents Android/iOS focus-zoom */
+    font-weight: 550;
+}
+
+.app-page .city-select option {
+    background: var(--app-surface-2);
+    color: var(--app-text);
+}
+
+/* ── Summary stat tiles (dashboard) ──────────────────────────────────────── */
+.app-page .summary-stats-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin: 0;
-    padding: 12px 12px 20px;
 }
 
-.app-screen .section h2 {
-    font-size: 1.05rem;
+.app-page .summary-stat {
+    margin: 0;
+    padding: 14px 8px 12px;
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
 }
 
-/* ── Mobile usability tweaks ─────────────────────────────────────────────── */
-/* Maps: fit a phone screen with legend + stats visible around them */
+.app-page .summary-stat.strava-total {
+    padding: 18px 8px 16px;
+    background: linear-gradient(160deg, rgba(61, 220, 132, 0.16), rgba(61, 220, 132, 0.05));
+    border-color: var(--app-accent-border);
+}
+
+.app-page .strava-total .stat-number {
+    font-size: 2.1rem;
+}
+
+.app-page .other-stats,
+.app-page .other-stats.other-stats-quad,
+.app-page .other-stats.other-stats-duo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 0;
+}
+
+.app-page .stat-number {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--app-accent);
+}
+
+.app-page .stat-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--app-text-dim);
+}
+
+/* ── Hunter stats bars ───────────────────────────────────────────────────── */
+.app-page .county-stats-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin: 0 0 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.app-page .county-stats-bar::-webkit-scrollbar { display: none; }
+
+.app-page .county-stat-item {
+    flex: 0 0 auto;
+    min-width: 86px;
+    padding: 12px 14px 10px;
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+}
+
+.app-page .county-stat-number {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--app-accent);
+}
+
+.app-page .county-stat-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--app-text-dim);
+}
+
+.app-page .stats-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Filter pills ────────────────────────────────────────────────────────── */
+.app-page .filter-bar { gap: 10px; }
+
+.app-page .filter-all-btn {
+    min-height: 32px;
+    padding: 5px 13px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    color: var(--app-text-dim);
+    font-weight: 550;
+}
+
+.app-page .filter-all-btn:hover {
+    border-color: var(--app-border);
+    color: var(--app-text);
+}
+
+.app-page .filter-all-btn.active {
+    border-color: var(--app-accent-border);
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+}
+
+.app-page .filter-pill {
+    min-height: 34px;
+    padding: 6px 13px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    color: var(--app-text-dim);
+    transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.app-page .filter-pill:active { transform: scale(0.95); }
+
+.app-page .filter-pill.active {
+    border-color: var(--app-accent-border);
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.app-page .table-scroll-wrapper {
+    border-radius: var(--app-radius-sm);
+    scrollbar-width: none;
+}
+
+.app-page .table-scroll-wrapper::-webkit-scrollbar { display: none; }
+
+.app-page .travel-table {
+    font-size: 0.85rem;
+    border-collapse: collapse;
+}
+
+.app-page .travel-table th {
+    padding: 8px 10px;
+    border: none;
+    border-bottom: 1px solid var(--app-border);
+    background: transparent;
+    color: var(--app-text-dim);
+    font-size: 0.67rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.app-page .travel-table th.sort-active { color: var(--app-accent); }
+
+.app-page .travel-table td {
+    padding: 10px;
+    border: none;
+    border-bottom: 1px solid var(--app-border);
+}
+
+.app-page .travel-table tbody tr:last-child td { border-bottom: none; }
+
+.app-page .travel-table tr:hover { background: transparent; }
+
+/* ── Collapsible sections ────────────────────────────────────────────────── */
+.app-page .collapsible-header {
+    min-height: 46px;
+    padding: 12px 14px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-sm);
+    background: var(--app-surface-2);
+    font-size: 0.9rem;
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-page .collapsible-header:hover { background: var(--app-surface-2); }
+.app-page .collapsible-header:active { background: rgba(255, 255, 255, 0.1); }
+
+.app-page .collapsible-arrow { color: var(--app-text-dim); }
+
+.app-page .collapsible-body { padding-top: 10px; }
+
+/* ── Maps ────────────────────────────────────────────────────────────────── */
+/* Fit a phone screen with stats + legend visible around the map */
 .app-page #strava-map,
 .app-page #county-map,
 .app-page #park-map,
@@ -127,17 +482,90 @@
 .app-page #mountain-map,
 .app-page #pass-map,
 .app-page #trail-map {
-    height: min(70vh, 520px);
+    height: min(68vh, 560px);
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
 }
 
-/* Comfortable touch targets */
-.app-page .cache-refresh-btn {
-    min-height: 40px;
-    padding: 8px 14px;
+/* ── Map legends ─────────────────────────────────────────────────────────── */
+.app-page .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-/* 16px prevents Android/iOS focus-zoom on selects */
-.app-page .city-select {
-    font-size: 16px;
-    min-height: 40px;
+.app-page .map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    font-size: 0.75rem;
+    color: var(--app-text-dim);
+}
+
+.app-page button.map-legend-filter {
+    cursor: pointer;
+    transition: transform 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-page button.map-legend-filter:active { transform: scale(0.95); }
+
+/* ── Loading / progress / status ─────────────────────────────────────────── */
+.app-page .strava-loading { padding: 28px 0 8px; }
+
+.app-page .loading-spinner {
+    width: 26px;
+    height: 26px;
+    border-width: 3px;
+}
+
+.app-page .cache-info-bar {
+    border: none;
+    background: transparent;
+    padding-left: 0;
+    padding-right: 0;
+    color: var(--app-text-dim);
+}
+
+.app-page .no-location-note {
+    font-size: 0.78rem;
+    color: var(--app-text-dim);
+}
+
+.app-page .sync-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--app-surface-2);
+}
+
+.app-page .sync-progress-fill {
+    border-radius: 999px;
+    background: var(--app-accent);
+}
+
+.app-page #mountain-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--app-surface-2);
+}
+
+.app-page #mountain-progress-bar::after {
+    border-radius: 999px;
+    background: var(--app-accent);
+}
+
+/* ── Dialogs & popups ────────────────────────────────────────────────────── */
+.app-page .summit-list-popup {
+    border: 1px solid var(--app-border);
+    border-radius: 20px;
+    background: var(--app-surface);
+    color: var(--app-text);
+}
+
+.app-page .activity-popup .leaflet-popup-content-wrapper {
+    border-radius: 14px;
 }

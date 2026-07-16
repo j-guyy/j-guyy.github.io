@@ -56,9 +56,14 @@ function currentScreenName() {
 }
 
 function showScreen(name) {
-    document.querySelectorAll('.app-screen').forEach(el => { el.hidden = true; });
+    document.querySelectorAll('.app-screen').forEach(el => {
+        el.hidden = true;
+        el.classList.remove('screen-enter');
+    });
     const target = document.getElementById(`screen-${name}`) || document.getElementById('screen-home');
     target.hidden = false;
+    void target.offsetWidth; // restart the enter animation even on repeat visits
+    target.classList.add('screen-enter');
     window.scrollTo(0, 0);
     pendingOpen = null; // navigating away cancels a queued auto-open
     SCREENS[name]?.open?.();
