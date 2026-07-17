@@ -3824,12 +3824,13 @@ function setTileStatus(msg) {
 
 // ── Basemap switcher ──────────────────────────────────────────────────────────
 //
-// Every hunter map gets the same Dark / OSM / OpenTopoMap / OpenCycleMap /
-// Outdoors set with a Leaflet layer control. Dark is the default so green and
-// gold feature fills contrast well; users can flip to a topo or cycling style
-// when they want road / trail context. Pass `overlays` to merge feature
-// toggles into the same control (e.g. Park Hunter's Federal Lands / State
-// Parks). Returns the layer references so callers can hook baselayerchange.
+// Every hunter map gets the same Dark / OSM / OpenStreetMap (Greyscale) /
+// OpenTopoMap / OpenCycleMap / Outdoors set with a Leaflet layer control. Dark
+// is the default so green and gold feature fills contrast well; users can
+// flip to a topo or cycling style when they want road / trail context. Pass
+// `overlays` to merge feature toggles into the same control (e.g. Park
+// Hunter's Federal Lands / State Parks). Returns the layer references so
+// callers can hook baselayerchange.
 //
 // `onThemeChange(isDark)` is invoked whenever the basemap switches, so callers
 // can restyle "not yet reached" features (faint white reads on the dark
@@ -3842,6 +3843,10 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
+    });
+    const greyscaleLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 19,
     });
     const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
@@ -3860,18 +3865,19 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
     darkLayer.addTo(map);
 
     L.control.layers({
-        'Dark (default)': darkLayer,
-        'OpenStreetMap':  osmLayer,
-        'OpenTopoMap':    topoLayer,
-        'OpenCycleMap':   cycleLayer,
-        'Outdoors':       outdoorsLayer,
+        'Dark (default)':          darkLayer,
+        'OpenStreetMap':           osmLayer,
+        'OpenStreetMap (Greyscale)': greyscaleLayer,
+        'OpenTopoMap':              topoLayer,
+        'OpenCycleMap':             cycleLayer,
+        'Outdoors':                 outdoorsLayer,
     }, overlays, { position: 'topright', collapsed: true }).addTo(map);
 
     if (onThemeChange) {
         map.on('baselayerchange', (e) => onThemeChange(e.layer === darkLayer));
     }
 
-    return { darkLayer, osmLayer, topoLayer, cycleLayer, outdoorsLayer };
+    return { darkLayer, osmLayer, greyscaleLayer, topoLayer, cycleLayer, outdoorsLayer };
 }
 
 // Styling for "not yet reached" features (unvisited parks/metros, un-summited
