@@ -1718,13 +1718,33 @@ function renderParkStats() {
         </div>`;
 }
 
-const parkSortState = { col: 'date', dir: 'desc' };
+// Federal land units are split into their own "Recently Discovered" trackers;
+// everything that isn't a National Park/Forest/Monument/Seashore/Lakeshore
+// (including all state parks) falls into "Other".
+const PARK_CATEGORIES = {
+    nationalParks:       { label: 'National Parks',                     elId: 'park-recent-national-parks' },
+    nationalForests:     { label: 'National Forests',                   elId: 'park-recent-national-forests' },
+    nationalMonuments:   { label: 'National Monuments',                 elId: 'park-recent-national-monuments' },
+    seashoresLakeshores: { label: 'National Seashores + Lakeshores',    elId: 'park-recent-seashores-lakeshores' },
+    other:               { label: 'Other',                              elId: 'park-recent-other' },
+};
+
+function parkCategory({ agency, type }) {
+    if (agency === 'NPS' && type === 'National Park') return 'nationalParks';
+    if (agency === 'USFS' && type === 'National Forest') return 'nationalForests';
+    if (agency === 'NPS' && type === 'National Monument') return 'nationalMonuments';
+    if (agency === 'NPS' && (type === 'National Seashore' || type === 'National Lakeshore')) return 'seashoresLakeshores';
+    return 'other';
+}
+
+const parkSortStates = Object.fromEntries(
+    Object.keys(PARK_CATEGORIES).map(cat => [cat, { col: 'date', dir: 'desc' }])
+);
 let parkGeoJsonRef = null;
 let stateParkGeoJsonRef = null;
+let parkRowsByCategory = null;
 
 function renderRecentParks(fedGeojson, spGeojson) {
-    const el = document.getElementById('park-recent-table');
-    if (!el) return;
     if (fedGeojson) parkGeoJsonRef = fedGeojson;
     if (spGeojson)  stateParkGeoJsonRef = spGeojson;
     if (!parkGeoJsonRef && !stateParkGeoJsonRef) return;
@@ -1744,15 +1764,30 @@ function renderRecentParks(fedGeojson, spGeojson) {
     }
 
     const allDiscoveries = { ...parkDiscoveries, ...stateParkDiscoveries };
-    if (!Object.keys(allDiscoveries).length) return;
 
-    let rows = Object.entries(allDiscoveries)
-        .filter(([id]) => infoById[id])
-        .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
+    parkRowsByCategory = Object.fromEntries(Object.keys(PARK_CATEGORIES).map(cat => [cat, []]));
+    for (const [id, disc] of Object.entries(allDiscoveries)) {
+        const info = infoById[id];
+        if (!info) continue;
+        parkRowsByCategory[parkCategory(info)].push({ id, disc, info });
+    }
+
+    for (const cat of Object.keys(PARK_CATEGORIES)) {
+        renderParkCategoryTable(cat);
+    }
+}
+
+function renderParkCategoryTable(cat) {
+    const { label, elId } = PARK_CATEGORIES[cat];
+    const el = document.getElementById(elId);
+    if (!el || !parkRowsByCategory) return;
+
+    const state = parkSortStates[cat];
+    let rows = [...parkRowsByCategory[cat]];
 
     rows.sort((a, b) => {
-        const dir = parkSortState.dir === 'asc' ? 1 : -1;
-        switch (parkSortState.col) {
+        const dir = state.dir === 'asc' ? 1 : -1;
+        switch (state.col) {
             case 'name':     return dir * a.info.name.localeCompare(b.info.name);
             case 'type':     return dir * a.info.type.localeCompare(b.info.type);
             case 'agency':   return dir * a.info.agency.localeCompare(b.info.agency);
@@ -1767,7 +1802,7 @@ function renderRecentParks(fedGeojson, spGeojson) {
     });
 
     rows = rows.slice(0, 25);
-    if (!rows.length) return;
+    if (!rows.length) { el.innerHTML = ''; return; }
 
     const headers = [
         { label: 'Name',       col: 'name' },
@@ -1782,24 +1817,24 @@ function renderRecentParks(fedGeojson, spGeojson) {
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    headers.forEach(({ label, col }) => {
+    headers.forEach(({ label: colLabel, col }) => {
         const th = document.createElement('th');
-        const isActive = parkSortState.col === col;
+        const isActive = state.col === col;
         th.classList.add('sortable');
         if (isActive) th.classList.add('sort-active');
         const indicator = document.createElement('span');
         indicator.className = 'sort-indicator';
-        indicator.textContent = isActive ? (parkSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
-        th.appendChild(document.createTextNode(label));
+        indicator.textContent = isActive ? (state.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.appendChild(document.createTextNode(colLabel));
         th.appendChild(indicator);
         th.addEventListener('click', () => {
-            if (parkSortState.col === col) {
-                parkSortState.dir = parkSortState.dir === 'asc' ? 'desc' : 'asc';
+            if (state.col === col) {
+                state.dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                parkSortState.col = col;
-                parkSortState.dir = col === 'name' || col === 'type' || col === 'agency' ? 'asc' : 'desc';
+                state.col = col;
+                state.dir = col === 'name' || col === 'type' || col === 'agency' ? 'asc' : 'desc';
             }
-            renderRecentParks();
+            renderParkCategoryTable(cat);
         });
         headerRow.appendChild(th);
     });
@@ -1829,7 +1864,7 @@ function renderRecentParks(fedGeojson, spGeojson) {
     wrapper.appendChild(table);
     initScrollHint(wrapper);
     el.innerHTML = '';
-    el.appendChild(makeCollapsible(`Recently Discovered (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+    el.appendChild(makeCollapsible(`Recently Discovered — ${label} (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
 async function saveParksToWorker() {
