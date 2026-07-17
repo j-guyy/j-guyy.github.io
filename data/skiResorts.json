@@ -283,7 +283,14 @@
         ],
         "verticalDrop": 3100,
         "trails": 175,
-        "visited": true
+        "visited": true,
+        "region": "California",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Mount Shasta Ski Park",
@@ -439,7 +446,22 @@
         ],
         "verticalDrop": 2530,
         "trails": 147,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            },
+            {
+                "year": 2024,
+                "days": 2
+            },
+            {
+                "year": 2025,
+                "days": 3
+            }
+        ]
     },
     {
         "name": "Aspen Highlands",
@@ -465,7 +487,14 @@
         ],
         "verticalDrop": 3267,
         "trails": 76,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Snowmass",
@@ -530,7 +559,22 @@
         ],
         "verticalDrop": 2738,
         "trails": 140,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2022,
+                "days": 1
+            },
+            {
+                "year": 2023,
+                "days": 2
+            },
+            {
+                "year": 2024,
+                "days": 2
+            }
+        ]
     },
     {
         "name": "Crested Butte",
@@ -569,7 +613,18 @@
         ],
         "verticalDrop": 1600,
         "trails": 53,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2024,
+                "days": 1
+            },
+            {
+                "year": 2025,
+                "days": 2
+            }
+        ]
     },
     {
         "name": "Hesperus",
@@ -712,7 +767,14 @@
         ],
         "verticalDrop": 3668,
         "trails": 169,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Sunlight Mountain",
@@ -751,7 +813,18 @@
         ],
         "verticalDrop": 3450,
         "trails": 195,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2021,
+                "days": 2
+            },
+            {
+                "year": 2022,
+                "days": 3
+            }
+        ]
     },
     {
         "name": "Winter Park",
@@ -764,7 +837,18 @@
         ],
         "verticalDrop": 3081,
         "trails": 166,
-        "visited": true
+        "visited": true,
+        "region": "Colorado",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 3
+            },
+            {
+                "year": 2024,
+                "days": 4
+            }
+        ]
     },
     {
         "name": "Wolf Creek",
@@ -1037,7 +1121,14 @@
         ],
         "verticalDrop": 1150,
         "trails": 45,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2010,
+                "days": 5
+            }
+        ]
     },
     {
         "name": "Nashoba Valley",
@@ -1323,7 +1414,14 @@
         ],
         "verticalDrop": 4350,
         "trails": 317,
-        "visited": true
+        "visited": true,
+        "region": "Montana & Wyoming",
+        "visits": [
+            {
+                "year": 2024,
+                "days": 3
+            }
+        ]
     },
     {
         "name": "Blacktail Mountain",
@@ -1843,7 +1941,42 @@
         ],
         "verticalDrop": 2537,
         "trails": 110,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2011,
+                "days": 2
+            },
+            {
+                "year": 2012,
+                "days": 1
+            },
+            {
+                "year": 2013,
+                "days": 1
+            },
+            {
+                "year": 2014,
+                "days": 1
+            },
+            {
+                "year": 2015,
+                "days": 1
+            },
+            {
+                "year": 2017,
+                "days": 1
+            },
+            {
+                "year": 2018,
+                "days": 1
+            },
+            {
+                "year": 2019,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Greek Peak",
@@ -1999,7 +2132,14 @@
         ],
         "verticalDrop": 1010,
         "trails": 32,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2008,
+                "days": 5
+            }
+        ]
     },
     {
         "name": "Whiteface Mountain",
@@ -2012,7 +2152,38 @@
         ],
         "verticalDrop": 3430,
         "trails": 89,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2011,
+                "days": 1
+            },
+            {
+                "year": 2012,
+                "days": 1
+            },
+            {
+                "year": 2013,
+                "days": 1
+            },
+            {
+                "year": 2014,
+                "days": 1
+            },
+            {
+                "year": 2015,
+                "days": 1
+            },
+            {
+                "year": 2016,
+                "days": 1
+            },
+            {
+                "year": 2017,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Willard Mountain",
@@ -2025,7 +2196,14 @@
         ],
         "verticalDrop": 505,
         "trails": 14,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2009,
+                "days": 5
+            }
+        ]
     },
     {
         "name": "Windham Mountain",
@@ -2038,7 +2216,18 @@
         ],
         "verticalDrop": 1600,
         "trails": 54,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2017,
+                "days": 1
+            },
+            {
+                "year": 2024,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Boston Mills",
@@ -2129,7 +2318,14 @@
         ],
         "verticalDrop": 1035,
         "trails": 34,
-        "visited": true
+        "visited": true,
+        "region": "Pacific Northwest",
+        "visits": [
+            {
+                "year": 2022,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Mount Ashland",
@@ -2259,7 +2455,18 @@
         ],
         "verticalDrop": 1082,
         "trails": 40,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2020,
+                "days": 1
+            },
+            {
+                "year": 2024,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Camelback Mountain",
@@ -2441,7 +2648,14 @@
         ],
         "verticalDrop": 2538,
         "trails": 119,
-        "visited": true
+        "visited": true,
+        "region": "Utah",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Beaver Mountain",
@@ -2506,7 +2720,14 @@
         ],
         "verticalDrop": 3000,
         "trails": 103,
-        "visited": true
+        "visited": true,
+        "region": "Utah",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Eagle Point",
@@ -2545,7 +2766,14 @@
         ],
         "verticalDrop": 3226,
         "trails": 330,
-        "visited": true
+        "visited": true,
+        "region": "Utah",
+        "visits": [
+            {
+                "year": 2021,
+                "days": 3
+            }
+        ]
     },
     {
         "name": "Powder Mountain",
@@ -2584,7 +2812,14 @@
         ],
         "verticalDrop": 3240,
         "trails": 169,
-        "visited": true
+        "visited": true,
+        "region": "Utah",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Solitude Mountain",
@@ -2597,7 +2832,14 @@
         ],
         "verticalDrop": 2047,
         "trails": 82,
-        "visited": true
+        "visited": true,
+        "region": "Utah",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Sundance",
@@ -2675,7 +2917,22 @@
         ],
         "verticalDrop": 3050,
         "trails": 155,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2012,
+                "days": 1
+            },
+            {
+                "year": 2016,
+                "days": 1
+            },
+            {
+                "year": 2022,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Mad River Glen",
@@ -2805,7 +3062,18 @@
         ],
         "verticalDrop": 2600,
         "trails": 111,
-        "visited": true
+        "visited": true,
+        "region": "Northeast",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            },
+            {
+                "year": 2024,
+                "days": 2
+            }
+        ]
     },
     {
         "name": "Bryce Resort",
@@ -2870,7 +3138,14 @@
         ],
         "verticalDrop": 3100,
         "trails": 81,
-        "visited": true
+        "visited": true,
+        "region": "Pacific Northwest",
+        "visits": [
+            {
+                "year": 2025,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Hurricane Ridge",
@@ -2961,7 +3236,14 @@
         ],
         "verticalDrop": 1800,
         "trails": 52,
-        "visited": true
+        "visited": true,
+        "region": "Pacific Northwest",
+        "visits": [
+            {
+                "year": 2022,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "The Summit at Snoqualmie",
@@ -3143,7 +3425,14 @@
         ],
         "verticalDrop": 4139,
         "trails": 133,
-        "visited": true
+        "visited": true,
+        "region": "Montana & Wyoming",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 3
+            }
+        ]
     },
     {
         "name": "Snow King",
@@ -3195,7 +3484,14 @@
         ],
         "verticalDrop": 5280,
         "trails": 200,
-        "visited": true
+        "visited": true,
+        "region": "Canada",
+        "visits": [
+            {
+                "year": 2022,
+                "days": 2
+            }
+        ]
     },
     {
         "name": "Banff Sunshine",
@@ -3247,7 +3543,14 @@
         ],
         "verticalDrop": 5620,
         "trails": 69,
-        "visited": true
+        "visited": true,
+        "region": "Canada",
+        "visits": [
+            {
+                "year": 2023,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Chamonix Mont-Blanc",
@@ -3260,7 +3563,14 @@
         ],
         "verticalDrop": 9209,
         "trails": 182,
-        "visited": true
+        "visited": true,
+        "region": "Alps",
+        "visits": [
+            {
+                "year": 2024,
+                "days": 1
+            }
+        ]
     },
     {
         "name": "Val d'Isère",
@@ -3299,7 +3609,14 @@
         ],
         "verticalDrop": 7218,
         "trails": 200,
-        "visited": true
+        "visited": true,
+        "region": "Alps",
+        "visits": [
+            {
+                "year": 2025,
+                "days": 5
+            }
+        ]
     },
     {
         "name": "St. Moritz",
