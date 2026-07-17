@@ -1,7 +1,32 @@
+// Resort Skiing page: visit log (by date / by location) + world resort map and list,
+// all driven by data/skiResorts.json. Resorts with a `visits` array are the personal
+// visit log; `visited: true` alone marks resorts skied but not logged.
+
+// Flat visit log derived from the JSON: one entry per resort per year.
+// repeat: true = this resort was visited in a prior year.
+let visitLog = [];
+
+// Total ski days per resort across all years
+let visitCounts = {};
+
+// Region display order for location view
+const regionOrder = [
+    "California",
+    "Colorado",
+    "Montana & Wyoming",
+    "Northeast",
+    "Pacific Northwest",
+    "Utah",
+    "Canada",
+    "Alps",
+];
+
 document.addEventListener('DOMContentLoaded', function () {
-    fetch('data/skiResorts.json')
+    fetch('../data/skiResorts.json')
         .then(response => response.json())
         .then(resorts => {
+            buildVisitLog(resorts);
+            setView(currentView);
             displaySkiSummary(resorts);
             createSkiMap(resorts);
             renderResortList(resorts, 'all');
@@ -9,6 +34,141 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => console.error('Error loading ski resort data:', error));
 });
+
+function buildVisitLog(resorts) {
+    visitLog = [];
+    visitCounts = {};
+    resorts.forEach(resort => {
+        if (!resort.visits) return;
+        resort.visits.forEach((visit, i) => {
+            visitLog.push({
+                name: resort.name,
+                year: visit.year,
+                days: visit.days,
+                location: resort.location,
+                region: resort.region,
+                repeat: i > 0
+            });
+        });
+        visitCounts[resort.name] = resort.visits.reduce((sum, v) => sum + v.days, 0);
+    });
+}
+
+// ---------- Visit log views ----------
+
+// tokenDays: days to display in the circular token (show badge instead if <= 1)
+function makeCard(resort, subtitleText, tokenDays) {
+    const cardClass = resort.repeat ? 'repeat' : 'summited';
+    const totalDays = visitCounts[resort.name];
+
+    const tokenHtml = tokenDays > 1
+        ? `<span class="visit-token">${tokenDays}</span>`
+        : `<span class="peak-badge ${cardClass}">Visited</span>`;
+
+    const totalHtml = totalDays > 1
+        ? `<div class="visit-total">${totalDays} days total</div>`
+        : '';
+
+    return `
+        <div class="peak-card ${cardClass}">
+            <div class="peak-card-header">
+                <h3>${resort.name}</h3>
+                ${tokenHtml}
+            </div>
+            <div class="peak-date">${subtitleText}</div>
+            ${totalHtml}
+        </div>`;
+}
+
+function renderTally() {
+    const unique    = Object.keys(visitCounts).length;
+    const totalDays = Object.values(visitCounts).reduce((a, b) => a + b, 0);
+    const top3      = Object.entries(visitCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+    return `<div class="tally-section">
+        <div class="tally-stat"><strong>${unique}</strong> unique resorts</div>
+        <div class="tally-stat"><strong>${totalDays}</strong> total days</div>
+        <div class="tally-most-visited">
+            <span class="tally-mv-label">Most Visited:</span>
+            ${top3.map(([name, n]) => `<span class="tally-mv-tag">${name} ×${n}</span>`).join('')}
+        </div>
+    </div>`;
+}
+
+function renderByDate() {
+    const byYear = {};
+    visitLog.forEach(r => {
+        if (!byYear[r.year]) byYear[r.year] = [];
+        byYear[r.year].push(r);
+    });
+    const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+    return years.map(year => {
+        const items         = byYear[year];
+        const newResorts    = items.filter(r => !r.repeat);
+        const repeatResorts = items.filter(r =>  r.repeat);
+        const subtitle      = r => `${r.year} — ${r.location}`;
+        const cards         = group => group.map(r => makeCard(r, subtitle(r), r.days)).join('');
+
+        if (newResorts.length === 0) {
+            return `
+                <div class="section-divider"><h2>${year}</h2></div>
+                <div class="section-divider" style="margin-top:0"><h3>Repeat</h3></div>
+                <div class="peaks-grid">${cards(repeatResorts)}</div>`;
+        }
+        if (repeatResorts.length === 0) {
+            return `
+                <div class="section-divider"><h2>${year}</h2></div>
+                <div class="peaks-grid">${cards(newResorts)}</div>`;
+        }
+        return `
+            <div class="section-divider"><h2>${year}</h2></div>
+            <div class="section-divider" style="margin-top:0"><h3>New</h3></div>
+            <div class="peaks-grid">${cards(newResorts)}</div>
+            <div class="section-divider" style="margin-top:0"><h3>Repeat</h3></div>
+            <div class="peaks-grid">${cards(repeatResorts)}</div>`;
+    }).join('');
+}
+
+function renderByLocation() {
+    const byRegion = {};
+    visitLog.forEach(r => {
+        if (!byRegion[r.region]) byRegion[r.region] = [];
+        const already = byRegion[r.region].find(x => x.name === r.name);
+        if (already) {
+            already._years.push(r.year);
+            already._totalDays += r.days;
+            if (r.repeat) already.repeat = true;
+        } else {
+            byRegion[r.region].push({ ...r, _years: [r.year], _totalDays: r.days });
+        }
+    });
+    return regionOrder
+        .filter(reg => byRegion[reg])
+        .map(reg => {
+            const cards = byRegion[reg].map(r => {
+                const subtitle = `${r._years.join(', ')} — ${r.location}`;
+                return makeCard(r, subtitle, r._totalDays);
+            }).join('');
+            return `
+                <div class="section-divider"><h2>${reg}</h2></div>
+                <div class="peaks-grid">${cards}</div>`;
+        }).join('');
+}
+
+let currentView = 'date';
+
+function setView(view) {
+    currentView = view;
+    document.getElementById('tally').innerHTML = renderTally();
+    document.getElementById('resort-sections').innerHTML =
+        view === 'date' ? renderByDate() : renderByLocation();
+    document.getElementById('btn-date').classList.toggle('active', view === 'date');
+    document.getElementById('btn-location').classList.toggle('active', view === 'location');
+}
+
+// ---------- World resort map and list ----------
 
 function displaySkiSummary(resorts) {
     const container = document.getElementById('ski-summary');
