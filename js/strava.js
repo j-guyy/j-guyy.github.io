@@ -1317,6 +1317,8 @@ function clearStateFocus() {
     stateFocusLayer = null;
 }
 
+const countyStateSortState = { col: 'pct', dir: 'desc' };
+
 function renderStateCompletion() {
     const el = document.getElementById('county-state-table');
     if (!el || !stateCountyTotals) return;
@@ -1328,21 +1330,56 @@ function renderStateCompletion() {
     }
 
     const rows = Object.entries(visitedPerState)
-        .map(([abbr, visited]) => ({ abbr, visited, total: stateCountyTotals[abbr] || 0 }))
-        .filter(r => r.total > 0)
-        .sort((a, b) => (b.visited / b.total) - (a.visited / a.total));
+        .map(([abbr, visited]) => ({ abbr, visited, total: stateCountyTotals[abbr] || 0, pct: visited / (stateCountyTotals[abbr] || 1) }))
+        .filter(r => r.total > 0);
+
+    rows.sort((a, b) => {
+        const dir = countyStateSortState.dir === 'asc' ? 1 : -1;
+        switch (countyStateSortState.col) {
+            case 'state': return dir * a.abbr.localeCompare(b.abbr);
+            case 'visited': return dir * (a.visited - b.visited);
+            case 'total': return dir * (a.total - b.total);
+            case 'pct': return dir * (a.pct - b.pct);
+            default: return 0;
+        }
+    });
 
     if (!rows.length) return;
+
+    const headers = [
+        { label: 'State', col: 'state' },
+        { label: 'Visited', col: 'visited' },
+        { label: 'Total', col: 'total' },
+        { label: '% Complete', col: 'pct' },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['State', 'Visited', 'Total', '% Complete'].forEach(label => {
+    headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        th.textContent = label;
+        const isActive = countyStateSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
         if (label !== 'State') th.style.textAlign = 'center';
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (countyStateSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (countyStateSortState.col === col) {
+                countyStateSortState.dir = countyStateSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                countyStateSortState.col = col;
+                countyStateSortState.dir = col === 'state' ? 'asc' : 'desc';
+            }
+            renderStateCompletion();
+        });
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -2209,16 +2246,29 @@ function metroIdFromEntry(m) {
     return `metro-${slug.replace(/^-+|-+$/g, '')}-${m.state.toLowerCase()}`;
 }
 
+let metroComparisonDataCache = null;
+const metroComparisonSortState = {
+    preStrava:  { col: 'rank', dir: 'asc' },
+    stravaOnly: { col: 'rank', dir: 'asc' },
+};
+
 async function renderMetroComparison() {
     const el = document.getElementById('metro-comparison');
     if (!el) return;
 
-    let metrosData;
     try {
-        metrosData = await fetch(`${WORKER_URL}/travel/metros`).then(r => r.json());
+        metroComparisonDataCache = await fetch(`${WORKER_URL}/travel/metros`).then(r => r.json());
     } catch {
         return;
     }
+
+    renderMetroComparisonBody();
+}
+
+function renderMetroComparisonBody() {
+    const el = document.getElementById('metro-comparison');
+    const metrosData = metroComparisonDataCache;
+    if (!el || !metrosData) return;
 
     const manuallyVisited = metrosData.filter(m => m.visited);
     const manualIds       = new Set(manuallyVisited.map(metroIdFromEntry));
@@ -2262,7 +2312,7 @@ async function renderMetroComparison() {
         contentEl.appendChild(h);
         const w = document.createElement('div');
         w.className = 'table-scroll-wrapper';
-        w.appendChild(buildMetroComparisonTable(preStrava, '#FF9800'));
+        w.appendChild(buildMetroComparisonTable(preStrava, '#FF9800', metroComparisonSortState.preStrava, renderMetroComparisonBody));
         contentEl.appendChild(w);
         initScrollHint(w);
     }
@@ -2274,7 +2324,7 @@ async function renderMetroComparison() {
         contentEl.appendChild(h);
         const w = document.createElement('div');
         w.className = 'table-scroll-wrapper';
-        w.appendChild(buildMetroComparisonTable(stravaOnly, METRO_COLOR));
+        w.appendChild(buildMetroComparisonTable(stravaOnly, METRO_COLOR, metroComparisonSortState.stravaOnly, renderMetroComparisonBody));
         contentEl.appendChild(w);
         initScrollHint(w);
     }
@@ -2284,14 +2334,57 @@ async function renderMetroComparison() {
     el.appendChild(makeCollapsible('Comparison Dashboard', contentEl, { collapsed: !wasOpen }));
 }
 
-function buildMetroComparisonTable(metros, rankColor) {
+function buildMetroComparisonTable(metros, rankColor, state, onSort) {
+    const rows = [...metros];
+    rows.sort((a, b) => {
+        const dir = state.dir === 'asc' ? 1 : -1;
+        switch (state.col) {
+            case 'rank': return dir * (a.rank - b.rank);
+            case 'metro': return dir * a.name.localeCompare(b.name);
+            case 'state': return dir * a.state.localeCompare(b.state);
+            case 'fullName': return dir * a.metro_name.localeCompare(b.metro_name);
+            default: return 0;
+        }
+    });
+
+    const headers = [
+        { label: 'Rank', col: 'rank' },
+        { label: 'Metro', col: 'metro' },
+        { label: 'State', col: 'state' },
+        { label: 'Full Name', col: 'fullName' },
+    ];
+
     const table = document.createElement('table');
     table.className = 'travel-table';
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Rank</th><th>Metro</th><th>State</th><th>Full Name</th></tr>';
+    const headerRow = document.createElement('tr');
+    headers.forEach(({ label, col }) => {
+        const th = document.createElement('th');
+        const isActive = state.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (state.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (state.col === col) {
+                state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.col = col;
+                state.dir = col === 'rank' ? 'asc' : 'desc';
+            }
+            onSort();
+        });
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
     table.appendChild(thead);
     const tbody = document.createElement('tbody');
-    [...metros].sort((a, b) => a.rank - b.rank).forEach(m => {
+    rows.forEach(m => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="color:${rankColor};font-weight:600">#${m.rank}</td>
@@ -5165,6 +5258,8 @@ async function unhidePeak(peakId) {
     }
 }
 
+const nearMissSortState = { col: 'closest', dir: 'asc' };
+
 function renderNearMissList() {
     const el = document.getElementById('mountain-near-miss-table');
     if (!el) return;
@@ -5177,7 +5272,7 @@ function renderNearMissList() {
         return;
     }
 
-    // Each entry: { peak, visits, closest } sorted by closest distance asc
+    // Each entry: { peak, visits, closest }
     const rows = [...nearMissPeaks.entries()]
         .map(([id, visits]) => {
             const peak = mountainPeaks.find(p => p.id === id);
@@ -5186,22 +5281,57 @@ function renderNearMissList() {
             return { peak, visits, closest };
         })
         .filter(Boolean)
-        .filter(r => !hiddenPeakIds.has(r.peak.id))
-        .sort((a, b) => a.closest.distance - b.closest.distance);
+        .filter(r => !hiddenPeakIds.has(r.peak.id));
+
+    rows.sort((a, b) => {
+        const dir = nearMissSortState.dir === 'asc' ? 1 : -1;
+        switch (nearMissSortState.col) {
+            case 'peak': return dir * (a.peak.name || '').localeCompare(b.peak.name || '');
+            case 'elevation': return dir * (a.peak.ele - b.peak.ele);
+            case 'closest': return dir * (a.closest.distance - b.closest.distance);
+            case 'activities': return dir * (a.visits.length - b.visits.length);
+            default: return 0;
+        }
+    });
 
     if (!rows.length) {
         el.innerHTML = '<p class="no-location-note" style="margin:8px 0">No near misses to show.</p>';
         return;
     }
 
+    const headers = [
+        { label: 'Peak', col: 'peak' },
+        { label: 'Elevation', col: 'elevation' },
+        { label: 'Closest', col: 'closest' },
+        { label: 'Activities', col: 'activities' },
+    ];
+
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['Peak', 'Elevation', 'Closest', 'Activities'].forEach(label => {
+    headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        th.textContent = label;
+        const isActive = nearMissSortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (nearMissSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (nearMissSortState.col === col) {
+                nearMissSortState.dir = nearMissSortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                nearMissSortState.col = col;
+                nearMissSortState.dir = (col === 'peak' || col === 'closest') ? 'asc' : 'desc';
+            }
+            renderNearMissList();
+        });
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -5229,6 +5359,8 @@ function renderNearMissList() {
     el.appendChild(makeCollapsible(`Near Misses (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
+const hiddenPeaksSortState = { col: 'elevation', dir: 'desc' };
+
 function renderHiddenPeaksList() {
     const el = document.getElementById('mountain-hidden-table');
     if (!el) return;
@@ -5239,17 +5371,53 @@ function renderHiddenPeaksList() {
 
     const rows = [...hiddenPeakIds]
         .map(id => mountainPeaks.find(p => p.id === id))
-        .filter(Boolean)
-        .sort((a, b) => (b.ele || 0) - (a.ele || 0));
+        .filter(Boolean);
+
+    rows.sort((a, b) => {
+        const dir = hiddenPeaksSortState.dir === 'asc' ? 1 : -1;
+        switch (hiddenPeaksSortState.col) {
+            case 'peak': return dir * (a.name || '').localeCompare(b.name || '');
+            case 'elevation': return dir * ((a.ele || 0) - (b.ele || 0));
+            default: return 0;
+        }
+    });
+
+    const headers = [
+        { label: 'Peak', col: 'peak' },
+        { label: 'Elevation', col: 'elevation' },
+        { label: '', col: null },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['Peak', 'Elevation', ''].forEach(label => {
+    headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        th.textContent = label;
+        if (col) {
+            const isActive = hiddenPeaksSortState.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (hiddenPeaksSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (hiddenPeaksSortState.col === col) {
+                    hiddenPeaksSortState.dir = hiddenPeaksSortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    hiddenPeaksSortState.col = col;
+                    hiddenPeaksSortState.dir = col === 'peak' ? 'asc' : 'desc';
+                }
+                renderHiddenPeaksList();
+            });
+        } else {
+            th.textContent = label;
+        }
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -5629,6 +5797,8 @@ function renderMountainTable() {
     tableEl.appendChild(makeCollapsible(`Highest Peaks Summited (${totalRows})`, body, { collapsed: !wasOpen }));
 }
 
+const repeatSummitSortState = { col: 'times', dir: 'desc' };
+
 function renderRepeatSummitLeaderboard() {
     const el = document.getElementById('mountain-repeat-table');
     if (!el) return;
@@ -5636,35 +5806,69 @@ function renderRepeatSummitLeaderboard() {
     const rows = [...mountainVisits.entries()]
         .map(([id, pvs]) => {
             const peak = mountainPeaks.find(p => p.id === id);
-            return { peak, pvs };
+            const last = peak ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+            return { peak, pvs, last };
         })
-        .filter(r => r.peak && r.peak.name && r.pvs.length >= 2 && !hiddenPeakIds.has(r.peak.id))
-        .sort((a, b) => b.pvs.length - a.pvs.length);
+        .filter(r => r.peak && r.peak.name && r.pvs.length >= 2 && !hiddenPeakIds.has(r.peak.id));
+
+    rows.sort((a, b) => {
+        const dir = repeatSummitSortState.dir === 'asc' ? 1 : -1;
+        switch (repeatSummitSortState.col) {
+            case 'peak': return dir * a.peak.name.localeCompare(b.peak.name);
+            case 'elevation': return dir * (a.peak.ele - b.peak.ele);
+            case 'times': return dir * (a.pvs.length - b.pvs.length);
+            case 'last': return dir * (a.last.date || '').localeCompare(b.last.date || '');
+            default: return 0;
+        }
+    });
 
     if (!rows.length) { el.innerHTML = ''; return; }
+
+    const headerSpec = [
+        { label: '#', col: null }, { label: 'Peak', col: 'peak' }, { label: '', col: null }, { label: 'Elevation', col: 'elevation' },
+        { label: 'Times Climbed', col: 'times', center: true }, { label: 'Last Summit', col: 'last' },
+    ];
+    if (mountainEditMode) headerSpec.push({ label: '', col: null });
 
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    const headerSpec = [
-        { label: '#' }, { label: 'Peak' }, { label: '' }, { label: 'Elevation' },
-        { label: 'Times Climbed', center: true }, { label: 'Last Summit' },
-    ];
-    if (mountainEditMode) headerSpec.push({ label: '' });
-    headerSpec.forEach(({ label, center }) => {
+    headerSpec.forEach(({ label, col, center }) => {
         const th = document.createElement('th');
-        th.textContent = label;
-        if (center) th.style.textAlign = 'center';
+        if (col) {
+            const isActive = repeatSummitSortState.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+            if (center) th.style.textAlign = 'center';
+
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (repeatSummitSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (repeatSummitSortState.col === col) {
+                    repeatSummitSortState.dir = repeatSummitSortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    repeatSummitSortState.col = col;
+                    repeatSummitSortState.dir = col === 'peak' ? 'asc' : 'desc';
+                }
+                renderRepeatSummitLeaderboard();
+            });
+        } else {
+            th.textContent = label;
+            if (center) th.style.textAlign = 'center';
+        }
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    rows.forEach(({ peak, pvs }, i) => {
-        const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+    rows.forEach(({ peak, pvs, last }, i) => {
         const href = last.actId ? `https://www.strava.com/activities/${last.actId}` : null;
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
@@ -6383,25 +6587,67 @@ function renderRecentPasses() {
     el.appendChild(makeCollapsible(`Recently Climbed (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
+const highestPassesSortState = { col: 'elevation', dir: 'desc' };
+
 function renderHighestPasses() {
     const el = document.getElementById('pass-highest-table');
     if (!el) return;
 
     const rows = Object.entries(passDiscoveries)
         .map(([id, disc]) => ({ pass: passById(id), disc }))
-        .filter(r => r.pass)
-        .sort((a, b) => b.pass.ele - a.pass.ele);
+        .filter(r => r.pass);
+
+    rows.sort((a, b) => {
+        const dir = highestPassesSortState.dir === 'asc' ? 1 : -1;
+        switch (highestPassesSortState.col) {
+            case 'pass': return dir * a.pass.name.localeCompare(b.pass.name);
+            case 'road': return dir * (a.pass.road || '').localeCompare(b.pass.road || '');
+            case 'elevation': return dir * (a.pass.ele - b.pass.ele);
+            case 'date': return dir * (a.disc.date || '').localeCompare(b.disc.date || '');
+            default: return 0;
+        }
+    });
 
     if (!rows.length) { el.innerHTML = ''; return; }
+
+    const headers = [
+        { label: '#', col: null },
+        { label: 'Pass', col: 'pass' },
+        { label: 'Road', col: 'road' },
+        { label: 'Elevation', col: 'elevation' },
+        { label: 'First Climbed', col: 'date' },
+    ];
 
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['#', 'Pass', 'Road', 'Elevation', 'First Climbed'].forEach(label => {
+    headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        th.textContent = label;
+        if (col) {
+            const isActive = highestPassesSortState.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (highestPassesSortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (highestPassesSortState.col === col) {
+                    highestPassesSortState.dir = highestPassesSortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    highestPassesSortState.col = col;
+                    highestPassesSortState.dir = (col === 'pass' || col === 'road') ? 'asc' : 'desc';
+                }
+                renderHighestPasses();
+            });
+        } else {
+            th.textContent = label;
+        }
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -6435,6 +6681,8 @@ function renderHighestPasses() {
     el.appendChild(makeCollapsible(`Highest Passes Climbed (${rows.length})`, wrapper, { collapsed: !wasOpen }));
 }
 
+const rideLeaderboardSortState = {};
+
 // Shared renderer for the two ride leaderboards. `metric` picks the slim field
 // (`eh` = high point, `e` = elevation gain); rides without a value for it are
 // dropped. One row per activity, so each ride contributes at most once.
@@ -6442,6 +6690,10 @@ function renderRideElevLeaderboard({ elId, metric, valueLabel, title }) {
     const el = document.getElementById(elId);
     if (!el) return;
 
+    const state = rideLeaderboardSortState[elId] || (rideLeaderboardSortState[elId] = { col: 'value', dir: 'desc' });
+
+    // Leaderboard membership (top N) is always by metric; the sort state only
+    // reorders the rows already selected for display.
     const rows = currentSlim
         .filter(a => PASS_ACTIVITY_TYPES.has(a.t) && typeof a[metric] === 'number' && a[metric] > 0)
         .sort((a, b) => b[metric] - a[metric])
@@ -6449,14 +6701,55 @@ function renderRideElevLeaderboard({ elId, metric, valueLabel, title }) {
 
     if (!rows.length) { el.innerHTML = ''; return; }
 
+    rows.sort((a, b) => {
+        const dir = state.dir === 'asc' ? 1 : -1;
+        switch (state.col) {
+            case 'activity': return dir * (a.n || '').localeCompare(b.n || '');
+            case 'type': return dir * typeLabel(a.t).localeCompare(typeLabel(b.t));
+            case 'value': return dir * (a[metric] - b[metric]);
+            case 'date': return dir * (a.d || '').localeCompare(b.d || '');
+            default: return 0;
+        }
+    });
+
+    const headers = [
+        { label: '#', col: null },
+        { label: 'Activity', col: 'activity' },
+        { label: 'Type', col: 'type' },
+        { label: valueLabel, col: 'value' },
+        { label: 'Date', col: 'date' },
+    ];
+
     const table = document.createElement('table');
     table.className = 'travel-table';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    ['#', 'Activity', 'Type', valueLabel, 'Date'].forEach(label => {
+    headers.forEach(({ label, col }) => {
         const th = document.createElement('th');
-        th.textContent = label;
+        if (col) {
+            const isActive = state.col === col;
+            th.classList.add('sortable');
+            if (isActive) th.classList.add('sort-active');
+
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.textContent = isActive ? (state.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+
+            th.appendChild(document.createTextNode(label));
+            th.appendChild(indicator);
+            th.addEventListener('click', () => {
+                if (state.col === col) {
+                    state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.col = col;
+                    state.dir = (col === 'activity' || col === 'type') ? 'asc' : 'desc';
+                }
+                renderRideElevLeaderboard({ elId, metric, valueLabel, title });
+            });
+        } else {
+            th.textContent = label;
+        }
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
