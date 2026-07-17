@@ -549,7 +549,7 @@
 }
 
 .app-page .sync-progress {
-    height: 6px;
+    height: 16px; /* temporarily thick for on-device visibility testing */
     border-radius: 999px;
     background: var(--app-surface-2);
 }
