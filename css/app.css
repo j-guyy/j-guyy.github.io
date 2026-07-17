@@ -529,6 +529,18 @@
     padding-left: 0;
     padding-right: 0;
     color: var(--app-text-dim);
+    /* strava.css stacks this bar into a column below 768px (i.e. always, on the
+       app's phone-width webview) — put it back into a row so Sync now / Debug /
+       Log out sit side by side instead of one per line. */
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+/* Meta text ("N activities · Synced Xm ago") gets its own full-width line so
+   it doesn't compete with the button row for horizontal space. */
+.app-page .cache-meta {
+    flex-basis: 100%;
 }
 
 .app-page .no-location-note {
