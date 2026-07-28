@@ -24,6 +24,10 @@ const TYPE_LABELS = {
 };
 function typeLabel(t) { return TYPE_LABELS[t] || t; }
 
+// True on /app/ (the Capacitor shell), false on strava.html. Lets shared code
+// pick phone-appropriate defaults without forking the module.
+function isAppPage() { return document.body.classList.contains('app-page'); }
+
 // ── Filter state ──────────────────────────────────────────────────────────────
 // Uses a deactivated set — new types default to active without needing initialization
 const deactivatedTypes = new Set();
@@ -3429,12 +3433,15 @@ async function initTileMap() {
         fullscreenControlOptions: { position: 'topleft' },
     });
 
-    // Center on the largest square; if tied, pick the one with the most recent activity
+    // Center on the largest square; if tied, pick the one with the most recent
+    // activity. The app's map is a phone-sized viewport, so the website's zoom
+    // levels frame little more than the square itself — start wider there so the
+    // surrounding cluster is visible without pinching out first.
     const squareCenter = findMaxSquareCenter();
     if (squareCenter) {
-        tileMap.setView(squareCenter, 12);
+        tileMap.setView(squareCenter, isAppPage() ? 9 : 12);
     } else {
-        tileMap.setView([38, -96], 6);
+        tileMap.setView([38, -96], isAppPage() ? 4 : 6);
     }
 
     tileMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
@@ -4005,7 +4012,27 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
         map.on('baselayerchange', (e) => onThemeChange(e.layer === darkLayer));
     }
 
+    fixFullscreenSizing(map);
+
     return { darkLayer, osmLayer, greyscaleLayer, topoLayer, cycleLayer, outdoorsLayer };
+}
+
+// Leaflet caches its container size and only refreshes it on a window `resize`
+// event. Entering fullscreen resizes the *element*, not the window: in a desktop
+// browser the vanishing browser chrome fires a window resize anyway, but inside
+// the app's Android WebView nothing does, so Leaflet keeps the pre-fullscreen
+// height. Everything sized from map.getSize() — the tile-loading bounds and the
+// Tile Hunter / gridline canvases, which are re-sized on every moveend — then
+// stays short, and the bottom strip of the map goes blank and re-blanks on each
+// pan. Recompute explicitly on fullscreen change; the extra delayed passes catch
+// the WebView reporting its final height a frame or two after the event.
+function fixFullscreenSizing(map) {
+    map.on('fullscreenchange', () => {
+        const refresh = () => map.invalidateSize();
+        refresh();
+        setTimeout(refresh, 200);
+        setTimeout(refresh, 600);
+    });
 }
 
 // Styling for "not yet reached" features (unvisited parks/metros, un-summited

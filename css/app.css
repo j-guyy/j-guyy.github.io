@@ -487,6 +487,24 @@
     border-radius: 14px;
 }
 
+/* A fullscreen map fills the whole WebView, and with viewport-fit=cover that
+   includes the strip behind Android's gesture/navigation bar — the map's bottom
+   edge (zoom controls, attribution) ends up underneath it. Pull the bottom back
+   inside the safe area. Where there is no inset these resolve to plain 100% and
+   nothing changes. Kept as separate rules rather than one selector list so an
+   engine that can't parse one pseudo-class doesn't drop the others with it. */
+.app-page .leaflet-container:fullscreen {
+    height: calc(100% - env(safe-area-inset-bottom)) !important;
+}
+
+.app-page .leaflet-container:-webkit-full-screen {
+    height: calc(100% - env(safe-area-inset-bottom)) !important;
+}
+
+.app-page .leaflet-pseudo-fullscreen {
+    height: calc(100% - env(safe-area-inset-bottom)) !important;
+}
+
 /* ── Map legends ─────────────────────────────────────────────────────────── */
 .app-page .map-legend {
     display: flex;
