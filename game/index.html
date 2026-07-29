@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Creature Quest — Phase 6 Prototype</title>
+  <link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+  <div id="game-shell">
+    <canvas id="game-canvas" width="720" height="480" aria-label="Creature Quest game canvas"></canvas>
+    <div id="controls-hint">
+      <b>Move:</b> Arrow keys / WASD &nbsp;·&nbsp;
+      <b>Confirm:</b> Z / Enter &nbsp;·&nbsp;
+      <b>Back / Menu:</b> X / Esc &nbsp;·&nbsp;
+      <b>Sound:</b> M
+      <br />
+      Walk into tall grass to find wild creatures — they earn EXP for every win and can evolve.
+      Open the menu (X) for your Party, CreatureDex, Items, and TMs &amp; HMs.
+      Shop and creature storage are in the village buildings; the Bramble Gym awaits past Route 2!
+      <br />
+      Edit the game: <a href="editor.html">Creature Editor</a> · <a href="route-editor.html">Route Editor</a>
+    </div>
+  </div>
+  <div id="touch-controls" hidden>
+    <div id="touch-dpad">
+      <button data-act="up" aria-label="Up">▲</button>
+      <button data-act="left" aria-label="Left">◀</button>
+      <button data-act="right" aria-label="Right">▶</button>
+      <button data-act="down" aria-label="Down">▼</button>
+    </div>
+    <div id="touch-ab">
+      <button data-act="cancel" aria-label="B (back/menu)">B</button>
+      <button data-act="confirm" aria-label="A (confirm)">A</button>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

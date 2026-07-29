@@ -1,0 +1,47 @@
+{
+  "_comment": "Item pool. kind 'catch' = battle-only orbs (catchMod scales base catch chance); 'heal' = HP restore (in/out of battle); 'cure' = removes status conditions (cures: 'all' or [statusIds]); 'revive' = revives a fainted creature to fraction of max HP (pause-menu only). price = shop cost in coins.",
+  "items": {
+    "snare_orb": {
+      "name": "Snare Orb",
+      "kind": "catch",
+      "catchMod": 1.0,
+      "price": 200,
+      "desc": "A woven orb that snares a weakened wild creature."
+    },
+    "great_orb": {
+      "name": "Great Orb",
+      "kind": "catch",
+      "catchMod": 1.5,
+      "price": 600,
+      "desc": "A reinforced orb with a far better snare rate."
+    },
+    "potion": {
+      "name": "Potion",
+      "kind": "heal",
+      "heal": 20,
+      "price": 300,
+      "desc": "Restores 20 HP to one creature."
+    },
+    "super_potion": {
+      "name": "Super Potion",
+      "kind": "heal",
+      "heal": 50,
+      "price": 700,
+      "desc": "Restores 50 HP to one creature."
+    },
+    "remedy_leaf": {
+      "name": "Remedy Leaf",
+      "kind": "cure",
+      "cures": "all",
+      "price": 500,
+      "desc": "A bitter leaf that cures any status condition."
+    },
+    "revive_seed": {
+      "name": "Revive Seed",
+      "kind": "revive",
+      "fraction": 0.5,
+      "price": 1500,
+      "desc": "Revives a fainted creature to half HP. Too potent to use mid-battle."
+    }
+  }
+}

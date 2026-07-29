@@ -1,0 +1,165 @@
+/* editor.css — standalone creature-editor tool page (not part of the game UI). */
+
+* { box-sizing: border-box; }
+
+/* Author display rules (e.g. .badge { display:inline-block }) would otherwise
+   override the UA's [hidden] { display:none } — keep hidden actually hidden. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #14181f;
+  color: #e6e9ef;
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #1c2230;
+  border-bottom: 2px solid #2b3347;
+}
+
+#topbar h1 {
+  display: inline-block;
+  margin: 0 12px 0 0;
+  font-size: 20px;
+  color: #4CAF50;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  margin-right: 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: #2b4a8a;
+  color: #cfe0ff;
+  vertical-align: middle;
+}
+.badge.dirty { background: #8a6a2b; color: #ffe9bf; }
+
+#topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+button, #btn-play {
+  background: #2b3347;
+  color: #e6e9ef;
+  border: 1px solid #3d475f;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+}
+button:hover, #btn-play:hover { background: #3d475f; }
+#btn-save { background: #2f6a33; border-color: #4CAF50; }
+#btn-save:hover { background: #3c8a41; }
+button.danger { border-color: #7a3a3a; }
+button.danger:hover { background: #5f2b2b; }
+
+#layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: calc(100vh - 63px);
+}
+
+#sidebar {
+  border-right: 2px solid #2b3347;
+  overflow-y: auto;
+  padding: 10px;
+}
+#sidebar-actions { display: flex; gap: 6px; margin-bottom: 10px; }
+#sidebar-actions button { flex: 1; padding: 5px 4px; font-size: 13px; }
+
+#creature-list { list-style: none; margin: 0; padding: 0; }
+#creature-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+#creature-list li:hover { background: #1c2230; }
+#creature-list li.selected { background: #223046; border-color: #4CAF50; }
+#creature-list canvas { image-rendering: pixelated; border-radius: 4px; }
+#creature-list .li-name { font-size: 14px; }
+#creature-list .li-sub { font-size: 11px; color: #8a93a6; }
+
+#form-panel { overflow-y: auto; padding: 18px 28px 60px; }
+#form { max-width: 760px; }
+
+section { margin-bottom: 26px; }
+h2 {
+  font-size: 15px;
+  color: #4CAF50;
+  border-bottom: 1px solid #2b3347;
+  padding-bottom: 5px;
+  margin: 0 0 12px;
+}
+h2 .hint { font-weight: normal; }
+
+.grid { display: flex; flex-wrap: wrap; gap: 14px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #aab3c5; }
+label.check { flex-direction: row; align-items: center; gap: 8px; }
+label.wide { width: 100%; margin-bottom: 10px; }
+
+input, select, textarea {
+  background: #0f1319;
+  color: #e6e9ef;
+  border: 1px solid #3d475f;
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: #4CAF50; }
+input[type="number"] { width: 90px; }
+input[type="color"] { padding: 2px; width: 60px; height: 34px; }
+input:disabled { color: #6b7386; }
+#f-glyph { width: 70px; }
+textarea { resize: vertical; }
+
+#sprite-row { display: flex; gap: 24px; align-items: flex-start; }
+#sprite-preview {
+  image-rendering: pixelated;
+  background: #0f1319;
+  border: 1px solid #3d475f;
+  border-radius: 8px;
+}
+
+#learnset-table { border-collapse: collapse; margin-bottom: 10px; }
+#learnset-table th {
+  text-align: left;
+  font-size: 12px;
+  color: #8a93a6;
+  padding: 4px 10px 4px 0;
+}
+#learnset-table td { padding: 3px 10px 3px 0; font-size: 14px; }
+#learnset-table td.mv-type { font-size: 12px; }
+#learnset-table td.mv-pwr { color: #8a93a6; font-size: 13px; }
+#learnset-table input[type="number"] { width: 70px; }
+#learnset-table button { padding: 3px 10px; font-size: 12px; }
+
+.hint { font-size: 12px; color: #8a93a6; }
+
+#teachable-note { margin-bottom: 8px; }
+.teachable-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 20px; }
+.teachable-item { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: #e6e9ef; cursor: pointer; }
+.teachable-item em { font-style: normal; font-size: 12px; }
+
+#form-warnings { margin-top: 8px; }
+.warning {
+  background: #4a2b2b;
+  border: 1px solid #7a3a3a;
+  border-radius: 6px;
+  color: #ffc9c9;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}

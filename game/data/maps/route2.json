@@ -1,0 +1,124 @@
+{
+  "id": "route2",
+  "name": "Fenway Route 2",
+  "width": 18,
+  "height": 12,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,3,3,3,3,3,0,0,0,0,0,2,2,0,0,0,1],
+    [1,0,3,3,3,3,3,0,0,0,0,0,2,2,0,0,0,1],
+    [1,0,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,1],
+    [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,3,3,3,3,3,3,0,0,0,1],
+    [1,0,10,0,0,0,0,0,3,3,3,3,3,3,0,0,0,1],
+    [1,0,0,0,0,0,0,0,3,3,3,3,3,3,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "playerStart": { "x": 1, "y": 5, "facing": "right" },
+  "encounter": { "rate": 0, "table": [] },
+  "zones": [
+    {
+      "x": 2, "y": 2, "w": 5, "h": 3,
+      "rate": 0.18,
+      "table": [
+        { "species": "pyrokit",    "min": 4, "max": 6, "weight": 30 },
+        { "species": "voltpup",    "min": 4, "max": 6, "weight": 30 },
+        { "species": "cindermoth", "min": 4, "max": 6, "weight": 25 },
+        { "species": "mudpad",     "min": 4, "max": 5, "weight": 15 }
+      ]
+    },
+    {
+      "x": 8, "y": 7, "w": 6, "h": 3,
+      "rate": 0.18,
+      "table": [
+        { "species": "zaptooth",   "min": 6, "max": 9, "weight": 30 },
+        { "species": "thornback",  "min": 6, "max": 9, "weight": 30 },
+        { "species": "tidewhirl",  "min": 6, "max": 8, "weight": 25 },
+        { "species": "cindermoth", "min": 7, "max": 9, "weight": 15 }
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "rival",
+      "x": 2,
+      "y": 6,
+      "facing": "up",
+      "name": "Rival Rex",
+      "sprite": "rival",
+      "dialogue": [
+        "Well, well. Elder Fenn gave YOU a creature too?",
+        "Mine's better. Obviously. Watch — I picked the one that beats yours!",
+        "Let's settle it, right here!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_rival1",
+        "rival": true,
+        "rivalLevel": 9,
+        "party": [{ "species": "dripling", "level": 9 }],
+        "reward": { "money": 400 },
+        "outro": [
+          "WHAT?! But I had the type advantage...",
+          "Hmph. Take your winnings. Next time I won't go easy."
+        ],
+        "postDialogue": [
+          "I'm training up for the Bramblehollow gym. Race you to the badge."
+        ]
+      }
+    },
+    {
+      "id": "fen",
+      "x": 6,
+      "y": 4,
+      "facing": "down",
+      "name": "Scout Fen",
+      "sprite": "scout",
+      "dialogue": [
+        "The north grass here is full of quick little things.",
+        "Quick like my team!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_fen",
+        "party": [
+          { "species": "voltpup", "level": 6 },
+          { "species": "pyrokit", "level": 6 }
+        ],
+        "reward": { "money": 240 },
+        "outro": ["Zip! Zap! Beaten fair and square."],
+        "postDialogue": ["The south grass hides tougher creatures than the north. Watch your step."]
+      }
+    },
+    {
+      "id": "elm",
+      "x": 12,
+      "y": 6,
+      "facing": "up",
+      "name": "Ranger Elm",
+      "sprite": "ranger",
+      "dialogue": [
+        "Past me is Bramblehollow. Warden Thorne doesn't accept soft challengers.",
+        "Prove you're ready!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_elm",
+        "party": [
+          { "species": "thornback", "level": 8 },
+          { "species": "mudpad", "level": 7 }
+        ],
+        "reward": { "money": 320, "item": "super_potion", "qty": 1 },
+        "outro": [
+          "Sturdy AND sharp. Thorne's in for a real match.",
+          "Take this Super Potion — you'll want it."
+        ],
+        "postDialogue": ["Thorne's gym creatures are Grass-types. Pack fire or flying power if you have it."]
+      }
+    }
+  ],
+  "warps": [
+    { "x": 0, "y": 5, "toMap": "route1", "toX": 13, "toY": 5, "toFacing": "left" },
+    { "x": 17, "y": 5, "toMap": "town2", "toX": 1, "toY": 6, "toFacing": "right" }
+  ]
+}

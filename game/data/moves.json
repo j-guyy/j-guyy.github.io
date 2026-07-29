@@ -1,0 +1,40 @@
+{
+  "_comment": "Move pool. category: physical (Atk vs Def) / special (SpA vs SpD) / status (no damage). pp = max Power Points. priority: higher acts first regardless of Speed (default 0). effect may combine: { status, volatile ('confusion'|'flinch'), stages {stat:delta}, target ('self'|'foe'), chance (default 100) }. Self-targeted stage moves never miss.",
+  "moves": {
+    "nudge":        { "name": "Nudge",        "type": "Normal",   "category": "physical", "power": 35, "accuracy": 100, "pp": 35, "flavor": "A light shove with the whole body." },
+    "quick_jab":    { "name": "Quick Jab",    "type": "Normal",   "category": "physical", "power": 40, "accuracy": 100, "pp": 30, "priority": 1, "flavor": "A blindingly fast poke that always strikes first." },
+    "headbutt":     { "name": "Headbutt",     "type": "Normal",   "category": "physical", "power": 55, "accuracy": 100, "pp": 15, "effect": { "volatile": "flinch", "chance": 30 }, "flavor": "A blunt charge that may make the foe flinch." },
+    "guard_break":  { "name": "Guard Break",  "type": "Normal",   "category": "physical", "power": 50, "accuracy": 100, "pp": 20, "flavor": "A shoulder-first shove that ignores footing." },
+    "body_slam":    { "name": "Body Slam",    "type": "Normal",   "category": "physical", "power": 70, "accuracy": 95,  "pp": 15, "effect": { "status": "paralysis", "chance": 30 }, "flavor": "Throws full weight into the target; may paralyze." },
+    "focus_hit":    { "name": "Focus Hit",    "type": "Fighting", "category": "physical", "power": 80, "accuracy": 90,  "pp": 10, "flavor": "A wound-up, high-commitment strike." },
+    "rattle_cry":   { "name": "Rattle Cry",   "type": "Normal",   "category": "status",   "power": 0,  "accuracy": 100, "pp": 30, "effect": { "stages": { "attack": -1 }, "target": "foe" }, "flavor": "A rattling cry that saps the foe's Attack." },
+    "brace_up":     { "name": "Brace Up",     "type": "Normal",   "category": "status",   "power": 0,  "accuracy": 100, "pp": 30, "effect": { "stages": { "defense": 1 }, "target": "self" }, "flavor": "Plants the feet and braces, raising Defense." },
+    "gale_step":    { "name": "Gale Step",    "type": "Normal",   "category": "status",   "power": 0,  "accuracy": 100, "pp": 20, "effect": { "stages": { "speed": 2 }, "target": "self" }, "flavor": "A burst of footwork that sharply raises Speed." },
+
+    "ember_jab":    { "name": "Ember Jab",    "type": "Fire",  "category": "special",  "power": 40, "accuracy": 100, "pp": 25, "flavor": "Pokes with a fingertip of flame." },
+    "flame_burst":  { "name": "Flame Burst",  "type": "Fire",  "category": "special",  "power": 65, "accuracy": 100, "pp": 15, "effect": { "status": "burn", "chance": 10 }, "flavor": "A short bloom of fire; may burn." },
+    "cinder_storm": { "name": "Cinder Storm", "type": "Fire",  "category": "special",  "power": 90, "accuracy": 90,  "pp": 5,  "effect": { "status": "burn", "chance": 10 }, "flavor": "A swirl of hot embers; may burn." },
+    "singe":        { "name": "Singe",        "type": "Fire",  "category": "status",   "power": 0,  "accuracy": 85,  "pp": 15, "effect": { "status": "burn" }, "flavor": "Sears the target with a wisp of flame, burning it." },
+
+    "aqua_tap":     { "name": "Aqua Tap",     "type": "Water",   "category": "special",  "power": 40, "accuracy": 100, "pp": 25, "flavor": "A flick of pressurized water." },
+    "water_pulse":  { "name": "Water Pulse",  "type": "Water",   "category": "special",  "power": 65, "accuracy": 100, "pp": 15, "effect": { "volatile": "confusion", "chance": 20 }, "flavor": "A rippling ring of force; may confuse." },
+    "tidal_crash":  { "name": "Tidal Crash",  "type": "Water",   "category": "special",  "power": 90, "accuracy": 90,  "pp": 5,  "flavor": "A crashing wave of water." },
+
+    "leaf_flick":   { "name": "Leaf Flick",   "type": "Grass", "category": "special",  "power": 40, "accuracy": 100, "pp": 25, "flavor": "Slings a razor-edged leaf." },
+    "vine_lash":    { "name": "Vine Lash",    "type": "Grass", "category": "physical", "power": 65, "accuracy": 100, "pp": 15, "flavor": "A whip of taut vine." },
+    "bloom_blast":  { "name": "Bloom Blast",  "type": "Grass", "category": "special",  "power": 90, "accuracy": 90,  "pp": 5,  "flavor": "A burst of seed shrapnel." },
+    "spore_puff":   { "name": "Spore Puff",   "type": "Grass", "category": "status",   "power": 0,  "accuracy": 75,  "pp": 10, "effect": { "status": "sleep" }, "flavor": "Scatters sleep-inducing spores." },
+
+    "spark_nip":    { "name": "Spark Nip",    "type": "Electric", "category": "physical", "power": 40, "accuracy": 100, "pp": 25, "flavor": "A nip carrying a static charge." },
+    "volt_arc":     { "name": "Volt Arc",     "type": "Electric", "category": "special",  "power": 65, "accuracy": 100, "pp": 15, "effect": { "status": "paralysis", "chance": 10 }, "flavor": "A jumping arc of current; may paralyze." },
+    "thunder_slam": { "name": "Thunder Slam", "type": "Electric", "category": "physical", "power": 90, "accuracy": 90,  "pp": 10, "effect": { "status": "paralysis", "chance": 30 }, "flavor": "A charged, full-body slam; may paralyze." },
+    "static_field": { "name": "Static Field", "type": "Electric", "category": "status",   "power": 0,  "accuracy": 100, "pp": 20, "effect": { "status": "paralysis" }, "flavor": "Blankets the target in static, paralyzing it." },
+
+    "venom_jab":    { "name": "Venom Jab",    "type": "Poison", "category": "physical", "power": 50, "accuracy": 100, "pp": 20, "effect": { "status": "poison", "chance": 30 }, "flavor": "A toxic-tipped jab that may poison." },
+    "toxic_spray":  { "name": "Toxic Spray",  "type": "Poison", "category": "status",   "power": 0,  "accuracy": 90,  "pp": 10, "effect": { "status": "toxic" }, "flavor": "Douses the target in worsening venom (badly poisons)." },
+
+    "frost_breath": { "name": "Frost Breath", "type": "Ice", "category": "special", "power": 55, "accuracy": 95, "pp": 15, "effect": { "status": "freeze", "chance": 10 }, "flavor": "An icy exhale that may freeze." },
+
+    "mud_shot":     { "name": "Mud Shot",     "type": "Ground", "category": "physical", "power": 55, "accuracy": 95, "pp": 15, "flavor": "Hurls a wad of heavy mud." }
+  }
+}

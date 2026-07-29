@@ -1,0 +1,46 @@
+{
+  "id": "village",
+  "name": "Meadowfen Village",
+  "width": 15,
+  "height": 12,
+  "tileSize": 16,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,6,6,0,0,0,6,6,0,0,0,0,1],
+    [1,0,0,5,7,0,0,0,7,5,0,0,0,0,1],
+    [1,0,0,4,4,0,0,0,4,4,0,0,0,0,1],
+    [1,0,0,0,4,4,4,4,4,0,0,0,2,2,1],
+    [1,0,10,0,0,0,4,0,0,0,0,0,2,2,1],
+    [1,0,0,0,0,0,4,0,0,0,10,0,0,0,1],
+    [1,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,8,8,8,0,0,4,0,0,8,8,8,8,8,1],
+    [1,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,7,1,1,1,1,1,1,1,1]
+  ],
+  "playerStart": { "x": 6, "y": 7, "facing": "down" },
+  "encounter": { "rate": 0, "table": [] },
+  "npcs": [
+    {
+      "id": "elder",
+      "x": 7,
+      "y": 7,
+      "facing": "left",
+      "name": "Elder Fenn",
+      "sprite": "elder",
+      "dialogue": [
+        "Welcome to Meadowfen, young ranger.",
+        "The tall grass on the route south is thick with wild creatures.",
+        "Step into it and one may leap out to challenge you!",
+        "Come see me any time and I'll patch your party right up.",
+        "There now, your team is fully rested. Good luck out there!"
+      ],
+      "healsParty": true
+    }
+  ],
+  "warps": [
+    { "x": 6, "y": 11, "toMap": "route1", "toX": 6, "toY": 1, "toFacing": "down" },
+    { "x": 4, "y": 2, "toMap": "shop_interior", "toX": 4, "toY": 4, "toFacing": "up" },
+    { "x": 8, "y": 2, "toMap": "storage_house", "toX": 4, "toY": 4, "toFacing": "up" }
+  ]
+}

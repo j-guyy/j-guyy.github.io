@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Creature Quest — Creature Editor</title>
+  <link rel="stylesheet" href="css/editor.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div>
+      <h1>Creature Editor</h1>
+      <span id="override-badge" class="badge" hidden>browser override active</span>
+      <span id="dirty-badge" class="badge dirty" hidden>unsaved changes</span>
+    </div>
+    <div id="topbar-actions">
+      <button id="btn-save" title="Store edits in this browser — the game loads them immediately on next reload">Save to Browser</button>
+      <button id="btn-download" title="Download creatures.json to commit into the repo (makes edits permanent for everyone)">Download creatures.json</button>
+      <button id="btn-reset" class="danger" title="Discard the browser override and reload the repo file">Reset to Repo File</button>
+      <a id="btn-routes" href="route-editor.html" title="Open the Route Editor">Routes</a>
+      <a id="btn-play" href="index.html" title="Open the game (loads browser-saved edits if present)">Play &rarr;</a>
+    </div>
+  </header>
+
+  <div id="layout">
+    <aside id="sidebar">
+      <div id="sidebar-actions">
+        <button id="btn-new">+ New</button>
+        <button id="btn-dupe">Duplicate</button>
+        <button id="btn-delete" class="danger">Delete</button>
+      </div>
+      <ul id="creature-list"></ul>
+    </aside>
+
+    <main id="form-panel">
+      <div id="form-empty">Loading…</div>
+      <div id="form" hidden>
+        <section>
+          <h2>Identity</h2>
+          <div class="grid">
+            <label>ID <input id="f-id" type="text" disabled title="IDs are fixed — saves, encounter tables, and trainer parties reference them" /></label>
+            <label>Name <input id="f-name" type="text" maxlength="24" /></label>
+            <label class="check"><input id="f-starter" type="checkbox" /> Starter (choosable at New Game)</label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Types &amp; Ability</h2>
+          <div class="grid">
+            <label>Primary <select id="f-type1"></select></label>
+            <label>Secondary <select id="f-type2"></select></label>
+            <label>Ability <select id="f-ability"></select></label>
+          </div>
+          <div id="ability-desc" class="hint"></div>
+        </section>
+
+        <section>
+          <h2>Stats</h2>
+          <div class="grid stats">
+            <label>HP <input id="f-hp" type="number" min="1" max="255" /></label>
+            <label>Attack <input id="f-attack" type="number" min="1" max="255" /></label>
+            <label>Defense <input id="f-defense" type="number" min="1" max="255" /></label>
+            <label>Sp. Atk <input id="f-spattack" type="number" min="1" max="255" /></label>
+            <label>Sp. Def <input id="f-spdefense" type="number" min="1" max="255" /></label>
+            <label>Speed <input id="f-speed" type="number" min="1" max="255" /></label>
+            <label>Base EXP <input id="f-baseexp" type="number" min="1" max="600" title="XP yield: baseExp x level / 7" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Sprite</h2>
+          <div id="sprite-row">
+            <div class="grid">
+              <label>Shape
+                <select id="f-shape">
+                  <option value="circle">circle</option>
+                  <option value="square">square</option>
+                  <option value="triangle">triangle</option>
+                </select>
+              </label>
+              <label>Glyph <input id="f-glyph" type="text" maxlength="2" /></label>
+              <label>Accent <input id="f-accent" type="color" /></label>
+            </div>
+            <canvas id="sprite-preview" width="192" height="192"></canvas>
+          </div>
+          <p class="hint">Placeholder art: shape + glyph + accent, tinted by the primary type. Real sprite sheets replace this system later.</p>
+        </section>
+
+        <section>
+          <h2>Evolution</h2>
+          <div class="grid">
+            <label>Evolves into <select id="f-evo"></select></label>
+            <label>At level <input id="f-evolevel" type="number" min="2" max="100" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Learnset <span class="hint">(a creature knows the last 4 moves at-or-below its level; needs at least one level-1 move)</span></h2>
+          <table id="learnset-table">
+            <thead><tr><th>Level</th><th>Move</th><th>Type</th><th>Pwr</th><th></th></tr></thead>
+            <tbody id="learnset-body"></tbody>
+          </table>
+          <button id="btn-add-move">+ Add move</button>
+        </section>
+
+        <section>
+          <h2>Teachable Moves <span class="hint">(which TMs / HMs this creature can be taught)</span></h2>
+          <div id="teachable-note" class="hint"></div>
+          <div id="teachable-list" class="teachable-grid"></div>
+        </section>
+
+        <section>
+          <h2>Text</h2>
+          <label class="wide">Flavor (short blurb, starter select)
+            <textarea id="f-flavor" rows="2"></textarea>
+          </label>
+          <label class="wide">Dex entry (CreatureDex page)
+            <textarea id="f-entry" rows="3"></textarea>
+          </label>
+        </section>
+
+        <div id="form-warnings"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/editor.js"></script>
+</body>
+</html>

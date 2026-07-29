@@ -1,0 +1,34 @@
+{
+  "id": "storage_house",
+  "name": "Creature Storage",
+  "width": 9,
+  "height": 6,
+  "tiles": [
+    [5,5,5,5,5,5,5,5,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,5,5,5,7,5,5,5,5]
+  ],
+  "playerStart": { "x": 4, "y": 4, "facing": "up" },
+  "encounter": { "rate": 0, "table": [] },
+  "npcs": [
+    {
+      "id": "keeper",
+      "x": 4,
+      "y": 1,
+      "facing": "down",
+      "name": "Keeper Alder",
+      "sprite": "keeper",
+      "dialogue": [
+        "This is the village creature storage. Any friends beyond the six you carry rest safe here.",
+        "Let's have a look at your roster."
+      ],
+      "storage": true
+    }
+  ],
+  "warps": [
+    { "x": 4, "y": 5, "toMap": "village", "toX": 8, "toY": 3, "toFacing": "down" }
+  ]
+}

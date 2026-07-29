@@ -1,0 +1,74 @@
+/* route-editor.css — additions on top of editor.css for the map/route editor. */
+
+#sidebar { padding: 12px; }
+
+#palette-wrap h3 {
+  font-size: 13px;
+  color: #4CAF50;
+  margin: 14px 0 8px;
+}
+
+#palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.palette-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.palette-tile:hover { background: #1c2230; }
+.palette-tile.selected { background: #223046; border-color: #4CAF50; }
+.palette-tile canvas { image-rendering: pixelated; border-radius: 3px; }
+.palette-tile .pt-name { color: #cfd6e4; }
+.palette-tile .pt-flag { color: #8a93a6; font-size: 10px; }
+
+#palette-selected { margin-top: 10px; }
+
+#grid {
+  image-rendering: pixelated;
+  border: 1px solid #3d475f;
+  border-radius: 6px;
+  cursor: crosshair;
+  max-width: 100%;
+}
+
+label.inline { flex-direction: row; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+#enc-table, #warp-table { border-collapse: collapse; margin-bottom: 10px; width: 100%; max-width: 720px; }
+#enc-table th, #warp-table th { text-align: left; font-size: 12px; color: #8a93a6; padding: 4px 10px 4px 0; }
+#enc-table td, #warp-table td { padding: 3px 10px 3px 0; font-size: 13px; }
+#enc-table input[type="number"], #warp-table input[type="number"] { width: 64px; }
+#enc-table .enc-chance { color: #8a93a6; }
+#enc-table button, #warp-table button { padding: 3px 10px; font-size: 12px; }
+
+.npc-card {
+  border: 1px solid #2b3347;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: #171d29;
+}
+.npc-card .npc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.npc-card .npc-head strong { color: #cfe0ff; font-size: 14px; }
+.npc-trainer-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #2b3347;
+}
+.npc-trainer-block h4 { margin: 0 0 8px; font-size: 13px; color: #e8b23a; }
+.party-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.party-row select { min-width: 150px; }
+.party-row input[type="number"] { width: 64px; }
+textarea.lines { width: 100%; max-width: 520px; resize: vertical; }

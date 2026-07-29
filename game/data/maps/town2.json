@@ -1,0 +1,41 @@
+{
+  "id": "town2",
+  "name": "Bramblehollow",
+  "width": 14,
+  "height": 11,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,6,6,6,0,0,6,6,0,0,1],
+    [1,0,0,0,5,5,5,0,0,5,5,0,0,1],
+    [1,0,0,0,5,7,5,0,0,7,5,0,0,1],
+    [1,0,0,0,4,4,4,0,0,4,4,0,0,1],
+    [1,0,10,0,0,4,0,0,0,0,0,0,0,1],
+    [4,4,4,4,4,4,4,4,0,0,0,10,0,1],
+    [1,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,4,0,0,2,2,0,0,0,1],
+    [1,0,0,0,0,0,0,0,2,2,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "playerStart": { "x": 1, "y": 6, "facing": "right" },
+  "encounter": { "rate": 0, "table": [] },
+  "npcs": [
+    {
+      "id": "moss",
+      "x": 7,
+      "y": 5,
+      "facing": "down",
+      "name": "Sister Moss",
+      "sprite": "healer",
+      "dialogue": [
+        "Welcome to Bramblehollow, home of the Bramble Gym.",
+        "Your creatures look weary. Here, let me tend to them...",
+        "All better! Warden Thorne is through the big door up the path."
+      ],
+      "healsParty": true
+    }
+  ],
+  "warps": [
+    { "x": 0, "y": 6, "toMap": "route2", "toX": 16, "toY": 5, "toFacing": "left" },
+    { "x": 5, "y": 3, "toMap": "gym_interior", "toX": 4, "toY": 6, "toFacing": "up" }
+  ]
+}

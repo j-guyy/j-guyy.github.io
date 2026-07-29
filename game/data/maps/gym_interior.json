@@ -1,0 +1,70 @@
+{
+  "id": "gym_interior",
+  "name": "Bramble Gym",
+  "width": 9,
+  "height": 8,
+  "tiles": [
+    [5,5,5,5,5,5,5,5,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,5,5,5,7,5,5,5,5]
+  ],
+  "playerStart": { "x": 4, "y": 6, "facing": "up" },
+  "encounter": { "rate": 0, "table": [] },
+  "npcs": [
+    {
+      "id": "ivy",
+      "x": 2,
+      "y": 4,
+      "facing": "right",
+      "name": "Gym Hand Ivy",
+      "sprite": "scout",
+      "dialogue": [
+        "Only rangers who get past ME earn a shot at the Warden.",
+        "Grow, little one!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_ivy",
+        "party": [{ "species": "sproutle", "level": 10 }],
+        "reward": { "money": 200 },
+        "outro": ["Wilted... The Warden is waiting at the back."],
+        "postDialogue": ["The Warden's Thornback is slow but it hits like a falling tree."]
+      }
+    },
+    {
+      "id": "thorne",
+      "x": 4,
+      "y": 2,
+      "facing": "down",
+      "name": "Warden Thorne",
+      "sprite": "leader",
+      "dialogue": [
+        "So you're the ranger Elm let through.",
+        "I am Thorne, warden of the Bramble Gym. My grove does not bend to visitors.",
+        "Show me roots or be pulled out!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_thorne",
+        "party": [
+          { "species": "thornback", "level": 11 },
+          { "species": "bramblore", "level": 13 }
+        ],
+        "reward": { "money": 1500, "machine": "TM03" },
+        "badge": "Bramble Badge",
+        "outro": [
+          "...The grove bends.",
+          "You've earned the Bramble Badge, ranger — the first proof of your climb.",
+          "Take TM03 as well. Vine Lash, from my own bramble."
+        ],
+        "postDialogue": ["Badge holders are always welcome in Bramblehollow. Grow strong."]
+      }
+    }
+  ],
+  "warps": [
+    { "x": 4, "y": 7, "toMap": "town2", "toX": 5, "toY": 4, "toFacing": "down" }
+  ]
+}

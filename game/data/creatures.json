@@ -1,0 +1,397 @@
+{
+  "_comment": "Roster of 19 original placeholder species. baseStats now include spAttack/spDefense (Phase 3 special split). `ability` is one ability id (see abilities.json). learnset entries are {level, move}; a creature knows the last 4 moves at-or-below its level. evolvesTo: {species, level}. baseExp drives XP yield (baseExp * level / 7). entry is the dex text; flavor is the short blurb (starter select). shape+glyph+accent drive the placeholder sprite. Editable via /game/editor.html.",
+  "creatures": {
+    "emberling": {
+      "name": "Emberling",
+      "types": ["Fire"],
+      "starter": true,
+      "baseStats": { "hp": 45, "attack": 60, "defense": 40, "spAttack": 60, "spDefense": 45, "speed": 55 },
+      "baseExp": 62,
+      "ability": "blaze",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "ember_jab" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "flame_burst" },
+        { "level": 22, "move": "focus_hit" },
+        { "level": 30, "move": "cinder_storm" }
+      ],
+      "evolvesTo": { "species": "emberclaw", "level": 16 },
+      "shape": "circle",
+      "glyph": "E",
+      "accent": "#ffd28a",
+      "flavor": "A restless spark-pup whose tail-tuft never fully cools.",
+      "entry": "Emberling naps curled around warm stones and wakes in a puff of sparks. Rangers know one is near when the morning dew steams."
+    },
+    "emberclaw": {
+      "name": "Emberclaw",
+      "types": ["Fire"],
+      "baseStats": { "hp": 60, "attack": 80, "defense": 55, "spAttack": 75, "spDefense": 60, "speed": 70 },
+      "baseExp": 142,
+      "ability": "blaze",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "ember_jab" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "flame_burst" },
+        { "level": 22, "move": "focus_hit" },
+        { "level": 30, "move": "cinder_storm" }
+      ],
+      "evolvesTo": { "species": "infernyx", "level": 30 },
+      "shape": "triangle",
+      "glyph": "Ec",
+      "accent": "#ffb35c",
+      "flavor": "Its forelimbs smolder; it sharpens them on river stones.",
+      "entry": "Emberclaw etches claw-marks into boulders to mark its range. The scratches stay warm to the touch for days."
+    },
+    "infernyx": {
+      "name": "Infernyx",
+      "types": ["Fire", "Dark"],
+      "baseStats": { "hp": 75, "attack": 105, "defense": 70, "spAttack": 100, "spDefense": 75, "speed": 90 },
+      "baseExp": 230,
+      "ability": "blaze",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "ember_jab" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "flame_burst" },
+        { "level": 22, "move": "focus_hit" },
+        { "level": 30, "move": "cinder_storm" }
+      ],
+      "shape": "triangle",
+      "glyph": "Ix",
+      "accent": "#ff9a3a",
+      "flavor": "A crowned blaze-cat that walks with slow, banked heat.",
+      "entry": "Infernyx keeps its inner fire banked low to save strength, flaring only in battle. Old tales say one guarded Meadowfen's first hearth."
+    },
+    "dripling": {
+      "name": "Dripling",
+      "types": ["Water"],
+      "starter": true,
+      "baseStats": { "hp": 50, "attack": 50, "defense": 50, "spAttack": 55, "spDefense": 55, "speed": 45 },
+      "baseExp": 62,
+      "ability": "torrent",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "water_pulse" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "tidal_crash" }
+      ],
+      "evolvesTo": { "species": "torrentail", "level": 16 },
+      "shape": "circle",
+      "glyph": "D",
+      "accent": "#bfe8ff",
+      "flavor": "A rounded tide-drop that leaves damp footprints wherever it waddles.",
+      "entry": "Dripling's body is mostly spring water held in a stubborn shape. When frightened it briefly loses form and splashes flat."
+    },
+    "torrentail": {
+      "name": "Torrentail",
+      "types": ["Water"],
+      "baseStats": { "hp": 65, "attack": 68, "defense": 68, "spAttack": 70, "spDefense": 68, "speed": 60 },
+      "baseExp": 142,
+      "ability": "torrent",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "water_pulse" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "tidal_crash" }
+      ],
+      "evolvesTo": { "species": "maelstrode", "level": 30 },
+      "shape": "circle",
+      "glyph": "Tt",
+      "accent": "#8fd4ff",
+      "flavor": "Its long tail whips currents strong enough to turn mill wheels.",
+      "entry": "Torrentail swims upstream for fun, tail churning a wake other creatures surf on. Millers leave offerings so it will linger by their wheels."
+    },
+    "maelstrode": {
+      "name": "Maelstrode",
+      "types": ["Water", "Dragon"],
+      "baseStats": { "hp": 85, "attack": 88, "defense": 88, "spAttack": 92, "spDefense": 88, "speed": 72 },
+      "baseExp": 230,
+      "ability": "torrent",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 3, "move": "rattle_cry" },
+        { "level": 8, "move": "quick_jab" },
+        { "level": 13, "move": "water_pulse" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "tidal_crash" }
+      ],
+      "shape": "square",
+      "glyph": "Ms",
+      "accent": "#6bbcf2",
+      "flavor": "A slow-turning storm of water wearing a stone crown.",
+      "entry": "Maelstrode carries a whirlpool inside its shell-plated chest. When it plants its feet, rivers are said to change their minds."
+    },
+    "sproutle": {
+      "name": "Sproutle",
+      "types": ["Grass"],
+      "starter": true,
+      "baseStats": { "hp": 55, "attack": 45, "defense": 55, "spAttack": 55, "spDefense": 55, "speed": 40 },
+      "baseExp": 62,
+      "ability": "overgrow",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "leaf_flick" },
+        { "level": 3, "move": "brace_up" },
+        { "level": 8, "move": "headbutt" },
+        { "level": 13, "move": "vine_lash" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "bloom_blast" }
+      ],
+      "evolvesTo": { "species": "bramblore", "level": 16 },
+      "shape": "circle",
+      "glyph": "S",
+      "accent": "#c8f2a0",
+      "flavor": "A sturdy seedling that turns to face any nearby light.",
+      "entry": "Sproutle buries its toes at night to sip minerals and is grumpy if woken before sunrise. Its head-leaf points toward tomorrow's weather."
+    },
+    "bramblore": {
+      "name": "Bramblore",
+      "types": ["Grass"],
+      "baseStats": { "hp": 72, "attack": 62, "defense": 74, "spAttack": 62, "spDefense": 70, "speed": 50 },
+      "baseExp": 142,
+      "ability": "overgrow",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "leaf_flick" },
+        { "level": 3, "move": "brace_up" },
+        { "level": 8, "move": "headbutt" },
+        { "level": 13, "move": "vine_lash" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "bloom_blast" }
+      ],
+      "evolvesTo": { "species": "verdantitan", "level": 30 },
+      "shape": "square",
+      "glyph": "Br",
+      "accent": "#a9e07a",
+      "flavor": "Thorned vines coil around its shoulders like a knight's mantle.",
+      "entry": "Bramblore grows a new thorn ring for each season it survives. Birds nest safely in its mantle, paying rent in berries."
+    },
+    "verdantitan": {
+      "name": "Verdantitan",
+      "types": ["Grass", "Ground"],
+      "baseStats": { "hp": 95, "attack": 82, "defense": 95, "spAttack": 80, "spDefense": 85, "speed": 58 },
+      "baseExp": 230,
+      "ability": "overgrow",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "leaf_flick" },
+        { "level": 3, "move": "brace_up" },
+        { "level": 8, "move": "headbutt" },
+        { "level": 13, "move": "vine_lash" },
+        { "level": 22, "move": "body_slam" },
+        { "level": 30, "move": "bloom_blast" }
+      ],
+      "shape": "square",
+      "glyph": "Vt",
+      "accent": "#8ccf5e",
+      "flavor": "A walking grove; moss and small flowers bloom in its wake.",
+      "entry": "Verdantitan moves so slowly that meadows form along its trail. Whole seasons of wildflowers are named after individual titans."
+    },
+    "pyrokit": {
+      "name": "Pyrokit",
+      "types": ["Fire"],
+      "baseStats": { "hp": 40, "attack": 55, "defense": 35, "spAttack": 55, "spDefense": 40, "speed": 65 },
+      "baseExp": 48,
+      "ability": "flame_body",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "ember_jab" },
+        { "level": 5, "move": "rattle_cry" },
+        { "level": 9, "move": "quick_jab" },
+        { "level": 15, "move": "flame_burst" },
+        { "level": 26, "move": "cinder_storm" }
+      ],
+      "evolvesTo": { "species": "pyrevulp", "level": 18 },
+      "shape": "triangle",
+      "glyph": "P",
+      "accent": "#ffb26b",
+      "flavor": "A darting ember-kit that startles easily and bolts.",
+      "entry": "Pyrokit sleeps in sun-warmed hollows and bolts at the first snapped twig, leaving a trail of drifting sparks."
+    },
+    "pyrevulp": {
+      "name": "Pyrevulp",
+      "types": ["Fire"],
+      "baseStats": { "hp": 58, "attack": 78, "defense": 50, "spAttack": 82, "spDefense": 55, "speed": 88 },
+      "baseExp": 138,
+      "ability": "flame_body",
+      "learnset": [
+        { "level": 1, "move": "nudge" },
+        { "level": 1, "move": "ember_jab" },
+        { "level": 5, "move": "rattle_cry" },
+        { "level": 9, "move": "quick_jab" },
+        { "level": 15, "move": "flame_burst" },
+        { "level": 26, "move": "cinder_storm" }
+      ],
+      "shape": "triangle",
+      "glyph": "Pv",
+      "accent": "#ff8f4a",
+      "flavor": "A sleek flame-fox that runs faster than its own embers fall.",
+      "entry": "Pyrevulp outruns the embers shed from its own tail, so it never burns the grass it crosses. Only cold ash marks where it stood still."
+    },
+    "cindermoth": {
+      "name": "Cindermoth",
+      "types": ["Fire", "Bug"],
+      "baseStats": { "hp": 42, "attack": 40, "defense": 38, "spAttack": 70, "spDefense": 48, "speed": 62 },
+      "baseExp": 52,
+      "ability": "levitate",
+      "learnset": [
+        { "level": 1, "move": "ember_jab" },
+        { "level": 7, "move": "nudge" },
+        { "level": 17, "move": "flame_burst" },
+        { "level": 24, "move": "focus_hit" }
+      ],
+      "shape": "triangle",
+      "glyph": "C",
+      "accent": "#ffcf9e",
+      "flavor": "Its wing-scales glow faintly in the dark of tall grass.",
+      "entry": "Cindermoth wings shed a fine glowing dust that keeps tall grass warm through cold nights. Farmers welcome them into the fields."
+    },
+    "tidewhirl": {
+      "name": "Tidewhirl",
+      "types": ["Water"],
+      "baseStats": { "hp": 60, "attack": 45, "defense": 55, "spAttack": 55, "spDefense": 60, "speed": 35 },
+      "baseExp": 55,
+      "ability": "water_veil",
+      "learnset": [
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 5, "move": "headbutt" },
+        { "level": 8, "move": "brace_up" },
+        { "level": 13, "move": "water_pulse" },
+        { "level": 24, "move": "tidal_crash" }
+      ],
+      "evolvesTo": { "species": "gyreshell", "level": 20 },
+      "shape": "square",
+      "glyph": "T",
+      "accent": "#a8dcff",
+      "flavor": "A slow, swirling coil of pond-water in a shell.",
+      "entry": "Tidewhirl carries a spiral of pond-water inside a borrowed shell. Tip it over and the water keeps spinning, unbothered."
+    },
+    "gyreshell": {
+      "name": "Gyreshell",
+      "types": ["Water", "Steel"],
+      "baseStats": { "hp": 80, "attack": 60, "defense": 80, "spAttack": 58, "spDefense": 78, "speed": 42 },
+      "baseExp": 145,
+      "ability": "sturdy",
+      "learnset": [
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 5, "move": "headbutt" },
+        { "level": 8, "move": "brace_up" },
+        { "level": 13, "move": "water_pulse" },
+        { "level": 24, "move": "tidal_crash" }
+      ],
+      "shape": "square",
+      "glyph": "Gy",
+      "accent": "#7cc4f0",
+      "flavor": "Its armored shell hums with the churn of a captive current.",
+      "entry": "Gyreshell's armor rings like a bell when struck, and the spiral within spins faster with every blow it weathers."
+    },
+    "mudpad": {
+      "name": "Mudpad",
+      "types": ["Water", "Ground"],
+      "baseStats": { "hp": 55, "attack": 50, "defense": 55, "spAttack": 45, "spDefense": 50, "speed": 40 },
+      "baseExp": 52,
+      "ability": "water_veil",
+      "learnset": [
+        { "level": 1, "move": "aqua_tap" },
+        { "level": 5, "move": "nudge" },
+        { "level": 8, "move": "brace_up" },
+        { "level": 11, "move": "guard_break" },
+        { "level": 18, "move": "water_pulse" }
+      ],
+      "shape": "square",
+      "glyph": "M",
+      "accent": "#9fcbe6",
+      "flavor": "Broad-footed and unbothered, it plods through shallows.",
+      "entry": "Mudpad's wide feet never sink, even in the softest marsh. Village children follow its prints to find safe paths across the fen."
+    },
+    "thornback": {
+      "name": "Thornback",
+      "types": ["Grass", "Rock"],
+      "baseStats": { "hp": 65, "attack": 50, "defense": 60, "spAttack": 40, "spDefense": 55, "speed": 30 },
+      "baseExp": 58,
+      "ability": "sturdy",
+      "learnset": [
+        { "level": 1, "move": "leaf_flick" },
+        { "level": 1, "move": "nudge" },
+        { "level": 6, "move": "brace_up" },
+        { "level": 12, "move": "body_slam" },
+        { "level": 20, "move": "vine_lash" }
+      ],
+      "shape": "square",
+      "glyph": "H",
+      "accent": "#a6e07a",
+      "flavor": "A low, armored grazer ridged with dull thorns.",
+      "entry": "Thornback grazes in one meadow its whole life, and the hedge that grows along its spine maps every year of it."
+    },
+    "voltpup": {
+      "name": "Voltpup",
+      "types": ["Electric"],
+      "baseStats": { "hp": 45, "attack": 55, "defense": 40, "spAttack": 55, "spDefense": 45, "speed": 60 },
+      "baseExp": 50,
+      "ability": "static",
+      "learnset": [
+        { "level": 1, "move": "spark_nip" },
+        { "level": 1, "move": "quick_jab" },
+        { "level": 10, "move": "volt_arc" },
+        { "level": 12, "move": "gale_step" },
+        { "level": 24, "move": "thunder_slam" }
+      ],
+      "evolvesTo": { "species": "volthound", "level": 18 },
+      "shape": "triangle",
+      "glyph": "V",
+      "accent": "#fff08a",
+      "flavor": "A yappy static-hound whose fur stands on end when curious.",
+      "entry": "Voltpup's fur crackles when it's curious, which is always. Petting one on a dry day is a lesson every ranger learns once."
+    },
+    "volthound": {
+      "name": "Volthound",
+      "types": ["Electric"],
+      "baseStats": { "hp": 62, "attack": 80, "defense": 55, "spAttack": 70, "spDefense": 60, "speed": 85 },
+      "baseExp": 140,
+      "ability": "static",
+      "learnset": [
+        { "level": 1, "move": "spark_nip" },
+        { "level": 1, "move": "quick_jab" },
+        { "level": 10, "move": "volt_arc" },
+        { "level": 12, "move": "gale_step" },
+        { "level": 24, "move": "thunder_slam" }
+      ],
+      "shape": "triangle",
+      "glyph": "Vh",
+      "accent": "#ffe95c",
+      "flavor": "A storm-runner; its howl arrives a heartbeat after the flash.",
+      "entry": "Volthound races ahead of storms, and shepherds count the gap between its flash and its howl to know how long they have."
+    },
+    "zaptooth": {
+      "name": "Zaptooth",
+      "types": ["Electric", "Dark"],
+      "baseStats": { "hp": 50, "attack": 65, "defense": 45, "spAttack": 55, "spDefense": 50, "speed": 70 },
+      "baseExp": 60,
+      "ability": "limber",
+      "learnset": [
+        { "level": 1, "move": "spark_nip" },
+        { "level": 7, "move": "headbutt" },
+        { "level": 10, "move": "rattle_cry" },
+        { "level": 14, "move": "volt_arc" },
+        { "level": 26, "move": "thunder_slam" }
+      ],
+      "shape": "triangle",
+      "glyph": "Z",
+      "accent": "#ffe95c",
+      "flavor": "Quick and toothy; its bite carries a sharp jolt.",
+      "entry": "Zaptooth gnaws on old fence wire to keep its charge topped up. Its grin glows faintly in the dark of the route at dusk."
+    }
+  }
+}

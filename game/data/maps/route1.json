@@ -1,0 +1,71 @@
+{
+  "id": "route1",
+  "name": "Fenway Route 1",
+  "width": 15,
+  "height": 14,
+  "tileSize": 16,
+  "tiles": [
+    [1,1,1,1,1,1,7,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,3,3,3,0,0,4,0,0,3,3,3,3,0,1],
+    [1,3,3,3,0,0,4,0,0,3,3,3,3,0,1],
+    [1,3,3,3,0,0,4,0,0,3,3,3,3,0,1],
+    [1,0,0,0,0,0,4,0,0,0,0,0,0,0,4],
+    [1,0,0,4,4,4,4,4,4,4,0,0,0,0,1],
+    [1,0,0,4,0,0,0,0,0,4,0,2,2,2,1],
+    [1,3,3,4,0,0,0,0,0,4,0,2,2,2,1],
+    [1,3,3,4,0,0,0,0,0,4,0,0,0,0,1],
+    [1,3,3,4,0,0,3,3,3,4,0,0,0,0,1],
+    [1,0,0,4,0,0,3,3,3,4,0,0,0,0,1],
+    [1,0,0,0,4,4,4,4,4,4,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "playerStart": { "x": 6, "y": 1, "facing": "down" },
+  "encounter": {
+    "rate": 0.16,
+    "table": [
+      { "species": "pyrokit",    "min": 2, "max": 4, "weight": 25 },
+      { "species": "cindermoth", "min": 2, "max": 4, "weight": 15 },
+      { "species": "tidewhirl",  "min": 2, "max": 4, "weight": 15 },
+      { "species": "mudpad",     "min": 2, "max": 3, "weight": 20 },
+      { "species": "thornback",  "min": 3, "max": 4, "weight": 15 },
+      { "species": "voltpup",    "min": 2, "max": 4, "weight": 20 },
+      { "species": "zaptooth",   "min": 3, "max": 5, "weight": 10 }
+    ]
+  },
+  "npcs": [
+    {
+      "id": "bryn",
+      "x": 8,
+      "y": 7,
+      "facing": "left",
+      "name": "Ranger Bryn",
+      "sprite": "ranger",
+      "dialogue": [
+        "Hey! You've got the walk of a ranger with a fresh partner.",
+        "Rule of the routes: when two rangers lock eyes, they battle!",
+        "Show me what your team can do!"
+      ],
+      "trainer": {
+        "defeatFlag": "defeated_bryn",
+        "party": [
+          { "species": "voltpup", "level": 4 },
+          { "species": "mudpad", "level": 5 }
+        ],
+        "reward": { "item": "great_orb", "qty": 2, "machine": "TM04" },
+        "outro": [
+          "Whew! You've got real spark, ranger.",
+          "Take these Great Orbs — they snare far better than the woven ones.",
+          "And here's TM04, Volt Arc. Teach it to a creature that can handle the charge!"
+        ],
+        "postDialogue": [
+          "You beat me fair and square. Train up in the tall grass — your creatures grow with every battle they win."
+        ]
+      }
+    }
+  ],
+  "warps": [
+    { "x": 6, "y": 0, "toMap": "village", "toX": 6, "toY": 10, "toFacing": "up" },
+    { "x": 14, "y": 5, "toMap": "route2", "toX": 1, "toY": 5, "toFacing": "right" }
+  ]
+}

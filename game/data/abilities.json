@@ -1,0 +1,17 @@
+{
+  "_comment": "Passive creature abilities. Each has a machine-readable `kind` the battle engine interprets, so new abilities of a known kind are pure data. Kinds: pinch_boost {moveType,factor} — ×factor to the user's moves of moveType when its HP <= 1/3; guts — ×1.5 Attack while statused (and ignores burn's Attack drop); status_immunity {status} — can't get that status (poison covers toxic); contact_status {status,chance} — a physical hit on the holder may inflict status on the attacker; type_immunity {type} — takes no damage from that move type; sturdy — survives a full-HP OHKO with 1 HP. Assign one per creature via the Creature Editor. More kinds can be added in battle.js.",
+  "abilities": {
+    "blaze":      { "name": "Blaze",      "kind": "pinch_boost", "moveType": "Fire",  "factor": 1.5, "desc": "Powers up Fire moves when HP is low." },
+    "torrent":    { "name": "Torrent",    "kind": "pinch_boost", "moveType": "Water", "factor": 1.5, "desc": "Powers up Water moves when HP is low." },
+    "overgrow":   { "name": "Overgrow",   "kind": "pinch_boost", "moveType": "Grass", "factor": 1.5, "desc": "Powers up Grass moves when HP is low." },
+    "guts":       { "name": "Guts",       "kind": "guts", "desc": "Raises Attack when afflicted by a status condition." },
+    "static":     { "name": "Static",     "kind": "contact_status", "status": "paralysis", "chance": 30, "desc": "Contact with this creature may paralyze the attacker." },
+    "flame_body": { "name": "Flame Body", "kind": "contact_status", "status": "burn", "chance": 30, "desc": "Contact with this creature may burn the attacker." },
+    "limber":     { "name": "Limber",     "kind": "status_immunity", "status": "paralysis", "desc": "Prevents paralysis." },
+    "water_veil": { "name": "Water Veil", "kind": "status_immunity", "status": "burn", "desc": "Prevents burns." },
+    "insomnia":   { "name": "Insomnia",   "kind": "status_immunity", "status": "sleep", "desc": "Prevents sleep." },
+    "immunity":   { "name": "Immunity",   "kind": "status_immunity", "status": "poison", "desc": "Prevents poisoning." },
+    "levitate":   { "name": "Levitate",   "kind": "type_immunity", "type": "Ground", "desc": "Gives immunity to Ground moves." },
+    "sturdy":     { "name": "Sturdy",     "kind": "sturdy", "desc": "Cannot be knocked out in one hit from full HP." }
+  }
+}

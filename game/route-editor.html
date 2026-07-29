@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Creature Quest — Route Editor</title>
+  <link rel="stylesheet" href="css/editor.css" />
+  <link rel="stylesheet" href="css/route-editor.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div>
+      <h1>Route Editor</h1>
+      <span id="override-badge" class="badge" hidden>browser override active</span>
+      <span id="dirty-badge" class="badge dirty" hidden>unsaved changes</span>
+    </div>
+    <div id="topbar-actions">
+      <button id="btn-save" title="Store all edited maps in this browser — the game loads them immediately on next reload">Save to Browser</button>
+      <button id="btn-download" title="Download the current map's JSON to commit into the repo">Download this map</button>
+      <button id="btn-reset" class="danger" title="Discard the browser override and reload the repo files">Reset to Repo Files</button>
+      <a id="btn-creatures" href="editor.html" title="Open the Creature Editor">Creatures</a>
+      <a id="btn-play" href="index.html" title="Open the game (loads browser-saved edits if present)">Play &rarr;</a>
+    </div>
+  </header>
+
+  <div id="layout">
+    <aside id="sidebar">
+      <label class="wide">Map
+        <select id="map-select"></select>
+      </label>
+      <button id="btn-new-map" style="width:100%;margin-top:6px;">+ New map</button>
+      <div id="palette-wrap">
+        <h3>Tile palette <span class="hint">(click a tile, then paint on the grid)</span></h3>
+        <div id="palette"></div>
+        <div id="palette-selected" class="hint"></div>
+      </div>
+    </aside>
+
+    <main id="form-panel">
+      <div id="form-empty">Loading…</div>
+      <div id="form" hidden>
+        <section>
+          <h2>Map</h2>
+          <div class="grid">
+            <label>ID <input id="f-id" type="text" disabled title="Map ids are referenced by warps and are fixed" /></label>
+            <label>Name <input id="f-name" type="text" maxlength="40" /></label>
+            <label>Width <input id="f-width" type="number" min="3" max="40" /></label>
+            <label>Height <input id="f-height" type="number" min="3" max="40" /></label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Layout <span class="hint">(paint with the selected palette tile; ★ = start, N/T = npc/trainer, W = warp)</span></h2>
+          <canvas id="grid" tabindex="0"></canvas>
+        </section>
+
+        <section>
+          <h2>Player Start</h2>
+          <div class="grid">
+            <label>X <input id="f-startx" type="number" min="0" /></label>
+            <label>Y <input id="f-starty" type="number" min="0" /></label>
+            <label>Facing
+              <select id="f-startfacing">
+                <option value="down">down</option>
+                <option value="up">up</option>
+                <option value="left">left</option>
+                <option value="right">right</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section>
+          <h2>Wild Encounters <span class="hint">(every tall-grass tile on this map shares this table)</span></h2>
+          <label class="inline">Encounter rate per step (0–1)
+            <input id="f-rate" type="number" min="0" max="1" step="0.01" />
+          </label>
+          <table id="enc-table">
+            <thead><tr><th>Creature</th><th>Min Lv</th><th>Max Lv</th><th>Weight</th><th>Chance</th><th></th></tr></thead>
+            <tbody id="enc-body"></tbody>
+          </table>
+          <button id="btn-add-enc">+ Add creature</button>
+          <p class="hint">This is the map-wide default. Grass tiles inside an encounter zone (below) use that zone's table instead.</p>
+        </section>
+
+        <section>
+          <h2>Encounter Zones <span class="hint">(rectangles of grass with their own rate + creature table — per-patch encounters)</span></h2>
+          <div id="zone-list"></div>
+          <button id="btn-add-zone">+ Add zone</button>
+        </section>
+
+        <section>
+          <h2>NPCs &amp; Trainers</h2>
+          <div id="npc-list"></div>
+          <button id="btn-add-npc">+ Add NPC</button>
+        </section>
+
+        <section>
+          <h2>Warps <span class="hint">(step onto (x,y) to travel to another map)</span></h2>
+          <table id="warp-table">
+            <thead><tr><th>X</th><th>Y</th><th>→ Map</th><th>To X</th><th>To Y</th><th>Facing</th><th></th></tr></thead>
+            <tbody id="warp-body"></tbody>
+          </table>
+          <button id="btn-add-warp">+ Add warp</button>
+        </section>
+
+        <div id="form-warnings"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/route-editor.js"></script>
+</body>
+</html>
