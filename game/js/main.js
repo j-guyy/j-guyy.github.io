@@ -1080,6 +1080,7 @@ function updateBattle(dt) {
         b.moveIndex = Math.min(b.lastMoveIndex, b.playerMon.moves.length - 1);
         setBattlePhase('move');
       } else if (sel === 'Party') {
+        if (b.data.vol.player.trapped) { transientBattleMsg(`${b.playerMon.name} can't escape!`); return; }
         b.partyIndex = 0;
         setBattlePhase('party');
       } else if (sel === 'Item') {
@@ -1707,11 +1708,15 @@ function renderBattle() {
   } else if (b.phase === 'menu') {
     r.text(`What will ${player.name} do?`, 36, my + 30, { size: 24 });
     const opts = battleMenuOpts(b);
+    const trapped = b.data.vol.player.trapped;
     opts.forEach((o, i) => {
       const ox = 396 + (i % 2) * 156;
       const oy = my + 30 + Math.floor(i / 2) * 42;
       if (i === b.menuIndex) r.cursor(ox - 24, oy + 3);
-      r.text(o, ox, oy, { size: 24 });
+      // Party/Run are grayed out (not disabled outright for Run — attempting
+      // to flee while trapped still costs a turn, same as any failed flee).
+      const dimmed = trapped && (o === 'Party' || o === 'Run');
+      r.text(o, ox, oy, { size: 24, color: dimmed ? '#999' : undefined });
     });
   } else if (b.phase === 'move') {
     const moves = player.moves;

@@ -35,7 +35,7 @@ const STAT_LABEL = {
 function mkVol() {
   const stages = {};
   for (const s of STAGE_STATS) stages[s] = 0;
-  return { stages, confusion: 0, flinch: false };
+  return { stages, confusion: 0, flinch: false, protecting: false, protectStreak: 0, trapped: false };
 }
 
 export function createBattle(playerParty, enemyParty, opts = {}) {
@@ -49,6 +49,9 @@ export function createBattle(playerParty, enemyParty, opts = {}) {
     playerIndex,
     enemyIndex: 0,
     vol: { player: mkVol(), enemy: mkVol() },
+    // Entry hazards live on the field itself, not per-creature, so they
+    // persist across switches on that side for the rest of the battle.
+    hazards: { player: 0, enemy: 0 },
     over: false,
     outcome: null, // 'win' | 'lose' | 'caught' | 'fled'
   };
@@ -159,6 +162,28 @@ function applyVolatile(battle, target, side, volatileKind, beats, announceBlocke
   return false;
 }
 
+// Self-heal (Recover/Rest-style moves). effect.heal is a fraction of max HP
+// (1 = fully heal). A move that also carries a status (e.g. Rest) clears
+// whatever status the target already had first, so the new one can land.
+// Returns true if the heal (and thus any status riding along with it, e.g.
+// Rest's sleep) actually took effect.
+function applyHeal(target, side, effect, beats) {
+  if (target.curHP <= 0) return false;
+  if (target.curHP >= target.maxHP) {
+    beats.push({ type: 'msg', text: `${target.name}'s HP is already full!` });
+    return false;
+  }
+  if (effect.status) {
+    target.status = null;
+    target.statusCounter = 0;
+  }
+  const from = target.curHP;
+  target.curHP = Math.min(target.maxHP, target.curHP + Math.floor(target.maxHP * effect.heal));
+  beats.push({ type: 'damage', target: side, from, to: target.curHP, eff: 1 });
+  beats.push({ type: 'msg', text: `${target.name} regained health!` });
+  return true;
+}
+
 function applyStages(target, side, battle, stages, beats) {
   const vol = battle.vol[side];
   for (const [stat, delta] of Object.entries(stages)) {
@@ -177,18 +202,90 @@ function applyStages(target, side, battle, stages, beats) {
   }
 }
 
+// Cures every party member's non-volatile status (Heal Bell-style), not just
+// the active one — status lives on each instance and persists whether or not
+// that member is currently out, so this just sweeps the whole array.
+function applyCureParty(battle, side, move, beats) {
+  const party = side === 'player' ? battle.playerParty : battle.enemyParty;
+  let curedAny = false;
+  for (const member of party) {
+    if (member.status) {
+      member.status = null;
+      member.statusCounter = 0;
+      curedAny = true;
+    }
+  }
+  beats.push({ type: 'msg', text: curedAny ? `${move.name} rings out, curing the whole party's status!` : 'But nothing happened.' });
+}
+
+// Pain Split: pools both sides' current HP and splits it evenly, each side
+// capped at its own max HP (so it can't overflow onto the other side, and —
+// since both HP totals are always >= 1 while a creature is active — it can
+// never bring either side down to 0).
+function applyPainSplit(attacker, atkSide, defender, defSide, beats) {
+  const share = Math.max(1, Math.floor((attacker.curHP + defender.curHP) / 2));
+  const newAtkHP = Math.min(attacker.maxHP, share);
+  const newDefHP = Math.min(defender.maxHP, share);
+  const atkFrom = attacker.curHP;
+  const defFrom = defender.curHP;
+  attacker.curHP = newAtkHP;
+  defender.curHP = newDefHP;
+  beats.push({ type: 'msg', text: "The combined HP was split evenly between them!" });
+  if (newAtkHP !== atkFrom) beats.push({ type: 'damage', target: atkSide, from: atkFrom, to: newAtkHP, eff: 1 });
+  if (newDefHP !== defFrom) beats.push({ type: 'damage', target: defSide, from: defFrom, to: newDefHP, eff: 1 });
+}
+
+// Trapping (Mean Look/Spider Web-style): the target's side can't switch or
+// flee until that creature leaves the field. It's stored on battle.vol, so
+// mkVol() naturally clears it the moment that side's active creature changes
+// (faint or switch) — matching the mainline rule that trapping only lasts as
+// long as the trapped creature itself stays out.
+function applyTrap(target, side, battle, beats) {
+  if (target.curHP <= 0) return;
+  const vol = battle.vol[side];
+  if (vol.trapped) {
+    beats.push({ type: 'msg', text: `${target.name} is already unable to escape!` });
+    return;
+  }
+  vol.trapped = true;
+  beats.push({ type: 'msg', text: `${target.name} can no longer escape!` });
+}
+
+// Entry hazards (Spikes-style): live on the field itself rather than a
+// creature, so they hit whoever switches in on that side later — see
+// applyHazardDamage, called from every switch-in point. Stacks to 3 layers;
+// Flying-types are immune, same as the mainline games.
+function applyHazard(battle, side, kind, beats) {
+  if (kind !== 'spikes') return;
+  const cur = battle.hazards[side] || 0;
+  if (cur >= 3) {
+    beats.push({ type: 'msg', text: 'But it failed!' });
+    return;
+  }
+  battle.hazards[side] = cur + 1;
+  beats.push({ type: 'msg', text: 'Spikes were scattered on the ground!' });
+}
+
 // Shared handler for a move's effect payload on its target.
 function applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, guaranteed) {
   const effect = move.effect;
   if (!effect) return;
   const chance = effect.chance != null ? effect.chance : 100;
   if (!guaranteed && Math.random() * 100 >= chance) return;
+  if (effect.painSplit) {
+    applyPainSplit(attacker, atkSide, defender, defSide, beats);
+    return;
+  }
   const targetSelf = effect.target === 'self';
   const target = targetSelf ? attacker : defender;
   const side = targetSelf ? atkSide : defSide;
-  if (effect.status) applyStatus(target, effect.status, ctx, beats, guaranteed);
+  const healOk = effect.heal ? applyHeal(target, side, effect, beats) : true;
+  if (effect.status && healOk) applyStatus(target, effect.status, ctx, beats, guaranteed);
   if (effect.volatile) applyVolatile(battle, target, side, effect.volatile, beats, guaranteed);
   if (effect.stages) applyStages(target, side, battle, effect.stages, beats);
+  if (effect.cureParty) applyCureParty(battle, side, move, beats);
+  if (effect.trap) applyTrap(target, side, battle, beats);
+  if (effect.hazard) applyHazard(battle, side, effect.hazard, beats);
 }
 
 // ---- Effective stats -------------------------------------------------------
@@ -265,6 +362,18 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
   beats.push({ type: 'msg', text: `${attacker.name} used ${move.name}!`, actor: atkSide });
 
   const isDamaging = move.category !== 'status' && move.power > 0;
+
+  // Protect/Detect: blocks anything that would actually reach the defender
+  // (damage, or a status effect aimed at the foe). A self-targeted buff never
+  // touches the defender anyway, so it's untouched by this check. Hazards
+  // target the field, not the defending creature, so — same as mainline —
+  // they go through even against a protecting target.
+  const targetsDefender = isDamaging || (move.effect && move.effect.target !== 'self' && !move.effect.hazard);
+  if (targetsDefender && battle.vol[defSide].protecting) {
+    beats.push({ type: 'msg', text: `${defender.name} protected itself!` });
+    return { defenderFainted: false, attackerFainted: false };
+  }
+
   const defAb = abilityOf(defender, ctx);
 
   if (isDamaging && defAb && defAb.kind === 'type_immunity' && move.type === defAb.type) {
@@ -323,10 +432,11 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
     if (Math.random() * 100 < (defAb.chance || 0)) applyStatus(attacker, defAb.status, ctx, beats, false);
   }
 
-  // Struggle recoil: the attacker loses 1/4 of its max HP.
+  // Struggle recoil: Gen 1's original formula — 1/4 of the damage just dealt
+  // (not 1/4 of max HP, which is the Gen 5+ rule).
   if (move.struggle && attacker.curHP > 0) {
     beats.push({ type: 'msg', text: `${attacker.name} is hit with recoil!` });
-    attackerFainted = dealDamage(attacker, atkSide, Math.max(1, Math.floor(attacker.maxHP / 4)), beats);
+    attackerFainted = dealDamage(attacker, atkSide, Math.max(1, Math.floor(finalDmg / 4)), beats);
   }
 
   return { defenderFainted, attackerFainted };
@@ -382,6 +492,26 @@ function catchChance(enemy, catchMod = 1) {
 
 // ---- Faint handling --------------------------------------------------------
 
+// Entry-hazard damage on switch-in. Lives here (rather than inlined at every
+// switch site) so it applies uniformly to manual switches AND forced
+// switches after a faint — and, via the mutual recursion with
+// handleEnemyFaint/handlePlayerFaint below, correctly chains if the hazard
+// itself KOs the incoming creature.
+function applyHazardDamage(battle, side, ctx, beats) {
+  const layers = battle.hazards[side];
+  if (!layers) return;
+  const inst = side === 'player' ? activePlayer(battle) : activeEnemy(battle);
+  if (inst.types.includes('Flying')) return;
+  const frac = layers === 1 ? 8 : layers === 2 ? 6 : 4; // 1/8, 1/6, 1/4 max HP
+  const dmg = Math.max(1, Math.floor(inst.maxHP / frac));
+  beats.push({ type: 'msg', text: `${inst.name} is hurt by the spikes!` });
+  const fainted = dealDamage(inst, side, dmg, beats);
+  if (fainted) {
+    if (side === 'enemy') handleEnemyFaint(battle, ctx, beats);
+    else handlePlayerFaint(battle, ctx, beats);
+  }
+}
+
 function handleEnemyFaint(battle, ctx, beats) {
   const enemy = activeEnemy(battle);
   beats.push({ type: 'xp', amount: ctx.dex.xpGain(enemy, battle.mode === 'trainer') });
@@ -392,13 +522,14 @@ function handleEnemyFaint(battle, ctx, beats) {
     const next = battle.enemyParty[nextIdx];
     beats.push({ type: 'switch', side: 'enemy', index: nextIdx });
     beats.push({ type: 'msg', text: `${battle.trainerName} sent out ${next.name}!` });
+    applyHazardDamage(battle, 'enemy', ctx, beats);
     return;
   }
   battle.over = true;
   battle.outcome = 'win';
 }
 
-function handlePlayerFaint(battle, beats) {
+function handlePlayerFaint(battle, ctx, beats) {
   const nextIdx = battle.playerParty.findIndex((m) => m.curHP > 0);
   if (nextIdx !== -1) {
     battle.playerIndex = nextIdx;
@@ -406,6 +537,7 @@ function handlePlayerFaint(battle, beats) {
     const next = battle.playerParty[nextIdx];
     beats.push({ type: 'switch', side: 'player', index: nextIdx });
     beats.push({ type: 'msg', text: `Go, ${next.name}!` });
+    applyHazardDamage(battle, 'player', ctx, beats);
     return;
   }
   battle.over = true;
@@ -415,11 +547,11 @@ function handlePlayerFaint(battle, beats) {
 function handleFaints(battle, ctx, beats, result, atkSide, defSide) {
   if (result.defenderFainted) {
     if (defSide === 'enemy') handleEnemyFaint(battle, ctx, beats);
-    else handlePlayerFaint(battle, beats);
+    else handlePlayerFaint(battle, ctx, beats);
   }
   if (result.attackerFainted && !battle.over) {
     if (atkSide === 'enemy') handleEnemyFaint(battle, ctx, beats);
-    else handlePlayerFaint(battle, beats);
+    else handlePlayerFaint(battle, ctx, beats);
   }
 }
 
@@ -471,7 +603,7 @@ function canAct(battle, actor, side, ctx, beats) {
         const fainted = dealDamage(actor, side, dmg, beats);
         if (fainted) {
           if (side === 'enemy') handleEnemyFaint(battle, ctx, beats);
-          else handlePlayerFaint(battle, beats);
+          else handlePlayerFaint(battle, ctx, beats);
         }
         return false;
       }
@@ -485,6 +617,24 @@ function canAct(battle, actor, side, ctx, beats) {
   return true;
 }
 
+// Protect/Detect: success chance shrinks with each consecutive use (100%,
+// 33%, 11%, ...), same shape as the mainline games, so it can't be spammed
+// as a free block every turn. Any other move resets the streak (see below).
+function handleProtect(battle, atk, atkSide, move, beats) {
+  const vol = battle.vol[atkSide];
+  const streak = vol.protectStreak || 0;
+  const chance = Math.pow(1 / 3, streak);
+  beats.push({ type: 'msg', text: `${atk.name} used ${move.name}!`, actor: atkSide });
+  if (Math.random() < chance) {
+    vol.protecting = true;
+    vol.protectStreak = streak + 1;
+    beats.push({ type: 'msg', text: `${atk.name} protected itself!` });
+  } else {
+    vol.protectStreak = 0;
+    beats.push({ type: 'msg', text: 'But it failed!' });
+  }
+}
+
 // Perform one side's action with the pre-move gate + faint handling.
 function actorMove(battle, atk, atkSide, move, ctx, beats) {
   if (battle.over || atk.curHP <= 0) return;
@@ -492,6 +642,11 @@ function actorMove(battle, atk, atkSide, move, ctx, beats) {
   const defSide = atkSide === 'player' ? 'enemy' : 'player';
   const def = defSide === 'enemy' ? activeEnemy(battle) : activePlayer(battle);
   spendPP(move);
+  if (move.protect) {
+    handleProtect(battle, atk, atkSide, move, beats);
+    return;
+  }
+  battle.vol[atkSide].protectStreak = 0;
   const result = performMove(battle, atk, atkSide, def, defSide, move, ctx, beats);
   handleFaints(battle, ctx, beats, result, atkSide, defSide);
 }
@@ -520,13 +675,15 @@ function applyResidual(battle, inst, side, ctx, beats) {
   if (inst.status === 'toxic') inst.statusCounter += 1;
   if (fainted) {
     if (side === 'enemy') handleEnemyFaint(battle, ctx, beats);
-    else handlePlayerFaint(battle, beats);
+    else handlePlayerFaint(battle, ctx, beats);
   }
 }
 
 function endOfTurn(battle, ctx, beats) {
   battle.vol.player.flinch = false;
   battle.vol.enemy.flinch = false;
+  battle.vol.player.protecting = false;
+  battle.vol.enemy.protecting = false;
   if (battle.over) return;
   const order = effSpeed(battle, activePlayer(battle), 'player') >= effSpeed(battle, activeEnemy(battle), 'enemy')
     ? ['player', 'enemy'] : ['enemy', 'player'];
@@ -550,12 +707,20 @@ export function resolveTurn(battle, action, ctx) {
   const enemy = activeEnemy(battle);
 
   if (action.type === 'switch') {
+    if (battle.vol.player.trapped) {
+      beats.push({ type: 'msg', text: `${player.name} can't escape!` });
+      enemyTurn(battle, ctx, beats);
+      endOfTurn(battle, ctx, beats);
+      return { beats, outcome: battle.outcome };
+    }
     const next = battle.playerParty[action.index];
     beats.push({ type: 'msg', text: `Come back, ${player.name}!` });
     battle.playerIndex = action.index;
     battle.vol.player = mkVol();
     beats.push({ type: 'switch', side: 'player', index: action.index });
     beats.push({ type: 'msg', text: `Go, ${next.name}!` });
+    applyHazardDamage(battle, 'player', ctx, beats);
+    if (battle.over) return { beats, outcome: battle.outcome };
     enemyTurn(battle, ctx, beats);
     endOfTurn(battle, ctx, beats);
     return { beats, outcome: battle.outcome };
@@ -604,6 +769,12 @@ export function resolveTurn(battle, action, ctx) {
 
   if (action.type === 'flee') {
     beats.push({ type: 'msg', text: 'You tried to flee...' });
+    if (battle.vol.player.trapped) {
+      beats.push({ type: 'msg', text: "Couldn't get away!" });
+      enemyTurn(battle, ctx, beats);
+      endOfTurn(battle, ctx, beats);
+      return { beats, outcome: battle.outcome };
+    }
     const escaped = Math.random() < 0.6 || effSpeed(battle, player, 'player') >= effSpeed(battle, enemy, 'enemy');
     if (escaped) {
       beats.push({ type: 'msg', text: 'Got away safely!' });
