@@ -337,8 +337,11 @@ Closes the gap between "most of the rules" and mainline battle behavior:
 - Multiplayer/trading
 - Cloud save (KV-backed, matching `worker.js` pattern) instead of localStorage only —
   needs a worker deploy, so it stays opt-in/explicit
-- Final pixel-art sprite assets (still placeholder shapes at the correct dimensions;
-  real 16-bit/32-bit art is a separate later pass)
+- Hand-drawn/commissioned pixel-art sprite assets — creatures now use procedurally
+  generated pixel-art PNGs (`game/tools/gen_sprites.py`, front + back per species in
+  `game/images/creatures/`) instead of flat circle/square/triangle placeholders, but
+  this is still algorithmic art, not hand-painted; a true hand-drawn pass is a later
+  option. Overworld tileset/actor sprites are still flat-shape placeholders.
 - Hand-designed creature roster/world names (still build-agent placeholders)
 
 ## Suggested file scaffold (for the build agent to start from)

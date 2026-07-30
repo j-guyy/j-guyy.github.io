@@ -12,7 +12,7 @@
 import { Renderer, VIEW_W, VIEW_H, TILE } from './engine/renderer.js';
 import { Input } from './engine/input.js';
 import { loadMap, GameMap } from './engine/tilemap.js';
-import { makeActorSprite } from './engine/assets.js';
+import { makeActorSprite, preloadCreatureArt } from './engine/assets.js';
 import { loadTypes } from './battle/typechart.js';
 import { loadDex } from './data/dex.js';
 import { createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO } from './battle/battle.js';
@@ -78,6 +78,7 @@ async function boot() {
 
   game.typeChart = await loadTypes();
   game.dex = await loadDex(game.typeChart);
+  await preloadCreatureArt(Object.keys(game.dex.creatures));
 
   game.title.hasSave = hasSave();
   game.title.index = game.title.hasSave ? 1 : 0;
@@ -1659,7 +1660,10 @@ function renderBattle() {
       dy += (1 - fx.faintAnim.t / 350) * 80;
     }
     if (fx.flash[side] > 0 && Math.floor(fx.flash[side] / 55) % 2 === 0) return; // blink
-    mon.sprite.draw(r.ctx, dx, dy, size, size);
+    // Classic style: the player's own creature is seen from behind; the
+    // opponent is seen face-on.
+    const sprite = side === 'player' ? mon.spriteBack || mon.sprite : mon.sprite;
+    sprite.draw(r.ctx, dx, dy, size, size);
   };
   drawMon(enemy, 'enemy', 468, 48, 144);
   drawMon(player, 'player', 72, 150, 168);

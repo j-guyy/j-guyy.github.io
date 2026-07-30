@@ -4,7 +4,7 @@
 // NOTE: this module consolidates the scaffold's separate creatures.js/moves.js
 // loaders into one small data layer — see report for the deviation rationale.
 
-import { makeCreatureSprite } from '../engine/assets.js';
+import { makeCreatureSprite, bakedCreatureSprite, bakedCreatureSpriteBack } from '../engine/assets.js';
 
 export class Dex {
   constructor(creaturesJson, movesJson, itemsJson, machinesJson, abilitiesJson, typeChart) {
@@ -16,6 +16,7 @@ export class Dex {
     this.typeChart = typeChart;
     this.order = Object.keys(this.creatures); // Pokédex numbering order
     this._spriteCache = {};
+    this._spriteBackCache = {};
     this._validate();
   }
 
@@ -130,9 +131,20 @@ export class Dex {
   spriteFor(speciesId) {
     if (!this._spriteCache[speciesId]) {
       const s = this.species(speciesId);
-      this._spriteCache[speciesId] = makeCreatureSprite(s, this.typeChart.color(s.types[0]));
+      this._spriteCache[speciesId] =
+        bakedCreatureSprite(speciesId) || makeCreatureSprite(s, this.typeChart.color(s.types[0]));
     }
     return this._spriteCache[speciesId];
+  }
+
+  // The player's own active creature in battle is shown from behind; falls
+  // back to the front sprite (baked or procedural) if no baked back art
+  // exists for this species yet.
+  spriteBackFor(speciesId) {
+    if (!this._spriteBackCache[speciesId]) {
+      this._spriteBackCache[speciesId] = bakedCreatureSpriteBack(speciesId) || this.spriteFor(speciesId);
+    }
+    return this._spriteBackCache[speciesId];
   }
 
   // Compute a live stat block from base stats + level (simplified Gen formula).
@@ -223,6 +235,7 @@ export class Dex {
     inst.maxHP = inst.stats.hp;
     inst.curHP = Math.min(inst.maxHP, Math.max(1, inst.curHP + (inst.maxHP - oldMax)));
     inst.sprite = this.spriteFor(to);
+    inst.spriteBack = this.spriteBackFor(to);
     return inst;
   }
 
@@ -256,6 +269,7 @@ export class Dex {
       statusCounter: opts.statusCounter || 0,
       moves: moves.length ? moves : [this.instanceMove(s.learnset[0].move)],
       sprite: this.spriteFor(speciesId),
+      spriteBack: this.spriteBackFor(speciesId),
     };
   }
 
