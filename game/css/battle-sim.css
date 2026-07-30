@@ -623,6 +623,18 @@ p { margin: 0; }
 .move-btn-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .move-pp { font-size: 10px; color: var(--muted); margin-left: auto; }
 
+.replace-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid #6b3030;
+  border-radius: var(--radius);
+  background: #241a1d;
+}
+.replace-head strong { color: #e58e8e; }
+.replace-head span { font-size: 12px; color: var(--muted); }
+
 .switch-list { display: flex; flex-direction: column; gap: 5px; }
 .switch-row {
   display: grid;

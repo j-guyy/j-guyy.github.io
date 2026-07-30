@@ -14,13 +14,15 @@
 //     immediately before its own message, so re-reading there shows a change on
 //     the same beat that announces it, never earlier.
 //
-// Known deviation from Showdown: when your active creature faints, the engine
-// sends out your first healthy creature rather than prompting. You can switch
-// freely on your next turn. Letting the player choose needs an async pause
-// inside resolveTurn, which is a bigger engine change than this screen wants to
-// make.
+// When your active creature faints, the engine leaves the slot empty and sets
+// needsReplacement(); this screen then shows a forced switch panel and answers
+// with sendInReplacement(). Hazards can KO the creature that just came in, so
+// that's a loop, not a single prompt.
 
-import { createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO } from '../battle/battle.js';
+import {
+  createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO,
+  needsReplacement, replacementOptions, sendInReplacement,
+} from '../battle/battle.js';
 import { buildParty, STAT_LABEL } from './sets.js';
 import { makeAIAgent, DIFFICULTIES } from './agents.js';
 import { el, clear, spriteEl, typeBadge, categoryBadge, hpClass, effectivenessLabel, moveSummary, sleep } from './ui.js';
@@ -50,6 +52,7 @@ export class BattleScreen {
   start(root, config) {
     this.config = config;
     this.busy = false;
+    this.ended = false;
     this.turn = 0;
     this.revealed = new Set([0]);
 
@@ -259,6 +262,7 @@ export class BattleScreen {
       this.els.controls.appendChild(el('div.control-wait', { text: 'Resolving turn…' }));
       return;
     }
+    if (needsReplacement(this.battle)) return this.renderReplacePanel();
 
     const me = activePlayer(this.battle);
     const foe = activeEnemy(this.battle);
@@ -305,18 +309,19 @@ export class BattleScreen {
     );
   }
 
-  renderSwitchPanel() {
-    clear(this.els.controls);
-    const trapped = this.battle.vol.player.trapped;
+  // Shared by the voluntary switch panel and the forced post-faint one.
+  // `activeIndex` is null in the forced case — the slot is empty, so no row is
+  // "already out" and every healthy creature is a legal answer.
+  partyList(activeIndex, onPick) {
     const list = el('div.switch-list');
     this.battle.playerParty.forEach((member, i) => {
-      const isActive = i === this.battle.playerIndex;
+      const isActive = i === activeIndex;
       const fainted = member.curHP <= 0;
       const fraction = member.curHP / member.maxHP;
       list.appendChild(
         el(`button.switch-row${isActive ? '.is-active' : ''}${fainted ? '.is-fainted' : ''}`, {
           disabled: isActive || fainted,
-          onclick: () => this.takeTurn({ type: 'switch', index: i }),
+          onclick: () => onPick(i),
         }, [
           spriteEl(this.dex.spriteFor(member.species), 'switch-sprite'),
           el('span.switch-info', {}, [
@@ -328,14 +333,33 @@ export class BattleScreen {
         ])
       );
     });
+    return list;
+  }
 
-    if (trapped) {
-      this.els.controls.appendChild(el('p.note.note-warn', { text: `${activePlayer(this.battle).name} is trapped and can't switch out — the attempt will waste the turn.` }));
+  renderSwitchPanel() {
+    clear(this.els.controls);
+    if (this.battle.vol.player.trapped) {
+      this.els.controls.appendChild(el('p.note.note-warn', {
+        text: `${activePlayer(this.battle).name} is trapped and can't switch out — the attempt will waste the turn.`,
+      }));
     }
-    this.els.controls.appendChild(list);
+    this.els.controls.appendChild(
+      this.partyList(this.battle.playerIndex, (i) => this.takeTurn({ type: 'switch', index: i }))
+    );
     this.els.controls.appendChild(
       el('div.control-row', {}, [el('button.btn.btn-ghost', { onclick: () => this.renderControls() }, '← Back')])
     );
+  }
+
+  // Forced switch after a faint. No Back button — the slot has to be filled
+  // before anything else happens — and it costs no turn.
+  renderReplacePanel() {
+    const downed = this.battle.playerParty[this.view.player.index];
+    this.els.controls.appendChild(el('div.replace-head', {}, [
+      el('strong', { text: `${downed.name} fainted!` }),
+      el('span', { text: 'Send out which creature?' }),
+    ]));
+    this.els.controls.appendChild(this.partyList(null, (i) => this.doReplacement(i)));
   }
 
   renderResult() {
@@ -382,7 +406,34 @@ export class BattleScreen {
 
     this.busy = false;
     this.updateAll();
-    if (this.battle.over) this.log(this.battle.outcome === 'win' ? 'You win!' : 'You are out of usable creatures.', 'log-head');
+    this.announceEnd();
+  }
+
+  // Answering the forced post-faint prompt. Costs no turn, so there's no turn
+  // counter bump and no log separator — but hazards on the way in can KO the
+  // creature that just landed, in which case updateAll() puts the prompt
+  // straight back up.
+  async doReplacement(index) {
+    if (this.busy || this.battle.over || !needsReplacement(this.battle)) return;
+    this.busy = true;
+    this.renderControls();
+
+    const { beats } = sendInReplacement(this.battle, index, this.ctx);
+    await this.playBeats(beats);
+
+    this.view.player.index = this.battle.playerIndex;
+    this.view.player.hp = activePlayer(this.battle).curHP;
+    this.view.partyHP.player = this.battle.playerParty.map((m) => m.curHP);
+
+    this.busy = false;
+    this.updateAll();
+    this.announceEnd();
+  }
+
+  announceEnd() {
+    if (!this.battle.over || this.ended) return;
+    this.ended = true;
+    this.log(this.battle.outcome === 'win' ? 'You win!' : 'You are out of usable creatures.', 'log-head');
   }
 
   async playBeats(beats) {
@@ -468,6 +519,7 @@ export class BattleScreen {
     if (this.battle.over || !confirm('Forfeit this battle?')) return;
     this.battle.over = true;
     this.battle.outcome = 'lose';
+    this.ended = true;
     this.log('You forfeited the battle.', 'log-head');
     this.busy = false;
     this.updateAll();

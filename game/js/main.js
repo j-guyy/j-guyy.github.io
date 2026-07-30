@@ -15,7 +15,10 @@ import { loadMap, GameMap } from './engine/tilemap.js';
 import { makeActorSprite, preloadCreatureArt } from './engine/assets.js';
 import { loadTypes } from './battle/typechart.js';
 import { loadDex } from './data/dex.js';
-import { createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO } from './battle/battle.js';
+import {
+  createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO,
+  needsReplacement, replacementOptions, sendInReplacement,
+} from './battle/battle.js';
 import { hasSave, loadSave, writeSave, clearSave, STARTING_KIT, STARTING_MACHINES, STARTING_MONEY } from './save.js';
 import { initAudio, playMusic, playSfx, toggleMute } from './engine/audio.js';
 
@@ -940,6 +943,15 @@ function primeBeat() {
     // Apply XP to the active creature; splice resulting messages into the
     // stream. Level-ups recalc stats in place (max-HP gains heal by the delta).
     const mon = b.playerMon;
+    // A fainted creature earns nothing — and must not, since a level-up's
+    // max-HP delta heals from current HP and would quietly revive it. Reachable
+    // when your creature faints and the foe then goes down to end-of-turn
+    // damage in the same turn, with your slot still empty.
+    if (mon.curHP <= 0) {
+      b.waitConfirm = false;
+      b.beatTimer = 0;
+      return;
+    }
     const msgs = [{ type: 'msg', text: `${mon.name} gained ${beat.amount} EXP!` }];
     const events = game.dex.addXP(mon, beat.amount);
     for (const ev of events) {
@@ -999,6 +1011,13 @@ function finishBeats() {
   }
   if (b.data.over) {
     endBattle();
+    return;
+  }
+  // Your creature fainted and the slot is still empty — pick who comes in
+  // before the command menu comes back. Can't be cancelled out of.
+  if (needsReplacement(b.data)) {
+    b.partyIndex = replacementOptions(b.data)[0];
+    setBattlePhase('replace');
     return;
   }
   b.menuIndex = 0; // always default the command menu to Fight
@@ -1131,6 +1150,18 @@ function updateBattle(dt) {
     return;
   }
 
+  if (b.phase === 'replace') {
+    // Same list as 'party', minus the escape hatch — something has to come out.
+    if (game.input.consume('up')) b.partyIndex = (b.partyIndex + game.party.length - 1) % game.party.length;
+    if (game.input.consume('down')) b.partyIndex = (b.partyIndex + 1) % game.party.length;
+    if (game.input.consume('confirm')) {
+      const target = game.party[b.partyIndex];
+      if (target.curHP <= 0) transientBattleMsg(`${target.name} has no energy left to battle!`);
+      else doReplacement(b.partyIndex);
+    }
+    return;
+  }
+
   if (b.phase === 'item') {
     const list = invEntries();
     if (!list.length) { b.menuIndex = 0; setBattlePhase('menu'); return; }
@@ -1201,6 +1232,17 @@ function useBattleItem(entry) {
 function doTurn(action) {
   const b = game.battle;
   const { beats } = resolveTurn(b.data, action, { typeChart: game.typeChart, dex: game.dex });
+  b.beats = beats;
+  b.beatIndex = 0;
+  setBattlePhase('resolve');
+  primeBeat();
+}
+
+// Fill the empty slot left by a faint. Doesn't consume a turn — and if hazards
+// KO whoever came in, finishBeats() lands back on the 'replace' phase.
+function doReplacement(index) {
+  const b = game.battle;
+  const { beats } = sendInReplacement(b.data, index, { typeChart: game.typeChart, dex: game.dex });
   b.beats = beats;
   b.beatIndex = 0;
   setBattlePhase('resolve');
@@ -1736,6 +1778,10 @@ function renderBattle() {
     r.text(`${sel.type}   ${sel.category}   PWR ${sel.power || '—'}   ACC ${sel.accuracy}   PP ${sel.curPP}/${sel.pp}`, VIEW_W - 24, my + 96, { align: 'right', size: 19, color: '#555' });
   } else if (b.phase === 'party') {
     renderPartyList(r, 'Switch to which creature?', b.partyIndex, 'Z: switch in (uses the turn)   X: back');
+  } else if (b.phase === 'replace') {
+    // No name in the title — renderPartyList doesn't wrap, and a long one runs
+    // off the panel. The fainted creature is the 0 HP row in the list anyway.
+    renderPartyList(r, 'Send out which creature?', b.partyIndex, 'Z: send in');
   } else if (b.phase === 'item') {
     const list = invEntries();
     list.forEach((entry, i) => {
