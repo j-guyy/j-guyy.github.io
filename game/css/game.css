@@ -38,6 +38,10 @@ body {
   border: 2px solid #2b3050;
   border-radius: 4px;
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+  /* Safety net: never overflow the viewport before/without the JS resize
+     (renderer.js) setting an explicit pixel size. */
+  max-width: 100%;
+  height: auto;
 }
 
 #controls-hint {

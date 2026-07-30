@@ -29,8 +29,11 @@ export class Renderer {
     const pad = 24;
     const maxW = window.innerWidth - pad;
     const maxH = window.innerHeight - pad;
-    let scale = Math.floor(Math.min(maxW / VIEW_W, maxH / VIEW_H));
-    if (scale < 1) scale = 1;
+    const rawScale = Math.min(maxW / VIEW_W, maxH / VIEW_H);
+    // Integer-scale when the viewport is roomy enough (keeps pixel art crisp),
+    // but fall back to a fractional scale on small/mobile screens so the
+    // canvas shrinks to fit instead of overflowing the viewport width.
+    const scale = rawScale >= 1 ? Math.floor(rawScale) : rawScale;
     this.scale = scale;
     this.canvas.style.width = VIEW_W * scale + 'px';
     this.canvas.style.height = VIEW_H * scale + 'px';
