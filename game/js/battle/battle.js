@@ -58,6 +58,11 @@ export function createBattle(playerParty, enemyParty, opts = {}) {
     screens: { player: { reflect: 0, lightScreen: 0 }, enemy: { reflect: 0, lightScreen: 0 } },
     // Weather is global (not per-side) — kind is null | 'rain' | 'sun' | 'sandstorm' | 'hail'.
     weather: { kind: null, turns: 0 },
+    // A side whose active creature fainted has an empty slot until the turn
+    // finishes resolving; see handlePlayerFaint for why the replacement waits.
+    // The enemy's is filled automatically at end of turn; the player's is left
+    // for the caller to answer via sendInReplacement().
+    awaitingSwitch: { player: false, enemy: false },
     over: false,
     outcome: null, // 'win' | 'lose' | 'caught' | 'fled'
   };
@@ -678,7 +683,17 @@ function usableMoves(inst) {
 
 // Prefer the highest expected damage; status moves score situationally.
 // 15% of the time picks randomly among usable moves so battles stay varied.
+//
+// An external driver can take the enemy side over entirely by putting an agent
+// on ctx.enemyAgent — that's how the battle simulator (/game/battle-sim.html)
+// plugs in its own difficulty tiers, and the seam a networked opponent would
+// use later. The agent must answer synchronously, since turn order is decided
+// before either side acts; returning null hands the turn back to the AI below.
 function enemyChooseMove(battle, ctx) {
+  if (ctx.enemyAgent) {
+    const chosen = ctx.enemyAgent.chooseMove(battle, ctx);
+    if (chosen) return chosen;
+  }
   const enemy = activeEnemy(battle);
   const player = activePlayer(battle);
   const usable = usableMoves(enemy);
@@ -751,17 +766,38 @@ function applyHazardDamage(battle, side, ctx, beats) {
   }
 }
 
+// Put `index` out on `side`: reset that side's volatiles, announce it, and eat
+// whatever hazards are sitting on the field. Shared by manual switches and by
+// both sides' post-faint replacements, so entry effects can't drift apart
+// between the two paths. Note the mutual recursion with the faint handlers —
+// hazards can KO the creature that just came in, which simply re-arms
+// awaitingSwitch for another round.
+function sendIn(battle, side, index, ctx, beats) {
+  battle.awaitingSwitch[side] = false;
+  if (side === 'player') battle.playerIndex = index;
+  else battle.enemyIndex = index;
+  battle.vol[side] = mkVol();
+  const next = side === 'player' ? activePlayer(battle) : activeEnemy(battle);
+  beats.push({ type: 'switch', side, index });
+  beats.push({
+    type: 'msg',
+    text: side === 'player' ? `Go, ${next.name}!` : `${battle.trainerName} sent out ${next.name}!`,
+  });
+  applyHazardDamage(battle, side, ctx, beats);
+}
+
+// A fainted creature leaves an EMPTY slot for the rest of the turn — the
+// replacement isn't sent out until everything else has resolved. That's the
+// mainline rule, and it matters twice over: the incoming creature no longer
+// eats burn/poison/weather/Leech Seed damage for a turn it wasn't on the field
+// for, and it gives the player a real choice of who comes in (see
+// sendInReplacement) instead of the engine always grabbing the first healthy
+// party member.
 function handleEnemyFaint(battle, ctx, beats) {
   const enemy = activeEnemy(battle);
   beats.push({ type: 'xp', amount: ctx.dex.xpGain(enemy, battle.mode === 'trainer') });
-  const nextIdx = battle.enemyParty.findIndex((m) => m.curHP > 0);
-  if (battle.mode === 'trainer' && nextIdx !== -1) {
-    battle.enemyIndex = nextIdx;
-    battle.vol.enemy = mkVol();
-    const next = battle.enemyParty[nextIdx];
-    beats.push({ type: 'switch', side: 'enemy', index: nextIdx });
-    beats.push({ type: 'msg', text: `${battle.trainerName} sent out ${next.name}!` });
-    applyHazardDamage(battle, 'enemy', ctx, beats);
+  if (battle.mode === 'trainer' && battle.enemyParty.some((m) => m.curHP > 0)) {
+    battle.awaitingSwitch.enemy = true;
     return;
   }
   battle.over = true;
@@ -769,18 +805,27 @@ function handleEnemyFaint(battle, ctx, beats) {
 }
 
 function handlePlayerFaint(battle, ctx, beats) {
-  const nextIdx = battle.playerParty.findIndex((m) => m.curHP > 0);
-  if (nextIdx !== -1) {
-    battle.playerIndex = nextIdx;
-    battle.vol.player = mkVol();
-    const next = battle.playerParty[nextIdx];
-    beats.push({ type: 'switch', side: 'player', index: nextIdx });
-    beats.push({ type: 'msg', text: `Go, ${next.name}!` });
-    applyHazardDamage(battle, 'player', ctx, beats);
+  if (battle.playerParty.some((m) => m.curHP > 0)) {
+    battle.awaitingSwitch.player = true;
     return;
   }
   battle.over = true;
   battle.outcome = 'lose';
+}
+
+// The enemy has no one to ask, so its slot refills as soon as the turn is
+// done. Loops because hazards can KO each creature as it lands.
+function fillEnemySlot(battle, ctx, beats) {
+  while (!battle.over && battle.awaitingSwitch.enemy) {
+    const nextIdx = battle.enemyParty.findIndex((m) => m.curHP > 0);
+    if (nextIdx === -1) {
+      battle.awaitingSwitch.enemy = false;
+      battle.over = true;
+      battle.outcome = 'win';
+      return;
+    }
+    sendIn(battle, 'enemy', nextIdx, ctx, beats);
+  }
 }
 
 function handleFaints(battle, ctx, beats, result, atkSide, defSide) {
@@ -877,9 +922,14 @@ function handleProtect(battle, atk, atkSide, move, beats) {
 // Perform one side's action with the pre-move gate + faint handling.
 function actorMove(battle, atk, atkSide, move, ctx, beats) {
   if (battle.over || atk.curHP <= 0) return;
-  if (!canAct(battle, atk, atkSide, ctx, beats)) return;
   const defSide = atkSide === 'player' ? 'enemy' : 'player';
   const def = defSide === 'enemy' ? activeEnemy(battle) : activePlayer(battle);
+  // Nothing to swing at: the other side fainted earlier this turn and its
+  // replacement doesn't arrive until the turn is over. Checked before canAct so
+  // the attacker doesn't burn its sleep counter or a confusion roll on a move
+  // that was never going to happen.
+  if (def.curHP <= 0) return;
+  if (!canAct(battle, atk, atkSide, ctx, beats)) return;
   spendPP(move);
   if (move.protect) {
     handleProtect(battle, atk, atkSide, move, beats);
@@ -1016,6 +1066,10 @@ function endOfTurn(battle, ctx, beats) {
   tickWeather(battle, beats);
   tickScreens(battle, 'player', beats);
   tickScreens(battle, 'enemy', beats);
+
+  // Everything for this turn has resolved, so the foe's empty slot can refill.
+  // The player's is deliberately left open for the caller to fill.
+  fillEnemySlot(battle, ctx, beats);
 }
 
 // ---- Turn resolution -------------------------------------------------------
@@ -1027,6 +1081,10 @@ function endOfTurn(battle, ctx, beats) {
 // ctx: { typeChart, dex }
 export function resolveTurn(battle, action, ctx) {
   const beats = [];
+  // The player's slot is empty — nothing can be commanded until
+  // sendInReplacement() fills it.
+  if (battle.over || battle.awaitingSwitch.player) return { beats, outcome: battle.outcome };
+
   const player = activePlayer(battle);
   const enemy = activeEnemy(battle);
 
@@ -1037,13 +1095,8 @@ export function resolveTurn(battle, action, ctx) {
       endOfTurn(battle, ctx, beats);
       return { beats, outcome: battle.outcome };
     }
-    const next = battle.playerParty[action.index];
     beats.push({ type: 'msg', text: `Come back, ${player.name}!` });
-    battle.playerIndex = action.index;
-    battle.vol.player = mkVol();
-    beats.push({ type: 'switch', side: 'player', index: action.index });
-    beats.push({ type: 'msg', text: `Go, ${next.name}!` });
-    applyHazardDamage(battle, 'player', ctx, beats);
+    sendIn(battle, 'player', action.index, ctx, beats);
     if (battle.over) return { beats, outcome: battle.outcome };
     enemyTurn(battle, ctx, beats);
     endOfTurn(battle, ctx, beats);
@@ -1144,6 +1197,37 @@ export function resolveTurn(battle, action, ctx) {
   }
 
   endOfTurn(battle, ctx, beats);
+  return { beats, outcome: battle.outcome };
+}
+
+// ---- Faint replacement -----------------------------------------------------
+
+// True while the player's active creature has fainted, the battle isn't over,
+// and nobody has been sent out yet. Callers check this after playing back a
+// turn's beats and prompt for a replacement instead of returning to the menu.
+export function needsReplacement(battle) {
+  return !battle.over && battle.awaitingSwitch.player;
+}
+
+// Party indices that may be sent out right now.
+export function replacementOptions(battle) {
+  return battle.playerParty.reduce((out, m, i) => (m.curHP > 0 ? out.concat(i) : out), []);
+}
+
+// Answer the prompt. Returns beats to play back exactly like resolveTurn's —
+// and, because hazards on the way in can KO the newcomer, needsReplacement()
+// may be true again afterwards, so callers should loop until it isn't.
+export function sendInReplacement(battle, index, ctx) {
+  const beats = [];
+  if (!needsReplacement(battle)) return { beats, outcome: battle.outcome };
+  const options = replacementOptions(battle);
+  if (!options.length) {
+    battle.awaitingSwitch.player = false;
+    battle.over = true;
+    battle.outcome = 'lose';
+    return { beats, outcome: battle.outcome };
+  }
+  sendIn(battle, 'player', options.includes(index) ? index : options[0], ctx, beats);
   return { beats, outcome: battle.outcome };
 }
 
