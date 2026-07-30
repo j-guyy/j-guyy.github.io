@@ -35,7 +35,10 @@ const STAT_LABEL = {
 function mkVol() {
   const stages = {};
   for (const s of STAGE_STATS) stages[s] = 0;
-  return { stages, confusion: 0, flinch: false, protecting: false, protectStreak: 0, trapped: false };
+  // seeded (Leech Seed) lives here, not on the field, so it correctly clears
+  // the moment the seeded creature leaves the field (faint or switch) —
+  // same lifetime rule as trapped.
+  return { stages, confusion: 0, flinch: false, protecting: false, protectStreak: 0, trapped: false, seeded: false };
 }
 
 export function createBattle(playerParty, enemyParty, opts = {}) {
@@ -49,9 +52,12 @@ export function createBattle(playerParty, enemyParty, opts = {}) {
     playerIndex,
     enemyIndex: 0,
     vol: { player: mkVol(), enemy: mkVol() },
-    // Entry hazards live on the field itself, not per-creature, so they
-    // persist across switches on that side for the rest of the battle.
+    // Entry hazards and screens live on the field itself, not per-creature,
+    // so they persist across switches on that side for the rest of the battle.
     hazards: { player: 0, enemy: 0 },
+    screens: { player: { reflect: 0, lightScreen: 0 }, enemy: { reflect: 0, lightScreen: 0 } },
+    // Weather is global (not per-side) — kind is null | 'rain' | 'sun' | 'sandstorm' | 'hail'.
+    weather: { kind: null, turns: 0 },
     over: false,
     outcome: null, // 'win' | 'lose' | 'caught' | 'fled'
   };
@@ -157,6 +163,20 @@ function applyVolatile(battle, target, side, volatileKind, beats, announceBlocke
   if (volatileKind === 'flinch') {
     // Only matters if the target hasn't moved yet this turn; cleared each turn.
     vol.flinch = true;
+    return true;
+  }
+  if (volatileKind === 'seed') {
+    // Leech Seed-style: Grass-types are immune, same as the mainline games.
+    if ((target.types || []).includes('Grass')) {
+      if (announceBlocked) beats.push({ type: 'msg', text: "It doesn't affect this creature..." });
+      return false;
+    }
+    if (vol.seeded) {
+      if (announceBlocked) beats.push({ type: 'msg', text: `${target.name} is already seeded!` });
+      return false;
+    }
+    vol.seeded = true;
+    beats.push({ type: 'msg', text: `${target.name} was seeded!` });
     return true;
   }
   return false;
@@ -289,6 +309,52 @@ function applyClearHazards(battle, side, beats) {
   beats.push({ type: 'msg', text: 'The hazards on the field were blown away!' });
 }
 
+// Belly Drum: costs exactly half the user's max HP and maxes out Attack in
+// one go (a stage SET, not a delta like every other stat move). Fails
+// outright if the user doesn't have more than that much HP to spend.
+function applyBellyDrum(target, side, battle, beats) {
+  const cost = Math.floor(target.maxHP / 2);
+  if (target.curHP <= cost) {
+    beats.push({ type: 'msg', text: 'But it failed!' });
+    return;
+  }
+  const from = target.curHP;
+  target.curHP -= cost;
+  beats.push({ type: 'damage', target: side, from, to: target.curHP, eff: 1 });
+  battle.vol[side].stages.attack = 6;
+  beats.push({ type: 'msg', text: `${target.name} cut its own HP and maximized its Attack!` });
+}
+
+const WEATHER_INFO = {
+  rain: { startMsg: 'It started to rain!', endMsg: 'The rain stopped.' },
+  sun: { startMsg: 'The sunlight turned harsh!', endMsg: 'The sunlight faded.' },
+  sandstorm: { startMsg: 'A sandstorm kicked up!', endMsg: 'The sandstorm subsided.' },
+  hail: { startMsg: 'It started to hail!', endMsg: 'The hail stopped.' },
+};
+const WEATHER_DURATION = 5;
+
+// Weather is global field state (not per-side), lasting a flat 5 turns —
+// no weather-extending items exist here, so no need for the longer
+// durations those grant in the mainline games.
+function applyWeather(battle, kind, beats) {
+  battle.weather = { kind, turns: WEATHER_DURATION };
+  beats.push({ type: 'msg', text: WEATHER_INFO[kind].startMsg });
+}
+
+// Reflect/Light Screen: halves incoming damage of the matching category for
+// 5 turns on the caster's side (see the screenMult check in calcDamage).
+// Field-level like hazards, so it persists across switches on that side.
+function applyScreen(battle, side, kind, beats) {
+  const screens = battle.screens[side];
+  if (screens[kind] > 0) {
+    beats.push({ type: 'msg', text: 'But it failed!' });
+    return;
+  }
+  screens[kind] = WEATHER_DURATION;
+  const noun = kind === 'reflect' ? 'physical' : 'special';
+  beats.push({ type: 'msg', text: `A shimmering wall of light cuts down ${noun} damage!` });
+}
+
 // Shared handler for a move's effect payload on its target. dmgDealt is the
 // damage the attack just did (0 for status moves) — only effect.drain needs
 // it, everything else ignores the parameter.
@@ -313,6 +379,9 @@ function applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx
   if (effect.hazard) applyHazard(battle, side, effect.hazard, beats);
   if (effect.clearHazards) applyClearHazards(battle, side, beats);
   if (effect.drain) applyDrainHeal(attacker, atkSide, dmgDealt, effect.drain, beats);
+  if (effect.bellyDrum) applyBellyDrum(target, side, battle, beats);
+  if (effect.weather) applyWeather(battle, effect.weather, beats);
+  if (effect.screen) applyScreen(battle, atkSide, effect.screen, beats);
 }
 
 // ---- Effective stats -------------------------------------------------------
@@ -341,10 +410,36 @@ function defenseStat(battle, defender, defSide, move) {
   return Math.max(1, Math.floor(defender.stats[key] * stageMult(battle.vol[defSide].stages[key])));
 }
 
+// ---- Weather -----------------------------------------------------------
+
+function weatherActive(battle) {
+  return !!(battle.weather && battle.weather.kind && battle.weather.turns > 0);
+}
+
+// Weather Ball-style moves take on the active weather's type and hit for
+// double power, falling back to plain Normal when no weather is up.
+function effectiveMoveType(move, battle) {
+  if (!move.weatherBall || !weatherActive(battle)) return move.type;
+  const kind = battle.weather.kind;
+  if (kind === 'sun') return 'Fire';
+  if (kind === 'rain') return 'Water';
+  if (kind === 'hail') return 'Ice';
+  if (kind === 'sandstorm') return 'Rock';
+  return move.type;
+}
+
+function weatherChipImmune(inst, kind) {
+  const t = inst.types || [];
+  if (kind === 'sandstorm') return t.includes('Rock') || t.includes('Ground') || t.includes('Steel');
+  if (kind === 'hail') return t.includes('Ice');
+  return true;
+}
+
 // ---- Damage ----------------------------------------------------------------
 
 function calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx) {
-  const mult = ctx.typeChart.multiplier(move.type, defender.types);
+  const moveType = effectiveMoveType(move, battle);
+  const mult = ctx.typeChart.multiplier(moveType, defender.types);
   if (mult === 0) return { dmg: 0, mult: 0, crit: false };
 
   // OHKO (Fissure/Guillotine/Sheer Cold-style): always lethal on a hit —
@@ -365,20 +460,37 @@ function calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx) {
     return { dmg, mult: 1, crit: false };
   }
 
-  const stab = attacker.types.includes(move.type) ? 1.5 : 1;
+  const stab = attacker.types.includes(moveType) ? 1.5 : 1;
   const atk = attackStat(battle, attacker, atkSide, move, ctx);
   const def = defenseStat(battle, defender, defSide, move);
   const level = attacker.level;
+  // Weather Ball doubles its power whenever weather is active.
+  const power = move.weatherBall ? (weatherActive(battle) ? 100 : 50) : move.power;
   const base =
-    Math.floor((Math.floor(((2 * level) / 5 + 2) * move.power * atk) / def) / 50) + 2;
+    Math.floor((Math.floor(((2 * level) / 5 + 2) * power * atk) / def) / 50) + 2;
   const rand = 0.85 + Math.random() * 0.15;
   const crit = Math.random() < 1 / 16;
   let abilityMult = 1;
   const ab = abilityOf(attacker, ctx);
-  if (ab && ab.kind === 'pinch_boost' && move.type === ab.moveType && attacker.curHP <= attacker.maxHP / 3) {
+  if (ab && ab.kind === 'pinch_boost' && moveType === ab.moveType && attacker.curHP <= attacker.maxHP / 3) {
     abilityMult = ab.factor;
   }
-  const dmg = Math.max(1, Math.floor(base * mult * stab * rand * abilityMult * (crit ? 1.5 : 1)));
+  // Rain/Sun boost their own type and weaken the opposite one.
+  let weatherMult = 1;
+  if (weatherActive(battle)) {
+    const kind = battle.weather.kind;
+    if (kind === 'rain') weatherMult = moveType === 'Water' ? 1.5 : moveType === 'Fire' ? 0.5 : 1;
+    else if (kind === 'sun') weatherMult = moveType === 'Fire' ? 1.5 : moveType === 'Water' ? 0.5 : 1;
+  }
+  // Reflect/Light Screen halve incoming damage of the matching category —
+  // critical hits punch straight through, same as the mainline games.
+  const screens = battle.screens && battle.screens[defSide];
+  let screenMult = 1;
+  if (screens && !crit) {
+    if (move.category === 'physical' && screens.reflect > 0) screenMult = 0.5;
+    else if (move.category === 'special' && screens.lightScreen > 0) screenMult = 0.5;
+  }
+  const dmg = Math.max(1, Math.floor(base * mult * stab * rand * abilityMult * weatherMult * screenMult * (crit ? 1.5 : 1)));
   return { dmg, mult, crit };
 }
 
@@ -775,6 +887,12 @@ function actorMove(battle, atk, atkSide, move, ctx, beats) {
   }
   battle.vol[atkSide].protectStreak = 0;
   const result = performMove(battle, atk, atkSide, def, defSide, move, ctx, beats);
+  // Explosion/Self-Destruct-style: the user faints no matter what happened —
+  // hit, miss, or blocked by Protect/immunity — same as the mainline games.
+  if (move.selfKO && atk.curHP > 0) {
+    beats.push({ type: 'msg', text: `${atk.name} used up all its energy!` });
+    result.attackerFainted = dealDamage(atk, atkSide, atk.curHP, beats) || result.attackerFainted;
+  }
   handleFaints(battle, ctx, beats, result, atkSide, defSide);
 }
 
@@ -806,6 +924,68 @@ function applyResidual(battle, inst, side, ctx, beats) {
   }
 }
 
+// Sandstorm/Hail chip damage: 1/16 max HP, Rock/Ground/Steel immune to
+// sandstorm, Ice immune to hail — same as the mainline games.
+function applyWeatherChip(battle, inst, side, ctx, beats) {
+  if (inst.curHP <= 0 || !weatherActive(battle)) return;
+  const kind = battle.weather.kind;
+  if (kind !== 'sandstorm' && kind !== 'hail') return;
+  if (weatherChipImmune(inst, kind)) return;
+  const dmg = Math.max(1, Math.floor(inst.maxHP / 16));
+  const verb = kind === 'sandstorm' ? 'buffeted by the sandstorm' : 'pelted by hail';
+  beats.push({ type: 'msg', text: `${inst.name} is ${verb}!` });
+  const fainted = dealDamage(inst, side, dmg, beats);
+  if (fainted) {
+    if (side === 'enemy') handleEnemyFaint(battle, ctx, beats);
+    else handlePlayerFaint(battle, ctx, beats);
+  }
+}
+
+// Leech Seed: drains the seeded creature for 1/8 max HP and heals whoever's
+// currently active on the opposite side — not necessarily the original
+// seeder, matching the mainline rule. The heal is capped at what was
+// actually drained (the seeded creature might have less than 1/8 left).
+function applySeedDrain(battle, inst, side, ctx, beats) {
+  if (inst.curHP <= 0 || !battle.vol[side].seeded) return;
+  const otherSide = side === 'player' ? 'enemy' : 'player';
+  const other = otherSide === 'player' ? activePlayer(battle) : activeEnemy(battle);
+  const dmg = Math.min(inst.curHP, Math.max(1, Math.floor(inst.maxHP / 8)));
+  beats.push({ type: 'msg', text: `${inst.name}'s health is sapped by Leech Seed!` });
+  const fainted = dealDamage(inst, side, dmg, beats);
+  if (other.curHP > 0) {
+    const from = other.curHP;
+    other.curHP = Math.min(other.maxHP, other.curHP + dmg);
+    if (other.curHP !== from) beats.push({ type: 'damage', target: otherSide, from, to: other.curHP, eff: 1 });
+  }
+  if (fainted) {
+    if (side === 'enemy') handleEnemyFaint(battle, ctx, beats);
+    else handlePlayerFaint(battle, ctx, beats);
+  }
+}
+
+// Weather runs down by one turn at the very end; the last turn still deals
+// its chip damage above before expiring here.
+function tickWeather(battle, beats) {
+  if (!weatherActive(battle)) return;
+  battle.weather.turns -= 1;
+  if (battle.weather.turns <= 0) {
+    beats.push({ type: 'msg', text: WEATHER_INFO[battle.weather.kind].endMsg });
+    battle.weather.kind = null;
+  }
+}
+
+function tickScreens(battle, side, beats) {
+  const screens = battle.screens[side];
+  for (const kind of ['reflect', 'lightScreen']) {
+    if (screens[kind] <= 0) continue;
+    screens[kind] -= 1;
+    if (screens[kind] === 0) {
+      const whose = side === 'player' ? 'Your' : "The foe's";
+      beats.push({ type: 'msg', text: `${whose} protective wall of light faded.` });
+    }
+  }
+}
+
 function endOfTurn(battle, ctx, beats) {
   battle.vol.player.flinch = false;
   battle.vol.enemy.flinch = false;
@@ -814,11 +994,28 @@ function endOfTurn(battle, ctx, beats) {
   if (battle.over) return;
   const order = effSpeed(battle, activePlayer(battle), 'player') >= effSpeed(battle, activeEnemy(battle), 'enemy')
     ? ['player', 'enemy'] : ['enemy', 'player'];
+
   for (const side of order) {
     if (battle.over) break;
-    const inst = side === 'player' ? activePlayer(battle) : activeEnemy(battle);
-    applyResidual(battle, inst, side, ctx, beats);
+    applyWeatherChip(battle, side === 'player' ? activePlayer(battle) : activeEnemy(battle), side, ctx, beats);
   }
+  if (battle.over) return;
+
+  for (const side of order) {
+    if (battle.over) break;
+    applyResidual(battle, side === 'player' ? activePlayer(battle) : activeEnemy(battle), side, ctx, beats);
+  }
+  if (battle.over) return;
+
+  for (const side of order) {
+    if (battle.over) break;
+    applySeedDrain(battle, side === 'player' ? activePlayer(battle) : activeEnemy(battle), side, ctx, beats);
+  }
+  if (battle.over) return;
+
+  tickWeather(battle, beats);
+  tickScreens(battle, 'player', beats);
+  tickScreens(battle, 'enemy', beats);
 }
 
 // ---- Turn resolution -------------------------------------------------------
