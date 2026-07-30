@@ -184,6 +184,21 @@ function applyHeal(target, side, effect, beats) {
   return true;
 }
 
+// Proportional drain (Absorb/Mega Drain/Giga Drain-style): heals the
+// attacker by a fraction of the damage THIS hit just dealt, unlike
+// effect.heal which is a flat fraction of the healer's own max HP. Skipped
+// entirely if the hit fainted the defender (applyMoveEffect's caller already
+// gates on !defenderFainted, matching the classic Gen 1 "no drain off a
+// fainting hit" behavior).
+function applyDrainHeal(attacker, atkSide, dmgDealt, fraction, beats) {
+  if (attacker.curHP <= 0 || attacker.curHP >= attacker.maxHP) return;
+  const from = attacker.curHP;
+  const amount = Math.max(1, Math.floor(dmgDealt * fraction));
+  attacker.curHP = Math.min(attacker.maxHP, attacker.curHP + amount);
+  beats.push({ type: 'damage', target: atkSide, from, to: attacker.curHP, eff: 1 });
+  beats.push({ type: 'msg', text: `${attacker.name} regained health!` });
+}
+
 function applyStages(target, side, battle, stages, beats) {
   const vol = battle.vol[side];
   for (const [stat, delta] of Object.entries(stages)) {
@@ -266,8 +281,18 @@ function applyHazard(battle, side, kind, beats) {
   beats.push({ type: 'msg', text: 'Spikes were scattered on the ground!' });
 }
 
-// Shared handler for a move's effect payload on its target.
-function applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, guaranteed) {
+// Rapid Spin-style hazard removal: clears whatever's stacked up on the
+// user's own side of the field.
+function applyClearHazards(battle, side, beats) {
+  if (!battle.hazards[side]) return;
+  battle.hazards[side] = 0;
+  beats.push({ type: 'msg', text: 'The hazards on the field were blown away!' });
+}
+
+// Shared handler for a move's effect payload on its target. dmgDealt is the
+// damage the attack just did (0 for status moves) — only effect.drain needs
+// it, everything else ignores the parameter.
+function applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, guaranteed, dmgDealt = 0) {
   const effect = move.effect;
   if (!effect) return;
   const chance = effect.chance != null ? effect.chance : 100;
@@ -286,6 +311,8 @@ function applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx
   if (effect.cureParty) applyCureParty(battle, side, move, beats);
   if (effect.trap) applyTrap(target, side, battle, beats);
   if (effect.hazard) applyHazard(battle, side, effect.hazard, beats);
+  if (effect.clearHazards) applyClearHazards(battle, side, beats);
+  if (effect.drain) applyDrainHeal(attacker, atkSide, dmgDealt, effect.drain, beats);
 }
 
 // ---- Effective stats -------------------------------------------------------
@@ -319,6 +346,25 @@ function defenseStat(battle, defender, defSide, move) {
 function calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx) {
   const mult = ctx.typeChart.multiplier(move.type, defender.types);
   if (mult === 0) return { dmg: 0, mult: 0, crit: false };
+
+  // OHKO (Fissure/Guillotine/Sheer Cold-style): always lethal on a hit —
+  // immunity still applies (handled above), Sturdy still saves 1 HP (the
+  // generic sturdy check downstream treats it like any other lethal hit).
+  // Accuracy stays the flat approximation already on these moves rather than
+  // the real level-difference formula.
+  if (move.ohko) return { dmg: defender.curHP, mult, crit: false };
+
+  // Fixed/level-based damage (Seismic Toss/Night Shade/Sonic Boom/Dragon
+  // Rage/Super Fang-style): bypasses the Atk/Def formula and STAB/crit/type
+  // scaling entirely, but a 0x immunity (checked above) still blocks it.
+  if (move.fixedDamage != null) {
+    let dmg;
+    if (move.fixedDamage === 'level') dmg = attacker.level;
+    else if (move.fixedDamage === 'halfHP') dmg = Math.max(1, Math.floor(defender.curHP / 2));
+    else dmg = move.fixedDamage;
+    return { dmg, mult: 1, crit: false };
+  }
+
   const stab = attacker.types.includes(move.type) ? 1.5 : 1;
   const atk = attackStat(battle, attacker, atkSide, move, ctx);
   const def = defenseStat(battle, defender, defSide, move);
@@ -376,6 +422,7 @@ function performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx
   const [minHits, maxHits] = move.multiHit;
   const hitCount = minHits === maxHits ? minHits : rollMultiHitCount();
   let hits = 0;
+  let totalDamage = 0;
   let lastMult = 1;
   let sturdyTriggered = false;
   let defenderFainted = false;
@@ -393,6 +440,7 @@ function performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx
       sturdyTriggered = true;
     }
     hits += 1;
+    totalDamage += finalDmg;
     defenderFainted = dealDamage(defender, defSide, finalDmg, beats, mult);
     if (crit) beats.push({ type: 'msg', text: 'A critical hit!' });
     if (defenderFainted) break;
@@ -403,7 +451,7 @@ function performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx
     if (eff) beats.push({ type: 'msg', text: eff });
   }
   if (sturdyTriggered) beats.push({ type: 'msg', text: `${defender.name} held on with Sturdy!` });
-  return { defenderFainted, hits };
+  return { defenderFainted, hits, totalDamage };
 }
 
 // One creature using one move on another. Returns true if the DEFENDER fainted.
@@ -411,7 +459,7 @@ function performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx
 function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, beats) {
   beats.push({ type: 'msg', text: `${attacker.name} used ${move.name}!`, actor: atkSide });
 
-  const isDamaging = move.category !== 'status' && move.power > 0;
+  const isDamaging = move.category !== 'status' && (move.power > 0 || move.ohko || move.fixedDamage != null);
 
   // Protect/Detect: blocks anything that would actually reach the defender
   // (damage, or a status effect aimed at the foe). A self-targeted buff never
@@ -452,12 +500,13 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
   }
 
   let defenderFainted;
-  let finalDmg = 0; // only meaningful for the single-hit path (Struggle recoil below)
+  let totalDamage = 0; // feeds effect.drain and the recoil/Struggle check below
 
   if (move.multiHit) {
     const result = performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx, defAb, beats);
     if (result.hits === 0) return { defenderFainted: false, attackerFainted: false };
     defenderFainted = result.defenderFainted;
+    totalDamage = result.totalDamage;
   } else {
     const { dmg, mult, crit } = calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx);
     if (mult === 0) {
@@ -467,23 +516,27 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
 
     // Sturdy: survive a full-HP one-hit KO with 1 HP.
     let sturdy = false;
-    finalDmg = dmg;
+    let finalDmg = dmg;
     if (defAb && defAb.kind === 'sturdy' && defender.curHP === defender.maxHP && dmg >= defender.curHP) {
       finalDmg = defender.curHP - 1;
       sturdy = true;
     }
+    // False Swipe-style moves never bring the target below 1 HP.
+    if (move.neverFaint) finalDmg = Math.min(finalDmg, defender.curHP - 1);
 
+    if (move.ohko) beats.push({ type: 'msg', text: "It's a one-hit KO!" });
     defenderFainted = dealDamage(defender, defSide, finalDmg, beats, mult);
     if (crit) beats.push({ type: 'msg', text: 'A critical hit!' });
     const eff = effectivenessLine(mult);
-    if (eff) beats.push({ type: 'msg', text: eff });
+    if (eff && !move.ohko) beats.push({ type: 'msg', text: eff });
     if (sturdy) beats.push({ type: 'msg', text: `${defender.name} held on with Sturdy!` });
+    totalDamage = finalDmg;
   }
 
   let attackerFainted = false;
 
   if (!defenderFainted && move.effect) {
-    applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, false);
+    applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, false, totalDamage);
   }
 
   // Contact ability: a physical hit may status the attacker.
@@ -491,11 +544,15 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
     if (Math.random() * 100 < (defAb.chance || 0)) applyStatus(attacker, defAb.status, ctx, beats, false);
   }
 
-  // Struggle recoil: Gen 1's original formula — 1/4 of the damage just dealt
-  // (not 1/4 of max HP, which is the Gen 5+ rule).
-  if (move.struggle && attacker.curHP > 0) {
+  // Recoil: Struggle uses Gen 1's original formula (1/4 of the damage just
+  // dealt, not 1/4 of max HP); regular recoil moves (Take Down/Double-Edge/
+  // Submission/Volt Tackle-style) carry their own move.recoil fraction of
+  // the damage just dealt. Applies regardless of whether the defender
+  // fainted, same as the mainline games.
+  const recoilFrac = move.struggle ? 0.25 : (move.recoil || 0);
+  if (recoilFrac > 0 && attacker.curHP > 0) {
     beats.push({ type: 'msg', text: `${attacker.name} is hit with recoil!` });
-    attackerFainted = dealDamage(attacker, atkSide, Math.max(1, Math.floor(finalDmg / 4)), beats);
+    attackerFainted = dealDamage(attacker, atkSide, Math.max(1, Math.floor(totalDamage * recoilFrac)), beats);
   }
 
   return { defenderFainted, attackerFainted };
@@ -520,13 +577,21 @@ function enemyChooseMove(battle, ctx) {
   let bestScore = -1;
   for (const mv of usable) {
     let score;
-    if (mv.category !== 'status' && mv.power > 0) {
+    if (mv.category !== 'status' && (mv.power > 0 || mv.ohko || mv.fixedDamage != null)) {
       const mult = ctx.typeChart.multiplier(mv.type, player.types);
       const stab = enemy.types.includes(mv.type) ? 1.5 : 1;
       // Multi-hit moves deal their power per hit; score the expected total
       // (fixed hit count, or the mainline 2/3/4/5-hit average of 3.166).
       const avgHits = mv.multiHit ? (mv.multiHit[0] === mv.multiHit[1] ? mv.multiHit[0] : 3.166) : 1;
-      score = mv.power * avgHits * mult * stab * ((mv.accuracy != null ? mv.accuracy : 100) / 100);
+      // OHKO/fixed-damage moves don't have a real "power" to multiply by
+      // type/STAB, so stand in a rough proxy for how much they'd hurt.
+      let effPower;
+      if (mv.ohko) effPower = 200;
+      else if (mv.fixedDamage === 'level') effPower = enemy.level * 2;
+      else if (mv.fixedDamage === 'halfHP') effPower = player.curHP;
+      else if (typeof mv.fixedDamage === 'number') effPower = mv.fixedDamage * 2;
+      else effPower = mv.power;
+      score = effPower * avgHits * mult * stab * ((mv.accuracy != null ? mv.accuracy : 100) / 100);
     } else if (mv.effect && mv.effect.status) {
       score = player.status ? 0 : 55; // roughly a mid-power hit, useless if already statused
     } else if (mv.effect && mv.effect.stages) {
