@@ -356,6 +356,56 @@ function dealDamage(target, side, amount, beats, eff = 1) {
   return false;
 }
 
+// Multi-hit moves (move.multiHit = [minHits, maxHits]) roll their hit count
+// once up front — fixed count when min === max (e.g. Twineedle-style 2-hit
+// moves) — then re-roll damage/crit per hit against the same defender.
+// Mirrors the mainline 2/3/4/5-hit odds (37.5/37.5/12.5/12.5%).
+function rollMultiHitCount() {
+  const r = Math.random() * 100;
+  if (r < 37.5) return 2;
+  if (r < 75) return 3;
+  if (r < 87.5) return 4;
+  return 5;
+}
+
+// Runs a multi-hit move's full hit sequence, stopping early if the defender
+// faints or turns out to be immune. The secondary effect (if any) and the
+// "Hit N times!" + effectiveness summary are left to the caller — this just
+// deals the damage and reports back how many hits actually landed.
+function performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx, defAb, beats) {
+  const [minHits, maxHits] = move.multiHit;
+  const hitCount = minHits === maxHits ? minHits : rollMultiHitCount();
+  let hits = 0;
+  let lastMult = 1;
+  let sturdyTriggered = false;
+  let defenderFainted = false;
+  for (let i = 0; i < hitCount; i++) {
+    if (defender.curHP <= 0) break;
+    const { dmg, mult, crit } = calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx);
+    if (mult === 0) {
+      if (hits === 0) beats.push({ type: 'msg', text: "It had no effect..." });
+      break;
+    }
+    lastMult = mult;
+    let finalDmg = dmg;
+    if (defAb && defAb.kind === 'sturdy' && defender.curHP === defender.maxHP && dmg >= defender.curHP) {
+      finalDmg = defender.curHP - 1;
+      sturdyTriggered = true;
+    }
+    hits += 1;
+    defenderFainted = dealDamage(defender, defSide, finalDmg, beats, mult);
+    if (crit) beats.push({ type: 'msg', text: 'A critical hit!' });
+    if (defenderFainted) break;
+  }
+  if (hits > 0) {
+    beats.push({ type: 'msg', text: `Hit ${hits} time${hits === 1 ? '' : 's'}!` });
+    const eff = effectivenessLine(lastMult);
+    if (eff) beats.push({ type: 'msg', text: eff });
+  }
+  if (sturdyTriggered) beats.push({ type: 'msg', text: `${defender.name} held on with Sturdy!` });
+  return { defenderFainted, hits };
+}
+
 // One creature using one move on another. Returns true if the DEFENDER fainted.
 // (Attacker self-KO from Struggle recoil is handled via the returned object.)
 function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, beats) {
@@ -401,25 +451,34 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
     return { defenderFainted: false, attackerFainted: false };
   }
 
-  const { dmg, mult, crit } = calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx);
-  if (mult === 0) {
-    beats.push({ type: 'msg', text: "It had no effect..." });
-    return { defenderFainted: false, attackerFainted: false };
-  }
+  let defenderFainted;
+  let finalDmg = 0; // only meaningful for the single-hit path (Struggle recoil below)
 
-  // Sturdy: survive a full-HP one-hit KO with 1 HP.
-  let finalDmg = dmg;
-  let sturdy = false;
-  if (defAb && defAb.kind === 'sturdy' && defender.curHP === defender.maxHP && dmg >= defender.curHP) {
-    finalDmg = defender.curHP - 1;
-    sturdy = true;
-  }
+  if (move.multiHit) {
+    const result = performMultiHit(battle, attacker, atkSide, defender, defSide, move, ctx, defAb, beats);
+    if (result.hits === 0) return { defenderFainted: false, attackerFainted: false };
+    defenderFainted = result.defenderFainted;
+  } else {
+    const { dmg, mult, crit } = calcDamage(battle, attacker, atkSide, defender, defSide, move, ctx);
+    if (mult === 0) {
+      beats.push({ type: 'msg', text: "It had no effect..." });
+      return { defenderFainted: false, attackerFainted: false };
+    }
 
-  const defenderFainted = dealDamage(defender, defSide, finalDmg, beats, mult);
-  if (crit) beats.push({ type: 'msg', text: 'A critical hit!' });
-  const eff = effectivenessLine(mult);
-  if (eff) beats.push({ type: 'msg', text: eff });
-  if (sturdy) beats.push({ type: 'msg', text: `${defender.name} held on with Sturdy!` });
+    // Sturdy: survive a full-HP one-hit KO with 1 HP.
+    let sturdy = false;
+    finalDmg = dmg;
+    if (defAb && defAb.kind === 'sturdy' && defender.curHP === defender.maxHP && dmg >= defender.curHP) {
+      finalDmg = defender.curHP - 1;
+      sturdy = true;
+    }
+
+    defenderFainted = dealDamage(defender, defSide, finalDmg, beats, mult);
+    if (crit) beats.push({ type: 'msg', text: 'A critical hit!' });
+    const eff = effectivenessLine(mult);
+    if (eff) beats.push({ type: 'msg', text: eff });
+    if (sturdy) beats.push({ type: 'msg', text: `${defender.name} held on with Sturdy!` });
+  }
 
   let attackerFainted = false;
 
@@ -464,7 +523,10 @@ function enemyChooseMove(battle, ctx) {
     if (mv.category !== 'status' && mv.power > 0) {
       const mult = ctx.typeChart.multiplier(mv.type, player.types);
       const stab = enemy.types.includes(mv.type) ? 1.5 : 1;
-      score = mv.power * mult * stab * ((mv.accuracy != null ? mv.accuracy : 100) / 100);
+      // Multi-hit moves deal their power per hit; score the expected total
+      // (fixed hit count, or the mainline 2/3/4/5-hit average of 3.166).
+      const avgHits = mv.multiHit ? (mv.multiHit[0] === mv.multiHit[1] ? mv.multiHit[0] : 3.166) : 1;
+      score = mv.power * avgHits * mult * stab * ((mv.accuracy != null ? mv.accuracy : 100) / 100);
     } else if (mv.effect && mv.effect.status) {
       score = player.status ? 0 : 55; // roughly a mid-power hit, useless if already statused
     } else if (mv.effect && mv.effect.stages) {
