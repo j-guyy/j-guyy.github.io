@@ -678,7 +678,17 @@ function usableMoves(inst) {
 
 // Prefer the highest expected damage; status moves score situationally.
 // 15% of the time picks randomly among usable moves so battles stay varied.
+//
+// An external driver can take the enemy side over entirely by putting an agent
+// on ctx.enemyAgent — that's how the battle simulator (/game/battle-sim.html)
+// plugs in its own difficulty tiers, and the seam a networked opponent would
+// use later. The agent must answer synchronously, since turn order is decided
+// before either side acts; returning null hands the turn back to the AI below.
 function enemyChooseMove(battle, ctx) {
+  if (ctx.enemyAgent) {
+    const chosen = ctx.enemyAgent.chooseMove(battle, ctx);
+    if (chosen) return chosen;
+  }
   const enemy = activeEnemy(battle);
   const player = activePlayer(battle);
   const usable = usableMoves(enemy);
