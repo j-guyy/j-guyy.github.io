@@ -56,6 +56,18 @@ body {
   color: #aeb6d8;
 }
 
+/* Touch mode (set by main.js): the hint block is keyboard instructions plus
+   editor links that would land directly under the d-pad — hide it entirely and
+   let the canvas have the whole screen. */
+body.touch-mode #controls-hint {
+  display: none;
+}
+
+body.touch-mode #game-shell {
+  padding: 4px;
+  gap: 0;
+}
+
 /* ---- On-screen touch controls (coarse pointers, or force with ?touch=1) --- */
 
 #touch-controls[hidden] { display: none; }
@@ -71,6 +83,8 @@ body {
   padding: 0 18px 18px;
   pointer-events: none;
   z-index: 10;
+  /* no scrolling/zooming when a finger slides across the pad */
+  touch-action: none;
 }
 
 #touch-dpad {
@@ -79,6 +93,7 @@ body {
   grid-template-rows: repeat(3, 56px);
   gap: 2px;
   pointer-events: auto;
+  touch-action: none;
 }
 #touch-dpad button[data-act="up"] { grid-column: 2; grid-row: 1; }
 #touch-dpad button[data-act="left"] { grid-column: 1; grid-row: 2; }
@@ -89,6 +104,7 @@ body {
   display: flex;
   gap: 14px;
   pointer-events: auto;
+  touch-action: none;
 }
 #touch-ab button {
   width: 64px;
