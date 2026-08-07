@@ -108,6 +108,9 @@ async function boot() {
   if (wantTouch && touchEl) {
     touchEl.hidden = false;
     game.input.bindTouch(touchEl);
+    // Keyboard hints + editor links sit right under the d-pad on a phone, where
+    // they're useless and easy to tap by accident — drop them in touch mode.
+    document.body.classList.add('touch-mode');
   }
 
   requestAnimationFrame(loop);
