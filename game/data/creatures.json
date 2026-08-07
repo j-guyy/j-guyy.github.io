@@ -49,7 +49,8 @@
       "glyph": "Ec",
       "accent": "#ffb35c",
       "flavor": "Its forelimbs smolder; it sharpens them on river stones.",
-      "entry": "Emberclaw etches claw-marks into boulders to mark its range. The scratches stay warm to the touch for days."
+      "entry": "Emberclaw etches claw-marks into boulders to mark its range. The scratches stay warm to the touch for days.",
+      "teachable": ["flame_burst", "body_slam", "focus_hit", "singe", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "infernyx": {
       "name": "Infernyx",
@@ -76,7 +77,8 @@
       "glyph": "Ix",
       "accent": "#ff9a3a",
       "flavor": "A crowned blaze-cat that walks with slow, banked heat.",
-      "entry": "Infernyx keeps its inner fire banked low to save strength, flaring only in battle. Old tales say one guarded Meadowfen's first hearth."
+      "entry": "Infernyx keeps its inner fire banked low to save strength, flaring only in battle. Old tales say one guarded Meadowfen's first hearth.",
+      "teachable": ["flame_burst", "body_slam", "focus_hit", "singe", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "dripling": {
       "name": "Dripling",
@@ -100,7 +102,8 @@
       "glyph": "D",
       "accent": "#bfe8ff",
       "flavor": "A rounded tide-drop that leaves damp footprints wherever it waddles.",
-      "entry": "Dripling's body is mostly spring water held in a stubborn shape. When frightened it briefly loses form and splashes flat."
+      "entry": "Dripling's body is mostly spring water held in a stubborn shape. When frightened it briefly loses form and splashes flat.",
+      "teachable": ["water_pulse", "body_slam", "frost_breath", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "torrentail": {
       "name": "Torrentail",
@@ -126,7 +129,8 @@
       "glyph": "Tt",
       "accent": "#8fd4ff",
       "flavor": "Its long tail whips currents strong enough to turn mill wheels.",
-      "entry": "Torrentail swims upstream for fun, tail churning a wake other creatures surf on. Millers leave offerings so it will linger by their wheels."
+      "entry": "Torrentail swims upstream for fun, tail churning a wake other creatures surf on. Millers leave offerings so it will linger by their wheels.",
+      "teachable": ["water_pulse", "body_slam", "frost_breath", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "maelstrode": {
       "name": "Maelstrode",
@@ -153,7 +157,8 @@
       "glyph": "Ms",
       "accent": "#6bbcf2",
       "flavor": "A slow-turning storm of water wearing a stone crown.",
-      "entry": "Maelstrode carries a whirlpool inside its shell-plated chest. When it plants its feet, rivers are said to change their minds."
+      "entry": "Maelstrode carries a whirlpool inside its shell-plated chest. When it plants its feet, rivers are said to change their minds.",
+      "teachable": ["water_pulse", "body_slam", "frost_breath", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "sproutle": {
       "name": "Sproutle",
@@ -203,7 +208,8 @@
       "glyph": "Br",
       "accent": "#a9e07a",
       "flavor": "Thorned vines coil around its shoulders like a knight's mantle.",
-      "entry": "Bramblore grows a new thorn ring for each season it survives. Birds nest safely in its mantle, paying rent in berries."
+      "entry": "Bramblore grows a new thorn ring for each season it survives. Birds nest safely in its mantle, paying rent in berries.",
+      "teachable": ["vine_lash", "body_slam", "spore_puff", "venom_jab", "toxic_spray", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "verdantitan": {
       "name": "Verdantitan",
@@ -230,7 +236,8 @@
       "glyph": "Vt",
       "accent": "#8ccf5e",
       "flavor": "A walking grove; moss and small flowers bloom in its wake.",
-      "entry": "Verdantitan moves so slowly that meadows form along its trail. Whole seasons of wildflowers are named after individual titans."
+      "entry": "Verdantitan moves so slowly that meadows form along its trail. Whole seasons of wildflowers are named after individual titans.",
+      "teachable": ["vine_lash", "body_slam", "focus_hit", "spore_puff", "venom_jab", "toxic_spray", "mud_shot", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "pyrokit": {
       "name": "Pyrokit",
@@ -302,7 +309,8 @@
       "glyph": "C",
       "accent": "#ffcf9e",
       "flavor": "Its wing-scales glow faintly in the dark of tall grass.",
-      "entry": "Cindermoth wings shed a fine glowing dust that keeps tall grass warm through cold nights. Farmers welcome them into the fields."
+      "entry": "Cindermoth wings shed a fine glowing dust that keeps tall grass warm through cold nights. Farmers welcome them into the fields.",
+      "teachable": ["flame_burst", "body_slam", "singe", "venom_jab", "toxic_spray", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "tidewhirl": {
       "name": "Tidewhirl",
@@ -325,7 +333,8 @@
       "glyph": "T",
       "accent": "#a8dcff",
       "flavor": "A slow, swirling coil of pond-water in a shell.",
-      "entry": "Tidewhirl carries a spiral of pond-water inside a borrowed shell. Tip it over and the water keeps spinning, unbothered."
+      "entry": "Tidewhirl carries a spiral of pond-water inside a borrowed shell. Tip it over and the water keeps spinning, unbothered.",
+      "teachable": ["water_pulse", "body_slam", "frost_breath", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "gyreshell": {
       "name": "Gyreshell",
@@ -352,7 +361,8 @@
       "glyph": "Gy",
       "accent": "#7cc4f0",
       "flavor": "Its armored shell hums with the churn of a captive current.",
-      "entry": "Gyreshell's armor rings like a bell when struck, and the spiral within spins faster with every blow it weathers."
+      "entry": "Gyreshell's armor rings like a bell when struck, and the spiral within spins faster with every blow it weathers.",
+      "teachable": ["water_pulse", "body_slam", "focus_hit", "frost_breath", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "mudpad": {
       "name": "Mudpad",
@@ -377,7 +387,8 @@
       "glyph": "M",
       "accent": "#9fcbe6",
       "flavor": "Broad-footed and unbothered, it plods through shallows.",
-      "entry": "Mudpad's wide feet never sink, even in the softest marsh. Village children follow its prints to find safe paths across the fen."
+      "entry": "Mudpad's wide feet never sink, even in the softest marsh. Village children follow its prints to find safe paths across the fen.",
+      "teachable": ["water_pulse", "body_slam", "focus_hit", "frost_breath", "mud_shot", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt", "tidal_crash"]
     },
     "thornback": {
       "name": "Thornback",
@@ -402,7 +413,8 @@
       "glyph": "H",
       "accent": "#a6e07a",
       "flavor": "A low, armored grazer ridged with dull thorns.",
-      "entry": "Thornback grazes in one meadow its whole life, and the hedge that grows along its spine maps every year of it."
+      "entry": "Thornback grazes in one meadow its whole life, and the hedge that grows along its spine maps every year of it.",
+      "teachable": ["vine_lash", "body_slam", "focus_hit", "spore_puff", "venom_jab", "toxic_spray", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "voltpup": {
       "name": "Voltpup",
@@ -451,7 +463,8 @@
       "glyph": "Vh",
       "accent": "#ffe95c",
       "flavor": "A storm-runner; its howl arrives a heartbeat after the flash.",
-      "entry": "Volthound races ahead of storms, and shepherds count the gap between its flash and its howl to know how long they have."
+      "entry": "Volthound races ahead of storms, and shepherds count the gap between its flash and its howl to know how long they have.",
+      "teachable": ["volt_arc", "body_slam", "focus_hit", "static_field", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     },
     "zaptooth": {
       "name": "Zaptooth",
@@ -476,7 +489,8 @@
       "glyph": "Z",
       "accent": "#ffe95c",
       "flavor": "Quick and toothy; its bite carries a sharp jolt.",
-      "entry": "Zaptooth gnaws on old fence wire to keep its charge topped up. Its grin glows faintly in the dark of the route at dusk."
+      "entry": "Zaptooth gnaws on old fence wire to keep its charge topped up. Its grin glows faintly in the dark of the route at dusk.",
+      "teachable": ["volt_arc", "body_slam", "focus_hit", "static_field", "venom_jab", "toxic_spray", "guard_stance", "quick_spin", "hyper_bite", "triple_beam", "headbutt"]
     }
   }
 }
