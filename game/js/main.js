@@ -721,7 +721,17 @@ function updateMenu() {
   if (m.view === 'party') {
     if (game.input.consume('up')) m.partyIndex = (m.partyIndex + game.party.length - 1) % game.party.length;
     if (game.input.consume('down')) m.partyIndex = (m.partyIndex + 1) % game.party.length;
-    if (game.input.consume('cancel') || game.input.consume('confirm')) m.view = 'root';
+    if (game.input.consume('cancel')) { m.view = 'root'; return; }
+    if (game.input.consume('confirm')) { m.view = 'partySummary'; return; }
+    return;
+  }
+
+  // Full stat/move sheet for one party member. Up/down flips between members
+  // without going back to the list, so comparing two creatures is two presses.
+  if (m.view === 'partySummary') {
+    if (game.input.consume('up')) m.partyIndex = (m.partyIndex + game.party.length - 1) % game.party.length;
+    if (game.input.consume('down')) m.partyIndex = (m.partyIndex + 1) % game.party.length;
+    if (game.input.consume('cancel') || game.input.consume('confirm')) m.view = 'party';
     return;
   }
 
@@ -1583,6 +1593,65 @@ function renderPartyList(r, title, selIndex, hint) {
   r.text(hint, VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
 }
 
+// One party member's full sheet: sprite, typing, ability, live stats, EXP
+// progress and the four known moves with their type/category/power/PP. Until
+// this existed a creature's moves were only visible from inside a battle.
+function renderPartySummary(r, mon) {
+  r.panel(18, 18, VIEW_W - 36, VIEW_H - 36);
+  r.text(mon.name, 42, 32, { size: 27, bold: true, color: game.typeChart.color(mon.types[0]) });
+  if (mon.status) drawStatusBadge(r, 264, 32, mon.status);
+  r.text(`Lv${mon.level}`, VIEW_W - 42, 34, { align: 'right', size: 24 });
+
+  mon.sprite.draw(r.ctx, 42, 62, 140, 140);
+  r.text(`[${mon.types.join('/')}]`, 112, 208, {
+    align: 'center', size: 20, bold: true, color: game.typeChart.color(mon.types[0]),
+  });
+
+  // Right of the sprite: HP, EXP and the live stat block.
+  const x0 = 216;
+  const hpPct = mon.curHP / mon.maxHP;
+  r.text('HP', x0, 70, { size: 18, color: '#c07a00' });
+  r.bar(x0 + 42, 72, 252, 16, hpPct, hpColor(hpPct));
+  r.text(`${mon.curHP}/${mon.maxHP}`, VIEW_W - 42, 68, { align: 'right', size: 21 });
+
+  const lo = game.dex.xpTotalForLevel(mon.level);
+  const hi = game.dex.xpTotalForLevel(mon.level + 1);
+  const xpPct = mon.level >= 100 ? 1 : Math.max(0, Math.min(1, (mon.xp - lo) / (hi - lo)));
+  r.text('EXP', x0, 102, { size: 16, color: '#3a5fa8' });
+  r.bar(x0 + 42, 104, 186, 10, xpPct, '#3a8fe8');
+  r.text(mon.level >= 100 ? 'MAX' : `Next Lv in ${hi - mon.xp}`, VIEW_W - 42, 98,
+    { align: 'right', size: 17, color: '#666' });
+
+  const s = mon.stats;
+  [['ATK', s.attack, 'DEF', s.defense], ['SpA', s.spAttack, 'SpD', s.spDefense],
+   ['SPD', s.speed, null, null]].forEach(([l1, v1, l2, v2], i) => {
+    const y = 138 + i * 26;
+    r.text(`${l1} ${v1}`, x0, y, { size: 21 });
+    if (l2) r.text(`${l2} ${v2}`, x0 + 240, y, { size: 21 });
+  });
+
+  // Ability spans the full width below the sprite, so a long description has
+  // room to read as a sentence rather than being squeezed into the art column.
+  if (mon.ability) {
+    const ab = game.dex.ability(mon.ability);
+    r.text(ab.name, 42, 238, { size: 19, color: '#3a5fa8' });
+    r.wrapClamped(ab.desc || '', VIEW_W - 84 - 150, 17, 1)
+      .forEach((ln, i) => r.text(ln, 192, 240 + i * 20, { size: 17, color: '#666' }));
+  }
+
+  r.text('MOVES', 42, 274, { size: 20, bold: true, color: '#555' });
+  mon.moves.forEach((mv, i) => {
+    const y = 304 + i * 30;
+    r.text(mv.name, 42, y, { size: 22, color: game.typeChart.color(mv.type) });
+    r.text(mv.type, 300, y + 2, { size: 17, color: '#666' });
+    r.text(mv.category, 396, y + 2, { size: 17, color: '#666' });
+    r.text(`PWR ${mv.power || '—'}`, 510, y + 2, { size: 17, color: '#666' });
+    r.text(`PP ${mv.curPP}/${mv.pp}`, VIEW_W - 42, y + 2, { align: 'right', size: 17, color: mv.curPP ? '#666' : '#b06a5a' });
+  });
+
+  r.text('↑↓ other creature   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+}
+
 function renderMenu() {
   const r = game.renderer;
   const m = game.menu;
@@ -1606,7 +1675,12 @@ function renderMenu() {
   }
 
   if (m.view === 'party') {
-    renderPartyList(r, 'PARTY', m.partyIndex, 'X / Z to go back');
+    renderPartyList(r, 'PARTY', m.partyIndex, 'Z: summary   X: back');
+    return;
+  }
+
+  if (m.view === 'partySummary') {
+    renderPartySummary(r, game.party[m.partyIndex]);
     return;
   }
 
