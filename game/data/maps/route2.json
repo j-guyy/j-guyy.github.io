@@ -24,20 +24,20 @@
       "x": 2, "y": 2, "w": 5, "h": 3,
       "rate": 0.18,
       "table": [
-        { "species": "pyrokit",    "min": 4, "max": 6, "weight": 30 },
-        { "species": "voltpup",    "min": 4, "max": 6, "weight": 30 },
-        { "species": "cindermoth", "min": 4, "max": 6, "weight": 25 },
-        { "species": "mudpad",     "min": 4, "max": 5, "weight": 15 }
+        { "species": "pyrokit",    "min": 6, "max": 9, "weight": 30 },
+        { "species": "voltpup",    "min": 6, "max": 9, "weight": 30 },
+        { "species": "cindermoth", "min": 6, "max": 9, "weight": 25 },
+        { "species": "mudpad",     "min": 6, "max": 8, "weight": 15 }
       ]
     },
     {
       "x": 8, "y": 7, "w": 6, "h": 3,
       "rate": 0.18,
       "table": [
-        { "species": "zaptooth",   "min": 6, "max": 9, "weight": 30 },
-        { "species": "thornback",  "min": 6, "max": 9, "weight": 30 },
-        { "species": "tidewhirl",  "min": 6, "max": 8, "weight": 25 },
-        { "species": "cindermoth", "min": 7, "max": 9, "weight": 15 }
+        { "species": "zaptooth",   "min": 9, "max": 13, "weight": 30 },
+        { "species": "thornback",  "min": 9, "max": 13, "weight": 30 },
+        { "species": "tidewhirl",  "min": 9, "max": 12, "weight": 25 },
+        { "species": "cindermoth", "min": 10, "max": 13, "weight": 15 }
       ]
     }
   ],
@@ -57,9 +57,10 @@
       "trainer": {
         "defeatFlag": "defeated_rival1",
         "rival": true,
-        "rivalLevel": 9,
-        "party": [{ "species": "dripling", "level": 9 }],
-        "reward": { "money": 400 },
+        "rivalLevel": 14,
+        "rivalLead": "zaptooth",
+        "party": [{ "species": "dripling", "level": 14 }],
+        "reward": { "money": 700, "machine": "TM17" },
         "outro": [
           "WHAT?! But I had the type advantage...",
           "Hmph. Take your winnings. Next time I won't go easy."
@@ -83,10 +84,11 @@
       "trainer": {
         "defeatFlag": "defeated_fen",
         "party": [
-          { "species": "voltpup", "level": 6 },
-          { "species": "pyrokit", "level": 6 }
+          { "species": "voltpup", "level": 10 },
+          { "species": "pyrokit", "level": 10 },
+          { "species": "cindermoth", "level": 11 }
         ],
-        "reward": { "money": 240 },
+        "reward": { "money": 420, "machine": "TM14" },
         "outro": ["Zip! Zap! Beaten fair and square."],
         "postDialogue": ["The south grass hides tougher creatures than the north. Watch your step."]
       }
@@ -105,13 +107,14 @@
       "trainer": {
         "defeatFlag": "defeated_elm",
         "party": [
-          { "species": "thornback", "level": 8 },
-          { "species": "mudpad", "level": 7 }
+          { "species": "tidewhirl", "level": 11 },
+          { "species": "mudpad", "level": 12 },
+          { "species": "thornback", "level": 12 }
         ],
-        "reward": { "money": 320, "item": "super_potion", "qty": 1 },
+        "reward": { "money": 520, "item": "super_potion", "qty": 2, "machine": "TM15" },
         "outro": [
           "Sturdy AND sharp. Thorne's in for a real match.",
-          "Take this Super Potion — you'll want it."
+          "Take these Super Potions — you'll want them against Thorne."
         ],
         "postDialogue": ["Thorne's gym creatures are Grass-types. Pack fire or flying power if you have it."]
       }

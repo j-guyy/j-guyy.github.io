@@ -1,0 +1,38 @@
+{
+  "id": "tm_shop",
+  "name": "Bramblehollow Machine Works",
+  "width": 9,
+  "height": 6,
+  "tiles": [
+    [5,5,5,5,5,5,5,5,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,4,4,4,4,4,4,4,5],
+    [5,5,5,5,7,5,5,5,5]
+  ],
+  "playerStart": { "x": 4, "y": 4, "facing": "up" },
+  "encounter": { "rate": 0, "table": [] },
+  "npcs": [
+    {
+      "id": "tinker",
+      "x": 4,
+      "y": 1,
+      "facing": "down",
+      "name": "Tinker Sable",
+      "sprite": "scout",
+      "dialogue": [
+        "Machine Works! I press moves onto discs — TMs, we call them.",
+        "A TM crumbles once it teaches, so spend them on creatures that will keep the move.",
+        "HMs are cut from tougher stuff. Buy one and you can teach it forever."
+      ],
+      "shop": [
+        "TM02", "TM05", "TM06", "TM07", "TM08", "TM09",
+        "TM10", "TM11", "TM12", "TM13", "HM02"
+      ]
+    }
+  ],
+  "warps": [
+    { "x": 4, "y": 5, "toMap": "town2", "toX": 9, "toY": 4, "toFacing": "down" }
+  ]
+}

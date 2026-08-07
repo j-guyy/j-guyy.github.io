@@ -87,6 +87,10 @@ export class Dex {
     return Object.keys(this.items);
   }
 
+  hasItem(id) {
+    return Object.prototype.hasOwnProperty.call(this.items, id);
+  }
+
   // ---- Machines (TMs / HMs) ------------------------------------------------
 
   machine(id) {

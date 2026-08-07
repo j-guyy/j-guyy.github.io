@@ -329,6 +329,51 @@ Closes the gap between "most of the rules" and mainline battle behavior:
 3. **Touch controls** — on-screen D-pad + A/B overlay (auto-shown for coarse
    pointers, forceable with `?touch=1`), wired through the same input layer as keys.
 
+## Phase 7 — content wiring, UI fixes, and stakes
+
+Phase 6 left the engine well ahead of the content feeding it. This phase closes
+that gap rather than adding new mechanics.
+
+1. **Display fixes** — five places where text or rows were drawn past the space
+   reserved for them and silently lost: starter-select flavor (only the first
+   of two wrapped lines drew), dialogue longer than two rows (now **pages**
+   within a line instead of truncating), and the pause-menu Items / TMs & HMs /
+   shop lists (now scroll). The battle Item list rendered as a 2-column grid but
+   navigated linearly — it now uses the move grid's navigation. New
+   `Renderer.wrapClamped()` backs every fixed-height text box, so over-long text
+   ellipsizes instead of vanishing.
+2. **Move-pool wiring** — `moves.json` defines 378 moves and exactly **28** were
+   reachable in play; mechanics the engine fully implements (Leech Seed,
+   hazards, weather, multi-hit, drain, recoil, Protect, priority) had no way to
+   appear in the game. All 19 learnsets were rebuilt, 8–13 entries each spanning
+   levels 1–47, with evolved forms getting their own progressions instead of
+   sharing one verbatim with their base form. **Reachable moves: 28 → 88.**
+3. **Machines** — adds TM14 Guard Stance (Protect), TM15 Quick Spin (hazard
+   removal), TM16 Hyper Bite, TM17 Triple Beam. Shops may now stock machine ids
+   as well as item ids (machines gained a `price`), and the second Bramblehollow
+   door — which had a door tile and no warp behind it — is now the **Machine
+   Works**, carrying the machines nothing else granted. Every machine in the
+   game is obtainable; 11 of 19 previously were not.
+4. **Progression** — every trainer combined used to pay ~1,187 EXP, under a
+   single level-11, while learnsets and second evolutions run past 30. Trainer
+   levels and parties roughly double (gym ace 13 → 18), wild levels ramp with
+   the routes, and Rival Rex leads with a fixed creature before his
+   starter-countering ace. Total trainer EXP ~2,401; the first evolution at 16
+   costs ~19 Route 2 battles after the trainers rather than ~45.
+5. **Creature summary sheet** — confirming on a party member opens a full sheet
+   (sprite, typing, ability + description, live stats, HP/EXP, and all four
+   moves with type/category/power/PP). Previously a creature's moves were only
+   visible from inside a battle.
+6. **Stakes** — losing a battle was free; blacking out now costs half your
+   coins. "Quit to Title" discarded unsaved progress with no prompt, one arrow
+   key from "Save"; it now confirms, defaulting to "No".
+
+Known gaps left open by this phase: Reflect/Light Screen are Psychic-only moves
+and no Psychic creature exists, so screens stay unreachable; money is still
+finite (~4,540 coins across the whole game, no repeatable income); and the
+level-30 second evolutions still need post-gym content to be reachable without
+grinding.
+
 ## Explicitly deferred (Phase 7+)
 
 - Held items, breeding, day/night, weather
@@ -373,7 +418,7 @@ Closes the gap between "most of the rules" and mainline battle behavior:
       route1.json
 ```
 
-## Status: Phases 1 through 6 complete (1, 1.5, 2, 2.5, 2.6, 3, 4, 5, 6)
+## Status: Phases 1 through 7 complete (1, 1.5, 2, 2.5, 2.6, 3, 4, 5, 6, 7)
 
 Phase 1 (engine, placeholder art, wild battles, save/load) and Phase 1.5 (3x resolution
 bump) were built and verified end-to-end at `/game/`. Placeholder working title

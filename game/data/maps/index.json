@@ -1,4 +1,4 @@
 {
   "_comment": "Manifest of map ids the game ships. Used by the Route Editor to enumerate editable maps (plus any new maps saved in its browser override). The game itself loads maps by id on demand (via warps / player start), so it does not read this file.",
-  "maps": ["village", "shop_interior", "storage_house", "route1", "route2", "town2", "gym_interior"]
+  "maps": ["village", "shop_interior", "storage_house", "route1", "route2", "town2", "gym_interior", "tm_shop"]
 }

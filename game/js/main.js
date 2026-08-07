@@ -24,7 +24,24 @@ import { initAudio, playMusic, playSfx, toggleMute } from './engine/audio.js';
 
 const STEP_MS = 140; // per-tile walk duration
 const PARTY_CAP = 6;
+// Visible-row budgets for the scrolling lists. Each is how many rows fit
+// between that panel's header and whatever is drawn under the list
+// (description text, hint line) — exceeding one used to draw rows straight
+// through the text below it.
 const DEX_ROWS = 10; // visible rows in the CreatureDex list
+const ITEM_ROWS = 5; // pause-menu Items list
+const MACHINE_ROWS = 6; // pause-menu TMs & HMs list
+const SHOP_ROWS = 6; // shop buy list
+const BATTLE_ITEM_ROWS = 2; // battle Item grid, 2 columns per row
+
+// Slide a scroll offset so `index` stays inside a window of `rows` entries.
+function scrollWindow(index, scroll, rows, count) {
+  if (count <= rows) return 0;
+  let s = Math.min(scroll, count - rows);
+  if (index < s) s = index;
+  if (index >= s + rows) s = index - rows + 1;
+  return Math.max(0, s);
+}
 const DIRS = {
   up: { dx: 0, dy: -1 },
   down: { dx: 0, dy: 1 },
@@ -419,14 +436,34 @@ function startDialogue(npc) {
       startBattle = true; // intro dialogue, then battle
     }
   }
-  game.dialogue = { npc, lines: lines.slice(), index: 0, startBattle };
+  game.dialogue = { npc, lines: lines.slice(), index: 0, page: 0, startBattle };
   setState('DIALOGUE');
+}
+
+// The dialogue box fits exactly two rows of wrapped text. A line longer than
+// that used to lose everything past row two; now it pages, so a writer can put
+// as much text in one `dialogue` entry as they like.
+const DIALOGUE_ROWS = 2;
+
+function dialoguePages(text) {
+  const wrapped = game.renderer.wrapText(text || '', VIEW_W - 84, 24);
+  const pages = [];
+  for (let i = 0; i < wrapped.length; i += DIALOGUE_ROWS) {
+    pages.push(wrapped.slice(i, i + DIALOGUE_ROWS));
+  }
+  return pages.length ? pages : [['']];
 }
 
 function updateDialogue() {
   const d = game.dialogue;
   if (game.input.consume('confirm') || game.input.consume('cancel')) {
+    // Walk the current line's pages before moving to the next line.
+    if (d.page + 1 < dialoguePages(d.lines[d.index]).length) {
+      d.page++;
+      return;
+    }
     d.index++;
+    d.page = 0;
     if (d.index >= d.lines.length) {
       if (d.npc.healsParty) { healParty(); playSfx('heal'); }
       game.dialogue = null;
@@ -449,8 +486,15 @@ function updateDialogue() {
 
 // ---- Shop ------------------------------------------------------------------
 
+// A shop row is either an item id or a machine id — both carry name/price/desc,
+// so the shop screen resolves them to one shape and doesn't care which it got.
+function shopEntryFor(id) {
+  const def = game.dex.hasItem(id) ? game.dex.item(id) : game.dex.machine(id);
+  return { id, def, isMachine: !game.dex.hasItem(id), price: def.price || 0 };
+}
+
 function openShop(npc) {
-  game.shop = { npc, items: npc.shop.slice(), index: 0, message: null };
+  game.shop = { npc, items: npc.shop.slice(), index: 0, scroll: 0, message: null };
   setState('SHOP');
 }
 
@@ -459,20 +503,24 @@ function updateShop() {
   const n = s.items.length;
   if (game.input.consume('up')) { s.index = (s.index + n - 1) % n; s.message = null; }
   if (game.input.consume('down')) { s.index = (s.index + 1) % n; s.message = null; }
+  s.scroll = scrollWindow(s.index, s.scroll, SHOP_ROWS, n);
   if (game.input.consume('cancel')) {
     game.shop = null;
     setState('OVERWORLD');
     return;
   }
   if (game.input.consume('confirm')) {
-    const def = game.dex.item(s.items[s.index]);
-    const price = def.price || 0;
-    if (game.money < price) {
+    const entry = shopEntryFor(s.items[s.index]);
+    if (entry.isMachine && entry.def.kind === 'hm' && game.machines[entry.id] > 0) {
+      // HMs are reusable, so a second copy would do nothing but cost coins.
+      s.message = `You already own ${entry.def.name}.`;
+    } else if (game.money < entry.price) {
       s.message = 'Not enough coins!';
     } else {
-      game.money -= price;
-      addItem(def.id, 1);
-      s.message = `Bought a ${def.name}!`;
+      game.money -= entry.price;
+      if (entry.isMachine) addMachine(entry.id, 1);
+      else addItem(entry.id, 1);
+      s.message = `Bought ${entry.isMachine ? '' : 'a '}${entry.def.name}!`;
     }
   }
 }
@@ -485,16 +533,21 @@ function renderShop() {
   r.panel(x, y, w, 384);
   r.text('SHOP', x + 24, y + 18, { size: 27, bold: true });
   r.text(`${game.money}c`, x + w - 24, y + 21, { align: 'right', size: 22, color: '#8a6a2a' });
-  s.items.forEach((id, i) => {
-    const def = game.dex.item(id);
-    const oy = y + 66 + i * 36;
+  for (let row = 0; row < SHOP_ROWS; row++) {
+    const i = s.scroll + row;
+    if (i >= s.items.length) break;
+    const entry = shopEntryFor(s.items[i]);
+    const oy = y + 66 + row * 36;
     if (i === s.index) r.cursor(x + 18, oy + 3);
-    r.text(def.name, x + 42, oy, { size: 24 });
-    r.text(`${def.price}c`, x + w - 42, oy, { align: 'right', size: 22, color: '#666' });
-  });
-  const sel = game.dex.item(s.items[s.index]);
-  const descLines = r.wrapText(sel.desc, w - 84, 20);
-  descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
+    const owned = entry.isMachine && entry.def.kind === 'hm' && game.machines[entry.id] > 0;
+    r.text(entry.def.name, x + 42, oy, { size: 24, color: owned ? '#999' : undefined });
+    r.text(`${entry.price}c`, x + w - 42, oy, { align: 'right', size: 22, color: '#666' });
+  }
+  if (s.scroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+  if (s.scroll + SHOP_ROWS < s.items.length) r.text('▼', x + w - 24, y + 66 + (SHOP_ROWS - 1) * 36, { size: 18, color: '#888' });
+  const sel = shopEntryFor(s.items[s.index]).def;
+  r.wrapClamped(sel.desc, w - 84, 20, 2)
+    .forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
   if (s.message) r.text(s.message, x + 42, y + 336, { size: 21, color: s.message.startsWith('Bought') ? '#2a7a2a' : '#a04030' });
   r.text('Z: buy   X: leave', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
 }
@@ -597,8 +650,9 @@ function openMenu() {
   game.menu = {
     view: 'root', index: 0, message: null,
     partyIndex: 0, dexIndex: 0, dexScroll: 0, detailId: null,
-    itemIndex: 0, targetIndex: 0, pendingItem: null,
-    machineIndex: 0, machineTargetIndex: 0, machineLearnIndex: 0, teach: null,
+    itemIndex: 0, itemScroll: 0, targetIndex: 0, pendingItem: null,
+    machineIndex: 0, machineScroll: 0, machineTargetIndex: 0, machineLearnIndex: 0, teach: null,
+    confirmIndex: 1,
   };
   setState('MENU');
 }
@@ -647,17 +701,16 @@ function updateMenu() {
       const sel = opts[m.index];
       if (sel === 'Party') { m.view = 'party'; m.partyIndex = 0; }
       else if (sel === 'CreatureDex') { m.view = 'dex'; m.dexIndex = 0; m.dexScroll = 0; }
-      else if (sel === 'Items') { m.view = 'items'; m.itemIndex = 0; }
-      else if (sel === 'TMs & HMs') { m.view = 'machines'; m.machineIndex = 0; }
+      else if (sel === 'Items') { m.view = 'items'; m.itemIndex = 0; m.itemScroll = 0; }
+      else if (sel === 'TMs & HMs') { m.view = 'machines'; m.machineIndex = 0; m.machineScroll = 0; }
       else if (sel === 'Save') {
         const ok = writeSave(snapshotState());
         game.title.hasSave = true;
         m.message = ok ? 'Game saved!' : 'Save failed.';
       } else if (sel === 'Quit to Title') {
-        game.title.hasSave = hasSave();
-        game.title.index = game.title.hasSave ? 1 : 0;
-        game.menu = null;
-        setState('TITLE');
+        // Quitting drops everything since the last manual save, so ask first.
+        m.view = 'confirmQuit';
+        m.confirmIndex = 1; // default to "No"
       } else if (sel === 'Close') {
         closeMenu();
       }
@@ -668,7 +721,33 @@ function updateMenu() {
   if (m.view === 'party') {
     if (game.input.consume('up')) m.partyIndex = (m.partyIndex + game.party.length - 1) % game.party.length;
     if (game.input.consume('down')) m.partyIndex = (m.partyIndex + 1) % game.party.length;
-    if (game.input.consume('cancel') || game.input.consume('confirm')) m.view = 'root';
+    if (game.input.consume('cancel')) { m.view = 'root'; return; }
+    if (game.input.consume('confirm')) { m.view = 'partySummary'; return; }
+    return;
+  }
+
+  if (m.view === 'confirmQuit') {
+    if (game.input.consume('up') || game.input.consume('down')) m.confirmIndex = 1 - m.confirmIndex;
+    if (game.input.consume('cancel')) { m.view = 'root'; return; }
+    if (game.input.consume('confirm')) {
+      if (m.confirmIndex === 0) {
+        game.title.hasSave = hasSave();
+        game.title.index = game.title.hasSave ? 1 : 0;
+        game.menu = null;
+        setState('TITLE');
+      } else {
+        m.view = 'root';
+      }
+    }
+    return;
+  }
+
+  // Full stat/move sheet for one party member. Up/down flips between members
+  // without going back to the list, so comparing two creatures is two presses.
+  if (m.view === 'partySummary') {
+    if (game.input.consume('up')) m.partyIndex = (m.partyIndex + game.party.length - 1) % game.party.length;
+    if (game.input.consume('down')) m.partyIndex = (m.partyIndex + 1) % game.party.length;
+    if (game.input.consume('cancel') || game.input.consume('confirm')) m.view = 'party';
     return;
   }
 
@@ -700,6 +779,7 @@ function updateMenu() {
     if (m.itemIndex >= list.length) m.itemIndex = list.length - 1;
     if (game.input.consume('up')) m.itemIndex = (m.itemIndex + list.length - 1) % list.length;
     if (game.input.consume('down')) m.itemIndex = (m.itemIndex + 1) % list.length;
+    m.itemScroll = scrollWindow(m.itemIndex, m.itemScroll, ITEM_ROWS, list.length);
     if (game.input.consume('cancel')) { m.view = 'root'; return; }
     if (game.input.consume('confirm')) {
       const entry = list[m.itemIndex];
@@ -770,6 +850,7 @@ function updateMenu() {
     if (m.machineIndex >= list.length) m.machineIndex = list.length - 1;
     if (game.input.consume('up')) m.machineIndex = (m.machineIndex + list.length - 1) % list.length;
     if (game.input.consume('down')) m.machineIndex = (m.machineIndex + 1) % list.length;
+    m.machineScroll = scrollWindow(m.machineIndex, m.machineScroll, MACHINE_ROWS, list.length);
     if (game.input.consume('cancel')) { m.view = 'root'; m.message = null; return; }
     if (game.input.consume('confirm')) {
       const entry = list[m.machineIndex];
@@ -832,6 +913,7 @@ function makeBattleScene(data, introBeats, trainerNpc = null) {
     moveIndex: 0,
     lastMoveIndex: 0, // remembers the last move used, so Fight defaults to it
     itemIndex: 0,
+    itemScroll: 0, // in rows of 2, for the battle Item grid
     partyIndex: 0,
     learnIndex: 0,
     beats: introBeats,
@@ -884,11 +966,16 @@ function startEncounter(enc) {
 }
 
 function startTrainerBattle(npc) {
-  // A rival's party counters the player's starter choice.
+  // A rival leads with a fixed creature and closes with an ace chosen to
+  // counter the player's starter, so the matchup is always uphill at the end.
   let partyDef = npc.trainer.party;
   if (npc.trainer.rival) {
     const counter = { emberling: 'dripling', dripling: 'sproutle', sproutle: 'emberling' }[game.starterChosen] || 'dripling';
-    partyDef = [{ species: counter, level: npc.trainer.rivalLevel || 9 }];
+    const level = npc.trainer.rivalLevel || 9;
+    partyDef = [
+      { species: npc.trainer.rivalLead || 'zaptooth', level: Math.max(2, level - 2) },
+      { species: counter, level },
+    ];
   }
   const enemies = partyDef.map((e) => game.dex.makeInstance(e.species, e.level));
   markSeen(enemies[0].species);
@@ -1108,7 +1195,7 @@ function updateBattle(dt) {
         setBattlePhase('party');
       } else if (sel === 'Item') {
         if (!invEntries().length) transientBattleMsg('You have no items!');
-        else { b.itemIndex = 0; setBattlePhase('item'); }
+        else { b.itemIndex = 0; b.itemScroll = 0; setBattlePhase('item'); }
       } else if (sel === 'Run') {
         doTurn({ type: 'flee' });
       }
@@ -1166,11 +1253,23 @@ function updateBattle(dt) {
   }
 
   if (b.phase === 'item') {
+    // 2-column grid, row-major — same navigation as the move grid, since it's
+    // the same on-screen layout. (Up/down used to step one entry, which read as
+    // moving sideways.) Only BATTLE_ITEM_ROWS rows fit in the message panel, so
+    // the list scrolls a row at a time past that.
     const list = invEntries();
     if (!list.length) { b.menuIndex = 0; setBattlePhase('menu'); return; }
-    if (b.itemIndex >= list.length) b.itemIndex = list.length - 1;
-    if (game.input.consume('up')) b.itemIndex = (b.itemIndex + list.length - 1) % list.length;
-    if (game.input.consume('down')) b.itemIndex = (b.itemIndex + 1) % list.length;
+    const n = list.length;
+    if (b.itemIndex >= n) b.itemIndex = n - 1;
+    let i = b.itemIndex;
+    if (game.input.consume('right') && i % 2 === 0 && i + 1 < n) i += 1;
+    if (game.input.consume('left') && i % 2 === 1) i -= 1;
+    if (game.input.consume('down') && i + 2 < n) i += 2;
+    if (game.input.consume('up') && i - 2 >= 0) i -= 2;
+    b.itemIndex = i;
+    b.itemScroll = scrollWindow(
+      Math.floor(i / 2), b.itemScroll, BATTLE_ITEM_ROWS, Math.ceil(n / 2)
+    );
     if (game.input.consume('cancel')) { b.menuIndex = 0; setBattlePhase('menu'); return; }
     if (game.input.consume('confirm')) useBattleItem(list[b.itemIndex]);
     return;
@@ -1277,10 +1376,17 @@ async function endBattle() {
   if (sentToStorage) showBanner(`${caughtMon.name} was sent to storage.`);
 
   if (outcome === 'lose') {
+    // Losing used to cost nothing at all — full heal, warp home, carry on —
+    // which left the game with no fail state anywhere. Half your coins is the
+    // classic payout for blacking out.
+    const dropped = Math.floor(game.money / 2);
+    game.money -= dropped;
     healParty();
     const start = (await getMap('village')).playerStart;
     await placePlayer('village', start.x, start.y, start.facing || 'down');
-    showBanner('You scurried back to Meadowfen...');
+    showBanner(dropped > 0
+      ? `You scurried back to Meadowfen... and dropped ${dropped}c.`
+      : 'You scurried back to Meadowfen...');
     return;
   }
 
@@ -1309,7 +1415,7 @@ async function endBattle() {
         game.flags['badge_' + t.badge.toLowerCase().replace(/\W+/g, '_')] = true;
         lines.push(`You earned the ${t.badge}!`);
       }
-      game.dialogue = { npc: { name: trainerNpc.name }, lines, index: 0, startBattle: false };
+      game.dialogue = { npc: { name: trainerNpc.name }, lines, index: 0, page: 0, startBattle: false };
       setState('DIALOGUE');
     }
   };
@@ -1377,7 +1483,7 @@ function renderTitle() {
   r.fillRect(0, 180, VIEW_W, 4, '#16223a');
   r.text('CREATURE', VIEW_W / 2, 48, { align: 'center', size: 60, bold: true, color: '#ffe08a', shadow: '#000' });
   r.text('QUEST', VIEW_W / 2, 110, { align: 'center', size: 48, bold: true, color: '#fff', shadow: '#000' });
-  r.text('a phase-6 prototype', VIEW_W / 2, 172, { align: 'center', size: 24, color: '#9fb4d8' });
+  r.text('a phase-7 prototype', VIEW_W / 2, 172, { align: 'center', size: 24, color: '#9fb4d8' });
 
   const opts = ['New Game', 'Continue'];
   const y0 = 280;
@@ -1412,16 +1518,18 @@ function renderStarter() {
     r.text(sp.name, x + boxW / 2, 216, { align: 'center', size: 24, bold: true });
   });
 
-  // details of selected
+  // details of selected. The rows above the flavor text are packed a little
+  // tighter than they used to be to make room for a second flavor line —
+  // every starter's blurb wraps to two, and only the first was being drawn.
   const sel = game.species(ids[game.starter.index]);
   const bs = sel.baseStats;
   r.panel(60, 288, VIEW_W - 120, 156);
-  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84, 300, { size: 25, bold: true, color: game.typeChart.color(sel.types[0]) });
-  if (sel.ability) r.text(`Ability: ${game.dex.ability(sel.ability).name}`, 84, 330, { size: 20, color: '#3a5fa8' });
-  r.text(`HP ${bs.hp}   ATK ${bs.attack}   DEF ${bs.defense}`, 84, 354, { size: 21 });
-  r.text(`SpA ${bs.spAttack}   SpD ${bs.spDefense}   SPD ${bs.speed}`, 84, 378, { size: 21 });
-  const lines = r.wrapText(sel.flavor, VIEW_W - 168, 20);
-  r.text(lines[0] || '', 84, 406, { size: 20, color: '#444' });
+  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84, 298, { size: 25, bold: true, color: game.typeChart.color(sel.types[0]) });
+  if (sel.ability) r.text(`Ability: ${game.dex.ability(sel.ability).name}`, 84, 326, { size: 20, color: '#3a5fa8' });
+  r.text(`HP ${bs.hp}   ATK ${bs.attack}   DEF ${bs.defense}`, 84, 348, { size: 21 });
+  r.text(`SpA ${bs.spAttack}   SpD ${bs.spDefense}   SPD ${bs.speed}`, 84, 370, { size: 21 });
+  r.wrapClamped(sel.flavor, VIEW_W - 168, 19, 2)
+    .forEach((ln, i) => r.text(ln, 84, 394 + i * 22, { size: 19, color: '#444' }));
   r.text('<  Left / Right to choose  >    Z select    X back', VIEW_W / 2, VIEW_H - 26, { align: 'center', size: 21, color: '#cfe0b8' });
 }
 
@@ -1483,8 +1591,9 @@ function renderDialogue() {
   const y = VIEW_H - 132;
   r.panel(12, y, VIEW_W - 24, 120);
   r.text(d.npc.name, 36, y + 15, { size: 24, bold: true, color: '#3a5fa8' });
-  const lines = r.wrapText(d.lines[d.index], VIEW_W - 84, 24);
-  lines.slice(0, 2).forEach((ln, i) => r.text(ln, 36, y + 51 + i * 30, { size: 24 }));
+  const pages = dialoguePages(d.lines[d.index]);
+  const page = pages[Math.min(d.page, pages.length - 1)];
+  page.forEach((ln, i) => r.text(ln, 36, y + 51 + i * 30, { size: 24 }));
   r.text('▼', VIEW_W - 48, y + 90, { size: 24, color: '#888' });
 }
 
@@ -1505,6 +1614,65 @@ function renderPartyList(r, title, selIndex, hint) {
     r.bar(456, y + 6, 210, 18, mon.curHP / mon.maxHP, hpColor(mon.curHP / mon.maxHP));
   });
   r.text(hint, VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+}
+
+// One party member's full sheet: sprite, typing, ability, live stats, EXP
+// progress and the four known moves with their type/category/power/PP. Until
+// this existed a creature's moves were only visible from inside a battle.
+function renderPartySummary(r, mon) {
+  r.panel(18, 18, VIEW_W - 36, VIEW_H - 36);
+  r.text(mon.name, 42, 32, { size: 27, bold: true, color: game.typeChart.color(mon.types[0]) });
+  if (mon.status) drawStatusBadge(r, 264, 32, mon.status);
+  r.text(`Lv${mon.level}`, VIEW_W - 42, 34, { align: 'right', size: 24 });
+
+  mon.sprite.draw(r.ctx, 42, 62, 140, 140);
+  r.text(`[${mon.types.join('/')}]`, 112, 208, {
+    align: 'center', size: 20, bold: true, color: game.typeChart.color(mon.types[0]),
+  });
+
+  // Right of the sprite: HP, EXP and the live stat block.
+  const x0 = 216;
+  const hpPct = mon.curHP / mon.maxHP;
+  r.text('HP', x0, 70, { size: 18, color: '#c07a00' });
+  r.bar(x0 + 42, 72, 252, 16, hpPct, hpColor(hpPct));
+  r.text(`${mon.curHP}/${mon.maxHP}`, VIEW_W - 42, 68, { align: 'right', size: 21 });
+
+  const lo = game.dex.xpTotalForLevel(mon.level);
+  const hi = game.dex.xpTotalForLevel(mon.level + 1);
+  const xpPct = mon.level >= 100 ? 1 : Math.max(0, Math.min(1, (mon.xp - lo) / (hi - lo)));
+  r.text('EXP', x0, 102, { size: 16, color: '#3a5fa8' });
+  r.bar(x0 + 42, 104, 186, 10, xpPct, '#3a8fe8');
+  r.text(mon.level >= 100 ? 'MAX' : `Next Lv in ${hi - mon.xp}`, VIEW_W - 42, 98,
+    { align: 'right', size: 17, color: '#666' });
+
+  const s = mon.stats;
+  [['ATK', s.attack, 'DEF', s.defense], ['SpA', s.spAttack, 'SpD', s.spDefense],
+   ['SPD', s.speed, null, null]].forEach(([l1, v1, l2, v2], i) => {
+    const y = 138 + i * 26;
+    r.text(`${l1} ${v1}`, x0, y, { size: 21 });
+    if (l2) r.text(`${l2} ${v2}`, x0 + 240, y, { size: 21 });
+  });
+
+  // Ability spans the full width below the sprite, so a long description has
+  // room to read as a sentence rather than being squeezed into the art column.
+  if (mon.ability) {
+    const ab = game.dex.ability(mon.ability);
+    r.text(ab.name, 42, 238, { size: 19, color: '#3a5fa8' });
+    r.wrapClamped(ab.desc || '', VIEW_W - 84 - 150, 17, 1)
+      .forEach((ln, i) => r.text(ln, 192, 240 + i * 20, { size: 17, color: '#666' }));
+  }
+
+  r.text('MOVES', 42, 274, { size: 20, bold: true, color: '#555' });
+  mon.moves.forEach((mv, i) => {
+    const y = 304 + i * 30;
+    r.text(mv.name, 42, y, { size: 22, color: game.typeChart.color(mv.type) });
+    r.text(mv.type, 300, y + 2, { size: 17, color: '#666' });
+    r.text(mv.category, 396, y + 2, { size: 17, color: '#666' });
+    r.text(`PWR ${mv.power || '—'}`, 510, y + 2, { size: 17, color: '#666' });
+    r.text(`PP ${mv.curPP}/${mv.pp}`, VIEW_W - 42, y + 2, { align: 'right', size: 17, color: mv.curPP ? '#666' : '#b06a5a' });
+  });
+
+  r.text('↑↓ other creature   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
 }
 
 function renderMenu() {
@@ -1530,7 +1698,26 @@ function renderMenu() {
   }
 
   if (m.view === 'party') {
-    renderPartyList(r, 'PARTY', m.partyIndex, 'X / Z to go back');
+    renderPartyList(r, 'PARTY', m.partyIndex, 'Z: summary   X: back');
+    return;
+  }
+
+  if (m.view === 'partySummary') {
+    renderPartySummary(r, game.party[m.partyIndex]);
+    return;
+  }
+
+  if (m.view === 'confirmQuit') {
+    const w = 528, x = (VIEW_W - w) / 2, y = 156;
+    r.panel(x, y, w, 168);
+    r.text('Quit to the title screen?', x + 24, y + 24, { size: 23, bold: true });
+    r.wrapClamped('Progress since your last save will be lost.', w - 48, 18, 2)
+      .forEach((ln, i) => r.text(ln, x + 24, y + 58 + i * 22, { size: 18, color: '#a04030' }));
+    ['Yes, quit', 'No, keep playing'].forEach((o, i) => {
+      const oy = y + 96 + i * 32;
+      if (i === m.confirmIndex) r.cursor(x + 24, oy + 3);
+      r.text(o, x + 48, oy, { size: 22, color: i === 0 ? '#a04030' : '#2b2b3a' });
+    });
     return;
   }
 
@@ -1584,15 +1771,20 @@ function renderMenu() {
     if (!list.length) {
       r.text('No items.', x + 42, y + 66, { size: 24, color: '#666' });
     } else {
-      list.forEach((entry, i) => {
-        const oy = y + 66 + i * 36;
+      for (let row = 0; row < ITEM_ROWS; row++) {
+        const i = m.itemScroll + row;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const oy = y + 66 + row * 36;
         if (i === m.itemIndex) r.cursor(x + 18, oy + 3);
         r.text(entry.def.name, x + 42, oy, { size: 24 });
         r.text(`x${entry.qty}`, x + w - 42, oy, { align: 'right', size: 24, color: '#666' });
-      });
+      }
+      if (m.itemScroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+      if (m.itemScroll + ITEM_ROWS < list.length) r.text('▼', x + w - 24, y + 66 + (ITEM_ROWS - 1) * 36, { size: 18, color: '#888' });
       const sel = list[Math.min(m.itemIndex, list.length - 1)];
-      const descLines = r.wrapText(sel.def.desc, w - 84, 21);
-      descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 246 + i * 27, { size: 21, color: '#555' }));
+      r.wrapClamped(sel.def.desc, w - 84, 21, 2)
+        .forEach((ln, i) => r.text(ln, x + 42, y + 246 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 300, { size: 21, color: '#2a7a2a' });
     r.text('Z: use   X: back', x + w / 2, y + 330, { align: 'center', size: 21, color: '#666' });
@@ -1613,16 +1805,21 @@ function renderMenu() {
     if (!list.length) {
       r.text('No machines. Beat trainers to earn more!', x + 42, y + 66, { size: 22, color: '#666' });
     } else {
-      list.forEach((entry, i) => {
-        const oy = y + 66 + i * 34;
+      for (let row = 0; row < MACHINE_ROWS; row++) {
+        const i = m.machineScroll + row;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const oy = y + 66 + row * 34;
         if (i === m.machineIndex) r.cursor(x + 18, oy + 3);
         const mv = game.dex.move(entry.def.move);
         r.text(entry.def.name, x + 42, oy, { size: 22, color: game.typeChart.color(mv.type) });
         r.text(entry.def.kind === 'hm' ? 'reusable' : `x${entry.qty}`, x + w - 42, oy, { align: 'right', size: 21, color: '#666' });
-      });
+      }
+      if (m.machineScroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+      if (m.machineScroll + MACHINE_ROWS < list.length) r.text('▼', x + w - 24, y + 66 + (MACHINE_ROWS - 1) * 34, { size: 18, color: '#888' });
       const sel = list[Math.min(m.machineIndex, list.length - 1)];
-      const descLines = r.wrapText(sel.def.desc, w - 84, 21);
-      descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 276 + i * 27, { size: 21, color: '#555' }));
+      r.wrapClamped(sel.def.desc, w - 84, 21, 2)
+        .forEach((ln, i) => r.text(ln, x + 42, y + 276 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 336, { size: 21, color: '#2a7a2a' });
     r.text('Z: teach   X: back', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
@@ -1787,13 +1984,23 @@ function renderBattle() {
     renderPartyList(r, 'Send out which creature?', b.partyIndex, 'Z: send in');
   } else if (b.phase === 'item') {
     const list = invEntries();
-    list.forEach((entry, i) => {
-      const ox = 42 + (i % 2) * 330;
-      const oy = my + 24 + Math.floor(i / 2) * 42;
-      if (i === b.itemIndex) r.cursor(ox - 24, oy + 3);
-      r.text(entry.def.name, ox, oy, { size: 24 });
-      r.text(`x${entry.qty}`, ox + 252, oy, { align: 'right', size: 21, color: '#666' });
-    });
+    const rows = Math.ceil(list.length / 2);
+    for (let row = 0; row < BATTLE_ITEM_ROWS; row++) {
+      for (let col = 0; col < 2; col++) {
+        const i = (b.itemScroll + row) * 2 + col;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const ox = 42 + col * 330;
+        const oy = my + 24 + row * 42;
+        if (i === b.itemIndex) r.cursor(ox - 24, oy + 3);
+        r.text(entry.def.name, ox, oy, { size: 24 });
+        r.text(`x${entry.qty}`, ox + 252, oy, { align: 'right', size: 21, color: '#666' });
+      }
+    }
+    if (rows > BATTLE_ITEM_ROWS) {
+      const more = `${b.itemScroll > 0 ? '▲' : ' '}${b.itemScroll + BATTLE_ITEM_ROWS < rows ? '▼' : ' '}`;
+      r.text(more, 36, my + 96, { size: 21, color: '#888' });
+    }
     r.text('X: back', VIEW_W - 24, my + 96, { align: 'right', size: 21, color: '#555' });
   } else if (b.phase === 'learn') {
     const pl = b.pendingLearns[0];

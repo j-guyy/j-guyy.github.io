@@ -24,13 +24,13 @@
   "encounter": {
     "rate": 0.16,
     "table": [
-      { "species": "pyrokit",    "min": 2, "max": 4, "weight": 25 },
-      { "species": "cindermoth", "min": 2, "max": 4, "weight": 15 },
-      { "species": "tidewhirl",  "min": 2, "max": 4, "weight": 15 },
-      { "species": "mudpad",     "min": 2, "max": 3, "weight": 20 },
-      { "species": "thornback",  "min": 3, "max": 4, "weight": 15 },
-      { "species": "voltpup",    "min": 2, "max": 4, "weight": 20 },
-      { "species": "zaptooth",   "min": 3, "max": 5, "weight": 10 }
+      { "species": "pyrokit",    "min": 3, "max": 6, "weight": 25 },
+      { "species": "cindermoth", "min": 3, "max": 6, "weight": 15 },
+      { "species": "tidewhirl",  "min": 3, "max": 6, "weight": 15 },
+      { "species": "mudpad",     "min": 3, "max": 5, "weight": 20 },
+      { "species": "thornback",  "min": 4, "max": 6, "weight": 15 },
+      { "species": "voltpup",    "min": 3, "max": 6, "weight": 20 },
+      { "species": "zaptooth",   "min": 4, "max": 7, "weight": 10 }
     ]
   },
   "npcs": [
@@ -49,8 +49,8 @@
       "trainer": {
         "defeatFlag": "defeated_bryn",
         "party": [
-          { "species": "voltpup", "level": 4 },
-          { "species": "mudpad", "level": 5 }
+          { "species": "voltpup", "level": 7 },
+          { "species": "mudpad", "level": 8 }
         ],
         "reward": { "item": "great_orb", "qty": 2, "machine": "TM04" },
         "outro": [
