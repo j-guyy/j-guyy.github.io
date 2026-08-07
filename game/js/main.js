@@ -929,11 +929,16 @@ function startEncounter(enc) {
 }
 
 function startTrainerBattle(npc) {
-  // A rival's party counters the player's starter choice.
+  // A rival leads with a fixed creature and closes with an ace chosen to
+  // counter the player's starter, so the matchup is always uphill at the end.
   let partyDef = npc.trainer.party;
   if (npc.trainer.rival) {
     const counter = { emberling: 'dripling', dripling: 'sproutle', sproutle: 'emberling' }[game.starterChosen] || 'dripling';
-    partyDef = [{ species: counter, level: npc.trainer.rivalLevel || 9 }];
+    const level = npc.trainer.rivalLevel || 9;
+    partyDef = [
+      { species: npc.trainer.rivalLead || 'zaptooth', level: Math.max(2, level - 2) },
+      { species: counter, level },
+    ];
   }
   const enemies = partyDef.map((e) => game.dex.makeInstance(e.species, e.level));
   markSeen(enemies[0].species);

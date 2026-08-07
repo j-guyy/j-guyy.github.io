@@ -14,6 +14,10 @@
     "TM11": { "name": "TM11 Toxic Spray",  "kind": "tm", "move": "toxic_spray",  "desc": "Teaches Toxic Spray (badly poisons). Single use." },
     "TM12": { "name": "TM12 Frost Breath", "kind": "tm", "move": "frost_breath", "desc": "Teaches Frost Breath (may freeze). Single use." },
     "TM13": { "name": "TM13 Mud Shot",     "kind": "tm", "move": "mud_shot",     "desc": "Teaches Mud Shot (Ground). Single use." },
+    "TM14": { "name": "TM14 Guard Stance", "kind": "tm", "move": "guard_stance", "desc": "Teaches Guard Stance (blocks the turn, but not twice running). Single use." },
+    "TM15": { "name": "TM15 Quick Spin",   "kind": "tm", "move": "quick_spin",   "desc": "Teaches Quick Spin (hits, and sweeps hazards off your side). Single use." },
+    "TM16": { "name": "TM16 Hyper Bite",   "kind": "tm", "move": "hyper_bite",   "desc": "Teaches Hyper Bite (may make the foe flinch). Single use." },
+    "TM17": { "name": "TM17 Triple Beam",  "kind": "tm", "move": "triple_beam",  "desc": "Teaches Triple Beam (may paralyze). Single use." },
     "HM01": { "name": "HM01 Headbutt",     "kind": "hm", "move": "headbutt",     "desc": "Teaches Headbutt. Reusable — teach to as many creatures as you like." },
     "HM02": { "name": "HM02 Tidal Crash",  "kind": "hm", "move": "tidal_crash",  "desc": "Teaches Tidal Crash. Reusable." }
   }

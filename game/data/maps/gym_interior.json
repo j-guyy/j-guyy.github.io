@@ -29,8 +29,11 @@
       ],
       "trainer": {
         "defeatFlag": "defeated_ivy",
-        "party": [{ "species": "sproutle", "level": 10 }],
-        "reward": { "money": 200 },
+        "party": [
+          { "species": "sproutle", "level": 14 },
+          { "species": "thornback", "level": 14 }
+        ],
+        "reward": { "money": 360, "machine": "TM16" },
         "outro": ["Wilted... The Warden is waiting at the back."],
         "postDialogue": ["The Warden's Thornback is slow but it hits like a falling tree."]
       }
@@ -50,10 +53,11 @@
       "trainer": {
         "defeatFlag": "defeated_thorne",
         "party": [
-          { "species": "thornback", "level": 11 },
-          { "species": "bramblore", "level": 13 }
+          { "species": "sproutle", "level": 15 },
+          { "species": "thornback", "level": 16 },
+          { "species": "bramblore", "level": 18 }
         ],
-        "reward": { "money": 1500, "machine": "TM03" },
+        "reward": { "money": 1800, "machine": "TM03" },
         "badge": "Bramble Badge",
         "outro": [
           "...The grove bends.",
