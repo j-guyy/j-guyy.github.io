@@ -486,6 +486,13 @@ function updateDialogue() {
 
 // ---- Shop ------------------------------------------------------------------
 
+// A shop row is either an item id or a machine id — both carry name/price/desc,
+// so the shop screen resolves them to one shape and doesn't care which it got.
+function shopEntryFor(id) {
+  const def = game.dex.hasItem(id) ? game.dex.item(id) : game.dex.machine(id);
+  return { id, def, isMachine: !game.dex.hasItem(id), price: def.price || 0 };
+}
+
 function openShop(npc) {
   game.shop = { npc, items: npc.shop.slice(), index: 0, scroll: 0, message: null };
   setState('SHOP');
@@ -503,14 +510,17 @@ function updateShop() {
     return;
   }
   if (game.input.consume('confirm')) {
-    const def = game.dex.item(s.items[s.index]);
-    const price = def.price || 0;
-    if (game.money < price) {
+    const entry = shopEntryFor(s.items[s.index]);
+    if (entry.isMachine && entry.def.kind === 'hm' && game.machines[entry.id] > 0) {
+      // HMs are reusable, so a second copy would do nothing but cost coins.
+      s.message = `You already own ${entry.def.name}.`;
+    } else if (game.money < entry.price) {
       s.message = 'Not enough coins!';
     } else {
-      game.money -= price;
-      addItem(def.id, 1);
-      s.message = `Bought a ${def.name}!`;
+      game.money -= entry.price;
+      if (entry.isMachine) addMachine(entry.id, 1);
+      else addItem(entry.id, 1);
+      s.message = `Bought ${entry.isMachine ? '' : 'a '}${entry.def.name}!`;
     }
   }
 }
@@ -526,15 +536,16 @@ function renderShop() {
   for (let row = 0; row < SHOP_ROWS; row++) {
     const i = s.scroll + row;
     if (i >= s.items.length) break;
-    const def = game.dex.item(s.items[i]);
+    const entry = shopEntryFor(s.items[i]);
     const oy = y + 66 + row * 36;
     if (i === s.index) r.cursor(x + 18, oy + 3);
-    r.text(def.name, x + 42, oy, { size: 24 });
-    r.text(`${def.price}c`, x + w - 42, oy, { align: 'right', size: 22, color: '#666' });
+    const owned = entry.isMachine && entry.def.kind === 'hm' && game.machines[entry.id] > 0;
+    r.text(entry.def.name, x + 42, oy, { size: 24, color: owned ? '#999' : undefined });
+    r.text(`${entry.price}c`, x + w - 42, oy, { align: 'right', size: 22, color: '#666' });
   }
   if (s.scroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
   if (s.scroll + SHOP_ROWS < s.items.length) r.text('▼', x + w - 24, y + 66 + (SHOP_ROWS - 1) * 36, { size: 18, color: '#888' });
-  const sel = game.dex.item(s.items[s.index]);
+  const sel = shopEntryFor(s.items[s.index]).def;
   r.wrapClamped(sel.desc, w - 84, 20, 2)
     .forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
   if (s.message) r.text(s.message, x + 42, y + 336, { size: 21, color: s.message.startsWith('Bought') ? '#2a7a2a' : '#a04030' });

@@ -36,6 +36,7 @@
   ],
   "warps": [
     { "x": 0, "y": 6, "toMap": "route2", "toX": 16, "toY": 5, "toFacing": "left" },
-    { "x": 5, "y": 3, "toMap": "gym_interior", "toX": 4, "toY": 6, "toFacing": "up" }
+    { "x": 5, "y": 3, "toMap": "gym_interior", "toX": 4, "toY": 6, "toFacing": "up" },
+    { "x": 9, "y": 3, "toMap": "tm_shop", "toX": 4, "toY": 4, "toFacing": "up" }
   ]
 }
