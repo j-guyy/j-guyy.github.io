@@ -24,7 +24,24 @@ import { initAudio, playMusic, playSfx, toggleMute } from './engine/audio.js';
 
 const STEP_MS = 140; // per-tile walk duration
 const PARTY_CAP = 6;
+// Visible-row budgets for the scrolling lists. Each is how many rows fit
+// between that panel's header and whatever is drawn under the list
+// (description text, hint line) — exceeding one used to draw rows straight
+// through the text below it.
 const DEX_ROWS = 10; // visible rows in the CreatureDex list
+const ITEM_ROWS = 5; // pause-menu Items list
+const MACHINE_ROWS = 6; // pause-menu TMs & HMs list
+const SHOP_ROWS = 6; // shop buy list
+const BATTLE_ITEM_ROWS = 2; // battle Item grid, 2 columns per row
+
+// Slide a scroll offset so `index` stays inside a window of `rows` entries.
+function scrollWindow(index, scroll, rows, count) {
+  if (count <= rows) return 0;
+  let s = Math.min(scroll, count - rows);
+  if (index < s) s = index;
+  if (index >= s + rows) s = index - rows + 1;
+  return Math.max(0, s);
+}
 const DIRS = {
   up: { dx: 0, dy: -1 },
   down: { dx: 0, dy: 1 },
@@ -419,14 +436,34 @@ function startDialogue(npc) {
       startBattle = true; // intro dialogue, then battle
     }
   }
-  game.dialogue = { npc, lines: lines.slice(), index: 0, startBattle };
+  game.dialogue = { npc, lines: lines.slice(), index: 0, page: 0, startBattle };
   setState('DIALOGUE');
+}
+
+// The dialogue box fits exactly two rows of wrapped text. A line longer than
+// that used to lose everything past row two; now it pages, so a writer can put
+// as much text in one `dialogue` entry as they like.
+const DIALOGUE_ROWS = 2;
+
+function dialoguePages(text) {
+  const wrapped = game.renderer.wrapText(text || '', VIEW_W - 84, 24);
+  const pages = [];
+  for (let i = 0; i < wrapped.length; i += DIALOGUE_ROWS) {
+    pages.push(wrapped.slice(i, i + DIALOGUE_ROWS));
+  }
+  return pages.length ? pages : [['']];
 }
 
 function updateDialogue() {
   const d = game.dialogue;
   if (game.input.consume('confirm') || game.input.consume('cancel')) {
+    // Walk the current line's pages before moving to the next line.
+    if (d.page + 1 < dialoguePages(d.lines[d.index]).length) {
+      d.page++;
+      return;
+    }
     d.index++;
+    d.page = 0;
     if (d.index >= d.lines.length) {
       if (d.npc.healsParty) { healParty(); playSfx('heal'); }
       game.dialogue = null;
@@ -450,7 +487,7 @@ function updateDialogue() {
 // ---- Shop ------------------------------------------------------------------
 
 function openShop(npc) {
-  game.shop = { npc, items: npc.shop.slice(), index: 0, message: null };
+  game.shop = { npc, items: npc.shop.slice(), index: 0, scroll: 0, message: null };
   setState('SHOP');
 }
 
@@ -459,6 +496,7 @@ function updateShop() {
   const n = s.items.length;
   if (game.input.consume('up')) { s.index = (s.index + n - 1) % n; s.message = null; }
   if (game.input.consume('down')) { s.index = (s.index + 1) % n; s.message = null; }
+  s.scroll = scrollWindow(s.index, s.scroll, SHOP_ROWS, n);
   if (game.input.consume('cancel')) {
     game.shop = null;
     setState('OVERWORLD');
@@ -485,16 +523,20 @@ function renderShop() {
   r.panel(x, y, w, 384);
   r.text('SHOP', x + 24, y + 18, { size: 27, bold: true });
   r.text(`${game.money}c`, x + w - 24, y + 21, { align: 'right', size: 22, color: '#8a6a2a' });
-  s.items.forEach((id, i) => {
-    const def = game.dex.item(id);
-    const oy = y + 66 + i * 36;
+  for (let row = 0; row < SHOP_ROWS; row++) {
+    const i = s.scroll + row;
+    if (i >= s.items.length) break;
+    const def = game.dex.item(s.items[i]);
+    const oy = y + 66 + row * 36;
     if (i === s.index) r.cursor(x + 18, oy + 3);
     r.text(def.name, x + 42, oy, { size: 24 });
     r.text(`${def.price}c`, x + w - 42, oy, { align: 'right', size: 22, color: '#666' });
-  });
+  }
+  if (s.scroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+  if (s.scroll + SHOP_ROWS < s.items.length) r.text('▼', x + w - 24, y + 66 + (SHOP_ROWS - 1) * 36, { size: 18, color: '#888' });
   const sel = game.dex.item(s.items[s.index]);
-  const descLines = r.wrapText(sel.desc, w - 84, 20);
-  descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
+  r.wrapClamped(sel.desc, w - 84, 20, 2)
+    .forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
   if (s.message) r.text(s.message, x + 42, y + 336, { size: 21, color: s.message.startsWith('Bought') ? '#2a7a2a' : '#a04030' });
   r.text('Z: buy   X: leave', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
 }
@@ -597,8 +639,8 @@ function openMenu() {
   game.menu = {
     view: 'root', index: 0, message: null,
     partyIndex: 0, dexIndex: 0, dexScroll: 0, detailId: null,
-    itemIndex: 0, targetIndex: 0, pendingItem: null,
-    machineIndex: 0, machineTargetIndex: 0, machineLearnIndex: 0, teach: null,
+    itemIndex: 0, itemScroll: 0, targetIndex: 0, pendingItem: null,
+    machineIndex: 0, machineScroll: 0, machineTargetIndex: 0, machineLearnIndex: 0, teach: null,
   };
   setState('MENU');
 }
@@ -647,8 +689,8 @@ function updateMenu() {
       const sel = opts[m.index];
       if (sel === 'Party') { m.view = 'party'; m.partyIndex = 0; }
       else if (sel === 'CreatureDex') { m.view = 'dex'; m.dexIndex = 0; m.dexScroll = 0; }
-      else if (sel === 'Items') { m.view = 'items'; m.itemIndex = 0; }
-      else if (sel === 'TMs & HMs') { m.view = 'machines'; m.machineIndex = 0; }
+      else if (sel === 'Items') { m.view = 'items'; m.itemIndex = 0; m.itemScroll = 0; }
+      else if (sel === 'TMs & HMs') { m.view = 'machines'; m.machineIndex = 0; m.machineScroll = 0; }
       else if (sel === 'Save') {
         const ok = writeSave(snapshotState());
         game.title.hasSave = true;
@@ -700,6 +742,7 @@ function updateMenu() {
     if (m.itemIndex >= list.length) m.itemIndex = list.length - 1;
     if (game.input.consume('up')) m.itemIndex = (m.itemIndex + list.length - 1) % list.length;
     if (game.input.consume('down')) m.itemIndex = (m.itemIndex + 1) % list.length;
+    m.itemScroll = scrollWindow(m.itemIndex, m.itemScroll, ITEM_ROWS, list.length);
     if (game.input.consume('cancel')) { m.view = 'root'; return; }
     if (game.input.consume('confirm')) {
       const entry = list[m.itemIndex];
@@ -770,6 +813,7 @@ function updateMenu() {
     if (m.machineIndex >= list.length) m.machineIndex = list.length - 1;
     if (game.input.consume('up')) m.machineIndex = (m.machineIndex + list.length - 1) % list.length;
     if (game.input.consume('down')) m.machineIndex = (m.machineIndex + 1) % list.length;
+    m.machineScroll = scrollWindow(m.machineIndex, m.machineScroll, MACHINE_ROWS, list.length);
     if (game.input.consume('cancel')) { m.view = 'root'; m.message = null; return; }
     if (game.input.consume('confirm')) {
       const entry = list[m.machineIndex];
@@ -832,6 +876,7 @@ function makeBattleScene(data, introBeats, trainerNpc = null) {
     moveIndex: 0,
     lastMoveIndex: 0, // remembers the last move used, so Fight defaults to it
     itemIndex: 0,
+    itemScroll: 0, // in rows of 2, for the battle Item grid
     partyIndex: 0,
     learnIndex: 0,
     beats: introBeats,
@@ -1108,7 +1153,7 @@ function updateBattle(dt) {
         setBattlePhase('party');
       } else if (sel === 'Item') {
         if (!invEntries().length) transientBattleMsg('You have no items!');
-        else { b.itemIndex = 0; setBattlePhase('item'); }
+        else { b.itemIndex = 0; b.itemScroll = 0; setBattlePhase('item'); }
       } else if (sel === 'Run') {
         doTurn({ type: 'flee' });
       }
@@ -1166,11 +1211,23 @@ function updateBattle(dt) {
   }
 
   if (b.phase === 'item') {
+    // 2-column grid, row-major — same navigation as the move grid, since it's
+    // the same on-screen layout. (Up/down used to step one entry, which read as
+    // moving sideways.) Only BATTLE_ITEM_ROWS rows fit in the message panel, so
+    // the list scrolls a row at a time past that.
     const list = invEntries();
     if (!list.length) { b.menuIndex = 0; setBattlePhase('menu'); return; }
-    if (b.itemIndex >= list.length) b.itemIndex = list.length - 1;
-    if (game.input.consume('up')) b.itemIndex = (b.itemIndex + list.length - 1) % list.length;
-    if (game.input.consume('down')) b.itemIndex = (b.itemIndex + 1) % list.length;
+    const n = list.length;
+    if (b.itemIndex >= n) b.itemIndex = n - 1;
+    let i = b.itemIndex;
+    if (game.input.consume('right') && i % 2 === 0 && i + 1 < n) i += 1;
+    if (game.input.consume('left') && i % 2 === 1) i -= 1;
+    if (game.input.consume('down') && i + 2 < n) i += 2;
+    if (game.input.consume('up') && i - 2 >= 0) i -= 2;
+    b.itemIndex = i;
+    b.itemScroll = scrollWindow(
+      Math.floor(i / 2), b.itemScroll, BATTLE_ITEM_ROWS, Math.ceil(n / 2)
+    );
     if (game.input.consume('cancel')) { b.menuIndex = 0; setBattlePhase('menu'); return; }
     if (game.input.consume('confirm')) useBattleItem(list[b.itemIndex]);
     return;
@@ -1309,7 +1366,7 @@ async function endBattle() {
         game.flags['badge_' + t.badge.toLowerCase().replace(/\W+/g, '_')] = true;
         lines.push(`You earned the ${t.badge}!`);
       }
-      game.dialogue = { npc: { name: trainerNpc.name }, lines, index: 0, startBattle: false };
+      game.dialogue = { npc: { name: trainerNpc.name }, lines, index: 0, page: 0, startBattle: false };
       setState('DIALOGUE');
     }
   };
@@ -1412,16 +1469,18 @@ function renderStarter() {
     r.text(sp.name, x + boxW / 2, 216, { align: 'center', size: 24, bold: true });
   });
 
-  // details of selected
+  // details of selected. The rows above the flavor text are packed a little
+  // tighter than they used to be to make room for a second flavor line —
+  // every starter's blurb wraps to two, and only the first was being drawn.
   const sel = game.species(ids[game.starter.index]);
   const bs = sel.baseStats;
   r.panel(60, 288, VIEW_W - 120, 156);
-  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84, 300, { size: 25, bold: true, color: game.typeChart.color(sel.types[0]) });
-  if (sel.ability) r.text(`Ability: ${game.dex.ability(sel.ability).name}`, 84, 330, { size: 20, color: '#3a5fa8' });
-  r.text(`HP ${bs.hp}   ATK ${bs.attack}   DEF ${bs.defense}`, 84, 354, { size: 21 });
-  r.text(`SpA ${bs.spAttack}   SpD ${bs.spDefense}   SPD ${bs.speed}`, 84, 378, { size: 21 });
-  const lines = r.wrapText(sel.flavor, VIEW_W - 168, 20);
-  r.text(lines[0] || '', 84, 406, { size: 20, color: '#444' });
+  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84, 298, { size: 25, bold: true, color: game.typeChart.color(sel.types[0]) });
+  if (sel.ability) r.text(`Ability: ${game.dex.ability(sel.ability).name}`, 84, 326, { size: 20, color: '#3a5fa8' });
+  r.text(`HP ${bs.hp}   ATK ${bs.attack}   DEF ${bs.defense}`, 84, 348, { size: 21 });
+  r.text(`SpA ${bs.spAttack}   SpD ${bs.spDefense}   SPD ${bs.speed}`, 84, 370, { size: 21 });
+  r.wrapClamped(sel.flavor, VIEW_W - 168, 19, 2)
+    .forEach((ln, i) => r.text(ln, 84, 394 + i * 22, { size: 19, color: '#444' }));
   r.text('<  Left / Right to choose  >    Z select    X back', VIEW_W / 2, VIEW_H - 26, { align: 'center', size: 21, color: '#cfe0b8' });
 }
 
@@ -1483,8 +1542,9 @@ function renderDialogue() {
   const y = VIEW_H - 132;
   r.panel(12, y, VIEW_W - 24, 120);
   r.text(d.npc.name, 36, y + 15, { size: 24, bold: true, color: '#3a5fa8' });
-  const lines = r.wrapText(d.lines[d.index], VIEW_W - 84, 24);
-  lines.slice(0, 2).forEach((ln, i) => r.text(ln, 36, y + 51 + i * 30, { size: 24 }));
+  const pages = dialoguePages(d.lines[d.index]);
+  const page = pages[Math.min(d.page, pages.length - 1)];
+  page.forEach((ln, i) => r.text(ln, 36, y + 51 + i * 30, { size: 24 }));
   r.text('▼', VIEW_W - 48, y + 90, { size: 24, color: '#888' });
 }
 
@@ -1584,15 +1644,20 @@ function renderMenu() {
     if (!list.length) {
       r.text('No items.', x + 42, y + 66, { size: 24, color: '#666' });
     } else {
-      list.forEach((entry, i) => {
-        const oy = y + 66 + i * 36;
+      for (let row = 0; row < ITEM_ROWS; row++) {
+        const i = m.itemScroll + row;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const oy = y + 66 + row * 36;
         if (i === m.itemIndex) r.cursor(x + 18, oy + 3);
         r.text(entry.def.name, x + 42, oy, { size: 24 });
         r.text(`x${entry.qty}`, x + w - 42, oy, { align: 'right', size: 24, color: '#666' });
-      });
+      }
+      if (m.itemScroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+      if (m.itemScroll + ITEM_ROWS < list.length) r.text('▼', x + w - 24, y + 66 + (ITEM_ROWS - 1) * 36, { size: 18, color: '#888' });
       const sel = list[Math.min(m.itemIndex, list.length - 1)];
-      const descLines = r.wrapText(sel.def.desc, w - 84, 21);
-      descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 246 + i * 27, { size: 21, color: '#555' }));
+      r.wrapClamped(sel.def.desc, w - 84, 21, 2)
+        .forEach((ln, i) => r.text(ln, x + 42, y + 246 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 300, { size: 21, color: '#2a7a2a' });
     r.text('Z: use   X: back', x + w / 2, y + 330, { align: 'center', size: 21, color: '#666' });
@@ -1613,16 +1678,21 @@ function renderMenu() {
     if (!list.length) {
       r.text('No machines. Beat trainers to earn more!', x + 42, y + 66, { size: 22, color: '#666' });
     } else {
-      list.forEach((entry, i) => {
-        const oy = y + 66 + i * 34;
+      for (let row = 0; row < MACHINE_ROWS; row++) {
+        const i = m.machineScroll + row;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const oy = y + 66 + row * 34;
         if (i === m.machineIndex) r.cursor(x + 18, oy + 3);
         const mv = game.dex.move(entry.def.move);
         r.text(entry.def.name, x + 42, oy, { size: 22, color: game.typeChart.color(mv.type) });
         r.text(entry.def.kind === 'hm' ? 'reusable' : `x${entry.qty}`, x + w - 42, oy, { align: 'right', size: 21, color: '#666' });
-      });
+      }
+      if (m.machineScroll > 0) r.text('▲', x + w - 24, y + 66, { size: 18, color: '#888' });
+      if (m.machineScroll + MACHINE_ROWS < list.length) r.text('▼', x + w - 24, y + 66 + (MACHINE_ROWS - 1) * 34, { size: 18, color: '#888' });
       const sel = list[Math.min(m.machineIndex, list.length - 1)];
-      const descLines = r.wrapText(sel.def.desc, w - 84, 21);
-      descLines.slice(0, 2).forEach((ln, i) => r.text(ln, x + 42, y + 276 + i * 27, { size: 21, color: '#555' }));
+      r.wrapClamped(sel.def.desc, w - 84, 21, 2)
+        .forEach((ln, i) => r.text(ln, x + 42, y + 276 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 336, { size: 21, color: '#2a7a2a' });
     r.text('Z: teach   X: back', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
@@ -1787,13 +1857,23 @@ function renderBattle() {
     renderPartyList(r, 'Send out which creature?', b.partyIndex, 'Z: send in');
   } else if (b.phase === 'item') {
     const list = invEntries();
-    list.forEach((entry, i) => {
-      const ox = 42 + (i % 2) * 330;
-      const oy = my + 24 + Math.floor(i / 2) * 42;
-      if (i === b.itemIndex) r.cursor(ox - 24, oy + 3);
-      r.text(entry.def.name, ox, oy, { size: 24 });
-      r.text(`x${entry.qty}`, ox + 252, oy, { align: 'right', size: 21, color: '#666' });
-    });
+    const rows = Math.ceil(list.length / 2);
+    for (let row = 0; row < BATTLE_ITEM_ROWS; row++) {
+      for (let col = 0; col < 2; col++) {
+        const i = (b.itemScroll + row) * 2 + col;
+        if (i >= list.length) break;
+        const entry = list[i];
+        const ox = 42 + col * 330;
+        const oy = my + 24 + row * 42;
+        if (i === b.itemIndex) r.cursor(ox - 24, oy + 3);
+        r.text(entry.def.name, ox, oy, { size: 24 });
+        r.text(`x${entry.qty}`, ox + 252, oy, { align: 'right', size: 21, color: '#666' });
+      }
+    }
+    if (rows > BATTLE_ITEM_ROWS) {
+      const more = `${b.itemScroll > 0 ? '▲' : ' '}${b.itemScroll + BATTLE_ITEM_ROWS < rows ? '▼' : ' '}`;
+      r.text(more, 36, my + 96, { size: 21, color: '#888' });
+    }
     r.text('X: back', VIEW_W - 24, my + 96, { align: 'right', size: 21, color: '#555' });
   } else if (b.phase === 'learn') {
     const pl = b.pendingLearns[0];
