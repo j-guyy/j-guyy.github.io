@@ -1483,7 +1483,7 @@ function renderTitle() {
   r.fillRect(0, 180, VIEW_W, 4, '#16223a');
   r.text('CREATURE', VIEW_W / 2, 48, { align: 'center', size: 60, bold: true, color: '#ffe08a', shadow: '#000' });
   r.text('QUEST', VIEW_W / 2, 110, { align: 'center', size: 48, bold: true, color: '#fff', shadow: '#000' });
-  r.text('a phase-6 prototype', VIEW_W / 2, 172, { align: 'center', size: 24, color: '#9fb4d8' });
+  r.text('a phase-7 prototype', VIEW_W / 2, 172, { align: 'center', size: 24, color: '#9fb4d8' });
 
   const opts = ['New Game', 'Continue'];
   const y0 = 280;
