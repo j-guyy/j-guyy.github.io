@@ -652,6 +652,7 @@ function openMenu() {
     partyIndex: 0, dexIndex: 0, dexScroll: 0, detailId: null,
     itemIndex: 0, itemScroll: 0, targetIndex: 0, pendingItem: null,
     machineIndex: 0, machineScroll: 0, machineTargetIndex: 0, machineLearnIndex: 0, teach: null,
+    confirmIndex: 1,
   };
   setState('MENU');
 }
@@ -707,10 +708,9 @@ function updateMenu() {
         game.title.hasSave = true;
         m.message = ok ? 'Game saved!' : 'Save failed.';
       } else if (sel === 'Quit to Title') {
-        game.title.hasSave = hasSave();
-        game.title.index = game.title.hasSave ? 1 : 0;
-        game.menu = null;
-        setState('TITLE');
+        // Quitting drops everything since the last manual save, so ask first.
+        m.view = 'confirmQuit';
+        m.confirmIndex = 1; // default to "No"
       } else if (sel === 'Close') {
         closeMenu();
       }
@@ -723,6 +723,22 @@ function updateMenu() {
     if (game.input.consume('down')) m.partyIndex = (m.partyIndex + 1) % game.party.length;
     if (game.input.consume('cancel')) { m.view = 'root'; return; }
     if (game.input.consume('confirm')) { m.view = 'partySummary'; return; }
+    return;
+  }
+
+  if (m.view === 'confirmQuit') {
+    if (game.input.consume('up') || game.input.consume('down')) m.confirmIndex = 1 - m.confirmIndex;
+    if (game.input.consume('cancel')) { m.view = 'root'; return; }
+    if (game.input.consume('confirm')) {
+      if (m.confirmIndex === 0) {
+        game.title.hasSave = hasSave();
+        game.title.index = game.title.hasSave ? 1 : 0;
+        game.menu = null;
+        setState('TITLE');
+      } else {
+        m.view = 'root';
+      }
+    }
     return;
   }
 
@@ -1360,10 +1376,17 @@ async function endBattle() {
   if (sentToStorage) showBanner(`${caughtMon.name} was sent to storage.`);
 
   if (outcome === 'lose') {
+    // Losing used to cost nothing at all — full heal, warp home, carry on —
+    // which left the game with no fail state anywhere. Half your coins is the
+    // classic payout for blacking out.
+    const dropped = Math.floor(game.money / 2);
+    game.money -= dropped;
     healParty();
     const start = (await getMap('village')).playerStart;
     await placePlayer('village', start.x, start.y, start.facing || 'down');
-    showBanner('You scurried back to Meadowfen...');
+    showBanner(dropped > 0
+      ? `You scurried back to Meadowfen... and dropped ${dropped}c.`
+      : 'You scurried back to Meadowfen...');
     return;
   }
 
@@ -1681,6 +1704,20 @@ function renderMenu() {
 
   if (m.view === 'partySummary') {
     renderPartySummary(r, game.party[m.partyIndex]);
+    return;
+  }
+
+  if (m.view === 'confirmQuit') {
+    const w = 528, x = (VIEW_W - w) / 2, y = 156;
+    r.panel(x, y, w, 168);
+    r.text('Quit to the title screen?', x + 24, y + 24, { size: 23, bold: true });
+    r.wrapClamped('Progress since your last save will be lost.', w - 48, 18, 2)
+      .forEach((ln, i) => r.text(ln, x + 24, y + 58 + i * 22, { size: 18, color: '#a04030' }));
+    ['Yes, quit', 'No, keep playing'].forEach((o, i) => {
+      const oy = y + 96 + i * 32;
+      if (i === m.confirmIndex) r.cursor(x + 24, oy + 3);
+      r.text(o, x + 48, oy, { size: 22, color: i === 0 ? '#a04030' : '#2b2b3a' });
+    });
     return;
   }
 
