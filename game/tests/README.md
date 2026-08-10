@@ -23,7 +23,45 @@ quotes, so Node expands it) or a file list, as the npm scripts do.
 | `data.test.mjs` | The JSON the game is built from: learnsets, evolutions, machines, shops, trainers, encounter tables, warps, map reachability. Guards against an editor or a hand edit shipping a file that boots into a crash, strands the player, or defines content nothing can reach. |
 | `dex.test.mjs` | Progression: stat computation, the XP curve, levelling and move learning, evolution, and the save round-trip. |
 | `battle.test.mjs` | The battle engine: type effectiveness, STAB, accuracy, statuses, Leech Seed, hazards, Protect, priority, PP and Struggle, switching, faints, catching, fleeing, weather, drain, recoil, multi-hit and stat stages. |
+| `renderer.test.mjs` | The text-fitting primitives every panel draws through — lines stay inside the width they were given, the ellipsis counts toward that width, empty and unbreakable input come back safe. |
+| `draw-audit.test.mjs` | The layout auditor's own rules (see below), so the browser suite can be trusted when it says a screen is clean. |
 | `game.browser.test.mjs` | The real page: that it boots, that the scenes draw without throwing, and that input lands where it should. |
+| `layout.browser.test.mjs` | That no text draws outside its box, on every screen the game can reach. |
+
+## The layout audit
+
+Text running off a panel — or off the canvas — is the one class of bug the
+other suites cannot see: the layout is coordinates passed to `Renderer.text()`
+from `main.js`, with nothing exported to assert on. So the browser records it
+instead.
+
+`helpers/draw-audit.mjs` patches the 2D context before the game boots and logs
+every `fillText` and `strokeRect` on the visible canvas. `auditDraws()` — pure,
+and unit-tested in `draw-audit.test.mjs` — then applies two rules:
+
+- **canvas** — no text may extend past the edge of the canvas.
+- **panel** — text starting inside a panel must finish inside that panel.
+
+Panels are recognised by their draw signature: `Renderer.panel()` is the only
+thing that strokes two rectangles inset 4px from one another. Text belongs to
+the most recent panel drawn that contains where the text starts, so overlapping
+prompts are judged against the prompt rather than the menu behind it.
+
+To cover a new screen, walk to it and call `check()`:
+
+```js
+const game = await openGame({ audit: true, save: makeSave() });
+await game.press('KeyX');           // navigate to the screen
+await check(game, 'pause menu root');   // clears the log, redraws, audits
+```
+
+A failure names the offending string and its measured extent, e.g.
+`[canvas] "You scurried back to Meadowfen... and dropped 450c." spans x 36..773
+on a 720x480 canvas`.
+
+Feed the screens their worst case — a full inventory, a long creature name, a
+status badge, a three-creature party — since these bugs only appear once the
+content is long enough.
 
 ## Writing a test
 

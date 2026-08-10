@@ -10,6 +10,7 @@
 
 import path from 'node:path';
 import { startServer } from './server.mjs';
+import { recorderScript, auditDraws, describeViolations } from './draw-audit.mjs';
 
 const STEP_MS = 140; // must match STEP_MS in js/main.js
 
@@ -39,7 +40,7 @@ export const unavailableReason =
 // Opens /game/ in a fresh page. `save` (optional) is written to localStorage
 // before the game boots, so a test can start from any point in the game
 // without playing through to it.
-export async function openGame({ save = null, query = '' } = {}) {
+export async function openGame({ save = null, query = '', audit = false } = {}) {
   if (!available) throw new Error(unavailableReason);
   const server = await startServer();
   const browser = await playwright.chromium.launch();
@@ -56,6 +57,9 @@ export async function openGame({ save = null, query = '' } = {}) {
       localStorage.setItem('jg_creature_game_save_v1', JSON.stringify(data));
     }, save);
   }
+  // Must be installed before the game's first frame, so it patches the context
+  // ahead of any drawing.
+  if (audit) await page.addInitScript(recorderScript);
 
   await page.goto(`${server.url}/game/index.html${query}`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000); // boot: data fetch + sprite preload
@@ -105,6 +109,25 @@ export async function openGame({ save = null, query = '' } = {}) {
       }
       return false;
     },
+    // --- layout audit (requires openGame({ audit: true })) ------------------
+
+    // Throw away everything drawn so far, so a check covers one screen only.
+    async resetDraws() {
+      await page.evaluate(() => { window.__drawLog = []; });
+    },
+    async draws() {
+      return page.evaluate(() => window.__drawLog || []);
+    },
+    // Every text draw since the last reset, checked against the canvas and
+    // against the panel it sits in. Returns a description, or '' if clean.
+    async auditLayout(label = '') {
+      const records = await api.draws();
+      const violations = auditDraws(records, { width: 720, height: 480 });
+      if (!violations.length) return '';
+      return `${label ? `${label}: ` : ''}${violations.length} layout violation(s)\n`
+        + describeViolations(violations);
+    },
+
     async close() {
       await browser.close();
       await server.close();

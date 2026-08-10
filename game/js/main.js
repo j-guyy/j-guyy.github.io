@@ -1851,7 +1851,11 @@ function renderMenu() {
       r.text(`${mon.name}  Lv${mon.level}`, 96, y, { size: 24, color: can ? game.typeChart.color(mon.types[0]) : '#999' });
       const status = knows ? 'already knows it' : (can ? 'can learn' : "can't learn");
       r.text(status, 96, y + 27, { size: 20, color: knows ? '#8a7a2a' : (can ? '#2a7a2a' : '#a04030') });
-      r.text(mon.moves.map((mv) => mv.name).join(', '), 372, y + 12, { size: 18, color: '#555' });
+      // Four move names on one line ran off the right of the screen — the
+      // column starts at 372 and the panel ends at 702, so it gets 306px and
+      // two rows to say them in.
+      r.wrapClamped(mon.moves.map((mv) => mv.name).join(', '), 306, 16, 2)
+        .forEach((line, row) => r.text(line, 372, y + 2 + row * 22, { size: 16, color: '#555' }));
     });
     if (m.message) r.text(m.message, VIEW_W / 2, VIEW_H - 72, { align: 'center', size: 21, color: '#a04030' });
     r.text('Z: teach here   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
