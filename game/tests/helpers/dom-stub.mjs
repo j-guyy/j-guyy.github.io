@@ -32,7 +32,9 @@ function stubContext() {
 
 function stubCanvas() {
   const ctx = stubContext();
-  return { width: 0, height: 0, getContext: () => ctx };
+  // `style` is here because Renderer sets a CSS pixel size on the canvas it
+  // owns; the sprite factories never touch it.
+  return { width: 0, height: 0, style: {}, getContext: () => ctx };
 }
 
 if (typeof globalThis.document === 'undefined') {
@@ -42,6 +44,17 @@ if (typeof globalThis.document === 'undefined') {
       return { tagName: String(tag).toUpperCase(), style: {}, setAttribute() {}, appendChild() {} };
     },
     getElementById: () => null,
+  };
+}
+
+if (typeof globalThis.window === 'undefined') {
+  // Renderer measures the viewport on construction to pick its integer scale.
+  globalThis.window = {
+    innerWidth: 1280,
+    innerHeight: 900,
+    addEventListener() {},
+    removeEventListener() {},
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
   };
 }
 

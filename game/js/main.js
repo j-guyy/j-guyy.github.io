@@ -1576,13 +1576,23 @@ function renderWorld() {
   }
 }
 
+// Top-left toast: map names, catch overflow notices, the black-out payout.
+// The panel used to be clamped to the canvas while the text was drawn at full
+// length regardless, so anything longer than the panel simply ran off the right
+// edge. It wraps to two lines now and the panel grows to match.
+const BANNER_ROWS = 2;
+
 function renderBanner() {
   if (!game.banner) return;
   const r = game.renderer;
+  const pad = 24; // gap between the panel edge and the text, both sides
+  const lines = r.wrapClamped(game.banner.text, VIEW_W - 24 - pad * 2, 24, BANNER_ROWS);
   r.ctx.font = '24px monospace';
-  const w = Math.min(VIEW_W - 24, r.ctx.measureText(game.banner.text).width + 48);
-  r.panel(12, 12, w, 48, { fill: 'rgba(20,20,30,0.85)', border: '#fff', borderInner: '#888' });
-  r.text(game.banner.text, 36, 27, { size: 24, color: '#fff' });
+  const textW = Math.max(...lines.map((line) => r.ctx.measureText(line).width));
+  const w = Math.min(VIEW_W - 24, textW + pad * 2);
+  const h = 48 + (lines.length - 1) * 30;
+  r.panel(12, 12, w, h, { fill: 'rgba(20,20,30,0.85)', border: '#fff', borderInner: '#888' });
+  lines.forEach((line, i) => r.text(line, 36, 27 + i * 30, { size: 24, color: '#fff' }));
 }
 
 function renderDialogue() {

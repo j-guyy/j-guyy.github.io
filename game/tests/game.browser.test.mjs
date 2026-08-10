@@ -103,6 +103,37 @@ test('a wild battle opens, takes a turn, and every battle sub-screen draws', opt
   }
 });
 
+test('losing a battle warps home and reports the payout', opts, async () => {
+  const game = await openGame({
+    save: makeSave({
+      player: { map: 'route1', x: 3, y: 1, facing: 'down' },
+      // One creature on its last legs, so the first wild hit ends the battle.
+      party: [{
+        species: 'sproutle', level: 3, xp: 27, curHP: 1,
+        moves: [{ id: 'nudge', pp: 35 }], status: null, statusCounter: 0,
+      }],
+      money: 901,
+      inventory: {},
+    }),
+  });
+  try {
+    await game.press('KeyZ');
+    await game.page.waitForTimeout(600);
+    assert.ok(await game.findEncounter(), 'no wild encounter after 40 steps in grass');
+
+    await game.press('KeyZ', 2);              // intro messages
+    for (let i = 0; i < 14; i++) {            // fight until the battle ends
+      await game.press('KeyZ');
+      if (!(await game.inBattle())) break;
+    }
+    await game.page.waitForTimeout(700);
+    assert.ok(!(await game.inBattle()), 'should be back in the overworld after blacking out');
+    assert.deepEqual(game.errors, [], `errors while losing:\n${game.errors.join('\n')}`);
+  } finally {
+    await game.close();
+  }
+});
+
 test('shops open and sell', opts, async () => {
   // Standing on the Machine Works doorstep in Bramblehollow.
   const game = await openGame({
