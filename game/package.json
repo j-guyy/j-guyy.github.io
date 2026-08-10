@@ -1,0 +1,11 @@
+{
+  "name": "creature-quest",
+  "private": true,
+  "type": "module",
+  "description": "Marks game/js/**/*.js as ES modules so Node (and the test harness in game/tests) can import them directly, the same way the browser does. There is no build step and no dependency here - see game/tests/README.md.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "test:unit": "node --test tests/data.test.mjs tests/dex.test.mjs tests/battle.test.mjs tests/renderer.test.mjs tests/draw-audit.test.mjs",
+    "test:browser": "node --test tests/game.browser.test.mjs tests/layout.browser.test.mjs"
+  }
+}

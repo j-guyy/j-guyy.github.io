@@ -1576,13 +1576,23 @@ function renderWorld() {
   }
 }
 
+// Top-left toast: map names, catch overflow notices, the black-out payout.
+// The panel used to be clamped to the canvas while the text was drawn at full
+// length regardless, so anything longer than the panel simply ran off the right
+// edge. It wraps to two lines now and the panel grows to match.
+const BANNER_ROWS = 2;
+
 function renderBanner() {
   if (!game.banner) return;
   const r = game.renderer;
+  const pad = 24; // gap between the panel edge and the text, both sides
+  const lines = r.wrapClamped(game.banner.text, VIEW_W - 24 - pad * 2, 24, BANNER_ROWS);
   r.ctx.font = '24px monospace';
-  const w = Math.min(VIEW_W - 24, r.ctx.measureText(game.banner.text).width + 48);
-  r.panel(12, 12, w, 48, { fill: 'rgba(20,20,30,0.85)', border: '#fff', borderInner: '#888' });
-  r.text(game.banner.text, 36, 27, { size: 24, color: '#fff' });
+  const textW = Math.max(...lines.map((line) => r.ctx.measureText(line).width));
+  const w = Math.min(VIEW_W - 24, textW + pad * 2);
+  const h = 48 + (lines.length - 1) * 30;
+  r.panel(12, 12, w, h, { fill: 'rgba(20,20,30,0.85)', border: '#fff', borderInner: '#888' });
+  lines.forEach((line, i) => r.text(line, 36, 27 + i * 30, { size: 24, color: '#fff' }));
 }
 
 function renderDialogue() {
@@ -1841,7 +1851,11 @@ function renderMenu() {
       r.text(`${mon.name}  Lv${mon.level}`, 96, y, { size: 24, color: can ? game.typeChart.color(mon.types[0]) : '#999' });
       const status = knows ? 'already knows it' : (can ? 'can learn' : "can't learn");
       r.text(status, 96, y + 27, { size: 20, color: knows ? '#8a7a2a' : (can ? '#2a7a2a' : '#a04030') });
-      r.text(mon.moves.map((mv) => mv.name).join(', '), 372, y + 12, { size: 18, color: '#555' });
+      // Four move names on one line ran off the right of the screen — the
+      // column starts at 372 and the panel ends at 702, so it gets 306px and
+      // two rows to say them in.
+      r.wrapClamped(mon.moves.map((mv) => mv.name).join(', '), 306, 16, 2)
+        .forEach((line, row) => r.text(line, 372, y + 2 + row * 22, { size: 16, color: '#555' }));
     });
     if (m.message) r.text(m.message, VIEW_W / 2, VIEW_H - 72, { align: 'center', size: 21, color: '#a04030' });
     r.text('Z: teach here   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });

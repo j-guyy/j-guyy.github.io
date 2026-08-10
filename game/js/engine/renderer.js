@@ -116,17 +116,28 @@ export class Renderer {
   // flavor) draws through this, so over-long editor-authored text degrades
   // visibly instead of being cut mid-sentence with no sign it was cut.
   wrapClamped(str, maxWidth, size, maxLines) {
-    const lines = this.wrapText(str || '', maxWidth, size);
-    if (lines.length <= maxLines) return lines;
-    const kept = lines.slice(0, maxLines);
     const g = this.ctx;
     g.font = size + 'px monospace';
-    let last = kept[maxLines - 1];
-    while (last.length && g.measureText(last + '...').width > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    kept[maxLines - 1] = last.replace(/[ ,;:]+$/, '') + '...';
-    return kept;
+    const wrapped = this.wrapText(str || '', maxWidth, size);
+    // Always hand back at least one line: callers size their panels from what
+    // comes out of here, and an empty array makes that arithmetic collapse.
+    const lines = (wrapped.length ? wrapped : ['']).slice(0, maxLines);
+    const droppedContent = wrapped.length > maxLines;
+
+    const shrinkToFit = (line) => {
+      let out = line;
+      while (out.length && g.measureText(`${out}...`).width > maxWidth) out = out.slice(0, -1);
+      return out.replace(/[ ,;:]+$/, '') + '...';
+    };
+
+    return lines.map((line, i) => {
+      // The last line stands in for whatever got cut. Any line can also be too
+      // wide on its own — wrapText cannot split a single word longer than the
+      // box — and that has to be trimmed too, or it draws straight past the edge.
+      const isLastAndCut = droppedContent && i === lines.length - 1;
+      if (!isLastAndCut && g.measureText(line).width <= maxWidth) return line;
+      return shrinkToFit(line);
+    });
   }
 
   bar(x, y, w, h, pct, color, bg = '#3a3a4a') {

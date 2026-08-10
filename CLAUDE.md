@@ -19,6 +19,13 @@ npx serve .
 
 **Deployment**: Pushing to `main` auto-deploys via GitHub Pages.
 
+**Tests**: only `/game/` has any (`game/tests/`, see its README). They need nothing installed — the unit layer imports the game's own modules under Node and runs in about a second; the browser layer drives the real page in Chromium and skips itself if Playwright is absent. Run them after touching anything under `/game/`:
+```bash
+cd game && npm run test:unit          # rules + data, ~1s
+cd game && node --test "tests/*.test.mjs"   # everything, ~35s
+```
+`game/package.json` exists only to mark `game/js/**/*.js` as ES modules so Node can import them; there is still no build step. CI runs both layers on changes to `/game/` (`.github/workflows/game-tests.yml`).
+
 **Cloudflare Worker**: The backend API lives in `worker.js` (ES module format). Deploy with `npx wrangler deploy worker.js`. Secrets/bindings: `STRAVA_DATA` (KV), `STRAVA_KV` (KV), `CLIENT_ID`, `CLIENT_SECRET`, `TRAVEL_PASSWORD`.
 
 **Android App (Capacitor remote shell)**: `/app/index.html` + `js/app.js` + `css/app.css` are a phone-optimized shell around the Strava page — every feature (dashboard, activity map, and all hunters) gets its own hash-routed screen (`#home`, `#county`, `#tiles`, …) reusing `js/strava.js` unmodified. Logic and UI are split along that line: `strava.js` owns all logic and renders shared components (`.section`, `.travel-table`, `.county-stats-bar`, `.filter-pill`, …) into the same mount-point element ids on both pages; `css/app.css` is the app's own design system (tokens + a reskin of every shared component, all scoped to `.app-page`), so the app's look can change freely without touching `strava.js`, and website styles are unaffected. The APK (`/android`, `capacitor.config.json`, `package.json`) is a thin Capacitor WebView that loads `https://j-guyy.github.io/app/` remotely — site pushes update the app instantly with no rebuild. Rebuild the APK (only needed when `/android` or Capacitor config changes) via the manually-triggerable `.github/workflows/android.yml`, which uploads `app-debug.apk` as an artifact for sideloading. Debug APKs are signed with a per-run key: uninstall the old app before installing a new APK.

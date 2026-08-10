@@ -1,0 +1,54 @@
+# Runs the Creature Quest test suite (game/tests) on any change to the game.
+#
+# Two jobs, split by what they need. The unit job imports the game's own modules
+# under Node and finishes in about a second with nothing installed — it is the
+# one that should stay green. The browser job drives the real page in Chromium
+# and needs Playwright, so it installs one browser and takes a minute; it is
+# separate so a Playwright hiccup never masks a real rules failure.
+#
+# There is no build step and no dependency for the site itself — see
+# game/tests/README.md.
+name: Creature Quest tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'game/**'
+      - '.github/workflows/game-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'game/**'
+      - '.github/workflows/game-tests.yml'
+
+jobs:
+  unit:
+    name: Rules and data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run the unit suite
+        working-directory: game
+        run: npm run test:unit
+
+  browser:
+    name: Game in a browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Installed inside game/ (which has no dependencies of its own) so the
+      # helpers resolve a plain `import('playwright')`, and so this never pulls
+      # in the root package.json's Capacitor toolchain.
+      - name: Install Chromium for Playwright
+        working-directory: game
+        run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+      - name: Run the browser suite
+        working-directory: game
+        run: npm run test:browser
