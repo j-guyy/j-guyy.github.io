@@ -268,9 +268,11 @@
 }
 
 /* ── County Hunter / Park Hunter / Metro Hunter ─ */
+/* .region-map is the per-country map inside each regional breakdown section */
 #county-map,
 #park-map,
-#metro-map {
+#metro-map,
+.region-map {
     width: 100%;
     height: 520px;
     border-radius: 8px;
@@ -1108,7 +1110,8 @@
     #city-map,
     #trail-map,
     #mountain-map,
-    #pass-map {
+    #pass-map,
+    .region-map {
         height: 420px;
     }
 

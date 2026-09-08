@@ -62,6 +62,7 @@ Component-based CSS files in `/css/` using CSS custom properties for theming (pr
 | Directory | Purpose |
 |-----------|---------|
 | `/data/` | JSON data files for adventures, geography, travel stats |
+| `/data/admin1/` | Per-country first-level region boundaries for the Strava regional breakdown maps (generated) |
 | `/trip-reports/` | Individual HTML trip report pages |
 | `/images/` | Photos organized by category (`/hiking`, `/cycling`) |
 | `/css/` | Stylesheets |
@@ -89,6 +90,8 @@ The strava page is the most complex, containing 5 "hunter" modules that share a 
 3. **Tile Hunter** — z14 map tile coverage tracking with cluster/square detection
 4. **Trail Hunter** — trail completion for specific regions (Boulder County, RMNP)
 5. **Mountain Hunter** — peak summit detection using OSM Overpass data (peaks + volcanoes)
+
+Below the hunters, `SUBDIVISION_CONFIG` drives one **regional breakdown** section per country with first-level regions worth tracking (US states, Canadian provinces, Australian states, Mexican states, Chinese provinces, Spanish regions, Italian regions). Each section is a collapsible holding a stats bar, a map of that country with visited regions filled green, and the sortable activity table. Boundaries come from `/data/admin1/<config id>.geojson` and are fetched only when the section is first expanded. A region counts as visited when the geocoded subdivision name of an activity matches one of the aliases baked into its polygon; a name the aliases don't cover is resolved geometrically instead (point-in-polygon on an activity recorded under it), so a new spelling from Nominatim self-heals rather than leaving a hole. Regenerate the boundary files with `python3 scripts/build-admin1-regions.py` (needs `shapely`); adding a country means adding an entry to both `SUBDIVISION_CONFIG` and the script's `COUNTRIES`.
 
 **Shared infrastructure**:
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters
@@ -119,3 +122,4 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 - **New map data**: Add JSON to `/data/`, fetch and render in the relevant JS file
 - **New page**: Create HTML file at root, link `js/navbar-component.js` and use `<nav-bar>` element, add corresponding CSS/JS files as needed
 - **New hunter feature**: Add section to `strava.html`, implement in `js/strava.js`, add KV key + endpoints to `worker.js`
+- **New country regional breakdown**: Add an entry to `SUBDIVISION_CONFIG` in `js/strava.js` and to `COUNTRIES` in `scripts/build-admin1-regions.py`, then re-run that script to emit `/data/admin1/<id>.geojson`
