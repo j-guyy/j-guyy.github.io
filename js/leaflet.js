@@ -30,16 +30,11 @@ function createLeafletMap(mapId, peaks, centerLat, centerLng, zoom, tileStyle) {
     });
 
     // Add fullscreen control using Leaflet.fullscreen
-    map.addControl(new L.Control.Fullscreen());
+    map.addControl(new L.Control.FullScreen());
 
     // Disable gesture handling in fullscreen mode
-    map.on('fullscreenchange', () => {
-        if (map.isFullscreen()) {
-            map.gestureHandling.disable();
-        } else {
-            map.gestureHandling.enable();
-        }
-    });
+    map.on('enterFullscreen', () => map.gestureHandling.disable());
+    map.on('exitFullscreen',  () => map.gestureHandling.enable());
 
     // Thunderforest tile layer — defaults to 'outdoors'
     const style = tileStyle || 'outdoors';
@@ -81,16 +76,11 @@ function createBritishIslesMap(mapId, peaks) {
     });
 
     // Add fullscreen control
-    map.addControl(new L.Control.Fullscreen());
+    map.addControl(new L.Control.FullScreen());
 
     // Disable gesture handling in fullscreen mode
-    map.on('fullscreenchange', () => {
-        if (map.isFullscreen()) {
-            map.gestureHandling.disable();
-        } else {
-            map.gestureHandling.enable();
-        }
-    });
+    map.on('enterFullscreen', () => map.gestureHandling.disable());
+    map.on('exitFullscreen',  () => map.gestureHandling.enable());
 
     // Thunderforest Outdoors layer
     L.tileLayer('https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f', {

@@ -96,15 +96,10 @@ function initMap() {
     });
 
     // Fullscreen control is optional — guard so a missing plugin doesn't abort init
-    if (L.Control.Fullscreen) {
-        map.addControl(new L.Control.Fullscreen());
-        map.on('fullscreenchange', () => {
-            if (map.isFullscreen()) {
-                map.gestureHandling.disable();
-            } else {
-                map.gestureHandling.enable();
-            }
-        });
+    if (L.Control.FullScreen) {
+        map.addControl(new L.Control.FullScreen());
+        map.on('enterFullscreen', () => map.gestureHandling.disable());
+        map.on('exitFullscreen',  () => map.gestureHandling.enable());
     }
 
     L.tileLayer('https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=bc2ceac04cab454da559aaacefe3582f', {

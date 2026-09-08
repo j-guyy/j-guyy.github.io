@@ -4362,7 +4362,7 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
 // pan. Recompute explicitly on fullscreen change; the extra delayed passes catch
 // the WebView reporting its final height a frame or two after the event.
 function fixFullscreenSizing(map) {
-    map.on('fullscreenchange', () => {
+    map.on('enterFullscreen exitFullscreen', () => {
         const refresh = () => map.invalidateSize();
         refresh();
         setTimeout(refresh, 200);

@@ -154,13 +154,8 @@ function initializeForbesMap() {
         fullscreenControl: true
     }).setView([20, 0], 2);
 
-    forbesMap.on('fullscreenchange', () => {
-        if (forbesMap.isFullscreen()) {
-            forbesMap.gestureHandling.disable();
-        } else {
-            forbesMap.gestureHandling.enable();
-        }
-    });
+    forbesMap.on('enterFullscreen', () => forbesMap.gestureHandling.disable());
+    forbesMap.on('exitFullscreen',  () => forbesMap.gestureHandling.enable());
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -182,13 +177,8 @@ function initializeWondersMap() {
         fullscreenControl: true
     }).setView([20, 0], 2);
 
-    wondersMap.on('fullscreenchange', () => {
-        if (wondersMap.isFullscreen()) {
-            wondersMap.gestureHandling.disable();
-        } else {
-            wondersMap.gestureHandling.enable();
-        }
-    });
+    wondersMap.on('enterFullscreen', () => wondersMap.gestureHandling.disable());
+    wondersMap.on('exitFullscreen',  () => wondersMap.gestureHandling.enable());
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

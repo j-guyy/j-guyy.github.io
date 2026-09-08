@@ -38,13 +38,8 @@ class MountainRangeMapper {
         }).setView([44.0, -110.0], 4);
 
         // Disable gesture handling in fullscreen mode
-        map.on('fullscreenchange', () => {
-            if (map.isFullscreen()) {
-                map.gestureHandling.disable();
-            } else {
-                map.gestureHandling.enable();
-            }
-        });
+        map.on('enterFullscreen', () => map.gestureHandling.disable());
+        map.on('exitFullscreen',  () => map.gestureHandling.enable());
 
         // Add topographic tile layer
         L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
