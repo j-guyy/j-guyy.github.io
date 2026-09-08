@@ -97,13 +97,19 @@ function refreshAdminUI() {
 
 // Countries with regional breakdowns.
 // `names` covers variations BigDataCloud may return for the same country.
+// `view` is the [lat, lng, zoom] a country's region map opens at before its
+// boundaries land; once they do it fits them. `bounds` overrides that fit for
+// a country whose polygons wrap the antimeridian — Alaska's Aleutians run past
+// 180°E, so the US bounding box would otherwise span the whole globe.
+// Region polygons live in /data/admin1/<id>.geojson (scripts/build-admin1-regions.py).
 const SUBDIVISION_CONFIG = [
-    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], flag: '🇺🇸', label: 'US States',           colLabel: 'State'    },
-    { id: 'canada',    names: ['Canada'],                                    flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province' },
-    { id: 'australia', names: ['Australia'],                                 flag: '🇦🇺', label: 'Australian States',    colLabel: 'State'    },
-    { id: 'mexico',    names: ['Mexico'],                                    flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State'    },
-    { id: 'china',     names: ['China'],                                     flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province' },
-    { id: 'spain',     names: ['Spain'],                                     flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region'   },
+    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], flag: '🇺🇸', label: 'US States',           colLabel: 'State',    view: [39, -96, 3],    bounds: [[18, -170], [70, -66]] },
+    { id: 'canada',    names: ['Canada'],                                    flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
+    { id: 'australia', names: ['Australia'],                                 flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
+    { id: 'mexico',    names: ['Mexico'],                                    flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
+    { id: 'china',     names: ['China'],                                     flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
+    { id: 'spain',     names: ['Spain'],                                     flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
+    { id: 'italy',     names: ['Italy'],                                     flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
 ];
 
 // Build a flat lookup: countryName → config entry
@@ -674,7 +680,10 @@ function initScrollHint(wrapper) {
     check();
 }
 
-function makeCollapsible(title, contentEl, { collapsed = true } = {}) {
+// `onOpen` fires every time the section is expanded — callers that build
+// something expensive (a Leaflet map) use it to lazy-init on first open and to
+// re-measure on later ones.
+function makeCollapsible(title, contentEl, { collapsed = true, onOpen = null } = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'collapsible-section';
 
@@ -697,6 +706,7 @@ function makeCollapsible(title, contentEl, { collapsed = true } = {}) {
         const opening = body.style.display === 'none';
         body.style.display = opening ? 'block' : 'none';
         arrow.textContent = opening ? '▼' : '▶';
+        if (opening && onOpen) onOpen();
     });
 
     wrap.appendChild(header);
@@ -753,35 +763,342 @@ function renderTable(countries) {
     container.appendChild(makeCollapsible('By Country', wrapper, { collapsed: !wasOpen }));
 }
 
+// Sections are built once and then updated in place: each one owns a Leaflet
+// map, which re-creating the DOM on every filter toggle would destroy.
+const subdivisionSections = {};   // cfg.id → { section, statsBar, mapEl, statusEl, renderTable }
+let currentSubdivisions = {};     // last data passed to renderSubdivisions
+
 function renderSubdivisions(subdivisions) {
     const wrapper = document.getElementById('strava-subdivisions');
     if (!wrapper) return;
-    wrapper.innerHTML = '';
+    currentSubdivisions = subdivisions;
+
+    // Build every section up front, in config order, so a country whose first
+    // activity is geocoded later still lands in the right place on the page.
+    if (!Object.keys(subdivisionSections).length) {
+        SUBDIVISION_CONFIG.forEach(cfg => {
+            const sec = buildSubdivisionSection(cfg);
+            subdivisionSections[cfg.id] = sec;
+            wrapper.appendChild(sec.section);
+        });
+    }
 
     SUBDIVISION_CONFIG.forEach(cfg => {
+        const sec = subdivisionSections[cfg.id];
         const data = subdivisions[cfg.id];
-        if (!data || Object.keys(data).length === 0) return;
-
-        const section = document.createElement('div');
-        section.className = 'section';
-        section.id = `subdivision-${cfg.id}`;
-
-        const state = getSortState(cfg.id);
-        const tableContainer = document.createElement('div');
-
-        const rerender = () => {
-            tableContainer.innerHTML = '';
-            const sw = document.createElement('div');
-            sw.className = 'table-scroll-wrapper';
-            sw.appendChild(buildSortableTable(data, state, cfg.colLabel, rerender));
-            tableContainer.appendChild(sw);
-            initScrollHint(sw);
-        };
-        rerender();
-
-        section.appendChild(makeCollapsible(`${cfg.flag} By ${cfg.label}`, tableContainer, { collapsed: true }));
-        wrapper.appendChild(section);
+        const hasData = data && Object.values(data).some(b => b.total > 0);
+        sec.section.style.display = hasData ? '' : 'none';
+        if (!hasData) return;
+        sec.renderTable();
+        refreshRegionMap(cfg);
+        renderRegionStats(cfg);
     });
+}
+
+function buildSubdivisionSection(cfg) {
+    const section = document.createElement('div');
+    section.className = 'section';
+    section.id = `subdivision-${cfg.id}`;
+    section.style.display = 'none';
+
+    const body = document.createElement('div');
+
+    const statsBar = document.createElement('div');
+    statsBar.className = 'county-stats-bar';
+    body.appendChild(statsBar);
+
+    const mapEl = document.createElement('div');
+    mapEl.className = 'region-map';
+    mapEl.id = `region-map-${cfg.id}`;
+    body.appendChild(mapEl);
+
+    const legend = document.createElement('div');
+    legend.className = 'map-legend';
+    legend.style.marginTop = '10px';
+    legend.innerHTML = `
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:${REGION_COLOR}"></span>Visited</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not yet visited</span>`;
+    body.appendChild(legend);
+
+    const statusEl = document.createElement('p');
+    statusEl.className = 'no-location-note';
+    statusEl.style.marginTop = '8px';
+    body.appendChild(statusEl);
+
+    const tableContainer = document.createElement('div');
+    body.appendChild(tableContainer);
+
+    const state = getSortState(cfg.id);
+    const renderTable = () => {
+        const data = currentSubdivisions[cfg.id] || {};
+        tableContainer.innerHTML = '';
+        const sw = document.createElement('div');
+        sw.className = 'table-scroll-wrapper';
+        sw.appendChild(buildSortableTable(data, state, cfg.colLabel, renderTable));
+        tableContainer.appendChild(sw);
+        initScrollHint(sw);
+    };
+
+    section.appendChild(makeCollapsible(`${cfg.flag} By ${cfg.label}`, body, {
+        collapsed: true,
+        onOpen: () => initRegionMap(cfg),
+    }));
+
+    return { section, statsBar, mapEl, statusEl, renderTable };
+}
+
+// ── Region maps ───────────────────────────────────────────────────────────────
+//
+// One map per subdivision table: the country's first-level regions, filled
+// green where an activity has been recorded and left faint where none has.
+// Boundaries come from /data/admin1/<id>.geojson, built by
+// scripts/build-admin1-regions.py from Natural Earth.
+//
+// A region counts as visited when a geocoded subdivision name from the table
+// matches one of its polygon's aliases. Nominatim's English spellings are baked
+// into those aliases, but anything unanticipated is resolved geometrically
+// instead — see buildRegionLookup.
+
+const REGION_COLOR = '#4CAF50';
+const regionMaps = {};       // cfg.id → live map state, created on first open
+const regionGeoJsonCache = {};  // cfg.id → Promise<geojson>
+
+// Accent-free, punctuation-free lowercase form. Must stay in step with norm()
+// in scripts/build-admin1-regions.py, which normalises the baked-in aliases.
+function normRegionName(s) {
+    return (s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+// Lookup key for one subdivision name. cleanSubdivision() first, so a cache
+// entry saved before it existed ("Yunnan Province") keys the same as a fresh
+// one ("Yunnan").
+function regionKey(name) {
+    return normRegionName(cleanSubdivision(name || ''));
+}
+
+function loadRegionGeoJson(id) {
+    if (!regionGeoJsonCache[id]) {
+        regionGeoJsonCache[id] = fetch(`/data/admin1/${id}.geojson`).then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        });
+    }
+    return regionGeoJsonCache[id];
+}
+
+function setRegionStatus(cfg, msg) {
+    const sec = subdivisionSections[cfg.id];
+    if (sec) sec.statusEl.textContent = msg;
+}
+
+// normalised subdivision name → polygon id.
+//
+// Starts from the aliases in the GeoJSON, then falls back to geometry for any
+// name the geocoder produced that they don't cover: take one activity recorded
+// under that name and see which region actually contains it. That way a new
+// spelling from Nominatim fixes itself instead of leaving a hole in the map.
+function buildRegionLookup(cfg, geojson) {
+    const byAlias = {};
+    geojson.features.forEach(f => {
+        (f.properties.aliases || []).forEach(a => { byAlias[normRegionName(a)] = f.properties.id; });
+    });
+
+    const unresolved = new Map();   // normalised name → sample [lat, lng]
+    currentSlim.forEach(a => {
+        if (!a.l) return;
+        const geo = currentCache[gridKey(a.l)];
+        if (!geo || !geo.s || !cfg.names.includes(geo.c)) return;
+        const n = regionKey(geo.s);
+        if (byAlias[n] || unresolved.has(n)) return;
+        unresolved.set(n, a.l);
+    });
+
+    unresolved.forEach(([lat, lng], n) => {
+        const hit = geojson.features.find(f => pointInFeature(lat, lng, f));
+        if (hit) {
+            byAlias[n] = hit.properties.id;
+            dbg(`Region map (${cfg.id}): "${n}" matched to ${hit.properties.name} by location`);
+        } else {
+            dbg(`Region map (${cfg.id}): no polygon matches "${n}"`);
+        }
+    });
+
+    return byAlias;
+}
+
+// Roll the subdivision table up into per-polygon totals. Two table rows can
+// land on one polygon (a region the geocoder names two ways), so merge rather
+// than overwrite.
+function computeRegionVisited(cfg) {
+    const state = regionMaps[cfg.id];
+    const data = currentSubdivisions[cfg.id] || {};
+    const visited = {};
+    let unmatched = 0;
+    Object.entries(data).forEach(([name, bucket]) => {
+        if (!bucket.total) return;
+        const id = state.byAlias[regionKey(name)];
+        if (!id) { unmatched++; return; }
+        if (!visited[id]) visited[id] = { total: 0, groups: {} };
+        visited[id].total += bucket.total;
+        GROUP_KEYS.forEach(g => {
+            if (bucket[g]) visited[id].groups[g] = (visited[id].groups[g] || 0) + bucket[g];
+        });
+    });
+    state.visited = visited;
+    // Rows we couldn't place on the map are still regions that were visited,
+    // so they count towards the stats even though nothing lights up for them.
+    state.unmatched = unmatched;
+}
+
+function regionStyle(cfg, feature) {
+    const state = regionMaps[cfg.id];
+    return state.visited[feature.properties.id]
+        ? { fillColor: REGION_COLOR, fillOpacity: 0.45, color: REGION_COLOR, weight: 0.8 }
+        : faintPolyStyle(state.isDark);
+}
+
+function regionPopupHtml(cfg, feature) {
+    const state = regionMaps[cfg.id];
+    const v = state.visited[feature.properties.id];
+    const name = feature.properties.name;
+    if (!v) {
+        return `
+            <div class="activity-popup-inner">
+                <div class="activity-popup-type" style="color:#aaa">${cfg.flag} ${cfg.colLabel}</div>
+                <div class="activity-popup-name">${name}</div>
+                <div class="activity-popup-date" style="color:#888">No activities yet</div>
+            </div>`;
+    }
+    const breakdown = GROUP_KEYS
+        .filter(g => v.groups[g])
+        .map(g => `${GROUP_ICONS[g]} ${v.groups[g]}`)
+        .join(' · ');
+    return `
+        <div class="activity-popup-inner">
+            <div class="activity-popup-type" style="color:${REGION_COLOR}">${cfg.flag} ${cfg.colLabel}</div>
+            <div class="activity-popup-name">${name}</div>
+            <div class="activity-popup-date">${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}</div>
+            ${breakdown ? `<div class="activity-popup-date">${breakdown}</div>` : ''}
+        </div>`;
+}
+
+function renderRegionStats(cfg) {
+    const sec = subdivisionSections[cfg.id];
+    if (!sec) return;
+    const data = currentSubdivisions[cfg.id] || {};
+    const buckets = Object.values(data);
+    const activities = buckets.reduce((sum, b) => sum + b.total, 0);
+    const state = regionMaps[cfg.id];
+    const total = state?.total;   // only known once the boundaries load
+
+    // Count regions, not table rows: the geocoder can name one region two ways
+    // (a stale "Yunnan Province" alongside a fresh "Yunnan"), and both light up
+    // the same polygon. Before the boundaries load, rows are all we have.
+    const visited = state?.layer
+        ? Object.keys(state.visited).length + state.unmatched
+        : buckets.filter(b => b.total > 0).length;
+
+    const items = [[visited.toLocaleString(), `${cfg.colLabel}s Visited`]];
+    if (total) {
+        items.push([total.toLocaleString(), `Total ${cfg.colLabel}s`]);
+        items.push([`${((visited / total) * 100).toFixed(1)}%`, 'Complete']);
+    }
+    items.push([activities.toLocaleString(), 'Activities']);
+
+    sec.statsBar.innerHTML = items.map(([num, label]) => `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${num}</span>
+            <span class="county-stat-label">${label}</span>
+        </div>`).join('');
+}
+
+// Re-colour an already-built map after a filter change or a geocoding pass.
+function refreshRegionMap(cfg) {
+    const state = regionMaps[cfg.id];
+    if (!state || !state.layer) return;
+    computeRegionVisited(cfg);
+    state.layer.setStyle(f => regionStyle(cfg, f));
+}
+
+// Called every time the collapsible opens: builds the map the first time,
+// re-measures it afterwards (Leaflet caches the size of a hidden container).
+async function initRegionMap(cfg) {
+    const sec = subdivisionSections[cfg.id];
+    if (!sec) return;
+
+    const existing = regionMaps[cfg.id];
+    if (existing) {
+        if (existing.map) setTimeout(() => existing.map.invalidateSize(), 50);
+        return;   // still loading, or already built
+    }
+
+    const state = regionMaps[cfg.id] = { map: null, layer: null, isDark: true, byAlias: {}, visited: {}, total: 0 };
+
+    setRegionStatus(cfg, 'Loading region boundaries…');
+    dbg(`Region map (${cfg.id}): loading boundaries…`);
+    let geojson;
+    try {
+        geojson = await loadRegionGeoJson(cfg.id);
+    } catch (err) {
+        delete regionMaps[cfg.id];
+        setRegionStatus(cfg, 'Failed to load region boundaries.');
+        dbg(`Region map (${cfg.id}) load error: ${err.message}`);
+        return;
+    }
+
+    state.total = geojson.features.length;
+    state.byAlias = buildRegionLookup(cfg, geojson);
+    computeRegionVisited(cfg);
+
+    const [lat, lng, zoom] = cfg.view;
+    const map = L.map(sec.mapEl, {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+        // Quarter zoom steps so fitBounds can fill the frame — at whole steps a
+        // country that just misses the next level in renders at half the size.
+        zoomSnap: 0.25,
+    }).setView([lat, lng], zoom);
+    state.map = map;
+
+    setupStravaBasemaps(map, {
+        onThemeChange: (isDark) => {
+            state.isDark = isDark;
+            if (state.layer) state.layer.setStyle(f => regionStyle(cfg, f));
+        },
+    });
+    new LocationControl().addTo(map);
+
+    state.layer = L.geoJSON(geojson, {
+        style: f => regionStyle(cfg, f),
+        onEachFeature: (feature, layer) => {
+            layer.bindPopup(() => regionPopupHtml(cfg, feature), { className: 'activity-popup' });
+            layer.on('mouseover', function () {
+                this.setStyle({ fillOpacity: state.visited[feature.properties.id] ? 0.65 : 0.2 });
+            });
+            layer.on('mouseout', function () { this.setStyle(regionStyle(cfg, feature)); });
+        },
+    }).addTo(map);
+
+    map.fitBounds(cfg.bounds || state.layer.getBounds(), { padding: [12, 12] });
+
+    renderRegionStats(cfg);
+
+    // Only this country's routes — the full overlay is thousands of activities
+    // and all but a handful would be off-screen anyway.
+    setRegionStatus(cfg, 'Loading activity routes…');
+    await addPolylineOverlay(map, {
+        interactive: true,
+        filter: slim => !!slim.l && cfg.names.includes(currentCache[gridKey(slim.l)]?.c),
+    });
+    setRegionStatus(cfg, '');
+
+    setTimeout(() => map.invalidateSize(), 50);
+    dbg(`Region map (${cfg.id}) rendered: ${Object.keys(state.visited).length} / ${state.total} visited`);
 }
 
 // ── County Hunter ─────────────────────────────────────────────────────────────
@@ -2507,9 +2824,11 @@ async function loadPolylines() {
 // Options:
 //   color       — fixed colour string; omit to use per-group colours
 //   interactive — if true, adds popups + hover highlight (like Activity Map)
+//   filter      — (slim) => boolean; omit to draw every activity. Region maps
+//                 use it to draw only the routes inside the country on screen.
 // Returns the array of created polyline layers so callers can restyle them
 // later (e.g. swap a fixed white overlay to dark when the basemap goes light).
-async function addPolylineOverlay(targetMap, { color = null, interactive = false } = {}) {
+async function addPolylineOverlay(targetMap, { color = null, interactive = false, filter = null } = {}) {
     let polylines;
     try { polylines = await loadPolylines(); }
     catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return []; }
@@ -2520,6 +2839,7 @@ async function addPolylineOverlay(targetMap, { color = null, interactive = false
         if (!encoded) return;
         const slim = currentSlim[i];
         if (!slim) return;
+        if (filter && !filter(slim)) return;
         const points = decodePolyline(encoded);
         if (!points.length) return;
         const c = color || GROUP_COLORS[getGroup(slim.t)] || GROUP_COLORS['Other'];
@@ -7268,6 +7588,15 @@ function refreshOpenMapHunters() {
             },
             initTrailMap);
     }
+    // Region maps recolour themselves whenever renderSubdivisions runs, but
+    // their route overlay and name→polygon resolution are built once at init,
+    // so an open one still needs rebuilding against the new activities.
+    SUBDIVISION_CONFIG.forEach(cfg => {
+        if (!regionMaps[cfg.id]?.layer) return;
+        resyncMapHunter(() => regionMaps[cfg.id]?.map,
+            () => { regionMaps[cfg.id].map.remove(); delete regionMaps[cfg.id]; },
+            () => initRegionMap(cfg));
+    });
 }
 
 let pipelineRunning = false;  // prevent concurrent pipeline runs
