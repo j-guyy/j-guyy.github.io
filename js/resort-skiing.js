@@ -227,13 +227,8 @@ function createSkiMap(resorts) {
         fullscreenControl: true
     });
 
-    skiMap.on('fullscreenchange', () => {
-        if (skiMap.isFullscreen()) {
-            skiMap.gestureHandling.disable();
-        } else {
-            skiMap.gestureHandling.enable();
-        }
-    });
+    skiMap.on('enterFullscreen', () => skiMap.gestureHandling.disable());
+    skiMap.on('exitFullscreen',  () => skiMap.gestureHandling.enable());
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

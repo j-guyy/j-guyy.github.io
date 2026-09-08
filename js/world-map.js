@@ -96,13 +96,11 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     });
 
     // Disable gesture handling in fullscreen mode
-    map.on('fullscreenchange', () => {
-        if (map.isFullscreen()) {
-            map.gestureHandling.disable();
-        } else {
-            map.gestureHandling.enable();
-        }
-    });
+    // v5 of the fullscreen plugin has no map.isFullscreen(), and the mode
+    // switches below need to know, so track the state off its two events.
+    let mapIsFullscreen = false;
+    map.on('enterFullscreen', () => { mapIsFullscreen = true;  map.gestureHandling.disable(); });
+    map.on('exitFullscreen',  () => { mapIsFullscreen = false; map.gestureHandling.enable();  });
 
     // Use OpenStreetMap tiles (no API key needed)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -351,7 +349,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
     function disableRadiusMode() {
         map.removeLayer(radiusLayer);
         if (countryLayer) countryLayer.addTo(map);
-        if (!map.isFullscreen()) map.gestureHandling.enable();
+        if (!mapIsFullscreen) map.gestureHandling.enable();
         currentMode = 'country';
     }
 
@@ -528,7 +526,7 @@ function createWorldMap(mapId, worldData, citiesData, metrosData, highPointsData
         removeFogOverlay();
         showAllMarkers();
         if (countryLayer) countryLayer.addTo(map);
-        if (!map.isFullscreen()) map.gestureHandling.enable();
+        if (!mapIsFullscreen) map.gestureHandling.enable();
         currentMode = 'country';
     }
 

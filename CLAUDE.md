@@ -46,7 +46,7 @@ cd game && node --test "tests/*.test.mjs"   # everything, ~35s
 
 ### Key Libraries (CDN-loaded, no npm)
 
-- **Leaflet.js** — interactive 2D maps (US map, world map, trip report maps, hunter maps)
+- **Leaflet.js** `1.9.4` — interactive 2D maps (US map, world map, trip report maps, hunter maps). Still the current stable release; 2.0 is ESM-only with no global `L`, so it is not adoptable without a build step. Plugins: `leaflet.fullscreen@5.3.3` (exports `L.Control.FullScreen`, fires `enterFullscreen`/`exitFullscreen`, and has no `map.isFullscreen()`), `leaflet-gesture-handling@1.2.2`, `leaflet-draw@1.0.4`. **Pin every CDN URL to an exact version** — an unpinned unpkg URL silently follows upstream releases.
 - **Cesium.js v1.124** — 3D globe on `about.html` (life journey visualization)
 - **Google `<model-viewer>`** — 3D GLB model display on trip reports (e.g., Pico de Orizaba)
 

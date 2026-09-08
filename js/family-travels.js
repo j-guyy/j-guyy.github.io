@@ -105,13 +105,8 @@ async function initMap() {
         maxZoom: 18
     }).addTo(map);
 
-    map.on('fullscreenchange', () => {
-        if (map.isFullscreen()) {
-            map.gestureHandling.disable();
-        } else {
-            map.gestureHandling.enable();
-        }
-    });
+    map.on('enterFullscreen', () => map.gestureHandling.disable());
+    map.on('exitFullscreen',  () => map.gestureHandling.enable());
 
     // Setup the lazy pattern SVG container
     setupPatternContainer();
