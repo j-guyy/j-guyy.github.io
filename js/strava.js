@@ -286,6 +286,20 @@ function updateSyncProgress(fetched, estTotal) {
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
+// A first-level region that is itself a city — China's direct-administered
+// municipalities (Beijing, Shanghai, Tianjin, Chongqing) among them — has no
+// `state` in Nominatim's address at all: the admin-level-4 boundary is filed
+// under `city`, which used to leave every activity there with no subdivision
+// at all (no table row, a faint polygon on the region map, and the cell
+// re-geocoded on every load because its subdivision never filled in).
+// `ISO3166-2-lvl4` is Nominatim's own marker that the address it matched does
+// include a first-level region, so when `state` is missing but that code is
+// present, the region is one of the city-ish keys.
+function cityAsSubdivision(addr) {
+    if (!addr['ISO3166-2-lvl4']) return '';
+    return addr.city || addr.municipality || addr.county || '';
+}
+
 // Single geocoding function using Nominatim — returns both country and subdivision.
 // Replaces BigDataCloud which proved unreliable for bulk requests.
 async function geocodeKey(lat, lng) {
@@ -307,8 +321,9 @@ async function geocodeKey(lat, lng) {
                 continue;
             }
             const data = await res.json();
-            const country = data.address?.country || 'Unknown';
-            const rawSubdiv = data.address?.state || data.address?.territory || data.address?.province || '';
+            const addr = data.address || {};
+            const country = addr.country || 'Unknown';
+            const rawSubdiv = addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
             return { c: country, s: rawSubdiv ? cleanSubdivision(rawSubdiv) : '' };
         } catch (err) {
             dbg(`Nominatim error for ${lat},${lng} (attempt ${attempt + 1}): ${err.message}`);
