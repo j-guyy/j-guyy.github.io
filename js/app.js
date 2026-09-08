@@ -22,6 +22,9 @@ const SCREENS = {
     mountain: {},
     pass: {},
     trail: { open: () => ensureOpen('trail-section', () => toggleTrailMap()) },
+    // StatsHunters is an external embed, so it needs no activity data and opens
+    // straight away rather than waiting on the pipeline.
+    statshunters: { open: () => openSection('statshunters-section', () => toggleStatshunters()) },
 };
 
 // Open a feature's inner section via its existing toggle, but only if it is
@@ -47,6 +50,14 @@ function ensureOpen(sectionId, toggleFn) {
         }
         return;
     }
+    openSection(sectionId, toggleFn);
+}
+
+// Fire a feature's toggle only while its section is still closed — the toggles
+// flip open/closed, so calling one again would hide what we just revealed.
+function openSection(sectionId, toggleFn) {
+    const section = document.getElementById(sectionId);
+    if (!section || section.style.display !== 'none') return;
     toggleFn();
 }
 

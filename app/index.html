@@ -45,6 +45,11 @@
                 <a class="home-card" href="#pass"><span class="home-card-icon">🚵</span><span class="home-card-name">Pass Hunter</span><em id="stat-pass"></em></a>
                 <a class="home-card" href="#trail"><span class="home-card-icon">🥾</span><span class="home-card-name">Trail Hunter</span><em id="stat-trail"></em></a>
             </nav>
+
+            <p class="home-section-label">More</p>
+            <nav class="home-grid">
+                <a class="home-card" href="#statshunters"><span class="home-card-icon">🌍</span><span class="home-card-name">StatsHunters</span><em id="stat-statshunters"></em></a>
+            </nav>
         </div>
 
         <!-- ============ Dashboard ============ -->
@@ -292,6 +297,26 @@
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
                     </div>
                     <p id="trail-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ StatsHunters ============ -->
+        <div id="screen-statshunters" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <h1>StatsHunters</h1>
+            </header>
+            <div class="section">
+                <div class="app-controls">
+                    <button class="cache-refresh-btn" id="statshunters-toggle-btn" onclick="toggleStatshunters()">Show map</button>
+                    <a class="cache-refresh-btn" href="https://statshunters.com/share/052d5a08ff97" target="_blank" rel="noopener">Open on statshunters.com ↗</a>
+                </div>
+                <div id="statshunters-section" style="display:none">
+                    <div id="statshunters-embed">
+                        <iframe id="statshunters-frame" title="StatsHunters activity map" allowfullscreen></iframe>
+                    </div>
+                    <p id="statshunters-status" class="no-location-note" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>

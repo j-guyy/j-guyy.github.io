@@ -482,7 +482,8 @@
 .app-page #mountain-map,
 .app-page #pass-map,
 .app-page #trail-map,
-.app-page .region-map {
+.app-page .region-map,
+.app-page #statshunters-embed {
     height: min(68vh, 560px);
     border: 1px solid var(--app-border);
     border-radius: 14px;

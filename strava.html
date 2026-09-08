@@ -203,6 +203,21 @@
 
         <!-- Regional breakdowns (US states, Canadian provinces, etc.) — rendered by JS -->
         <div id="strava-subdivisions"></div>
+
+        <!-- StatsHunters (external shared map, iframe loaded on first open) -->
+        <div class="section" id="statshunters">
+            <h2>StatsHunters
+                <button class="cache-refresh-btn" id="statshunters-toggle-btn" onclick="toggleStatshunters()">Show map</button>
+                <button class="cache-refresh-btn" id="statshunters-fullscreen-btn" onclick="statshuntersFullscreen()">Fullscreen</button>
+                <a class="cache-refresh-btn" href="https://statshunters.com/share/052d5a08ff97" target="_blank" rel="noopener">Open on statshunters.com ↗</a>
+            </h2>
+            <div id="statshunters-section" style="display:none">
+                <div id="statshunters-embed">
+                    <iframe id="statshunters-frame" title="StatsHunters activity map" allowfullscreen></iframe>
+                </div>
+                <p id="statshunters-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
