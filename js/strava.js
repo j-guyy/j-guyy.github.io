@@ -7363,9 +7363,9 @@ function statshuntersFullscreen() {
     wrap.requestFullscreen?.();
 }
 
-// strava.html#statshunters — used by the nav bar and by the old standalone page,
-// which now redirects here — opens the embed and scrolls to it. On the app shell
-// there is no #statshunters anchor: app.js routes that hash to its own screen.
+// strava.html#statshunters — where the old standalone page redirects — opens the
+// embed and scrolls to it. On the app shell there is no #statshunters anchor:
+// app.js routes that hash to its own screen.
 function openStatshuntersFromHash() {
     if (location.hash !== '#statshunters') return;
     const anchor = document.getElementById('statshunters');
