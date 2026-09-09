@@ -28,7 +28,7 @@ cd game && node --test "tests/*.test.mjs"   # everything, ~35s
 
 **Cloudflare Worker**: The backend API lives in `worker.js` (ES module format). Deploy with `npx wrangler deploy worker.js`. Secrets/bindings: `STRAVA_DATA` (KV), `STRAVA_KV` (KV), `CLIENT_ID`, `CLIENT_SECRET`, `TRAVEL_PASSWORD`.
 
-**Android App (Capacitor remote shell)**: `/app/index.html` + `js/app.js` + `css/app.css` are a phone-optimized shell around the Strava page — every feature (dashboard, activity map, and all hunters) gets its own hash-routed screen (`#home`, `#county`, `#tiles`, …) reusing `js/strava.js` unmodified. Logic and UI are split along that line: `strava.js` owns all logic and renders shared components (`.section`, `.travel-table`, `.county-stats-bar`, `.filter-pill`, …) into the same mount-point element ids on both pages; `css/app.css` is the app's own design system (tokens + a reskin of every shared component, all scoped to `.app-page`), so the app's look can change freely without touching `strava.js`, and website styles are unaffected. The APK (`/android`, `capacitor.config.json`, `package.json`) is a thin Capacitor WebView that loads `https://j-guyy.github.io/app/` remotely — site pushes update the app instantly with no rebuild. Rebuild the APK (only needed when `/android` or Capacitor config changes) via the manually-triggerable `.github/workflows/android.yml`, which uploads `app-debug.apk` as an artifact for sideloading. Debug APKs are signed with a per-run key: uninstall the old app before installing a new APK.
+**Android App (Capacitor remote shell)**: `/app/index.html` + `js/app.js` + `css/app.css` are a phone-optimized shell around the Strava page — every feature (dashboard, activity map, all hunters, and the StatsHunters embed) gets its own hash-routed screen (`#home`, `#county`, `#tiles`, …) reusing `js/strava.js` unmodified. Logic and UI are split along that line: `strava.js` owns all logic and renders shared components (`.section`, `.travel-table`, `.county-stats-bar`, `.filter-pill`, …) into the same mount-point element ids on both pages; `css/app.css` is the app's own design system (tokens + a reskin of every shared component, all scoped to `.app-page`), so the app's look can change freely without touching `strava.js`, and website styles are unaffected. The APK (`/android`, `capacitor.config.json`, `package.json`) is a thin Capacitor WebView that loads `https://j-guyy.github.io/app/` remotely — site pushes update the app instantly with no rebuild. Rebuild the APK (only needed when `/android` or Capacitor config changes) via the manually-triggerable `.github/workflows/android.yml`, which uploads `app-debug.apk` as an artifact for sideloading. Debug APKs are signed with a per-run key: uninstall the old app before installing a new APK.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ Component-based CSS files in `/css/` using CSS custom properties for theming (pr
 
 | Page | Purpose |
 |------|---------|
-| `strava.html` | Strava activity dashboard with 5 hunter features |
+| `strava.html` | Strava activity dashboard with 5 hunter features + StatsHunters embed |
 | `us-dashboard.html` | US travel tracking (metros, highpoints, parks, states) |
 | `world-dashboard.html` | World travel tracking (countries by continent) |
 | `us-map.html` | Interactive US map visualization |
@@ -92,6 +92,8 @@ The strava page is the most complex, containing 5 "hunter" modules that share a 
 5. **Mountain Hunter** — peak summit detection using OSM Overpass data (peaks + volcanoes)
 
 Below the hunters, `SUBDIVISION_CONFIG` drives one **regional breakdown** section per country with first-level regions worth tracking (US states, Canadian provinces, Australian states, Mexican states, Chinese provinces, Spanish regions, Italian regions). Each section is a collapsible holding a stats bar, a map of that country with visited regions filled green, and the sortable activity table. Boundaries come from `/data/admin1/<config id>.geojson` and are fetched only when the section is first expanded. A region counts as visited when the geocoded subdivision name of an activity matches one of the aliases baked into its polygon; a name the aliases don't cover is resolved geometrically instead (point-in-polygon on an activity recorded under it), so a new spelling from Nominatim self-heals rather than leaving a hole. Regenerate the boundary files with `python3 scripts/build-admin1-regions.py` (needs `shapely`); adding a country means adding an entry to both `SUBDIVISION_CONFIG` and the script's `COUNTRIES`.
+
+Last on the page is the **StatsHunters** section — the shared StatsHunters map (`https://statshunters.com/share/…`) in the same collapsible frame as the hunters. `toggleStatshunters()` sets the iframe `src` on first open, so the external embed costs nothing on load; `statshuntersFullscreen()` fullscreens the wrapper. `strava.html#statshunters` opens and scrolls to it (the old standalone `statshunters.html` is now just a redirect to that anchor).
 
 **Shared infrastructure**:
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters

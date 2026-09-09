@@ -988,6 +988,39 @@
     flex-wrap: wrap;
 }
 
+/* ── StatsHunters embed ──────────────────────── */
+/* The shared StatsHunters map is an external iframe, but it sits in the same
+   collapsible-section frame as the hunters above it, so it gets the same
+   height, radius and placeholder background as a Leaflet map. */
+#statshunters-embed {
+    width: 100%;
+    height: 520px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+
+#statshunters-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+/* The wrapper is what goes fullscreen, so it has to fill the screen itself. */
+#statshunters-embed:fullscreen {
+    height: 100%;
+    border-radius: 0;
+}
+
+/* Section-heading links styled as buttons (e.g. "Open on statshunters.com") */
+a.cache-refresh-btn {
+    display: inline-block;
+    text-decoration: none;
+    vertical-align: middle;
+    font-weight: 400;  /* buttons get this from the UA; a link inherits the h2's bold */
+}
+
 /* ── Fullscreen maps ─────────────────────────── */
 /* leaflet-fullscreen v1.0.1 only ships the prefixed :-webkit-full-screen /
    :-ms-fullscreen selectors, so in engines that expose only the standard
@@ -1112,6 +1145,10 @@
     #mountain-map,
     #pass-map,
     .region-map {
+        height: 420px;
+    }
+
+    #statshunters-embed {
         height: 420px;
     }
 

@@ -7323,6 +7323,64 @@ async function resetPassData() {
     initPassHunter().catch(err => dbg(`Pass reset error: ${err.message}`));
 }
 
+// ── StatsHunters embed ────────────────────────────────────────────────────────
+// The shared StatsHunters map used to live on its own page; it is now the last
+// collapsible section here. The iframe src is only set the first time the
+// section is opened, so the external embed costs nothing on page load.
+
+function toggleStatshunters(forceOpen = false) {
+    // Kept inside the function (rather than as a module-level const) so the
+    // embed still opens if Leaflet failed to load and stopped this file's
+    // top-level evaluation early — nothing here needs a map.
+    const SHARE_URL = 'https://statshunters.com/share/052d5a08ff97';
+
+    const section = document.getElementById('statshunters-section');
+    const btn = document.getElementById('statshunters-toggle-btn');
+    if (!section) return;
+
+    const opening = forceOpen || section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+
+    const frame = document.getElementById('statshunters-frame');
+    if (opening && frame && !frame.src) {
+        setStatshuntersStatus('Loading StatsHunters…');
+        frame.addEventListener('load', () => setStatshuntersStatus(''), { once: true });
+        frame.src = SHARE_URL;
+    }
+}
+
+// Fullscreen the wrapper rather than the iframe so our own element controls the
+// sizing; opening the section first means the button works while it is closed.
+function statshuntersFullscreen() {
+    const wrap = document.getElementById('statshunters-embed');
+    if (!wrap) return;
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+        return;
+    }
+    toggleStatshunters(true);
+    wrap.requestFullscreen?.();
+}
+
+// strava.html#statshunters — where the old standalone page redirects — opens the
+// embed and scrolls to it. On the app shell there is no #statshunters anchor:
+// app.js routes that hash to its own screen.
+function openStatshuntersFromHash() {
+    if (location.hash !== '#statshunters') return;
+    const anchor = document.getElementById('statshunters');
+    if (!anchor) return;
+    toggleStatshunters(true);
+    anchor.scrollIntoView();
+}
+
+function setStatshuntersStatus(msg) {
+    const el = document.getElementById('statshunters-status');
+    if (el) el.textContent = msg;
+}
+
+window.addEventListener('hashchange', openStatshuntersFromHash);
+
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
 const debugLog = [];
@@ -7676,5 +7734,6 @@ async function runPipeline(forceSync = false) {
 
 document.addEventListener('DOMContentLoaded', () => {
     renderDebugPanel();
+    openStatshuntersFromHash();
     runPipeline(false);
 });
