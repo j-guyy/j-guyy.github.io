@@ -5389,11 +5389,8 @@ async function loadHiddenPeaks() {
 
 async function saveHiddenPeaks() {
     try {
-        const res = await fetch(`${WORKER_URL}/peaks/hidden/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: [...hiddenPeakIds] }),
-        });
+        const res = await adminPost('/peaks/hidden/save', { ids: [...hiddenPeakIds] });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Hidden peaks saved (${data.count})`);
     } catch (err) {

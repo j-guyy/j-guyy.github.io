@@ -185,6 +185,14 @@
     text-align: justify;
 }
 
+/* On a phone-width column justify stretches the gaps between words into
+   visible rivers, so fall back to a ragged right edge. */
+@media (max-width: 600px) {
+    .trip-report .section p {
+        text-align: left;
+    }
+}
+
 /* Modern Status Banner */
 .status-banner {
     display: flex;
