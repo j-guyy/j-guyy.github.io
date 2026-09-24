@@ -1204,6 +1204,14 @@ a.cache-refresh-btn {
     .strava-page .hero h1 { font-size: 2.2rem; }
     .strava-page .hero h2 { font-size: 1rem; }
 
+    /* responsive.css drops .section's side padding on phones, which left the
+       hunter headings and stat bars flush against the card edge. The app lays
+       out its own screens, so it is left alone. */
+    .strava-page:not(.app-page) .section {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
     /* Summary stats grid — 3 columns instead of auto-fill 140px (gives 2 on mobile) */
     .strava-group-stats {
         grid-template-columns: repeat(3, 1fr) !important;

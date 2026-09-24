@@ -56,6 +56,10 @@ Component-based CSS files in `/css/` using CSS custom properties for theming (pr
 
 - `dashboard.css` — shared table styling (`.travel-table`, `.table-scroll-wrapper`, sortable headers) used by both travel dashboards and strava page
 - `strava.css` — strava-page-specific styles, loaded after `dashboard.css`
+- Site-wide design tokens (surfaces, borders, text sizes) live in `:root` in `base.css`, modelled on the app's `--app-*` tokens in `app.css`; prefer them over hard-coded colours.
+- The window scrolls the page — `html`/`body` use `min-height`, and horizontal overflow is guarded with `overflow-x: hidden` on `html` / `clip` on `body`. Don't reintroduce `height: 100%` or `overflow-x: hidden` on `body`, which turns `body` into the scroll container.
+
+Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit peaks") are hidden until the 🔒 login succeeds against the worker's `/auth/check`. The dashboards use `TravelAdmin` in `js/travel-api.js`; the Strava page uses the admin helpers in `js/strava.js`. Both store the password under the same localStorage key (`strava_admin_pw`), so one login covers the site. The worker still enforces the real protection.
 
 ### Content Areas
 
