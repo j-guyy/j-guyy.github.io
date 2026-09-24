@@ -289,11 +289,27 @@
 }
 
 .travel-table tr.visited {
-    background-color: rgba(76, 175, 80, 0.1);
+    background-color: rgba(76, 175, 80, 0.14);
 }
 
 .travel-table tr.visited:hover {
-    background-color: rgba(76, 175, 80, 0.2);
+    background-color: rgba(76, 175, 80, 0.22);
+}
+
+/* Visited state also reads from the name cell (green bar + brighter name), so
+   it is visible even when the Status column is scrolled or squeezed. */
+.travel-table tr.visited td.col-name {
+    box-shadow: inset 3px 0 0 var(--primary-color);
+    font-weight: 600;
+}
+
+.travel-table tr.not-visited td.col-name {
+    color: var(--text-dim);
+}
+
+.travel-table td.col-status {
+    width: 1%;
+    white-space: nowrap;
 }
 
 /* Responsive adjustments */
@@ -395,6 +411,44 @@
         white-space: nowrap;
     }
 
+    /* Dashboard tables (travel-table--fit) fit the phone instead: names wrap
+       and Rank is dropped below 600px, keeping Status on screen. */
+    .travel-table.travel-table--fit {
+        min-width: 0;
+    }
+
+    .travel-table--fit th,
+    .travel-table--fit td {
+        padding: 9px 6px;
+    }
+
+    .travel-table--fit td.col-name {
+        white-space: normal;
+        padding-left: 10px;
+    }
+
+    .travel-table--fit th.col-name {
+        padding-left: 10px;
+    }
+
+    /* Wide count tables (Strava country/region tables) scroll sideways; keep
+       their first (name) column pinned so each row stays identifiable. The
+       cell needs an opaque background to cover columns sliding under it —
+       the app's surface inside the app, the site's flattened card surface
+       elsewhere. */
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) th:first-child,
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: var(--app-surface, var(--surface-solid));
+        box-shadow: 1px 0 0 var(--border);
+    }
+
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) th:first-child {
+        z-index: 2;
+    }
+
     .table-controls {
         flex-wrap: wrap;
         gap: 8px;
@@ -403,6 +457,12 @@
     .table-action-btn {
         padding: 6px 12px;
         font-size: 0.8em;
+    }
+}
+
+@media (max-width: 600px) {
+    .travel-table--fit .col-rank {
+        display: none;
     }
 }
 

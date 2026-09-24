@@ -257,10 +257,11 @@ function updateTable(continentType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    table.className = 'travel-table travel-table--fit';
 
     const tableHeaders = ['Country', 'Population', 'Status'];
     const sortKeys     = ['name', 'population', 'visited'];
+    const colClasses   = ['col-name', 'col-num', 'col-status'];
 
     const rawData = worldData[continentMap[continentType]];
     const { col, dir } = sortState[continentType];
@@ -275,7 +276,7 @@ function updateTable(continentType) {
         const key = sortKeys[i];
         const isActive = col === key;
 
-        th.classList.add('sortable');
+        th.classList.add('sortable', colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -312,9 +313,9 @@ function updateTable(continentType) {
         const statusClass = editMode ? 'status-toggle' : '';
 
         row.innerHTML = `
-            <td>${country.name}</td>
-            <td>${country.population.toLocaleString()}</td>
-            <td class="${statusClass}">${statusIcon}</td>
+            <td class="col-name">${country.name}</td>
+            <td class="col-num">${country.population.toLocaleString()}</td>
+            <td class="col-status ${statusClass}">${statusIcon}</td>
         `;
 
         if (editMode) {

@@ -176,10 +176,11 @@ function updateTable(tableType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    table.className = 'travel-table travel-table--fit';
 
     const tableHeaders = ['Rank', 'Peak Name', 'Elevation (ft)', 'Status'];
     const sortKeys     = ['elevation', 'name', 'elevation', 'climbed'];
+    const colClasses   = ['col-rank', 'col-name', 'col-num', 'col-status'];
 
     const { col, dir } = sortState[tableType];
     const tableData = sortTableData(peakData(tableType), col, dir);
@@ -193,7 +194,7 @@ function updateTable(tableType) {
         const key = sortKeys[i];
         const isActive = col === key;
 
-        th.classList.add('sortable');
+        th.classList.add('sortable', colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -230,10 +231,10 @@ function updateTable(tableType) {
         const statusClass = editMode ? 'status-toggle' : '';
 
         row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${item.name}</td>
-            <td>${item.elevation.toLocaleString()}</td>
-            <td class="${statusClass}">${statusIcon}</td>
+            <td class="col-rank">${index + 1}</td>
+            <td class="col-name">${item.name}</td>
+            <td class="col-num">${item.elevation.toLocaleString()}</td>
+            <td class="col-status ${statusClass}">${statusIcon}</td>
         `;
 
         if (editMode) {

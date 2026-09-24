@@ -230,21 +230,26 @@ function updateTable(tableType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    // travel-table--fit: sized to fit a phone without horizontal scrolling
+    // (Rank hidden, names wrap), so the Status column stays on screen.
+    table.className = 'travel-table travel-table--fit';
 
-    let tableHeaders, sortKeys, rawData;
+    let tableHeaders, sortKeys, colClasses, rawData;
 
     if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
         sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
         rawData      = highPoints;
     } else if (tableType === 'metros') {
         tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
         sortKeys     = ['rank', 'metro_name', 'state', 'population', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
         rawData      = metros;
     } else if (tableType === 'parks') {
         tableHeaders = ['National Park', 'State', 'Status'];
         sortKeys     = ['name', 'state', 'visited'];
+        colClasses   = ['col-name', '', 'col-status'];
         rawData      = nationalParks;
     }
 
@@ -261,6 +266,7 @@ function updateTable(tableType) {
         const isActive = col === key;
 
         th.classList.add('sortable');
+        if (colClasses[i]) th.classList.add(colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -298,25 +304,25 @@ function updateTable(tableType) {
 
         if (tableType === 'highpoints') {
             row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.name}</td>
+                <td class="col-rank">${index + 1}</td>
+                <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
-                <td>${item.elevation.toLocaleString()}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-num">${item.elevation.toLocaleString()}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'metros') {
             row.innerHTML = `
-                <td>${item.rank}</td>
-                <td>${item.metro_name}</td>
+                <td class="col-rank">${item.rank}</td>
+                <td class="col-name">${item.metro_name}</td>
                 <td>${item.state}</td>
-                <td>${item.population}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-num">${item.population}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'parks') {
             row.innerHTML = `
-                <td>${item.name}</td>
+                <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         }
 
