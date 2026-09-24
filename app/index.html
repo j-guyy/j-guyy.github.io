@@ -91,7 +91,7 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="map-toggle-btn" onclick="toggleMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="map-toggle-btn" onclick="toggleMap()">Show map</button>
                 </div>
                 <div id="map-section" style="display:none">
                     <div id="strava-map"></div>
@@ -109,10 +109,10 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="county-toggle-btn" onclick="toggleCountyMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="county-toggle-btn" onclick="toggleCountyMap()">Show map</button>
                 </div>
                 <div id="county-section" style="display:none">
-                    <div id="county-stats-bar"></div>
+                    <div id="county-stats-bar" class="county-stats-bar"></div>
                     <div id="county-map"></div>
                     <div id="county-recent-table"></div>
                     <div id="county-state-table"></div>
@@ -129,7 +129,7 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="park-toggle-btn" onclick="toggleParkMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="park-toggle-btn" onclick="toggleParkMap()">Show map</button>
                 </div>
                 <div id="park-section" style="display:none">
                     <div id="park-stats-bar" class="county-stats-bar"></div>
@@ -152,7 +152,7 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="metro-toggle-btn" onclick="toggleMetroMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="metro-toggle-btn" onclick="toggleMetroMap()">Show map</button>
                 </div>
                 <div id="metro-section" style="display:none">
                     <div id="metro-stats-bar" class="county-stats-bar"></div>
@@ -172,7 +172,7 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button>
                 </div>
                 <div id="tile-section" style="display:none">
                     <div id="tile-stats-bar" class="county-stats-bar"></div>
@@ -195,7 +195,7 @@
                         <option value="boulder-co">Boulder, CO</option>
                         <option value="boulder-county-co">Boulder County, CO</option>
                     </select>
-                    <button class="cache-refresh-btn" id="city-toggle-btn" onclick="toggleCityMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="city-toggle-btn" onclick="toggleCityMap()">Show map</button>
                 </div>
                 <div id="city-section" style="display:none">
                     <div id="city-stats-bar" class="county-stats-bar"></div>
@@ -285,7 +285,7 @@
                         <option value="boulder-county">Boulder County, CO</option>
                         <option value="rmnp">Rocky Mountain NP</option>
                     </select>
-                    <button class="cache-refresh-btn" id="trail-toggle-btn" onclick="toggleTrailMap()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="trail-toggle-btn" onclick="toggleTrailMap()">Show map</button>
                 </div>
                 <div id="trail-section" style="display:none">
                     <div id="trail-stats-bar" class="county-stats-bar"></div>
@@ -309,7 +309,7 @@
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <button class="cache-refresh-btn" id="statshunters-toggle-btn" onclick="toggleStatshunters()">Show map</button>
+                    <button class="cache-refresh-btn app-auto-toggle" id="statshunters-toggle-btn" onclick="toggleStatshunters()">Show map</button>
                     <a class="cache-refresh-btn" href="https://statshunters.com/share/052d5a08ff97" target="_blank" rel="noopener">Open on statshunters.com ↗</a>
                 </div>
                 <div id="statshunters-section" style="display:none">
@@ -322,6 +322,29 @@
         </div>
 
     </div>
+
+    <!-- ============ Bottom tab bar ============ -->
+    <!-- Top-level destinations; js/app.js decides push vs replace so the hash
+         history (and the Android back button) stays one level deep. Hunter
+         screens light up Home, since they live on the home grid. -->
+    <nav class="app-tabbar" aria-label="Main">
+        <a class="app-tab" href="#home" data-tab="home">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg>
+            <span>Home</span>
+        </a>
+        <a class="app-tab" href="#dashboard" data-tab="dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>
+            <span>Dashboard</span>
+        </a>
+        <a class="app-tab" href="#map" data-tab="map">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7zM9 5v12M15 7v12"/></svg>
+            <span>Map</span>
+        </a>
+        <a class="app-tab" href="#statshunters" data-tab="statshunters">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.5 5.2 3.5 8.5s-1.1 6.2-3.5 8.5c-2.4-2.3-3.5-5.2-3.5-8.5s1.1-6.2 3.5-8.5z"/></svg>
+            <span>StatsHunters</span>
+        </a>
+    </nav>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
