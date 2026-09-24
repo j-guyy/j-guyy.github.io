@@ -67,9 +67,10 @@
 }
 
 .summary-stat {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
     padding: 20px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     transition: transform 0.2s ease;
     display: flex;
     flex-direction: column;
@@ -127,9 +128,8 @@
 }
 
 .stat-label {
-    color: var(--text-color);
-    opacity: 0.9;
-    font-size: 0.9em;
+    color: var(--text-dim);
+    font-size: 0.95rem;
     text-align: center;
     width: 100%;
 }
@@ -163,6 +163,33 @@
     background-color: rgba(76, 175, 80, 0.3);
     border-color: #4CAF50;
     color: #4CAF50;
+}
+
+/* Owner-only controls (Edit Mode, Export CSV) stay hidden for visitors, who
+   only see this small lock at the end of the row. */
+.table-action-btn[hidden] {
+    display: none;
+}
+
+.table-action-btn.owner-lock {
+    margin-left: auto;
+    padding: 6px 10px;
+    background: transparent;
+    border-color: transparent;
+    font-size: 0.85em;
+    opacity: 0.5;
+}
+
+.table-action-btn.owner-lock:hover,
+.table-action-btn.owner-lock:focus-visible {
+    opacity: 1;
+    background-color: var(--surface-2);
+    border-color: var(--border);
+}
+
+.table-action-btn.owner-lock.logged-in {
+    opacity: 0.85;
+    border-color: var(--border);
 }
 
 /* Editable status cells */
@@ -289,11 +316,27 @@
 }
 
 .travel-table tr.visited {
-    background-color: rgba(76, 175, 80, 0.1);
+    background-color: rgba(76, 175, 80, 0.14);
 }
 
 .travel-table tr.visited:hover {
-    background-color: rgba(76, 175, 80, 0.2);
+    background-color: rgba(76, 175, 80, 0.22);
+}
+
+/* Visited state also reads from the name cell (green bar + brighter name), so
+   it is visible even when the Status column is scrolled or squeezed. */
+.travel-table tr.visited td.col-name {
+    box-shadow: inset 3px 0 0 var(--primary-color);
+    font-weight: 600;
+}
+
+.travel-table tr.not-visited td.col-name {
+    color: var(--text-dim);
+}
+
+.travel-table td.col-status {
+    width: 1%;
+    white-space: nowrap;
 }
 
 /* Responsive adjustments */
@@ -323,7 +366,7 @@
 
     .states-summary .stat-label,
     .world-summary .stat-label {
-        font-size: 0.9em;
+        font-size: 0.95rem;
         margin-top: 4px;
     }
 
@@ -352,11 +395,14 @@
 
     .other-stats.other-stats-trio .stat-total,
     .other-stats.other-stats-trio .stat-percentage {
-        font-size: 0.7em;
+        font-size: 0.8rem;
     }
 
+    /* Three tiles share a phone row, so this is the one label allowed below
+       --text-xs — still 12px, wrapping to two lines rather than shrinking. */
     .other-stats.other-stats-trio .stat-label {
-        font-size: 0.65em;
+        font-size: 0.75rem;
+        line-height: 1.25;
     }
 
     .other-stats .summary-stat {
@@ -374,7 +420,7 @@
     }
 
     .stat-label {
-        font-size: 0.75em;
+        font-size: var(--text-xs);
     }
 
     .stat-number-container {
@@ -392,6 +438,44 @@
         white-space: nowrap;
     }
 
+    /* Dashboard tables (travel-table--fit) fit the phone instead: names wrap
+       and Rank is dropped below 600px, keeping Status on screen. */
+    .travel-table.travel-table--fit {
+        min-width: 0;
+    }
+
+    .travel-table--fit th,
+    .travel-table--fit td {
+        padding: 9px 6px;
+    }
+
+    .travel-table--fit td.col-name {
+        white-space: normal;
+        padding-left: 10px;
+    }
+
+    .travel-table--fit th.col-name {
+        padding-left: 10px;
+    }
+
+    /* Wide count tables (Strava country/region tables) scroll sideways; keep
+       their first (name) column pinned so each row stays identifiable. The
+       cell needs an opaque background to cover columns sliding under it —
+       the app's surface inside the app, the site's flattened card surface
+       elsewhere. */
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) th:first-child,
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: var(--app-surface, var(--surface-solid));
+        box-shadow: 1px 0 0 var(--border);
+    }
+
+    .table-scroll-wrapper .travel-table:not(.travel-table--fit) th:first-child {
+        z-index: 2;
+    }
+
     .table-controls {
         flex-wrap: wrap;
         gap: 8px;
@@ -400,6 +484,12 @@
     .table-action-btn {
         padding: 6px 12px;
         font-size: 0.8em;
+    }
+}
+
+@media (max-width: 600px) {
+    .travel-table--fit .col-rank {
+        display: none;
     }
 }
 
@@ -675,8 +765,8 @@ Controls Styling */
     margin-top: 15px;
     padding: 6px 14px;
     border-radius: 20px;
-    font-size: 0.75em;
-    opacity: 0.8;
+    font-size: var(--text-xs);
+    opacity: 0.85;
     background-color: rgba(255, 255, 255, 0.08);
     color: var(--text-color);
     transition: all 0.3s ease;
