@@ -107,7 +107,7 @@ const SUBDIVISION_CONFIG = [
     { id: 'canada',    names: ['Canada'],                                    flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
     { id: 'australia', names: ['Australia'],                                 flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
     { id: 'mexico',    names: ['Mexico'],                                    flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
-    { id: 'china',     names: ['China'],                                     flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
+    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
     { id: 'spain',     names: ['Spain'],                                     flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
     { id: 'italy',     names: ['Italy'],                                     flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
 ];
@@ -300,6 +300,18 @@ function cityAsSubdivision(addr) {
     return addr.city || addr.municipality || addr.county || '';
 }
 
+// Hong Kong and Macau sit one level above China's provinces in OSM
+// (admin level 3), so Nominatim gives them no `state` and only an
+// `ISO3166-2-lvl3` code — neither the fields above nor cityAsSubdivision()
+// pick them up. Name them from that code (or the country code, should
+// Nominatim ever report them as their own countries) so they land on their
+// own polygons in the Chinese region map.
+const SAR_BY_CODE = { 'CN-HK': 'Hong Kong', 'CN-MO': 'Macau', hk: 'Hong Kong', mo: 'Macau' };
+function sarSubdivision(addr) {
+    return SAR_BY_CODE[addr['ISO3166-2-lvl3']] || SAR_BY_CODE[addr['ISO3166-2-lvl4']]
+        || SAR_BY_CODE[addr.country_code] || '';
+}
+
 // Single geocoding function using Nominatim — returns both country and subdivision.
 // Replaces BigDataCloud which proved unreliable for bulk requests.
 async function geocodeKey(lat, lng) {
@@ -323,7 +335,7 @@ async function geocodeKey(lat, lng) {
             const data = await res.json();
             const addr = data.address || {};
             const country = addr.country || 'Unknown';
-            const rawSubdiv = addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
+            const rawSubdiv = sarSubdivision(addr) || addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
             return { c: country, s: rawSubdiv ? cleanSubdivision(rawSubdiv) : '' };
         } catch (err) {
             dbg(`Nominatim error for ${lat},${lng} (attempt ${attempt + 1}): ${err.message}`);
