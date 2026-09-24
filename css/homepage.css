@@ -1,18 +1,48 @@
-.home-page .container {
+/* Rotating background photos: a fixed layer behind the page, so it works
+   whether the window or <body> is the scroll container. Two layers crossfade;
+   js/homepage.js swaps them. */
+.home-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-color: var(--bg-color, #000);
+    pointer-events: none;
+}
+
+.home-bg-layer {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1.2s ease-in-out;
+}
+
+.home-bg-layer.is-visible {
+    opacity: 1;
+}
+
+.home-bg-layer.is-top {
+    z-index: 1;
+}
+
+/* Hero: the first screen */
+.home-hero {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    min-height: 100vh;
+    min-height: 100svh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 10px;
-    background: transparent;
-    height: calc(var(--vh, 1vh) * 100);
-    position: fixed;
-    width: 100%;
-    top: 0;
-    left: 0;
+    gap: 40px;
+    padding: 80px 16px 110px;
     box-sizing: border-box;
-    /* Ensure padding is included in the width */
+    width: 100%;
     overflow-x: hidden;
-    /* Prevent horizontal overflow */
 }
 
 .home-page .content {
@@ -79,30 +109,20 @@
     }
 }
 
-@keyframes fadeInUpCentered {
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-/* Navigation buttons */
-.navigation-buttons {
+/* Hero buttons */
+.hero-buttons {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 20px;
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-    animation: fadeInUpCentered 1s forwards;
-    animation-delay: 1s;
-    /* Appear after text animation completes */
-    position: absolute;
-    bottom: 25%;
-    left: 50%;
     width: 100%;
     max-width: 600px;
-    padding: 0 20px;
     box-sizing: border-box;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 1s forwards;
+    animation-delay: 1s;
+    /* Appear after text animation completes */
 }
 
 .nav-button {
@@ -132,4 +152,436 @@
 .nav-button:active {
     transform: translateY(0);
     box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+/* Scroll cue at the bottom of the hero */
+.scroll-cue {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    animation: homeCueIn 1s forwards;
+    animation-delay: 2s;
+}
+
+.scroll-cue:hover,
+.scroll-cue:focus-visible {
+    color: var(--primary-color);
+}
+
+.scroll-cue-chevron {
+    width: 12px;
+    height: 12px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+    animation: homeCueBob 2.4s ease-in-out infinite;
+    animation-delay: 3s;
+}
+
+@keyframes homeCueIn {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes homeCueBob {
+    0%, 100% {
+        transform: translateY(0) rotate(45deg);
+    }
+
+    50% {
+        transform: translateY(5px) rotate(45deg);
+    }
+}
+
+/* Content below the hero */
+.home-main {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 56px 16px 72px;
+    scroll-margin-top: 40px;
+    /* Darken the photo behind the cards so everything stays readable */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0, rgba(0, 0, 0, 0.72) 240px, rgba(0, 0, 0, 0.78) 100%);
+}
+
+.home-section {
+    max-width: 1100px;
+    margin: 0 auto 56px;
+}
+
+.home-section:last-child {
+    margin-bottom: 0;
+}
+
+.home-section[hidden] {
+    display: none;
+}
+
+.home-section-title {
+    margin: 0 0 20px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-color);
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.home-section-title::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 3px;
+    margin-top: 10px;
+    border-radius: 2px;
+    background: var(--primary-color);
+}
+
+.home-card {
+    display: block;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+a.home-card {
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+a.home-card:hover,
+a.home-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--primary-color);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+a.home-card:focus-visible,
+.home-more-link:focus-visible,
+.home-hunters-secondary:focus-visible,
+.scroll-cue:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+}
+
+/* Headline stats */
+.home-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.home-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 18px 16px;
+    min-width: 0;
+}
+
+.home-stat-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-color);
+}
+
+.home-stat-total {
+    margin-left: 2px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.home-stat-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.home-stat-bar {
+    display: block;
+    height: 4px;
+    margin-top: auto;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+}
+
+.home-stat-bar span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--primary-color);
+}
+
+/* Latest trip reports */
+.home-trips-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.home-trip-card {
+    overflow: hidden;
+    min-width: 0;
+}
+
+.home-trip-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.home-trip-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 14px 16px 16px;
+}
+
+.home-trip-category {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(76, 175, 80, 0.85);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.home-trip-year {
+    margin-left: auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.home-trip-title {
+    order: 3;
+    flex-basis: 100%;
+    margin: 2px 0 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.home-more-link,
+.home-hunters-secondary {
+    display: inline-block;
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+}
+
+.home-more-link {
+    margin-top: 18px;
+}
+
+.home-more-link:hover,
+.home-hunters-secondary:hover {
+    text-decoration: underline;
+}
+
+/* Activity hunters (Strava) */
+.home-hunters {
+    padding: 24px;
+}
+
+.home-hunters-text {
+    margin: 0 0 16px;
+    max-width: 760px;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.home-hunter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 22px;
+    padding: 0;
+    list-style: none;
+}
+
+.home-hunter-chips li {
+    padding: 5px 12px;
+    border: 1px solid rgba(76, 175, 80, 0.6);
+    border-radius: 999px;
+    background: rgba(76, 175, 80, 0.12);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.home-hunters-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 24px;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    .home-stats-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    /* 3 across, then 2 across filling the row */
+    .home-stat {
+        grid-column: span 2;
+    }
+
+    .home-stat:nth-child(4):nth-last-child(2),
+    .home-stat:nth-child(5):last-child {
+        grid-column: span 3;
+    }
+
+    .home-trips-grid {
+        gap: 14px;
+    }
+
+    .home-trip-title {
+        font-size: 1.05rem;
+    }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+    .home-hero {
+        gap: 32px;
+        padding-bottom: 96px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .home-main {
+        padding: 40px 16px 56px;
+    }
+
+    .home-section {
+        margin-bottom: 44px;
+    }
+
+    .home-section-title {
+        font-size: 1.25rem;
+    }
+
+    .home-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .home-stat,
+    .home-stat:nth-child(4):nth-last-child(2),
+    .home-stat:nth-child(5):last-child {
+        grid-column: auto;
+    }
+
+    .home-stat:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .home-stat {
+        padding: 14px;
+    }
+
+    .home-stat-value {
+        font-size: 1.9rem;
+    }
+
+    .home-stat-label {
+        font-size: 0.72rem;
+    }
+
+    .home-trips-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Compact horizontal cards: photo left, text right */
+    .home-trip-card {
+        display: grid;
+        grid-template-columns: 116px minmax(0, 1fr);
+    }
+
+    .home-trip-image {
+        height: 100%;
+        min-height: 96px;
+        aspect-ratio: auto;
+    }
+
+    .home-trip-body {
+        align-content: center;
+        padding: 12px 14px;
+    }
+
+    .home-trip-title {
+        font-size: 1.05rem;
+    }
+
+    .home-hunters .home-hunters-primary {
+        width: auto;
+        max-width: none;
+    }
+
+    .home-hunters {
+        padding: 18px;
+    }
+
+    .home-hunters-text {
+        font-size: 0.95rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scroll-cue-chevron {
+        animation: none;
+    }
+
+    a.home-card,
+    .home-bg-layer {
+        transition: none;
+    }
+
+    a.home-card:hover,
+    a.home-card:focus-visible {
+        transform: none;
+    }
 }
