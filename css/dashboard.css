@@ -165,6 +165,33 @@
     color: #4CAF50;
 }
 
+/* Owner-only controls (Edit Mode, Export CSV) stay hidden for visitors, who
+   only see this small lock at the end of the row. */
+.table-action-btn[hidden] {
+    display: none;
+}
+
+.table-action-btn.owner-lock {
+    margin-left: auto;
+    padding: 6px 10px;
+    background: transparent;
+    border-color: transparent;
+    font-size: 0.85em;
+    opacity: 0.5;
+}
+
+.table-action-btn.owner-lock:hover,
+.table-action-btn.owner-lock:focus-visible {
+    opacity: 1;
+    background-color: var(--surface-2);
+    border-color: var(--border);
+}
+
+.table-action-btn.owner-lock.logged-in {
+    opacity: 0.85;
+    border-color: var(--border);
+}
+
 /* Editable status cells */
 .status-toggle {
     cursor: pointer;

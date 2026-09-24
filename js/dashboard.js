@@ -1,5 +1,6 @@
 let metros, highPoints, nationalParks, visitedStates;
 let editMode = false;
+let refreshOwnerUI = () => {};
 
 const sortState = {
     highpoints: { col: 'elevation', dir: 'desc' },
@@ -29,31 +30,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
-    btn.addEventListener('click', () => {
-        if (!editMode) {
-            const stored = sessionStorage.getItem('travelPassword');
-            if (stored) {
-                editMode = true;
-                btn.classList.add('active');
-                btn.textContent = 'Exit Edit Mode';
-                updateTable(document.getElementById('table-selector').value);
-            } else {
-                const pw = prompt('Enter travel password:');
-                if (pw) {
-                    sessionStorage.setItem('travelPassword', pw);
-                    editMode = true;
-                    btn.classList.add('active');
-                    btn.textContent = 'Exit Edit Mode';
-                    updateTable(document.getElementById('table-selector').value);
-                }
-            }
-        } else {
-            editMode = false;
-            btn.classList.remove('active');
-            btn.textContent = 'Edit Mode';
-            updateTable(document.getElementById('table-selector').value);
-        }
-    });
+    // Edit Mode / Export CSV are owner-only; visitors just see the lock.
+    refreshOwnerUI = TravelAdmin.initControls(
+        document.getElementById('owner-login-btn'),
+        loggedIn => { if (!loggedIn && editMode) setEditMode(false); }
+    );
+    btn.addEventListener('click', () => setEditMode(!editMode));
+}
+
+function setEditMode(on) {
+    const btn = document.getElementById('edit-mode-btn');
+    editMode = on;
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
+    updateTable(document.getElementById('table-selector').value);
 }
 
 function setupCsvExport() {
@@ -107,7 +97,7 @@ function downloadCsv(headers, rows, filename) {
 }
 
 async function handleToggle(tableType, item) {
-    const password = sessionStorage.getItem('travelPassword');
+    const password = TravelAdmin.getPassword();
     if (!password) return;
 
     let type, key;
@@ -130,11 +120,9 @@ async function handleToggle(tableType, item) {
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
-            sessionStorage.removeItem('travelPassword');
-            editMode = false;
-            document.getElementById('edit-mode-btn').classList.remove('active');
-            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
-            updateTable(tableType);
+            TravelAdmin.logout();
+            refreshOwnerUI();
+            setEditMode(false);
         }
     }
 }
