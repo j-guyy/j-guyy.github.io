@@ -1032,11 +1032,185 @@ a.cache-refresh-btn {
     height: 100% !important;
 }
 
+/* ── Owner-only controls ─────────────────────── */
+/* .admin-only elements start `hidden` and are revealed by applyAdminVisibility()
+   after login. The explicit rule keeps `hidden` winning over component
+   display values (e.g. the app's button styles). */
+.admin-only[hidden] {
+    display: none !important;
+}
+
+/* ── Section overview (strava.html only) ─────── */
+/* One card per section near the top of the page; each links to (and opens)
+   its section. Sections get a scroll margin so the fixed navbar doesn't cover
+   the heading a card scrolls to. */
+.strava-page .content > .section[id] {
+    scroll-margin-top: 72px;
+}
+
+.strava-overview {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    width: 90%;
+    max-width: 1600px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.strava-overview:empty {
+    display: none;
+}
+
+.overview-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px 16px;
+    background: rgba(45, 45, 45, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.overview-card:hover,
+.overview-card:focus-visible {
+    border-color: var(--primary-color);
+    background: rgba(55, 55, 55, 0.9);
+    transform: translateY(-1px);
+}
+
+.overview-card:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.overview-card-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(76, 175, 80, 0.14);
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.overview-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.overview-card-name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.overview-card-stat {
+    min-height: 1.2em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+
+/* No number for this section (not stored server-side, or /summary unavailable) */
+.overview-card-stat.is-blurb {
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+@media (max-width: 1100px) {
+    .strava-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+    .strava-overview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+        padding: 0 16px;
+    }
+
+    .overview-card {
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .overview-card-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 1.05rem;
+    }
+
+    .overview-card-name {
+        font-size: 0.84rem;
+        line-height: 1.2;
+        white-space: normal;   /* "Mountain Hunter" wraps rather than truncating */
+    }
+    .overview-card-stat { font-size: 0.74rem; }
+}
+
+/* ── Regions (country picker) ────────────────── */
+.region-picker {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 0 18px;
+}
+
+.region-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.region-pill[hidden] {
+    display: none;
+}
+
+.region-pill .filter-pill-count {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.region-pill.active .filter-pill-count {
+    opacity: 1;
+}
+
+.region-stats .county-stats-bar {
+    justify-content: center;
+}
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
     /* Hero */
     .strava-page .hero h1 { font-size: 2.2rem; }
     .strava-page .hero h2 { font-size: 1rem; }
+
+    /* responsive.css drops .section's side padding on phones, which left the
+       hunter headings and stat bars flush against the card edge. The app lays
+       out its own screens, so it is left alone. */
+    .strava-page:not(.app-page) .section {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
 
     /* Summary stats grid — 3 columns instead of auto-fill 140px (gives 2 on mobile) */
     .strava-group-stats {

@@ -26,13 +26,6 @@
 /* Small screens and mobile devices */
 @media (max-width: 768px) {
 
-    body,
-    html {
-        overflow-x: hidden;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
     .navbar,
     .parallax-background,
     .parallax-overlay,
@@ -225,8 +218,7 @@
         flex-direction: column;
         width: 100%;
         padding: 20px 0;
-        margin-left: 0;
-        margin-right: 0;
+        margin: 16px 0;
     }
 
     .section h2 {
@@ -235,7 +227,7 @@
     }
 
     .section p {
-        font-size: .7em;
+        font-size: var(--text-sm);
     }
 
     /* Map components */
@@ -269,17 +261,40 @@
         box-sizing: border-box;
     }
 
-    /* Hero sections */
-    .hero,
-    .travels-hero {
+    /* Hero sections — on phones the page title is a compact band (~150-180px
+       including the space under the menu button) so real content starts above
+       the fold. `.content > .hero` outranks page-specific hero rules loaded
+       earlier (e.g. .strava-page .hero, .co-ranges-page .hero), which keep
+       their photo backgrounds but lose their tall fixed heights. */
+    .content > .hero,
+    .about-content > .hero,
+    .travels-content > .travels-hero {
         height: auto;
-        min-height: 40vh;
+        min-height: 0;
+        max-height: none;
+        margin-top: 0;
+        padding: 16px 16px 22px;
+        box-sizing: border-box;
     }
 
     .hero h1,
     .travels-hero h1 {
         font-size: 2em;
-        padding: 10px;
+        line-height: 1.15;
+        text-align: center;
+        padding: 6px 10px;
+    }
+
+    .hero h2 {
+        font-size: 1rem;
+        text-align: center;
+    }
+
+    /* Clears the fixed hamburger button (the mobile navbar has no bar) */
+    .content,
+    .about-content,
+    .travels-content {
+        padding-top: 48px;
     }
 
     /* Other components */
@@ -304,10 +319,6 @@
         height: 300px;
     }
 
-    /* Content padding */
-    .content {
-        padding-top: 80px;
-    }
 }
 
 

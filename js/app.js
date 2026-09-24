@@ -78,12 +78,16 @@ function showScreen(name) {
     window.scrollTo(0, 0);
     pendingOpen = null; // navigating away cancels a queued auto-open
     SCREENS[name]?.open?.();
+    updateTabs(name);
     // Any Leaflet map created or resized while its screen was hidden has a
     // stale size; Leaflet's trackResize listens on window resize.
     setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
 }
 
-window.addEventListener('hashchange', () => showScreen(currentScreenName()));
+window.addEventListener('hashchange', e => {
+    stampEntry(screenFromUrl(e.oldURL));
+    showScreen(currentScreenName());
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!location.hash) history.replaceState(null, '', '#home');
@@ -102,20 +106,28 @@ function pollHomeStats() {
         setStat('stat-map', `${currentSlim.length.toLocaleString()} with GPS`);
     }, 400);
 
-    // County count is one small worker read; the other hunters' state would
-    // need multi-MB geojson to summarize, so their cards stay stat-less.
-    fetch(`${WORKER_URL}/counties/all`)
-        .then(r => r.json())
-        .then(data => {
-            const n = (data.fips || []).length;
-            if (n > 0) setStat('stat-county', `${n.toLocaleString()} counties`);
-        })
-        .catch(() => {});
+    // Every hunter's headline number comes from one small worker read,
+    // /summary, derived server-side from the hunters' saved state (shared with
+    // strava.html's overview via fetchHunterSummary/hunterStatText in
+    // strava.js). Until the worker is redeployed with /summary, that helper
+    // falls back to the county count alone; on a network error it resolves
+    // null and the cards stay as they are.
+    if (typeof fetchHunterSummary !== 'function') return;
+    fetchHunterSummary().then(summary => {
+        if (!summary) return;
+        ['tile', 'county', 'city', 'metro', 'park', 'mountain', 'pass', 'trail']
+            .forEach(key => setStat(`stat-${key}`, hunterStatText(key, summary)));
+        // The pipeline's own count (above) wins once it lands.
+        if (typeof currentTotal === 'undefined' || currentTotal === 0) {
+            setStat('stat-dashboard', hunterStatText('dashboard', summary));
+        }
+    });
 }
 
+// Empty text leaves the card's existing placeholder alone.
 function setStat(id, text) {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el && text) el.textContent = text;
 }
 
 // ── Android back button (Capacitor only) ────────────────────────────────────
@@ -130,3 +142,70 @@ if (CapApp?.addListener) {
         else CapApp.exitApp();
     });
 }
+
+// ── Bottom tab bar ──────────────────────────────────────────────────────────
+// Tabs are top-level destinations, so switching between them must not pile up
+// hash history (the header back buttons and the Android back button both walk
+// it). Each history entry is stamped with the screen it was opened from; a tab
+// tap from home pushes (back returns home), a tap elsewhere replaces the
+// current entry (keeping its stamp), and a tap on the screen underneath simply
+// goes back. History therefore stays at most [home, screen].
+const TAB_SCREENS = new Set(['home', 'dashboard', 'map', 'statshunters']);
+let pendingFrom; // stamp carried across a location.replace()
+
+function screenFromUrl(url) {
+    const name = (url || '').split('#')[1] || '';
+    return SCREENS[name] ? name : 'home';
+}
+
+// Record where a fresh entry came from. Entries revisited via back/forward
+// already carry a state, so only brand-new ones (state null) are stamped.
+function stampEntry(from) {
+    if (history.state === null) {
+        history.replaceState({ from: pendingFrom !== undefined ? pendingFrom : from }, '');
+    }
+    pendingFrom = undefined;
+}
+
+// Hunter screens live on the home grid, so they light up the Home tab.
+function updateTabs(name) {
+    const active = TAB_SCREENS.has(name) ? name : 'home';
+    document.querySelectorAll('.app-tab').forEach(tab => {
+        const on = tab.dataset.tab === active;
+        tab.classList.toggle('active', on);
+        if (on) tab.setAttribute('aria-current', 'page');
+        else tab.removeAttribute('aria-current');
+    });
+}
+
+function goTab(target) {
+    const current = currentScreenName();
+    if (target === current) {
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+        return;
+    }
+    if (current === 'home') {
+        location.hash = target;
+        return;
+    }
+    const from = history.state?.from ?? null;
+    if (target === from) {
+        history.back();
+        return;
+    }
+    pendingFrom = from;
+    location.replace(`#${target}`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // The entry the app was opened on has nothing underneath it.
+    if (history.state === null) history.replaceState({ from: null }, '');
+    document.querySelectorAll('.app-tab').forEach(tab => {
+        tab.addEventListener('click', e => {
+            e.preventDefault();
+            goTab(tab.dataset.tab);
+        });
+    });
+    updateTabs(currentScreenName());
+});

@@ -93,6 +93,171 @@ function adminLogout() {
 // Re-render the controls bar to reflect the current login state.
 function refreshAdminUI() {
     setCacheInfo(currentSlim.length, currentTotal, lastSyncedAt);
+    applyAdminVisibility();
+}
+
+// Owner-only controls outside the controls bar (e.g. Mountain Hunter's "Edit
+// peaks") carry class="admin-only" and start `hidden` in the HTML, on both
+// strava.html and the app shell. Show them only while logged in; logging out
+// also leaves peak edit mode so its hide/restore buttons go away with it.
+function applyAdminVisibility() {
+    const on = isLoggedIn();
+    document.querySelectorAll('.admin-only').forEach(el => { el.hidden = !on; });
+    try {
+        if (!on && mountainEditMode) toggleMountainEditMode();
+    } catch { /* Mountain Hunter never initialised (e.g. Leaflet failed to load) */ }
+}
+
+// ── Section overview + deep links ─────────────────────────────────────────────
+// One entry per feature section on strava.html, keyed by the same names the app
+// shell routes on (#county, #tile, …), so strava.html#county deep-links the way
+// app/#county does. `panel` is the section's lazy "Show map" body and `open`
+// the existing toggle that reveals it; Mountain and Pass keep their tables
+// visible without one, so opening them just scrolls. `needsData` sections wait
+// for the activity pipeline before their toggle fires (the hunters would
+// otherwise initialise against an empty activity list). `blurb` is the
+// overview card's caption when /summary has no number for it.
+const HUNTER_SECTIONS = [
+    { key: 'map',          name: 'Activity Map',    icon: '🗺️', panel: 'map-section',          open: () => toggleMap(),          needsData: true, blurb: 'Every route' },
+    { key: 'county',       name: 'County Hunter',   icon: '🇺🇸', panel: 'county-section',       open: () => toggleCountyMap(),    needsData: true },
+    { key: 'park',         name: 'Park Hunter',     icon: '🏞️', panel: 'park-section',         open: () => toggleParkMap(),      needsData: true },
+    { key: 'metro',        name: 'Metro Hunter',    icon: '🏙️', panel: 'metro-section',        open: () => toggleMetroMap(),     needsData: true },
+    { key: 'tile',         name: 'Tile Hunter',     icon: '🔳', panel: 'tile-section',         open: () => toggleTileMap(),      needsData: true },
+    { key: 'city',         name: 'City Hunter',     icon: '🛣️', panel: 'city-section',         open: () => toggleCityMap(),      needsData: true, blurb: 'Street completion' },
+    { key: 'mountain',     name: 'Mountain Hunter', icon: '⛰️' },
+    { key: 'pass',         name: 'Pass Hunter',     icon: '🚵' },
+    { key: 'trail',        name: 'Trail Hunter',    icon: '🥾', panel: 'trail-section',        open: () => toggleTrailMap(),     needsData: true, blurb: 'Trail completion' },
+    { key: 'regions',      name: 'Regions',         icon: '🧭', panel: 'regions-body',         open: () => toggleRegions(),      needsData: true, overview: false },
+    { key: 'statshunters', name: 'StatsHunters',    icon: '🌍', panel: 'statshunters-section', open: () => toggleStatshunters(true), blurb: 'External map' },
+];
+
+let hunterSummary = null;       // last /summary response (null until it lands, or if unavailable)
+let pendingSectionOpen = null;  // section key waiting on the activity pipeline
+
+// Headline numbers for every hunter from the worker's /summary. The endpoint
+// only exists once the worker is redeployed, so on a 404 fall back to the one
+// small read that always worked (the county count); on a network error resolve
+// null and callers leave their placeholders alone.
+async function fetchHunterSummary() {
+    try {
+        const res = await fetch(`${WORKER_URL}/summary`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const summary = await res.json();
+        if (!summary || !summary.generatedAt) throw new Error('not a summary');
+        return summary;
+    } catch {
+        try {
+            const res = await fetch(`${WORKER_URL}/counties/all`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            const n = (data.fips || []).length;
+            return n > 0 ? { county: { visited: n } } : null;
+        } catch {
+            return null;
+        }
+    }
+}
+
+// Short card caption for one section from a /summary response ('' = no number).
+// Shared by the strava.html overview and the app's home grid.
+function hunterStatText(key, s) {
+    if (!s) return '';
+    const n = v => Number(v).toLocaleString();
+    switch (key) {
+        case 'dashboard':
+            return s.activities?.total ? `${n(s.activities.total)} activities` : '';
+        case 'county':
+            return s.county ? `${n(s.county.visited)} counties` : '';
+        case 'park':
+            return s.park ? `${n(s.park.visited)} federal lands` : '';
+        case 'metro':
+            return s.metro ? `${n(s.metro.visited)} / ${n(s.metro.total)} metros` : '';
+        case 'tile':
+            if (!s.tile) return '';
+            return `${n(s.tile.visited)} tiles` + (s.tile.maxSquare > 1 ? ` · ${s.tile.maxSquare}×${s.tile.maxSquare}` : '');
+        case 'mountain':
+            return s.mountain ? `${n(s.mountain.summited)} peaks` : '';
+        case 'pass':
+            if (!s.pass) return '';
+            return s.pass.total ? `${n(s.pass.climbed)} / ${n(s.pass.total)} passes` : `${n(s.pass.climbed)} passes`;
+        case 'city':
+        case 'trail':
+            // Not stored server-side (computed from Overpass in the browser).
+            return '';
+        default:
+            return '';
+    }
+}
+
+// strava.html only: a grid of cards near the top, one per section, each with
+// its headline stat, that scrolls to and opens that section. The app shell has
+// its own home grid and no #strava-overview mount point.
+function renderOverview() {
+    const el = document.getElementById('strava-overview');
+    if (!el || isAppPage()) return;
+    el.innerHTML = HUNTER_SECTIONS.filter(h => h.overview !== false).map(h => `
+        <a class="overview-card" href="#${h.key}" data-section="${h.key}">
+            <span class="overview-card-icon" aria-hidden="true">${h.icon}</span>
+            <span class="overview-card-text">
+                <span class="overview-card-name">${h.name}</span>
+                <span class="overview-card-stat" data-stat="${h.key}"></span>
+            </span>
+        </a>`).join('');
+    el.addEventListener('click', e => {
+        const card = e.target.closest('.overview-card');
+        if (!card || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        // Keep the URL shareable without firing hashchange (which would open twice).
+        history.replaceState(null, '', `#${card.dataset.section}`);
+        openHunterSection(card.dataset.section);
+    });
+    renderOverviewStats();
+    fetchHunterSummary().then(summary => {
+        hunterSummary = summary;
+        renderOverviewStats();
+    });
+}
+
+function renderOverviewStats() {
+    document.querySelectorAll('#strava-overview [data-stat]').forEach(el => {
+        const key = el.dataset.stat;
+        const h = HUNTER_SECTIONS.find(s => s.key === key);
+        let text = key === 'map' && currentSlim.length
+            ? `${currentSlim.length.toLocaleString()} with GPS`
+            : hunterStatText(key, hunterSummary);
+        el.classList.toggle('is-blurb', !text);
+        if (!text) text = h?.blurb || '—';
+        el.textContent = text;
+    });
+}
+
+// Scroll to a section and open its lazy body via the existing toggle — only if
+// it is still closed, since the toggles flip open/closed.
+function openHunterSection(key, { smooth = true } = {}) {
+    const h = HUNTER_SECTIONS.find(s => s.key === key);
+    if (!h) return;
+    document.getElementById(h.key)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    if (!h.panel) return;
+    if (h.needsData && currentSlim.length === 0) {
+        pendingSectionOpen = key;   // picked up by geocodeAndRender once data lands
+        return;
+    }
+    const panel = document.getElementById(h.panel);
+    if (panel && panel.style.display === 'none') h.open();
+}
+
+// strava.html#<section> (e.g. #statshunters, where the old standalone page
+// redirects) opens that section and scrolls to it. On the app shell these
+// hashes are the router's screens, so leave them to app.js.
+function openSectionFromHash() {
+    if (isAppPage()) return;
+    const key = location.hash.replace(/^#/, '');
+    if (!HUNTER_SECTIONS.some(h => h.key === key)) return;
+    openHunterSection(key, { smooth: false });
+    // On page load the summary, tables and regions above render later and push
+    // the section down, so scroll again once the first render lands (opening
+    // is idempotent — an already-open section is only scrolled to).
+    if (currentSlim.length === 0) pendingSectionOpen = key;
 }
 
 // Countries with regional breakdowns.
@@ -101,15 +266,16 @@ function refreshAdminUI() {
 // boundaries land; once they do it fits them. `bounds` overrides that fit for
 // a country whose polygons wrap the antimeridian — Alaska's Aleutians run past
 // 180°E, so the US bounding box would otherwise span the whole globe.
+// `country` is the short name on the Regions section's country picker.
 // Region polygons live in /data/admin1/<id>.geojson (scripts/build-admin1-regions.py).
 const SUBDIVISION_CONFIG = [
-    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], flag: '🇺🇸', label: 'US States',           colLabel: 'State',    view: [39, -96, 3],    bounds: [[18, -170], [70, -66]] },
-    { id: 'canada',    names: ['Canada'],                                    flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
-    { id: 'australia', names: ['Australia'],                                 flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
-    { id: 'mexico',    names: ['Mexico'],                                    flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
-    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
-    { id: 'spain',     names: ['Spain'],                                     flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
-    { id: 'italy',     names: ['Italy'],                                     flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
+    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], country: 'USA',        flag: '🇺🇸', label: 'US States',           colLabel: 'State',    view: [39, -96, 3],    bounds: [[18, -170], [70, -66]] },
+    { id: 'canada',    names: ['Canada'],                                    country: 'Canada',     flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
+    { id: 'australia', names: ['Australia'],                                 country: 'Australia',  flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
+    { id: 'mexico',    names: ['Mexico'],                                    country: 'Mexico',     flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
+    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      country: 'China',      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
+    { id: 'spain',     names: ['Spain'],                                     country: 'Spain',      flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
+    { id: 'italy',     names: ['Italy'],                                     country: 'Italy',      flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
 ];
 
 // Build a flat lookup: countryName → config entry
@@ -790,54 +956,105 @@ function renderTable(countries) {
     container.appendChild(makeCollapsible('By Country', wrapper, { collapsed: !wasOpen }));
 }
 
-// Sections are built once and then updated in place: each one owns a Leaflet
-// map, which re-creating the DOM on every filter toggle would destroy.
-const subdivisionSections = {};   // cfg.id → { section, statsBar, mapEl, statusEl, renderTable }
+// ── Regions: one section, one country at a time ───────────────────────────────
+// A single "Regions" section with a country picker (one pill per country that
+// has activities, showing its visited-region count) swaps which country's stats
+// bar, map and table are shown. The stats bars stay visible; the map + table
+// sit behind the section's "Show map" toggle like the hunters above.
+//
+// Each country's panel is built once and then updated in place: each owns a
+// Leaflet map, which re-creating the DOM on every filter toggle would destroy.
+// Boundaries are still fetched per country, the first time its map is shown
+// (initRegionMap).
+const subdivisionSections = {};   // cfg.id → { pill, pillCount, statsBar, detail, mapEl, statusEl, renderTable }
 let currentSubdivisions = {};     // last data passed to renderSubdivisions
+let regionsSectionEl = null;      // the #regions section, built on first render
+let selectedRegionId = null;      // cfg.id currently shown
+
+function regionActivityCount(cfgId) {
+    return Object.values(currentSubdivisions[cfgId] || {}).reduce((sum, b) => sum + b.total, 0);
+}
 
 function renderSubdivisions(subdivisions) {
     const wrapper = document.getElementById('strava-subdivisions');
     if (!wrapper) return;
     currentSubdivisions = subdivisions;
 
-    // Build every section up front, in config order, so a country whose first
-    // activity is geocoded later still lands in the right place on the page.
-    if (!Object.keys(subdivisionSections).length) {
-        SUBDIVISION_CONFIG.forEach(cfg => {
-            const sec = buildSubdivisionSection(cfg);
-            subdivisionSections[cfg.id] = sec;
-            wrapper.appendChild(sec.section);
-        });
+    // Build every country's panel up front, in config order, so a country whose
+    // first activity is geocoded later still lands in the right place.
+    if (!regionsSectionEl) {
+        regionsSectionEl = buildRegionsSection();
+        wrapper.appendChild(regionsSectionEl);
     }
 
+    const available = SUBDIVISION_CONFIG.filter(cfg => regionActivityCount(cfg.id) > 0);
+    regionsSectionEl.style.display = available.length ? '' : 'none';
     SUBDIVISION_CONFIG.forEach(cfg => {
-        const sec = subdivisionSections[cfg.id];
-        const data = subdivisions[cfg.id];
-        const hasData = data && Object.values(data).some(b => b.total > 0);
-        sec.section.style.display = hasData ? '' : 'none';
-        if (!hasData) return;
-        sec.renderTable();
+        subdivisionSections[cfg.id].pill.hidden = !available.includes(cfg);
+    });
+    if (!available.length) return;
+
+    available.forEach(cfg => {
+        subdivisionSections[cfg.id].renderTable();
         refreshRegionMap(cfg);
         renderRegionStats(cfg);
     });
+
+    // Keep the current pick while it still has activities under the active
+    // filters; otherwise (and on first render) show the busiest country.
+    if (!available.some(cfg => cfg.id === selectedRegionId)) {
+        const busiest = available.reduce((best, cfg) =>
+            regionActivityCount(cfg.id) > regionActivityCount(best.id) ? cfg : best);
+        selectRegion(busiest.id);
+    }
 }
 
-function buildSubdivisionSection(cfg) {
+function buildRegionsSection() {
     const section = document.createElement('div');
-    section.className = 'section';
-    section.id = `subdivision-${cfg.id}`;
+    section.className = 'section regions-section';
+    section.id = 'regions';
     section.style.display = 'none';
+    section.innerHTML = `
+        <h2>Regions <button type="button" class="cache-refresh-btn" id="regions-toggle-btn" onclick="toggleRegions()">Show map</button></h2>
+        <div class="region-picker" role="group" aria-label="Country"></div>
+        <div class="region-stats"></div>
+        <div id="regions-body" style="display:none"></div>`;
+    const picker = section.querySelector('.region-picker');
+    const statsHost = section.querySelector('.region-stats');
+    const body = section.querySelector('#regions-body');
 
-    const body = document.createElement('div');
+    SUBDIVISION_CONFIG.forEach(cfg => {
+        const sec = buildRegionPanel(cfg);
+        subdivisionSections[cfg.id] = sec;
+        picker.appendChild(sec.pill);
+        statsHost.appendChild(sec.statsBar);
+        body.appendChild(sec.detail);
+    });
+    return section;
+}
+
+function buildRegionPanel(cfg) {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'filter-pill region-pill';
+    pill.hidden = true;
+    pill.setAttribute('aria-pressed', 'false');
+    pill.innerHTML = `<span aria-hidden="true">${cfg.flag}</span> ${cfg.country} <span class="filter-pill-count"></span>`;
+    pill.addEventListener('click', () => selectRegion(cfg.id));
+    const pillCount = pill.querySelector('.filter-pill-count');
 
     const statsBar = document.createElement('div');
     statsBar.className = 'county-stats-bar';
-    body.appendChild(statsBar);
+    statsBar.style.display = 'none';
+
+    const detail = document.createElement('div');
+    detail.className = 'region-detail';
+    detail.style.display = 'none';
 
     const mapEl = document.createElement('div');
     mapEl.className = 'region-map';
     mapEl.id = `region-map-${cfg.id}`;
-    body.appendChild(mapEl);
+    detail.appendChild(mapEl);
 
     const legend = document.createElement('div');
     legend.className = 'map-legend';
@@ -845,15 +1062,15 @@ function buildSubdivisionSection(cfg) {
     legend.innerHTML = `
         <span class="map-legend-item"><span class="map-legend-dot" style="background:${REGION_COLOR}"></span>Visited</span>
         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not yet visited</span>`;
-    body.appendChild(legend);
+    detail.appendChild(legend);
 
     const statusEl = document.createElement('p');
     statusEl.className = 'no-location-note';
     statusEl.style.marginTop = '8px';
-    body.appendChild(statusEl);
+    detail.appendChild(statusEl);
 
     const tableContainer = document.createElement('div');
-    body.appendChild(tableContainer);
+    detail.appendChild(tableContainer);
 
     const state = getSortState(cfg.id);
     const renderTable = () => {
@@ -866,12 +1083,38 @@ function buildSubdivisionSection(cfg) {
         initScrollHint(sw);
     };
 
-    section.appendChild(makeCollapsible(`${cfg.flag} By ${cfg.label}`, body, {
-        collapsed: true,
-        onOpen: () => initRegionMap(cfg),
-    }));
+    return { pill, pillCount, statsBar, detail, mapEl, statusEl, renderTable };
+}
 
-    return { section, statsBar, mapEl, statusEl, renderTable };
+function regionsOpen() {
+    return document.getElementById('regions-body')?.style.display === 'block';
+}
+
+function selectRegion(id) {
+    selectedRegionId = id;
+    SUBDIVISION_CONFIG.forEach(cfg => {
+        const sec = subdivisionSections[cfg.id];
+        const on = cfg.id === id;
+        sec.pill.classList.toggle('active', on);
+        sec.pill.setAttribute('aria-pressed', String(on));
+        sec.statsBar.style.display = on ? '' : 'none';
+        sec.detail.style.display = on ? '' : 'none';
+    });
+    const cfg = SUBDIVISION_CONFIG.find(c => c.id === id);
+    if (cfg && regionsOpen()) initRegionMap(cfg);
+}
+
+// "Show map" for the Regions section: reveals the selected country's map and
+// table (building the map on first open, re-measuring it afterwards).
+function toggleRegions() {
+    const body = document.getElementById('regions-body');
+    const btn = document.getElementById('regions-toggle-btn');
+    if (!body) return;
+    const opening = body.style.display === 'none';
+    body.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    const cfg = SUBDIVISION_CONFIG.find(c => c.id === selectedRegionId);
+    if (opening && cfg) initRegionMap(cfg);
 }
 
 // ── Region maps ───────────────────────────────────────────────────────────────
@@ -1028,6 +1271,9 @@ function renderRegionStats(cfg) {
     const visited = state?.layer
         ? Object.keys(state.visited).length + state.unmatched
         : buckets.filter(b => b.total > 0).length;
+
+    sec.pillCount.textContent = visited.toLocaleString();
+    sec.pill.title = `${visited.toLocaleString()} ${cfg.colLabel.toLowerCase()}${visited === 1 ? '' : 's'} visited`;
 
     const items = [[visited.toLocaleString(), `${cfg.colLabel}s Visited`]];
     if (total) {
@@ -5598,6 +5844,9 @@ function detectNearMisses() {
 }
 
 function toggleMountainEditMode() {
+    // Owner-only: the button is hidden when logged out, and leaving edit mode
+    // is always allowed (logout uses this to exit it).
+    if (!mountainEditMode && !isLoggedIn()) return;
     mountainEditMode = !mountainEditMode;
     const section = document.querySelector('#mountain-stats-bar')?.closest('.section');
     if (section) section.classList.toggle('mountain-edit-active', mountainEditMode);
@@ -7375,23 +7624,12 @@ function statshuntersFullscreen() {
     wrap.requestFullscreen?.();
 }
 
-// strava.html#statshunters — where the old standalone page redirects — opens the
-// embed and scrolls to it. On the app shell there is no #statshunters anchor:
-// app.js routes that hash to its own screen.
-function openStatshuntersFromHash() {
-    if (location.hash !== '#statshunters') return;
-    const anchor = document.getElementById('statshunters');
-    if (!anchor) return;
-    toggleStatshunters(true);
-    anchor.scrollIntoView();
-}
-
 function setStatshuntersStatus(msg) {
     const el = document.getElementById('statshunters-status');
     if (el) el.textContent = msg;
 }
 
-window.addEventListener('hashchange', openStatshuntersFromHash);
+window.addEventListener('hashchange', openSectionFromHash);
 
 // ── Debug log ─────────────────────────────────────────────────────────────────
 
@@ -7577,7 +7815,16 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     renderSummary(slim, countries, total);
     renderTable(countries);
     renderSubdivisions(subdivisions);
+    renderOverviewStats();
     dbg('Render complete');
+
+    // A section opened (overview card / deep link) before the activities
+    // arrived can initialise now.
+    if (pendingSectionOpen) {
+        const key = pendingSectionOpen;
+        pendingSectionOpen = null;
+        openHunterSection(key, { smooth: false });
+    }
 
     // Mountain Hunter — runs in background after main UI paints
     setTimeout(() => initMountainHunter().catch(err => dbg(`Mountain Hunter bg error: ${err.message}`)), 400);
@@ -7746,6 +7993,8 @@ async function runPipeline(forceSync = false) {
 
 document.addEventListener('DOMContentLoaded', () => {
     renderDebugPanel();
-    openStatshuntersFromHash();
+    applyAdminVisibility();
+    renderOverview();
+    openSectionFromHash();
     runPipeline(false);
 });

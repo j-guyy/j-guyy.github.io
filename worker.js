@@ -285,6 +285,16 @@ export default {
                 return json({ ok: true });
             }
 
+            // ── Hunter summary ──
+            // Headline numbers for every hunter, derived at read time from the
+            // blobs above so the app home grid / strava.html overview can show
+            // them without loading multi-MB geojson client-side. Public-read like
+            // the other GETs.
+
+            if (path === '/summary' && request.method === 'GET') {
+                return await handleSummary(env);
+            }
+
             // ── Mountain Hunter — server-side Overpass proxy ──
             // Fetches peaks for a 5°×5° cell from Overpass on behalf of the client,
             // avoiding browser IP rate-limits. Tries two mirrors with a short gap.
@@ -327,6 +337,177 @@ export default {
         );
     },
 };
+
+// ── Hunter summary ───────────────────────────────────────────────────────────
+//
+// Response shape (any hunter whose blob is missing or unreadable is null; city
+// and trail progress are computed client-side from Overpass and never stored,
+// so they are always null):
+//   { generatedAt,
+//     activities: { total, syncedAt },
+//     county:   { visited, total },
+//     park:     { visited, total, stateParks, stateParksTotal },
+//     metro:    { visited, total },
+//     tile:     { visited, maxCluster, maxSquare },
+//     mountain: { summited, summits },
+//     pass:     { climbed, total },
+//     city: null, trail: null }
+//
+// Totals mirror the constants in js/strava.js (county stats bar, FEDERAL_PARK_TOTAL,
+// STATE_PARK_TOTAL, METRO_TOTAL); keep them in step.
+const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 200 };
+
+// Browsers/CDNs may reuse a summary for a few minutes — the numbers only move
+// when someone opens a hunter and it saves new detections.
+const SUMMARY_CACHE_SECONDS = 300;
+
+async function handleSummary(env) {
+    const kv = env.STRAVA_DATA;
+    const [activitiesText, counties, parks, stateParks, metros, tiles, summits, hidden, passes] =
+        await Promise.all([
+            kv.get(ACTIVITIES_KEY, 'text'),
+            kv.get(COUNTIES_KEY, 'json'),
+            kv.get(PARKS_KEY, 'json'),
+            kv.get(STATE_PARKS_KEY, 'json'),
+            kv.get(METRO_HUNTER_KEY, 'json'),
+            kv.get(TILES_KEY, 'json'),
+            kv.get(SUMMITS_KEY, 'json'),
+            kv.get(HIDDEN_PEAKS_KEY, 'json'),
+            kv.get(PASSES_KEY, 'json'),
+        ]);
+
+    // Each hunter is derived independently so one malformed blob can't blank
+    // the whole summary.
+    const safe = (fn) => { try { return fn(); } catch (e) { console.log(`summary: ${e.message}`); return null; } };
+    const count = (arr) => (Array.isArray(arr) ? arr.length : 0);
+
+    const summary = {
+        generatedAt: Date.now(),
+        activities: safe(() => summarizeActivities(activitiesText)),
+        county: counties ? { visited: count(counties.fips), total: SUMMARY_TOTALS.counties } : null,
+        park: (parks || stateParks) ? {
+            visited: count(parks?.ids),
+            total: SUMMARY_TOTALS.parks,
+            stateParks: count(stateParks?.ids),
+            stateParksTotal: SUMMARY_TOTALS.stateParks,
+        } : null,
+        metro: metros ? { visited: count(metros.ids), total: SUMMARY_TOTALS.metros } : null,
+        tile: tiles ? safe(() => summarizeTilesMemo(tiles.tiles || [])) : null,
+        mountain: summits ? safe(() => summarizeSummits(summits, hidden)) : null,
+        pass: passes ? {
+            climbed: Object.keys(passes.discoveries || {}).length || count(passes.ids),
+            total: count(passes.catalogIds) || null,
+        } : null,
+        city: null,
+        trail: null,
+    };
+
+    return json(summary, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+// The activity store is several MB of polylines; parsing it all just for two
+// numbers is wasteful. The record is written as { slim, total, lastActivityTime,
+// syncedAt } (see syncActivities), so the counters sit at the tail.
+function summarizeActivities(text) {
+    if (!text) return null;
+    const tail = text.slice(-400);
+    const total = tail.match(/"total":(\d+)/);
+    const synced = tail.match(/"syncedAt":(\d+)/);
+    if (!total) return null;
+    return { total: Number(total[1]), syncedAt: synced ? Number(synced[1]) : null };
+}
+
+// Same definitions as computeClusters / computeSquares in js/strava.js: a
+// cluster tile has all 4 neighbours visited, clusters are its connected
+// components, and the max square is the largest fully-visited N×N block.
+// Tiles are "x,y" z14 keys; packed into one small integer (z14 has 2^14
+// tiles per axis) so the set lookups stay cheap for tens of thousands of tiles.
+function summarizeTiles(tileKeys) {
+    const B = 14, M = (1 << B) - 1;   // pack (x, y) as x << 14 | y — a small int
+    const set = new Set();
+    for (const k of tileKeys) {
+        const s = String(k), c = s.indexOf(',');
+        const x = +s.slice(0, c), y = +s.slice(c + 1);
+        if (c > 0 && x >= 0 && y >= 0 && x <= M && y <= M && (x | 0) === x && (y | 0) === y) {
+            set.add((x << B) | y);
+        }
+    }
+
+    // Neighbours are only looked up after an explicit edge check, so a packed
+    // key never wraps into the next row.
+    const interior = new Set();
+    for (const v of set) {
+        const x = v >> B, y = v & M;
+        if (y > 0 && y < M && x > 0 && x < M &&
+            set.has(v - 1) && set.has(v + 1) && set.has(v - (1 << B)) && set.has(v + (1 << B))) {
+            interior.add(v);
+        }
+    }
+    let maxCluster = 0;
+    const seen = new Set();
+    const queue = [];
+    for (const start of interior) {
+        if (seen.has(start)) continue;
+        seen.add(start);
+        queue.length = 0;
+        queue.push(start);
+        for (let head = 0; head < queue.length; head++) {
+            const v = queue[head];
+            const x = v >> B, y = v & M;
+            // Interior tiles are never on the grid edge, so ±1 / ±row is safe.
+            if (x < M) { const n = v + (1 << B); if (interior.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); } }
+            if (x > 0) { const n = v - (1 << B); if (interior.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); } }
+            if (y < M) { const n = v + 1;        if (interior.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); } }
+            if (y > 0) { const n = v - 1;        if (interior.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); } }
+        }
+        if (queue.length > maxCluster) maxCluster = queue.length;
+    }
+
+    // Row-major (y, then x) so left/top/top-left are ready before each tile:
+    // re-pack as y << 14 | x and let a native Int32Array sort order them.
+    const rowMajor = new Int32Array(set.size);
+    let i = 0;
+    for (const v of set) rowMajor[i++] = ((v & M) << B) | (v >> B);
+    rowMajor.sort();
+    const dp = new Map();
+    let maxSquare = 0;
+    for (let j = 0; j < rowMajor.length; j++) {
+        const k = rowMajor[j];
+        const x = k & M, y = k >> B;
+        const left    = x > 0 ? dp.get(k - 1) || 0 : 0;
+        const top     = y > 0 ? dp.get(k - (1 << B)) || 0 : 0;
+        const topLeft = x > 0 && y > 0 ? dp.get(k - (1 << B) - 1) || 0 : 0;
+        const n = Math.min(left, top, topLeft) + 1;
+        dp.set(k, n);
+        if (n > maxSquare) maxSquare = n;
+    }
+
+    return { visited: set.size, maxCluster, maxSquare };
+}
+
+// The cluster/square pass is the only non-trivial work in /summary (~20ms for
+// 30k tiles), so a warm isolate reuses the last result while the tile list is
+// unchanged. Tiles are only ever appended (a reset deletes the key), so length
+// plus the two end keys identify the list.
+let tileSummaryMemo = null;
+function summarizeTilesMemo(tileKeys) {
+    const sig = `${tileKeys.length}|${tileKeys[0]}|${tileKeys[tileKeys.length - 1]}`;
+    if (tileSummaryMemo?.sig !== sig) tileSummaryMemo = { sig, stats: summarizeTiles(tileKeys) };
+    return tileSummaryMemo.stats;
+}
+
+// Summited = peaks with at least one recorded visit, minus the ones the owner
+// has hidden as sub-peaks (the client's "Peaks Summited" stat does the same).
+function summarizeSummits(summits, hidden) {
+    const hiddenIds = new Set((hidden?.ids || []).map(Number));
+    let summited = 0, total = 0;
+    for (const [peakId, visits] of Object.entries(summits.visits || {})) {
+        if (!Array.isArray(visits) || !visits.length || hiddenIds.has(Number(peakId))) continue;
+        summited++;
+        total += visits.length;
+    }
+    return { summited, summits: total };
+}
 
 // ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────
 
@@ -783,9 +964,9 @@ async function getAccessToken(env) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
     return new Response(JSON.stringify(data), {
         status,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', ...extraHeaders },
     });
 }

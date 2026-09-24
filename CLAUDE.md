@@ -56,6 +56,10 @@ Component-based CSS files in `/css/` using CSS custom properties for theming (pr
 
 - `dashboard.css` — shared table styling (`.travel-table`, `.table-scroll-wrapper`, sortable headers) used by both travel dashboards and strava page
 - `strava.css` — strava-page-specific styles, loaded after `dashboard.css`
+- Site-wide design tokens (surfaces, borders, text sizes) live in `:root` in `base.css`, modelled on the app's `--app-*` tokens in `app.css`; prefer them over hard-coded colours.
+- The window scrolls the page — `html`/`body` use `min-height`, and horizontal overflow is guarded with `overflow-x: hidden` on `html` / `clip` on `body`. Don't reintroduce `height: 100%` or `overflow-x: hidden` on `body`, which turns `body` into the scroll container.
+
+Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit peaks") are hidden until the 🔒 login succeeds against the worker's `/auth/check`. The dashboards use `TravelAdmin` in `js/travel-api.js`; the Strava page uses the admin helpers in `js/strava.js`. Both store the password under the same localStorage key (`strava_admin_pw`), so one login covers the site. The worker still enforces the real protection.
 
 ### Content Areas
 
@@ -91,9 +95,13 @@ The strava page is the most complex, containing 5 "hunter" modules that share a 
 4. **Trail Hunter** — trail completion for specific regions (Boulder County, RMNP)
 5. **Mountain Hunter** — peak summit detection using OSM Overpass data (peaks + volcanoes)
 
-Below the hunters, `SUBDIVISION_CONFIG` drives one **regional breakdown** section per country with first-level regions worth tracking (US states, Canadian provinces, Australian states, Mexican states, Chinese provinces, Spanish regions, Italian regions). Each section is a collapsible holding a stats bar, a map of that country with visited regions filled green, and the sortable activity table. Boundaries come from `/data/admin1/<config id>.geojson` and are fetched only when the section is first expanded. A region counts as visited when the geocoded subdivision name of an activity matches one of the aliases baked into its polygon; a name the aliases don't cover is resolved geometrically instead (point-in-polygon on an activity recorded under it), so a new spelling from Nominatim self-heals rather than leaving a hole. Regenerate the boundary files with `python3 scripts/build-admin1-regions.py` (needs `shapely`); adding a country means adding an entry to both `SUBDIVISION_CONFIG` and the script's `COUNTRIES`.
+Below the hunters, `SUBDIVISION_CONFIG` drives a single **Regions** section (`#regions`) covering every country with first-level regions worth tracking (US states, Canadian provinces, Australian states, Mexican states, Chinese provinces, Spanish regions, Italian regions). A country picker (one pill per country with activities, showing its visited-region count; defaults to the busiest country) swaps which country's stats bar, map (visited regions filled green) and sortable activity table is shown; the map + table sit behind the section's "Show map" toggle. Boundaries come from `/data/admin1/<config id>.geojson` and are fetched per country the first time its map is shown. A region counts as visited when the geocoded subdivision name of an activity matches one of the aliases baked into its polygon; a name the aliases don't cover is resolved geometrically instead (point-in-polygon on an activity recorded under it), so a new spelling from Nominatim self-heals rather than leaving a hole. Regenerate the boundary files with `python3 scripts/build-admin1-regions.py` (needs `shapely`); adding a country means adding an entry to both `SUBDIVISION_CONFIG` and the script's `COUNTRIES`.
 
 Last on the page is the **StatsHunters** section — the shared StatsHunters map (`https://statshunters.com/share/…`) in the same collapsible frame as the hunters. `toggleStatshunters()` sets the iframe `src` on first open, so the external embed costs nothing on load; `statshuntersFullscreen()` fullscreens the wrapper. `strava.html#statshunters` opens and scrolls to it (the old standalone `statshunters.html` is now just a redirect to that anchor).
+
+Near the top of strava.html, an **overview grid** (`#strava-overview`, website only) has one card per section with its headline stat from `/summary`. `HUNTER_SECTIONS` in strava.js lists the sections, keyed by the same names as the app routes; every section has that id, so `strava.html#county`, `#tile`, `#regions`, `#statshunters`, … (and clicking a card) scroll to the section and open it through its existing toggle, never toggling an already-open one.
+
+**Owner-only controls**: the admin login (🔒 in the controls bar, `isLoggedIn()`) gates Sync/Debug and every element with class `admin-only` (start them `hidden`; `applyAdminVisibility()` shows them after login and hides them on logout), e.g. Mountain Hunter's "Edit peaks" on both strava.html and the app.
 
 **Shared infrastructure**:
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters
@@ -116,6 +124,7 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |
 | `/peaks/all`, `/peaks/save`, `/peaks/reset` | GET/POST | Mountain peak cell cache |
 | `/summits/all`, `/summits/save`, `/summits/reset` | GET/POST | Summit detection cache |
+| `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above; feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
 | `/travel/*` | GET/POST | Travel dashboard data (toggle, seed) |
 
 ### Adding Content
@@ -123,5 +132,5 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 - **New adventure category**: Add entries to `data/adventures.js`, create trip report HTML in `/trip-reports/`
 - **New map data**: Add JSON to `/data/`, fetch and render in the relevant JS file
 - **New page**: Create HTML file at root, link `js/navbar-component.js` and use `<nav-bar>` element, add corresponding CSS/JS files as needed
-- **New hunter feature**: Add section to `strava.html`, implement in `js/strava.js`, add KV key + endpoints to `worker.js`
+- **New hunter feature**: Add section to `strava.html`, implement in `js/strava.js`, add KV key + endpoints to `worker.js`; give the section an `id`, add it to `HUNTER_SECTIONS` (overview card + deep link) and, if it has a cheap headline number, derive it in the worker's `/summary` and `hunterStatText()`
 - **New country regional breakdown**: Add an entry to `SUBDIVISION_CONFIG` in `js/strava.js` and to `COUNTRIES` in `scripts/build-admin1-regions.py`, then re-run that script to emit `/data/admin1/<id>.geojson`

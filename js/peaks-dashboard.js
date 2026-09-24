@@ -1,5 +1,6 @@
 let adk46ers, colorado14ers;
 let editMode = false;
+let refreshOwnerUI = () => {};
 
 const sortState = {
     adk46ers:      { col: 'elevation', dir: 'desc' },
@@ -33,31 +34,20 @@ function peakData(tableType) {
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
-    btn.addEventListener('click', () => {
-        if (!editMode) {
-            const stored = sessionStorage.getItem('travelPassword');
-            if (stored) {
-                editMode = true;
-                btn.classList.add('active');
-                btn.textContent = 'Exit Edit Mode';
-                updateTable(document.getElementById('table-selector').value);
-            } else {
-                const pw = prompt('Enter travel password:');
-                if (pw) {
-                    sessionStorage.setItem('travelPassword', pw);
-                    editMode = true;
-                    btn.classList.add('active');
-                    btn.textContent = 'Exit Edit Mode';
-                    updateTable(document.getElementById('table-selector').value);
-                }
-            }
-        } else {
-            editMode = false;
-            btn.classList.remove('active');
-            btn.textContent = 'Edit Mode';
-            updateTable(document.getElementById('table-selector').value);
-        }
-    });
+    // Edit Mode / Export CSV are owner-only; visitors just see the lock.
+    refreshOwnerUI = TravelAdmin.initControls(
+        document.getElementById('owner-login-btn'),
+        loggedIn => { if (!loggedIn && editMode) setEditMode(false); }
+    );
+    btn.addEventListener('click', () => setEditMode(!editMode));
+}
+
+function setEditMode(on) {
+    const btn = document.getElementById('edit-mode-btn');
+    editMode = on;
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
+    updateTable(document.getElementById('table-selector').value);
 }
 
 function setupCsvExport() {
@@ -91,7 +81,7 @@ function downloadCsv(headers, rows, filename) {
 }
 
 async function handleToggle(tableType, item) {
-    const password = sessionStorage.getItem('travelPassword');
+    const password = TravelAdmin.getPassword();
     if (!password) return;
 
     try {
@@ -102,11 +92,9 @@ async function handleToggle(tableType, item) {
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
-            sessionStorage.removeItem('travelPassword');
-            editMode = false;
-            document.getElementById('edit-mode-btn').classList.remove('active');
-            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
-            updateTable(tableType);
+            TravelAdmin.logout();
+            refreshOwnerUI();
+            setEditMode(false);
         }
     }
 }
@@ -176,10 +164,11 @@ function updateTable(tableType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    table.className = 'travel-table travel-table--fit';
 
     const tableHeaders = ['Rank', 'Peak Name', 'Elevation (ft)', 'Status'];
     const sortKeys     = ['elevation', 'name', 'elevation', 'climbed'];
+    const colClasses   = ['col-rank', 'col-name', 'col-num', 'col-status'];
 
     const { col, dir } = sortState[tableType];
     const tableData = sortTableData(peakData(tableType), col, dir);
@@ -193,7 +182,7 @@ function updateTable(tableType) {
         const key = sortKeys[i];
         const isActive = col === key;
 
-        th.classList.add('sortable');
+        th.classList.add('sortable', colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -230,10 +219,10 @@ function updateTable(tableType) {
         const statusClass = editMode ? 'status-toggle' : '';
 
         row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${item.name}</td>
-            <td>${item.elevation.toLocaleString()}</td>
-            <td class="${statusClass}">${statusIcon}</td>
+            <td class="col-rank">${index + 1}</td>
+            <td class="col-name">${item.name}</td>
+            <td class="col-num">${item.elevation.toLocaleString()}</td>
+            <td class="col-status ${statusClass}">${statusIcon}</td>
         `;
 
         if (editMode) {

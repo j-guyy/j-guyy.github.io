@@ -198,11 +198,22 @@ body.show-tools .tools-dropdown {
     background-color: var(--primary-color);
 }
 
-body,
+/* Horizontal-overflow guard. `hidden` on html propagates to the viewport, so the
+   window stays the vertical scroller. body must NOT get `hidden`/`auto` (that
+   would make it a scroll container of its own); `clip` guards it without
+   creating one, and browsers without `clip` just ignore it. */
 html {
     overflow-x: hidden;
+}
+
+body,
+html {
     width: 100%;
     box-sizing: border-box;
+}
+
+body {
+    overflow-x: clip;
 }
 
 .navbar,
@@ -250,7 +261,7 @@ html {
 
 .page {
     position: relative;
-    overflow-x: hidden;
+    overflow-x: clip; /* not hidden: .page is on <body>, see above */
     background-color: transparent;
 }
 
@@ -261,7 +272,12 @@ html {
 }
 
 .hero {
-    height: 60vh;
+    /* Title banner over the page photo. Kept shorter than a full screen so the
+       first card peeks above the fold; phones get a compact version in
+       responsive.css. */
+    height: 42vh;
+    min-height: 280px;
+    max-height: 460px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -299,9 +315,10 @@ html {
     max-width: 1600px;
     margin: 40px auto;
     padding: 30px;
-    background-color: rgba(45, 45, 45, 0.8);
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     text-align: center;
 }
 
