@@ -601,3 +601,22 @@
 .app-page .activity-popup .leaflet-popup-content-wrapper {
     border-radius: 14px;
 }
+
+/* ── Regions section (strava.js buildRegionsSection) ─────────────────────── */
+/* One card on the dashboard with a country picker. Left-align the picker and
+   the selected country's stats bar: the app's stats bars scroll horizontally,
+   and centering an overflowing flex row would clip its first item. */
+.app-page .regions-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-page .region-picker {
+    justify-content: flex-start;
+    margin-bottom: 14px;
+}
+
+.app-page .region-stats .county-stats-bar {
+    justify-content: flex-start;
+}

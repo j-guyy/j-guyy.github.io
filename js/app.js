@@ -102,20 +102,28 @@ function pollHomeStats() {
         setStat('stat-map', `${currentSlim.length.toLocaleString()} with GPS`);
     }, 400);
 
-    // County count is one small worker read; the other hunters' state would
-    // need multi-MB geojson to summarize, so their cards stay stat-less.
-    fetch(`${WORKER_URL}/counties/all`)
-        .then(r => r.json())
-        .then(data => {
-            const n = (data.fips || []).length;
-            if (n > 0) setStat('stat-county', `${n.toLocaleString()} counties`);
-        })
-        .catch(() => {});
+    // Every hunter's headline number comes from one small worker read,
+    // /summary, derived server-side from the hunters' saved state (shared with
+    // strava.html's overview via fetchHunterSummary/hunterStatText in
+    // strava.js). Until the worker is redeployed with /summary, that helper
+    // falls back to the county count alone; on a network error it resolves
+    // null and the cards stay as they are.
+    if (typeof fetchHunterSummary !== 'function') return;
+    fetchHunterSummary().then(summary => {
+        if (!summary) return;
+        ['tile', 'county', 'city', 'metro', 'park', 'mountain', 'pass', 'trail']
+            .forEach(key => setStat(`stat-${key}`, hunterStatText(key, summary)));
+        // The pipeline's own count (above) wins once it lands.
+        if (typeof currentTotal === 'undefined' || currentTotal === 0) {
+            setStat('stat-dashboard', hunterStatText('dashboard', summary));
+        }
+    });
 }
 
+// Empty text leaves the card's existing placeholder alone.
 function setStat(id, text) {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el && text) el.textContent = text;
 }
 
 // ── Android back button (Capacitor only) ────────────────────────────────────
