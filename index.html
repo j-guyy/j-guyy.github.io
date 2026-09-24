@@ -26,7 +26,13 @@
 
     <nav-bar></nav-bar>
 
-    <div class="container" style="height: 100vh;">
+    <!-- Rotating background photos (js/homepage.js); fixed behind everything -->
+    <div class="home-bg" aria-hidden="true">
+        <div class="home-bg-layer is-visible is-top" style="background-image: url('images/img4.jpg');"></div>
+        <div class="home-bg-layer"></div>
+    </div>
+
+    <header class="home-hero">
         <div class="content">
             <h1>
                 <span>THE</span>
@@ -40,13 +46,59 @@
                 <p class="subtitle">Exploring the world one peak at a time</p>
             </div>
         </div>
-        <div class="navigation-buttons">
+        <div class="hero-buttons">
             <a href="us-dashboard.html" class="nav-button">US Travel</a>
             <a href="world-dashboard.html" class="nav-button">World Travel</a>
             <a href="adventures.html" class="nav-button">Adventures</a>
         </div>
-    </div>
+        <a class="scroll-cue" href="#explore">
+            <span>Explore</span>
+            <span class="scroll-cue-chevron" aria-hidden="true"></span>
+        </a>
+    </header>
 
+    <main id="explore" class="home-main">
+
+        <!-- Filled from the Worker /travel/* endpoints; stays hidden if they fail -->
+        <section class="home-section" id="home-stats" aria-labelledby="home-stats-title" hidden>
+            <h2 class="home-section-title" id="home-stats-title">By the Numbers</h2>
+            <div class="home-stats-grid" id="home-stats-grid"></div>
+        </section>
+
+        <!-- Filled from data/adventures.js -->
+        <section class="home-section" id="home-trips" aria-labelledby="home-trips-title" hidden>
+            <h2 class="home-section-title" id="home-trips-title">Latest Trip Reports</h2>
+            <div class="home-trips-grid" id="home-trips-grid"></div>
+            <a class="home-more-link" href="adventures.html">All adventures <span aria-hidden="true">&rarr;</span></a>
+        </section>
+
+        <section class="home-section" aria-labelledby="home-hunters-title">
+            <h2 class="home-section-title" id="home-hunters-title">Activity Hunters</h2>
+            <div class="home-card home-hunters">
+                <p class="home-hunters-text">Every run, ride and hike from Strava, mapped and scored &mdash; how many
+                    counties, national parks, metros, map tiles, city streets, summits, passes and trails they have
+                    covered.</p>
+                <ul class="home-hunter-chips" aria-label="Hunters">
+                    <li>Counties</li>
+                    <li>Parks</li>
+                    <li>Metros</li>
+                    <li>Tiles</li>
+                    <li>Cities</li>
+                    <li>Mountains</li>
+                    <li>Passes</li>
+                    <li>Trails</li>
+                </ul>
+                <div class="home-hunters-actions">
+                    <a class="nav-button home-hunters-primary" href="strava.html">Activity dashboard</a>
+                    <a class="home-hunters-secondary" href="strava.html#statshunters">StatsHunters map <span aria-hidden="true">&rarr;</span></a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/travel-api.js"></script>
+    <script src="data/adventures.js"></script>
     <script src="js/homepage.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
