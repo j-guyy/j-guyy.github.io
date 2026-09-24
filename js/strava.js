@@ -466,16 +466,31 @@ function cityAsSubdivision(addr) {
     return addr.city || addr.municipality || addr.county || '';
 }
 
-// Hong Kong and Macau sit one level above China's provinces in OSM
-// (admin level 3), so Nominatim gives them no `state` and only an
-// `ISO3166-2-lvl3` code — neither the fields above nor cityAsSubdivision()
-// pick them up. Name them from that code (or the country code, should
-// Nominatim ever report them as their own countries) so they land on their
-// own polygons in the Chinese region map.
-const SAR_BY_CODE = { 'CN-HK': 'Hong Kong', 'CN-MO': 'Macau', hk: 'Hong Kong', mo: 'Macau' };
-function sarSubdivision(addr) {
-    return SAR_BY_CODE[addr['ISO3166-2-lvl3']] || SAR_BY_CODE[addr['ISO3166-2-lvl4']]
-        || SAR_BY_CODE[addr.country_code] || '';
+// Regions Nominatim doesn't name usefully, keyed by ISO 3166-2 code (or
+// country code). Checked before any address field.
+//   • China's municipalities: Nominatim puts the district in `city` (Beijing
+//     points come back as "Xicheng District", "Chaoyang District", …), so
+//     cityAsSubdivision() would file each district as its own region.
+//   • Hong Kong and Macau sit one level above the provinces in OSM (admin
+//     level 3), so they have no `state` and only an `ISO3166-2-lvl3` code.
+//     The country codes cover Nominatim reporting them as their own countries.
+const REGION_BY_ISO = {
+    'CN-BJ': 'Beijing', 'CN-SH': 'Shanghai', 'CN-TJ': 'Tianjin', 'CN-CQ': 'Chongqing',
+    'CN-HK': 'Hong Kong', 'CN-MO': 'Macau', hk: 'Hong Kong', mo: 'Macau',
+};
+function isoSubdivision(addr) {
+    return REGION_BY_ISO[addr['ISO3166-2-lvl4']] || REGION_BY_ISO[addr['ISO3166-2-lvl3']]
+        || REGION_BY_ISO[addr.country_code] || '';
+}
+
+// A cached cell needs (re-)geocoding for its subdivision when it has none, or
+// when it's a Chinese cell geocoded before isoSubdivision() existed and so
+// holds a municipality's district ("Xicheng District") instead of the region.
+function needsSubdivision(v) {
+    const cfg = SUBDIVISION_BY_COUNTRY[v.c];
+    if (!cfg) return false;
+    if (!v.s) return true;
+    return cfg.id === 'china' && / (District|County)$/.test(v.s);
 }
 
 // Single geocoding function using Nominatim — returns both country and subdivision.
@@ -501,7 +516,7 @@ async function geocodeKey(lat, lng) {
             const data = await res.json();
             const addr = data.address || {};
             const country = addr.country || 'Unknown';
-            const rawSubdiv = sarSubdivision(addr) || addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
+            const rawSubdiv = isoSubdivision(addr) || addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
             return { c: country, s: rawSubdiv ? cleanSubdivision(rawSubdiv) : '' };
         } catch (err) {
             dbg(`Nominatim error for ${lat},${lng} (attempt ${attempt + 1}): ${err.message}`);
@@ -585,7 +600,7 @@ async function geocodeAll(keys, cache) {
     const needGeo = keys.filter(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') return true;
-        if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
+        if (needsSubdivision(v)) return true;
         return false;
     });
 
@@ -7793,7 +7808,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     cellKeys.forEach(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') needCountry++;
-        else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) needSubdiv++;
+        else if (needsSubdivision(v)) needSubdiv++;
         else hits++;
     });
     dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);
