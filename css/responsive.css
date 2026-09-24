@@ -26,13 +26,6 @@
 /* Small screens and mobile devices */
 @media (max-width: 768px) {
 
-    body,
-    html {
-        overflow-x: hidden;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
     .navbar,
     .parallax-background,
     .parallax-overlay,

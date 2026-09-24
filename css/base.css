@@ -6,12 +6,20 @@
     --bg-transparent: rgba(0, 0, 0, 0.7);
 }
 
+/* The window (document) is the page's scroll container. html/body must not get
+   a fixed `height: 100%` (with an overflow value on body that turns body into
+   the scroller, which breaks scroll restoration on back navigation, mobile
+   browser-chrome collapse and window.scrollTo/scrollY). They only get minimum
+   heights so full-screen pages still fill the viewport. */
 body,
 html {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
-    height: 100%;
+}
+
+html {
+    min-height: 100%;
 }
 
 body {

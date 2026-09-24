@@ -198,11 +198,22 @@ body.show-tools .tools-dropdown {
     background-color: var(--primary-color);
 }
 
-body,
+/* Horizontal-overflow guard. `hidden` on html propagates to the viewport, so the
+   window stays the vertical scroller. body must NOT get `hidden`/`auto` (that
+   would make it a scroll container of its own); `clip` guards it without
+   creating one, and browsers without `clip` just ignore it. */
 html {
     overflow-x: hidden;
+}
+
+body,
+html {
     width: 100%;
     box-sizing: border-box;
+}
+
+body {
+    overflow-x: clip;
 }
 
 .navbar,
@@ -250,7 +261,7 @@ html {
 
 .page {
     position: relative;
-    overflow-x: hidden;
+    overflow-x: clip; /* not hidden: .page is on <body>, see above */
     background-color: transparent;
 }
 

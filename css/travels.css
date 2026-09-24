@@ -1,6 +1,6 @@
 .travels-page {
     position: relative;
-    overflow-x: hidden;
+    overflow-x: clip; /* on <body>: clip, not hidden, so the window scrolls */
     background-color: transparent;
 }
 
