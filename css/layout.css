@@ -272,7 +272,12 @@ body {
 }
 
 .hero {
-    height: 60vh;
+    /* Title banner over the page photo. Kept shorter than a full screen so the
+       first card peeks above the fold; phones get a compact version in
+       responsive.css. */
+    height: 42vh;
+    min-height: 280px;
+    max-height: 460px;
     display: flex;
     flex-direction: column;
     justify-content: center;
