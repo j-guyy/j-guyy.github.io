@@ -273,7 +273,7 @@ const SUBDIVISION_CONFIG = [
     { id: 'canada',    names: ['Canada'],                                    country: 'Canada',     flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
     { id: 'australia', names: ['Australia'],                                 country: 'Australia',  flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
     { id: 'mexico',    names: ['Mexico'],                                    country: 'Mexico',     flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
-    { id: 'china',     names: ['China'],                                     country: 'China',      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
+    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      country: 'China',      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
     { id: 'spain',     names: ['Spain'],                                     country: 'Spain',      flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
     { id: 'italy',     names: ['Italy'],                                     country: 'Italy',      flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
 ];
@@ -466,6 +466,33 @@ function cityAsSubdivision(addr) {
     return addr.city || addr.municipality || addr.county || '';
 }
 
+// Regions Nominatim doesn't name usefully, keyed by ISO 3166-2 code (or
+// country code). Checked before any address field.
+//   • China's municipalities: Nominatim puts the district in `city` (Beijing
+//     points come back as "Xicheng District", "Chaoyang District", …), so
+//     cityAsSubdivision() would file each district as its own region.
+//   • Hong Kong and Macau sit one level above the provinces in OSM (admin
+//     level 3), so they have no `state` and only an `ISO3166-2-lvl3` code.
+//     The country codes cover Nominatim reporting them as their own countries.
+const REGION_BY_ISO = {
+    'CN-BJ': 'Beijing', 'CN-SH': 'Shanghai', 'CN-TJ': 'Tianjin', 'CN-CQ': 'Chongqing',
+    'CN-HK': 'Hong Kong', 'CN-MO': 'Macau', hk: 'Hong Kong', mo: 'Macau',
+};
+function isoSubdivision(addr) {
+    return REGION_BY_ISO[addr['ISO3166-2-lvl4']] || REGION_BY_ISO[addr['ISO3166-2-lvl3']]
+        || REGION_BY_ISO[addr.country_code] || '';
+}
+
+// A cached cell needs (re-)geocoding for its subdivision when it has none, or
+// when it's a Chinese cell geocoded before isoSubdivision() existed and so
+// holds a municipality's district ("Xicheng District") instead of the region.
+function needsSubdivision(v) {
+    const cfg = SUBDIVISION_BY_COUNTRY[v.c];
+    if (!cfg) return false;
+    if (!v.s) return true;
+    return cfg.id === 'china' && / (District|County)$/.test(v.s);
+}
+
 // Single geocoding function using Nominatim — returns both country and subdivision.
 // Replaces BigDataCloud which proved unreliable for bulk requests.
 async function geocodeKey(lat, lng) {
@@ -489,7 +516,7 @@ async function geocodeKey(lat, lng) {
             const data = await res.json();
             const addr = data.address || {};
             const country = addr.country || 'Unknown';
-            const rawSubdiv = addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
+            const rawSubdiv = isoSubdivision(addr) || addr.state || addr.territory || addr.province || cityAsSubdivision(addr);
             return { c: country, s: rawSubdiv ? cleanSubdivision(rawSubdiv) : '' };
         } catch (err) {
             dbg(`Nominatim error for ${lat},${lng} (attempt ${attempt + 1}): ${err.message}`);
@@ -573,7 +600,7 @@ async function geocodeAll(keys, cache) {
     const needGeo = keys.filter(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') return true;
-        if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) return true;
+        if (needsSubdivision(v)) return true;
         return false;
     });
 
@@ -7781,7 +7808,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     cellKeys.forEach(k => {
         const v = cache[k];
         if (!v || !v.c || v.c === 'Unknown') needCountry++;
-        else if (SUBDIVISION_BY_COUNTRY[v.c] && !v.s) needSubdiv++;
+        else if (needsSubdivision(v)) needSubdiv++;
         else hits++;
     });
     dbg(`Geo cache: ${hits} good, ${needCountry} need country, ${needSubdiv} need subdivision`);

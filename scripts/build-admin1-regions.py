@@ -56,12 +56,17 @@ MIN_PART_AREA = 0.0004
 #   dissolve  True when Natural Earth is a level finer than the region we want,
 #             so the grouped features' own names are province names and must
 #             not be used as aliases for the region they sit in
+#   fold_in   other Natural Earth `admin` values to add as one region each,
+#             mapped to (region name, id). Natural Earth files Hong Kong and
+#             Macau as their own countries, split into districts, but Nominatim
+#             reports them as regions of China (ISO 3166-2 CN-HK / CN-MO)
 COUNTRIES = [
     {'id': 'us',        'admin': 'United States of America', 'group_by': 'name',       'id_from': 'iso_3166_2'},
     {'id': 'canada',    'admin': 'Canada',                   'group_by': 'name_en',    'id_from': 'iso_3166_2'},
     {'id': 'australia', 'admin': 'Australia',                'group_by': 'iso_3166_2', 'id_from': 'iso_3166_2'},
     {'id': 'mexico',    'admin': 'Mexico',                   'group_by': 'name_en',    'id_from': 'iso_3166_2'},
-    {'id': 'china',     'admin': 'China',                    'group_by': 'name_en',    'id_from': 'iso_3166_2'},
+    {'id': 'china',     'admin': 'China',                    'group_by': 'name_en',    'id_from': 'iso_3166_2',
+     'fold_in': {'Hong Kong S.A.R.': ('Hong Kong', 'CN-HK'), 'Macau S.A.R': ('Macau', 'CN-MO')}},
     {'id': 'spain',     'admin': 'Spain',                    'group_by': 'region',     'id_from': None,         'dissolve': True},
     {'id': 'italy',     'admin': 'Italy',                    'group_by': 'region',     'id_from': 'region_cod', 'dissolve': True},
 ]
@@ -104,6 +109,8 @@ ALIASES = {
     ('china', 'Xinjiang'): ['Xinjiang Uygur', 'Xinjiang Uyghur'],
     ('china', 'Guangxi'): ['Guangxi Zhuang'],
     ('china', 'Ningxia'): ['Ningxia Hui'],
+    ('china', 'Hong Kong'): ['Hong Kong SAR', 'HKSAR', 'Xianggang'],
+    ('china', 'Macau'): ['Macao', 'Macau SAR', 'Macao SAR', 'Aomen'],
 
     # ── Spain ── (Nominatim's English names for the autonomous communities)
     ('spain', 'Andalucía'): ['Andalusia'],
@@ -193,8 +200,13 @@ def main():
     for cfg in COUNTRIES:
         out_features = []
         groups = {}                                    # grouped value → list of parts
+        fold_in = cfg.get('fold_in') or {}
+        folded_ids = {name: rid for name, rid in fold_in.values()}
         for f in ne['features']:
             p = f['properties']
+            if p.get('admin') in fold_in:
+                groups.setdefault(fold_in[p['admin']][0], []).append((shape(f['geometry']), p))
+                continue
             if p.get('admin') != cfg['admin']:
                 continue
             if p.get('iso_3166_2') in SKIP_ISO:
@@ -214,11 +226,12 @@ def main():
             name = (DISPLAY_NAMES.get((cfg['id'], key))
                     or (p.get('name_en') if cfg['group_by'] == 'iso_3166_2' else key)
                     or key)
-            rid = (p.get(cfg['id_from']) if cfg.get('id_from') else None) or f"{cfg['id']}-{norm(key).replace(' ', '-')}"
+            rid = folded_ids.get(key) or (p.get(cfg['id_from']) if cfg.get('id_from') else None) or f"{cfg['id']}-{norm(key).replace(' ', '-')}"
 
             # Only trust Natural Earth's own names where its features already
             # are the region; when dissolving they are provinces inside it.
-            ne_names = [] if cfg.get('dissolve') else [p.get('name'), p.get('name_en'), p.get('name_local')]
+            # A folded-in region is dissolved from districts, so the same applies.
+            ne_names = [] if cfg.get('dissolve') or key in folded_ids else [p.get('name'), p.get('name_en'), p.get('name_local')]
             dropped = {norm(a) for a in DROP_ALIASES.get((cfg['id'], key)) or []}
             aliases, seen = [], set()
             # `key` is only worth keeping when it's a name — for countries
