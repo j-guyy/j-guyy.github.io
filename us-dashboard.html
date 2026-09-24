@@ -44,8 +44,9 @@
                     <option value="metros">Metros</option>
                     <option value="parks">National Parks</option>
                 </select>
-                <button id="export-csv-btn" class="table-action-btn">Export CSV</button>
-                <button id="edit-mode-btn" class="table-action-btn">Edit Mode</button>
+                <button id="export-csv-btn" class="table-action-btn" data-owner-only hidden>Export CSV</button>
+                <button id="edit-mode-btn" class="table-action-btn" data-owner-only hidden>Edit Mode</button>
+                <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
             <div id="travel-table-container"></div>
         </div>

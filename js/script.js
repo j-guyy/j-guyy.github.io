@@ -144,22 +144,20 @@ document.addEventListener('DOMContentLoaded', function () {
         // Parallax effect for About page
         if (document.querySelector('.about-page')) {
             const parallax = document.querySelector('.parallax-background');
-            const overlay = document.querySelector('.parallax-overlay');
-            const totalHeight = document.body.scrollHeight - window.innerHeight;
 
+            // Measured on every call: the page grows as images/sections load,
+            // and progress is clamped so the 150vh background never slides
+            // past its bottom edge.
             function updateParallax() {
-                const scrolled = window.pageYOffset;
-                const scrollProgress = scrolled / totalHeight;
+                const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const scrollProgress = totalHeight > 0 ? Math.min(Math.max(window.pageYOffset / totalHeight, 0), 1) : 0;
                 const moveDistance = parallax.offsetHeight - window.innerHeight;
 
                 parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
             }
 
-            window.addEventListener('scroll', updateParallax);
-            window.addEventListener('resize', function () {
-                totalHeight = document.body.scrollHeight - window.innerHeight;
-                updateParallax();
-            });
+            window.addEventListener('scroll', updateParallax, { passive: true });
+            window.addEventListener('resize', updateParallax);
 
             // Initial call to set the correct position
             updateParallax();
@@ -168,21 +166,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Parallax effect for Travels page
     if (document.querySelector('.travels-page')) {
         const parallax = document.querySelector('.parallax-background');
-        const totalHeight = document.body.scrollHeight - window.innerHeight;
 
         function updateParallax() {
-            const scrolled = window.pageYOffset;
-            const scrollProgress = scrolled / totalHeight;
+            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollProgress = totalHeight > 0 ? Math.min(Math.max(window.pageYOffset / totalHeight, 0), 1) : 0;
             const moveDistance = parallax.offsetHeight - window.innerHeight;
 
             parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
         }
 
-        window.addEventListener('scroll', updateParallax);
-        window.addEventListener('resize', function () {
-            totalHeight = document.body.scrollHeight - window.innerHeight;
-            updateParallax();
-        });
+        window.addEventListener('scroll', updateParallax, { passive: true });
+        window.addEventListener('resize', updateParallax);
 
         // Initial call to set the correct position
         updateParallax();

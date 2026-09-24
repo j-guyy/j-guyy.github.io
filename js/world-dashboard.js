@@ -1,5 +1,6 @@
 let worldData;
 let editMode = false;
+let refreshOwnerUI = () => {};
 
 const sortState = {
     northAmerica: { col: 'population', dir: 'desc' },
@@ -39,31 +40,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
-    btn.addEventListener('click', () => {
-        if (!editMode) {
-            const stored = sessionStorage.getItem('travelPassword');
-            if (stored) {
-                editMode = true;
-                btn.classList.add('active');
-                btn.textContent = 'Exit Edit Mode';
-                updateTable(document.getElementById('table-selector').value);
-            } else {
-                const pw = prompt('Enter travel password:');
-                if (pw) {
-                    sessionStorage.setItem('travelPassword', pw);
-                    editMode = true;
-                    btn.classList.add('active');
-                    btn.textContent = 'Exit Edit Mode';
-                    updateTable(document.getElementById('table-selector').value);
-                }
-            }
-        } else {
-            editMode = false;
-            btn.classList.remove('active');
-            btn.textContent = 'Edit Mode';
-            updateTable(document.getElementById('table-selector').value);
-        }
-    });
+    // Edit Mode / Export CSV are owner-only; visitors just see the lock.
+    refreshOwnerUI = TravelAdmin.initControls(
+        document.getElementById('owner-login-btn'),
+        loggedIn => { if (!loggedIn && editMode) setEditMode(false); }
+    );
+    btn.addEventListener('click', () => setEditMode(!editMode));
+}
+
+function setEditMode(on) {
+    const btn = document.getElementById('edit-mode-btn');
+    editMode = on;
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
+    updateTable(document.getElementById('table-selector').value);
 }
 
 function setupCsvExport() {
@@ -101,7 +91,7 @@ function downloadCsv(headers, rows, filename) {
 }
 
 async function handleToggle(continentType, country) {
-    const password = sessionStorage.getItem('travelPassword');
+    const password = TravelAdmin.getPassword();
     if (!password) return;
 
     try {
@@ -112,11 +102,9 @@ async function handleToggle(continentType, country) {
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
-            sessionStorage.removeItem('travelPassword');
-            editMode = false;
-            document.getElementById('edit-mode-btn').classList.remove('active');
-            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
-            updateTable(continentType);
+            TravelAdmin.logout();
+            refreshOwnerUI();
+            setEditMode(false);
         }
     }
 }
@@ -257,10 +245,11 @@ function updateTable(continentType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    table.className = 'travel-table travel-table--fit';
 
     const tableHeaders = ['Country', 'Population', 'Status'];
     const sortKeys     = ['name', 'population', 'visited'];
+    const colClasses   = ['col-name', 'col-num', 'col-status'];
 
     const rawData = worldData[continentMap[continentType]];
     const { col, dir } = sortState[continentType];
@@ -275,7 +264,7 @@ function updateTable(continentType) {
         const key = sortKeys[i];
         const isActive = col === key;
 
-        th.classList.add('sortable');
+        th.classList.add('sortable', colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -312,9 +301,9 @@ function updateTable(continentType) {
         const statusClass = editMode ? 'status-toggle' : '';
 
         row.innerHTML = `
-            <td>${country.name}</td>
-            <td>${country.population.toLocaleString()}</td>
-            <td class="${statusClass}">${statusIcon}</td>
+            <td class="col-name">${country.name}</td>
+            <td class="col-num">${country.population.toLocaleString()}</td>
+            <td class="col-status ${statusClass}">${statusIcon}</td>
         `;
 
         if (editMode) {

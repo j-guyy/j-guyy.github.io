@@ -26,6 +26,14 @@
     --app-radius: 16px;
     --app-radius-sm: 12px;
 
+    /* Fixed chrome around a feature screen: the sticky app bar (10 + 40 + 10
+       padding/button + 1 border) and the bottom tab bar. --app-view-h is the
+       height left for content between them. */
+    --app-header-h: 61px;
+    --app-tabbar-h: 60px;
+    --app-view-h: calc(100vh - var(--app-header-h) - var(--app-tabbar-h)
+        - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+
     /* Shared stylesheets (base/dashboard/strava.css) color links, active pills,
        stat numbers, spinners etc. with --primary-color — repointing it here
        reskins all of them at once. */
@@ -40,8 +48,18 @@
 }
 
 .app-page .app-content {
-    padding: 0;
+    padding: 0 0 calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
     max-width: 100%;
+}
+
+/* The dynamic viewport unit tracks Android's collapsing URL/system bars;
+   declared separately so an engine without dvh keeps the vh value instead of
+   an invalid calc (which would collapse every map sized from it). */
+@supports (height: 100dvh) {
+    .app-page {
+        --app-view-h: calc(100dvh - var(--app-header-h) - var(--app-tabbar-h)
+            - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
 }
 
 /* ── Screen transitions ──────────────────────────────────────────────────── */
@@ -96,7 +114,7 @@
 }
 
 .home-grid:last-of-type {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    padding-bottom: 24px; /* safe area is covered by .app-content's tab-bar padding */
 }
 
 .home-card {
@@ -202,7 +220,7 @@
 
 .app-page .app-screen > .section:last-of-type,
 .app-page #strava-subdivisions .section:last-of-type {
-    margin-bottom: calc(20px + env(safe-area-inset-bottom));
+    margin-bottom: 20px; /* safe area is covered by .app-content's tab-bar padding */
 }
 
 /* Until the shared renderer fills them, mount-point-only cards (dashboard
@@ -275,6 +293,7 @@
     color: var(--app-text);
     font-size: 16px; /* prevents Android/iOS focus-zoom */
     font-weight: 550;
+    max-width: 100%; /* lift strava.css's mobile 160px cap that clipped long names */
 }
 
 .app-page .city-select option {
@@ -600,4 +619,285 @@
 
 .app-page .activity-popup .leaflet-popup-content-wrapper {
     border-radius: 14px;
+}
+
+/* ── Regions section (strava.js buildRegionsSection) ─────────────────────── */
+/* One card on the dashboard with a country picker. Left-align the picker and
+   the selected country's stats bar: the app's stats bars scroll horizontally,
+   and centering an overflowing flex row would clip its first item. */
+.app-page .regions-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-page .region-picker {
+    justify-content: flex-start;
+    margin-bottom: 14px;
+}
+
+.app-page .region-stats .county-stats-bar {
+    justify-content: flex-start;
+}
+
+/* ══ Feature screens: flat layout, compact stats, full-height maps ═════════
+   The regional-breakdown sections (#strava-subdivisions, rendered as .section
+   cards by strava.js) are deliberately outside every selector below. */
+
+/* ── Hide auto-opened "Show map" toggles ─────────────────────────────────── */
+/* The router opens each of these screens' feature on entry (js/app.js
+   ensureOpen), so the toggle would only ever offer to hide what the screen is
+   for. The buttons stay in the DOM — strava.js still updates their labels.
+   Mountain/Pass maps are not auto-opened, so their toggles remain. */
+.app-page .app-controls .app-auto-toggle {
+    display: none;
+}
+
+.app-page .app-controls:not(:has(> :not(.app-auto-toggle))) {
+    display: none;
+}
+
+/* ── Flat screen sections ────────────────────────────────────────────────── */
+/* A screen-level .section used to be a padded card holding more padded cards
+   (stat tiles, collapsible headers, the map). Make it a plain container so its
+   children are the only cards, one level deep. */
+.app-page .app-screen > .section {
+    margin: 12px 12px 0;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+}
+
+/* Collapsible = one card: header row and its table share a single frame. */
+.app-page .app-screen > .section .collapsible-section {
+    margin: 12px 0 0;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+    overflow: hidden;
+}
+
+.app-page .app-screen > .section .collapsible-header {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.app-page .app-screen > .section .collapsible-header:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.app-page .app-screen > .section .collapsible-body {
+    padding: 0 4px 6px;
+}
+
+/* A collapsible nested inside another is a divided row, not a third card. */
+.app-page .app-screen > .section .collapsible-section .collapsible-section {
+    margin: 0;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--app-border);
+    border-radius: 0;
+}
+
+/* Tiles now sit on the page background, so lift them to the card surface;
+   inside a collapsible card they keep the raised surface-2. */
+.app-page .app-screen > .section .summary-stat:not(.strava-total),
+.app-page .app-screen:not(#screen-dashboard) .county-stat-item {
+    background: var(--app-surface);
+}
+
+.app-page .app-screen > .section .collapsible-section .county-stat-item {
+    background: var(--app-surface-2);
+}
+
+/* ── Compact hunter stats bars ───────────────────────────────────────────── */
+/* A 3-up grid (2×2 for exactly four) instead of a sideways-scrolling strip or
+   strava.css's stacked column, so the map starts right under the numbers. */
+.app-page .app-screen:not(#screen-dashboard) .county-stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex-direction: row;
+    gap: 8px;
+    margin: 0 0 12px;
+    overflow: visible;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .county-stats-bar:has(> .county-stat-item:nth-child(4)):not(:has(> .county-stat-item:nth-child(5))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Long bars (Park Hunter's seven) go 4-up so they stay two rows. */
+.app-page .app-screen:not(#screen-dashboard) .county-stats-bar:has(> .county-stat-item:nth-child(7)) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-page .app-screen:not(#screen-dashboard) .county-stat-item {
+    min-width: 0;
+    gap: 3px;
+    padding: 9px 10px 8px;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .county-stat-number {
+    overflow: hidden;
+    font-size: 1.15rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .county-stat-label {
+    font-size: 0.6rem;
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+}
+
+/* Gridlines / legend / "Show remaining nodes" row spans the full grid. */
+.app-page .app-screen:not(#screen-dashboard) .county-stats-bar .stats-bar-actions {
+    grid-column: 1 / -1;
+    width: auto;
+    margin: 2px 0 0;
+}
+
+/* ── Readable tables ─────────────────────────────────────────────────────── */
+/* strava.css forces a 550px no-wrap table below 768px, which on a phone cuts
+   the last columns off behind a hidden scrollbar. Drop the forced width and
+   let cells (and headers) wrap at spaces so the columns share the card width;
+   single words and numbers never break, so a table that still can't fit (many
+   numeric columns) keeps scrolling inside its .table-scroll-wrapper. */
+.app-page .app-screen:not(#screen-dashboard) .travel-table,
+.app-page #strava-table-container .travel-table {
+    min-width: 100%;
+    margin-top: 4px;
+    font-size: 0.8rem;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .travel-table th,
+.app-page .app-screen:not(#screen-dashboard) .travel-table td {
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .travel-table th,
+.app-page #strava-table-container .travel-table th {
+    padding: 8px 7px;
+    vertical-align: bottom;
+}
+
+.app-page .app-screen:not(#screen-dashboard) .travel-table td,
+.app-page #strava-table-container .travel-table td {
+    padding: 9px 7px;
+}
+
+/* Scroll shadow for the tables that still overflow: strava.js's has-scroll
+   hint is measured while the collapsible is still closed (so it never shows),
+   and the app hides scrollbars. Pure-CSS instead — the "local" surface-colored
+   covers scroll with the content and hide the fixed "scroll" glows once an
+   edge is reached, so the glow only appears where more columns are hidden. */
+.app-page .app-screen > .section .collapsible-section .table-scroll-wrapper {
+    background:
+        linear-gradient(to right, var(--app-surface) 40%, rgba(19, 23, 21, 0)) left center / 36px 100% no-repeat local,
+        linear-gradient(to left, var(--app-surface) 40%, rgba(19, 23, 21, 0)) right center / 36px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(238, 242, 239, 0.24), transparent) left center / 14px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(238, 242, 239, 0.24), transparent) right center / 14px 100% no-repeat scroll;
+}
+
+/* ── Map heights ─────────────────────────────────────────────────────────── */
+/* Hunter maps: as tall as the screen allows while leaving the stats row above
+   and a peek of the tables below, so there is always page to scroll by. */
+.app-page #county-map,
+.app-page #park-map,
+.app-page #metro-map,
+.app-page #tile-map,
+.app-page #city-map,
+.app-page #mountain-map,
+.app-page #pass-map,
+.app-page #trail-map {
+    height: clamp(320px, calc(var(--app-view-h) - 150px), 640px);
+}
+
+/* Screens whose whole purpose is the map fill everything between the app bar
+   and the tab bar, less the legend/status (Activity Map) or the link row
+   (StatsHunters). */
+.app-page #screen-map #strava-map {
+    height: max(320px, calc(var(--app-view-h) - 162px));
+}
+
+.app-page #screen-statshunters #statshunters-embed {
+    height: max(320px, calc(var(--app-view-h) - 102px));
+}
+
+/* ══ Bottom tab bar ════════════════════════════════════════════════════════ */
+.app-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100; /* above Leaflet panes, below pseudo-fullscreen maps */
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    height: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
+    padding: 0 6px env(safe-area-inset-bottom);
+    box-sizing: border-box;
+    background: rgba(10, 13, 11, 0.9);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--app-border);
+}
+
+.app-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    color: var(--app-text-dim);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-tab:hover { color: var(--app-text); }
+
+.app-tab svg {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    padding: 4px 18px;
+    border-radius: 999px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.app-tab span {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.app-tab.active { color: var(--app-accent); }
+.app-tab.active svg { background: var(--app-accent-soft); }
+.app-tab:active svg { transform: scale(0.9); }
+
+.app-tab:focus-visible {
+    outline: none;
+}
+
+.app-tab:focus-visible svg {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-tab svg { transition: none; }
+    .app-tab:active svg { transform: none; }
 }

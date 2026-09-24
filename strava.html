@@ -39,11 +39,17 @@
             <div id="cache-info" class="cache-info-bar"></div>
         </div>
 
+        <!-- Overview: one card per section, filled by renderOverview() with each
+             hunter's headline stat from the worker's /summary. Clicking a card
+             scrolls to its section and opens it. Website only — the app shell
+             has its own home grid. -->
+        <nav id="strava-overview" class="strava-overview" aria-label="Sections"></nav>
+
         <!-- Activity type filters -->
         <div id="strava-filters" class="section"></div>
 
         <!-- Activity map (lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="map">
             <h2>Activity Map <button class="cache-refresh-btn" id="map-toggle-btn" onclick="toggleMap()">Show map</button></h2>
             <div id="map-section" style="display:none">
                 <div id="strava-map"></div>
@@ -53,7 +59,7 @@
         </div>
 
         <!-- County Hunter (US, lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="county">
             <h2>County Hunter <button class="cache-refresh-btn" id="county-toggle-btn" onclick="toggleCountyMap()">Show map</button></h2>
             <div id="county-section" style="display:none">
                 <div id="county-stats-bar"></div>
@@ -65,7 +71,7 @@
         </div>
 
         <!-- Park Hunter (US federal lands, lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="park">
             <h2>Park Hunter <button class="cache-refresh-btn" id="park-toggle-btn" onclick="toggleParkMap()">Show map</button></h2>
             <div id="park-section" style="display:none">
                 <div id="park-stats-bar" class="county-stats-bar"></div>
@@ -80,7 +86,7 @@
         </div>
 
         <!-- Metro Hunter (US metro areas, lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="metro">
             <h2>Metro Hunter <button class="cache-refresh-btn" id="metro-toggle-btn" onclick="toggleMetroMap()">Show map</button></h2>
             <div id="metro-section" style="display:none">
                 <div id="metro-stats-bar" class="county-stats-bar"></div>
@@ -92,7 +98,7 @@
         </div>
 
         <!-- Tile Hunter (world, lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="tile">
             <h2>Tile Hunter <button class="cache-refresh-btn" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button></h2>
             <div id="tile-section" style="display:none">
                 <div id="tile-stats-bar" class="county-stats-bar"></div>
@@ -102,7 +108,7 @@
         </div>
 
         <!-- City Hunter (lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="city">
             <h2>City Hunter
                 <select id="city-select" class="city-select" onchange="switchCity(this.value)">
                     <option value="superior-co">Superior, CO</option>
@@ -124,10 +130,10 @@
         </div>
 
         <!-- Mountain Hunter (lazy-loaded, auto-initialises after activities load) -->
-        <div class="section">
+        <div class="section" id="mountain">
             <h2>Mountain Hunter
                 <button class="cache-refresh-btn" id="mountain-toggle-btn" onclick="toggleMountainMap()">Show map</button>
-                <button class="cache-refresh-btn" id="mountain-edit-btn" onclick="toggleMountainEditMode()">Edit peaks</button>
+                <button class="cache-refresh-btn admin-only" id="mountain-edit-btn" onclick="toggleMountainEditMode()" hidden>Edit peaks</button>
             </h2>
             <div id="mountain-stats-bar" class="county-stats-bar"></div>
             <div id="mountain-table"></div>
@@ -155,7 +161,7 @@
         </div>
 
         <!-- Pass Hunter (Colorado cycling passes, auto-initialises after activities load) -->
-        <div class="section">
+        <div class="section" id="pass">
             <h2>Pass Hunter
                 <button class="cache-refresh-btn" id="pass-toggle-btn" onclick="togglePassMap()">Show map</button>
             </h2>
@@ -175,7 +181,7 @@
         </div>
 
         <!-- Trail Hunter (region-based, lazy-loaded) -->
-        <div class="section">
+        <div class="section" id="trail">
             <h2>Trail Hunter
                 <select id="trail-select" class="city-select" onchange="switchTrail(this.value)">
                     <option value="boulder-county">Boulder County, CO</option>
@@ -201,7 +207,7 @@
             <div id="strava-table-container"></div>
         </div>
 
-        <!-- Regional breakdowns (US states, Canadian provinces, etc.) — rendered by JS -->
+        <!-- Regions (US states, Canadian provinces, …): one section with a country picker — rendered by JS -->
         <div id="strava-subdivisions"></div>
 
         <!-- StatsHunters (external shared map, iframe loaded on first open) -->

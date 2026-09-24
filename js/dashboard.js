@@ -1,5 +1,6 @@
 let metros, highPoints, nationalParks, visitedStates;
 let editMode = false;
+let refreshOwnerUI = () => {};
 
 const sortState = {
     highpoints: { col: 'elevation', dir: 'desc' },
@@ -29,31 +30,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
-    btn.addEventListener('click', () => {
-        if (!editMode) {
-            const stored = sessionStorage.getItem('travelPassword');
-            if (stored) {
-                editMode = true;
-                btn.classList.add('active');
-                btn.textContent = 'Exit Edit Mode';
-                updateTable(document.getElementById('table-selector').value);
-            } else {
-                const pw = prompt('Enter travel password:');
-                if (pw) {
-                    sessionStorage.setItem('travelPassword', pw);
-                    editMode = true;
-                    btn.classList.add('active');
-                    btn.textContent = 'Exit Edit Mode';
-                    updateTable(document.getElementById('table-selector').value);
-                }
-            }
-        } else {
-            editMode = false;
-            btn.classList.remove('active');
-            btn.textContent = 'Edit Mode';
-            updateTable(document.getElementById('table-selector').value);
-        }
-    });
+    // Edit Mode / Export CSV are owner-only; visitors just see the lock.
+    refreshOwnerUI = TravelAdmin.initControls(
+        document.getElementById('owner-login-btn'),
+        loggedIn => { if (!loggedIn && editMode) setEditMode(false); }
+    );
+    btn.addEventListener('click', () => setEditMode(!editMode));
+}
+
+function setEditMode(on) {
+    const btn = document.getElementById('edit-mode-btn');
+    editMode = on;
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
+    updateTable(document.getElementById('table-selector').value);
 }
 
 function setupCsvExport() {
@@ -107,7 +97,7 @@ function downloadCsv(headers, rows, filename) {
 }
 
 async function handleToggle(tableType, item) {
-    const password = sessionStorage.getItem('travelPassword');
+    const password = TravelAdmin.getPassword();
     if (!password) return;
 
     let type, key;
@@ -130,11 +120,9 @@ async function handleToggle(tableType, item) {
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
-            sessionStorage.removeItem('travelPassword');
-            editMode = false;
-            document.getElementById('edit-mode-btn').classList.remove('active');
-            document.getElementById('edit-mode-btn').textContent = 'Edit Mode';
-            updateTable(tableType);
+            TravelAdmin.logout();
+            refreshOwnerUI();
+            setEditMode(false);
         }
     }
 }
@@ -230,21 +218,26 @@ function updateTable(tableType) {
     tableContainer.innerHTML = '';
 
     const table = document.createElement('table');
-    table.className = 'travel-table';
+    // travel-table--fit: sized to fit a phone without horizontal scrolling
+    // (Rank hidden, names wrap), so the Status column stays on screen.
+    table.className = 'travel-table travel-table--fit';
 
-    let tableHeaders, sortKeys, rawData;
+    let tableHeaders, sortKeys, colClasses, rawData;
 
     if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
         sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
         rawData      = highPoints;
     } else if (tableType === 'metros') {
         tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
         sortKeys     = ['rank', 'metro_name', 'state', 'population', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
         rawData      = metros;
     } else if (tableType === 'parks') {
         tableHeaders = ['National Park', 'State', 'Status'];
         sortKeys     = ['name', 'state', 'visited'];
+        colClasses   = ['col-name', '', 'col-status'];
         rawData      = nationalParks;
     }
 
@@ -261,6 +254,7 @@ function updateTable(tableType) {
         const isActive = col === key;
 
         th.classList.add('sortable');
+        if (colClasses[i]) th.classList.add(colClasses[i]);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -298,25 +292,25 @@ function updateTable(tableType) {
 
         if (tableType === 'highpoints') {
             row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.name}</td>
+                <td class="col-rank">${index + 1}</td>
+                <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
-                <td>${item.elevation.toLocaleString()}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-num">${item.elevation.toLocaleString()}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'metros') {
             row.innerHTML = `
-                <td>${item.rank}</td>
-                <td>${item.metro_name}</td>
+                <td class="col-rank">${item.rank}</td>
+                <td class="col-name">${item.metro_name}</td>
                 <td>${item.state}</td>
-                <td>${item.population}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-num">${item.population}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'parks') {
             row.innerHTML = `
-                <td>${item.name}</td>
+                <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
-                <td class="${statusClass}">${statusIcon}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         }
 
