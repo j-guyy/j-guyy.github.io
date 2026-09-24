@@ -28,17 +28,18 @@
 
 .info {
     display: flex;
-    background-color: rgba(45, 45, 45, 0.8);
+    background-color: var(--surface);
+    border: 1px solid var(--border);
     margin: 40px 5%;
     padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     align-items: center;
 }
 
 .info.reverse {
     flex-direction: row-reverse;
-    background-color: rgba(60, 60, 60, 0.8);
+    background-color: rgba(26, 31, 28, 0.88); /* a shade lighter than --surface */
 }
 
 .info .text {

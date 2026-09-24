@@ -67,9 +67,10 @@
 }
 
 .summary-stat {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
     padding: 20px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     transition: transform 0.2s ease;
     display: flex;
     flex-direction: column;
@@ -127,9 +128,8 @@
 }
 
 .stat-label {
-    color: var(--text-color);
-    opacity: 0.9;
-    font-size: 0.9em;
+    color: var(--text-dim);
+    font-size: 0.95rem;
     text-align: center;
     width: 100%;
 }
@@ -323,7 +323,7 @@
 
     .states-summary .stat-label,
     .world-summary .stat-label {
-        font-size: 0.9em;
+        font-size: 0.95rem;
         margin-top: 4px;
     }
 
@@ -352,11 +352,14 @@
 
     .other-stats.other-stats-trio .stat-total,
     .other-stats.other-stats-trio .stat-percentage {
-        font-size: 0.7em;
+        font-size: 0.8rem;
     }
 
+    /* Three tiles share a phone row, so this is the one label allowed below
+       --text-xs — still 12px, wrapping to two lines rather than shrinking. */
     .other-stats.other-stats-trio .stat-label {
-        font-size: 0.65em;
+        font-size: 0.75rem;
+        line-height: 1.25;
     }
 
     .other-stats .summary-stat {
@@ -374,7 +377,7 @@
     }
 
     .stat-label {
-        font-size: 0.75em;
+        font-size: var(--text-xs);
     }
 
     .stat-number-container {
@@ -675,8 +678,8 @@ Controls Styling */
     margin-top: 15px;
     padding: 6px 14px;
     border-radius: 20px;
-    font-size: 0.75em;
-    opacity: 0.8;
+    font-size: var(--text-xs);
+    opacity: 0.85;
     background-color: rgba(255, 255, 255, 0.08);
     color: var(--text-color);
     transition: all 0.3s ease;

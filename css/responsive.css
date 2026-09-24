@@ -228,7 +228,7 @@
     }
 
     .section p {
-        font-size: .7em;
+        font-size: var(--text-sm);
     }
 
     /* Map components */

@@ -4,6 +4,27 @@
     --text-color: white;
     --bg-color: black;
     --bg-transparent: rgba(0, 0, 0, 0.7);
+
+    /* ── Design tokens ────────────────────────────────────────────────────
+       The website's version of the phone app's system (css/app.css): dark,
+       slightly green-tinted surfaces, one hairline border, one green accent.
+       Cards sit on the full-page photos, so --surface is mostly opaque — the
+       photo shows around and faintly through them, never behind body text. */
+    --surface: rgba(17, 21, 19, 0.86);        /* cards / .section over photos */
+    --surface-solid: #161a18;                 /* --surface flattened on black (sticky cells) */
+    --surface-2: rgba(255, 255, 255, 0.06);   /* tiles nested inside a card */
+    --surface-2-hover: rgba(255, 255, 255, 0.1);
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent-soft: rgba(76, 175, 80, 0.15);
+    --accent-border: rgba(76, 175, 80, 0.45);
+    --text: #eef2ef;
+    --text-dim: rgba(238, 242, 239, 0.72);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --text-sm: 0.875rem;   /* 14px — secondary copy */
+    --text-xs: 0.8125rem;  /* 13px — floor for labels/captions */
 }
 
 /* The window (document) is the page's scroll container. html/body must not get
