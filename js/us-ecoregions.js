@@ -43,7 +43,9 @@ function initMap() {
         worldCopyJump: false
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Public tile key: CARTO watermarks keyless raster tiles (same key as js/strava.js).
+    const CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
         attribution: '© OpenStreetMap contributors © CARTO',
         maxZoom: 18,
         subdomains: 'abcd'
