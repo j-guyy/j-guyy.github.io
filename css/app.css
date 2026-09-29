@@ -828,6 +828,174 @@
     height: max(320px, calc(var(--app-view-h) - 102px));
 }
 
+/* ══ Map mode (the Map tab) ════════════════════════════════════════════════
+   js/app.js shows a hunter's own screen as a map layer by adding
+   .app-map-mode to <body> (routes #map, #map/county, …). Same DOM and same
+   Leaflet instance as the hunter screen; this block only strips the screen
+   down to its map and puts the layer switcher where its app bar was. The
+   switcher is exactly as tall as that app bar, so --app-view-h still holds. */
+.app-map-switcher {
+    position: sticky;
+    top: 0;
+    z-index: 1100; /* above Leaflet panes (max ~1000) */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px 0;
+    background: rgba(10, 13, 11, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--app-border);
+}
+
+/* display:flex above would otherwise override the hidden attribute */
+.app-map-switcher[hidden],
+.app-map-detail[hidden] {
+    display: none;
+}
+
+/* Sideways-scrolling pill row; the edges fade to hint at more layers. */
+.app-map-pills {
+    position: relative; /* offsetParent, so js/app.js can centre the active pill */
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 16px), transparent);
+}
+
+.app-map-pills::-webkit-scrollbar { display: none; }
+
+.app-map-pill {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 15px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    color: var(--app-text-dim);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-map-pill:active { transform: scale(0.95); }
+
+.app-map-pill.active {
+    border-color: var(--app-accent-border);
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+}
+
+/* Jump from a layer to its hunter's stats + tables */
+.app-map-detail {
+    box-sizing: border-box; /* keeps the bar exactly as tall as the app bar it replaces */
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+    color: var(--app-text);
+    transition: transform 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-map-detail:active { transform: scale(0.92); }
+
+/* The switcher is the app bar now. */
+.app-map-mode .app-screen-header {
+    display: none;
+}
+
+/* Tables and edit-mode lists are the hunter screen's job. !important because
+   strava.js toggles a couple of them (Mountain near-miss/hidden) inline. */
+.app-map-mode .app-detail {
+    display: none !important;
+}
+
+/* Same for the stat tiles — but keep the map controls that live in the same
+   bar (Tile gridlines + legend, City/Trail node and activity buttons). The
+   :not(#screen-dashboard) matches the compact-bar rules above, whose id
+   specificity this has to beat. */
+.app-page.app-map-mode .app-screen:not(#screen-dashboard) .county-stat-item {
+    display: none;
+}
+
+.app-page.app-map-mode .app-screen:not(#screen-dashboard) .county-stats-bar {
+    margin-bottom: 10px;
+}
+
+.app-page.app-map-mode .app-screen:not(#screen-dashboard) .county-stats-bar:not(:has(.stats-bar-actions)) {
+    display: none;
+}
+
+/* Show/hide-map toggles and peak editing stay on the hunter screen; a control
+   row survives only if it still holds a picker (City, Trail) or a link. */
+.app-map-mode #mountain-toggle-btn,
+.app-map-mode #mountain-edit-btn,
+.app-map-mode #pass-toggle-btn {
+    display: none;
+}
+
+.app-map-mode .app-controls:not(:has(> select, > a)) {
+    display: none;
+}
+
+/* With the tables gone the map can take the whole height between the switcher
+   and the tab bar, less whatever else the screen keeps around it
+   (--map-chrome: a picker or legend above, a legend below). The 320px floor
+   lets a short screen scroll rather than squash the map. */
+.app-map-mode #county-map,
+.app-map-mode #park-map,
+.app-map-mode #metro-map,
+.app-map-mode #tile-map,
+.app-map-mode #city-map,
+.app-map-mode #mountain-map,
+.app-map-mode #pass-map,
+.app-map-mode #trail-map {
+    height: max(320px, calc(var(--app-view-h) - var(--map-chrome, 52px)));
+}
+
+.app-map-mode #screen-tile     { --map-chrome: 172px; } /* gridlines + two rows of legend chips */
+.app-map-mode #screen-city     { --map-chrome: 216px; } /* area picker + node buttons above, legend below */
+.app-map-mode #screen-trail    { --map-chrome: 290px; } /* same, plus the surface filter row */
+.app-map-mode #screen-mountain { --map-chrome: 104px; } /* legend filters below */
+.app-map-mode #screen-pass     { --map-chrome: 104px; }
+
+/* Trail's surface filter wraps into several rows of pills (its wrapper sets
+   flex-wrap inline); as a map layer keep it to one sideways-scrolling row so it
+   doesn't push the map down the screen. */
+.app-map-mode #trail-surface-filters > div:last-child {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.app-map-mode #trail-surface-filters > div:last-child::-webkit-scrollbar { display: none; }
+
+.app-map-mode #trail-surface-filters .filter-pills {
+    flex-wrap: nowrap;
+}
+
+.app-map-mode #trail-surface-filters button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 /* ══ Bottom tab bar ════════════════════════════════════════════════════════ */
 .app-tabbar {
     position: fixed;
@@ -836,7 +1004,7 @@
     bottom: 0;
     z-index: 1100; /* above Leaflet panes, below pseudo-fullscreen maps */
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     height: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
     padding: 0 6px env(safe-area-inset-bottom);
     box-sizing: border-box;
@@ -867,7 +1035,7 @@
     box-sizing: content-box;
     width: 22px;
     height: 22px;
-    padding: 4px 18px;
+    padding: 4px 15px;
     border-radius: 999px;
     fill: none;
     stroke: currentColor;
