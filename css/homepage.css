@@ -571,6 +571,17 @@ a.home-card:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+
+    /* Skip the entrance animations: show the hero content straight away. */
+    .home-page .content h1 span,
+    .home-page .content .subtitle,
+    .home-page .hero-buttons,
+    .home-page .scroll-cue {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
     .scroll-cue-chevron {
         animation: none;
     }

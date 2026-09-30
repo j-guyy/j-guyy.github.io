@@ -216,6 +216,16 @@ body {
     overflow-x: clip;
 }
 
+/* Safari < 16 ignores `clip`, and iOS lets touch-pan past an html-only
+   `hidden`; there body gets `hidden` too. This is safe only because body has
+   an auto height (never `height: 100%`), so it grows with its content and the
+   window stays the vertical scroller. */
+@supports not (overflow: clip) {
+    body {
+        overflow-x: hidden;
+    }
+}
+
 .navbar,
 .parallax-background,
 .parallax-overlay,

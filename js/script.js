@@ -156,8 +156,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
             }
 
-            window.addEventListener('scroll', updateParallax, { passive: true });
-            window.addEventListener('resize', updateParallax);
+            // One update per frame: scroll events can fire faster than the
+            // display refreshes, and each update reads layout.
+            let parallaxQueued = false;
+            function queueParallax() {
+                if (parallaxQueued) return;
+                parallaxQueued = true;
+                requestAnimationFrame(() => {
+                    parallaxQueued = false;
+                    updateParallax();
+                });
+            }
+
+            // Visitors who prefer reduced motion keep the background still.
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                window.addEventListener('scroll', queueParallax, { passive: true });
+                window.addEventListener('resize', queueParallax);
+            }
 
             // Initial call to set the correct position
             updateParallax();
