@@ -45,6 +45,7 @@ class FeaturedAdventuresPage {
             <img src="${adventure.image}" 
                  alt="${adventure.title}" 
                  class="featured-card-image"
+                 loading="lazy" decoding="async" width="640" height="400"
                  onerror="this.src='images/placeholder-adventure.svg'">
             <div class="featured-card-content">
                 <div class="featured-card-category">${adventure.category}</div>
@@ -132,6 +133,7 @@ class FeaturedAdventuresPage {
             <img src="${adventure.image}" 
                  alt="${adventure.title}" 
                  class="adventure-card-image"
+                 loading="lazy" decoding="async" width="640" height="360"
                  onerror="this.src='images/placeholder-adventure.svg'">
             <div class="adventure-card-content">
                 <h4 class="adventure-card-title">${adventure.title}</h4>

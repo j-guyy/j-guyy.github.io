@@ -140,7 +140,7 @@ class FeaturedContentSection extends HTMLElement {
         return `
             <div class="featured-card" data-link="${item.link}" data-type="${item.type}" tabindex="0" role="button" aria-label="Navigate to ${item.title}">
                 <div class="card-image-container">
-                    <img src="${item.image}" alt="${item.title}" class="card-image" loading="lazy">
+                    <img src="${item.image}" alt="${item.title}" class="card-image" loading="lazy" decoding="async" width="640" height="400">
                     <div class="card-overlay"></div>
                 </div>
                 <div class="card-content">
