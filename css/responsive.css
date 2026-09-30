@@ -44,14 +44,10 @@
         z-index: 1000;
     }
 
-    .nav-menu {
-        width: 100%;
-        padding: 5px 0;
-        position: relative;
-    }
-
     .nav-menu li {
         margin: 5px 10px;
+        width: auto; /* fill the menu minus the margins, not 100% plus them */
+        align-self: stretch;
         position: relative;
     }
 
