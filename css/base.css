@@ -99,3 +99,44 @@ button:hover {
     background-color: var(--primary-color);
     color: var(--text-color);
 }
+
+/* Tables | Map switch between a dashboard and its map page (US, World).
+   Sits right under the hero on both pages so it stays put when you flip. */
+.view-switch {
+    display: flex;
+    width: max-content;
+    margin: 16px auto 0;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.view-switch-option {
+    min-width: 88px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.view-switch-option:hover {
+    color: var(--text);
+    background: var(--surface-2-hover);
+}
+
+.view-switch-option[aria-current="page"] {
+    color: #fff;
+    background: var(--primary-color);
+}
+
+.view-switch-option:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}

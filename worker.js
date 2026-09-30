@@ -192,6 +192,9 @@ export default {
                 return json(data || { ids: [] });
             }
             if (path === '/peaks/hidden/save' && request.method === 'POST') {
+                // Hiding sub-peaks is an owner edit (Mountain Hunter edit mode),
+                // unlike the detection caches above that any visitor's page saves.
+                if (!isAdmin(request, env)) return unauthorized();
                 const data = await request.json();
                 await env.STRAVA_DATA.put(HIDDEN_PEAKS_KEY, JSON.stringify({ ids: data.ids || [] }));
                 return json({ ok: true, count: (data.ids || []).length });
