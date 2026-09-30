@@ -1,0 +1,32 @@
+# Cloudflare Worker config for the Strava/travel API (worker.js).
+#
+# A `wrangler deploy` REPLACES the Worker's bindings, triggers and variables with
+# what is listed here, so this file must mirror everything the dashboard shows
+# (Workers & Pages -> strava-worker -> Settings). Anything missing gets removed.
+#
+# Secrets (CLIENT_ID, CLIENT_SECRET, TRAVEL_PASSWORD) live in Cloudflare, are NOT
+# listed here, and are preserved across deploys. Never put secret values in this repo.
+
+name = "strava-worker"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# TODO(owner): replace both ids with the real namespace ids
+# (Settings -> Bindings -> the KV namespace). The deploy workflow refuses to run
+# while a REPLACE_WITH_* placeholder remains.
+[[kv_namespaces]]
+binding = "STRAVA_DATA"
+id = "REPLACE_WITH_STRAVA_DATA_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "STRAVA_KV"
+id = "REPLACE_WITH_STRAVA_KV_NAMESPACE_ID"
+
+# TODO(owner): check Settings -> Triggers and Settings -> Variables and add here
+# anything present in the dashboard, e.g.:
+#   [triggers]
+#   crons = ["0 * * * *"]
+#   [vars]
+#   SOME_NAME = "value"
+#   routes / custom domain via `routes = [...]`
+# If the dashboard shows none, leave this as is.
