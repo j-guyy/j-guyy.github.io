@@ -178,22 +178,4 @@ document.addEventListener('DOMContentLoaded', function () {
             updateParallax();
         }
     }
-    // Parallax effect for Travels page
-    if (document.querySelector('.travels-page')) {
-        const parallax = document.querySelector('.parallax-background');
-
-        function updateParallax() {
-            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const scrollProgress = totalHeight > 0 ? Math.min(Math.max(window.pageYOffset / totalHeight, 0), 1) : 0;
-            const moveDistance = parallax.offsetHeight - window.innerHeight;
-
-            parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
-        }
-
-        window.addEventListener('scroll', updateParallax, { passive: true });
-        window.addEventListener('resize', updateParallax);
-
-        // Initial call to set the correct position
-        updateParallax();
-    }
 });
