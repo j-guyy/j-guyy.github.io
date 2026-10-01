@@ -156,29 +156,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
             }
 
-            window.addEventListener('scroll', updateParallax, { passive: true });
-            window.addEventListener('resize', updateParallax);
+            // One update per frame: scroll events can fire faster than the
+            // display refreshes, and each update reads layout.
+            let parallaxQueued = false;
+            function queueParallax() {
+                if (parallaxQueued) return;
+                parallaxQueued = true;
+                requestAnimationFrame(() => {
+                    parallaxQueued = false;
+                    updateParallax();
+                });
+            }
+
+            // Visitors who prefer reduced motion keep the background still.
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                window.addEventListener('scroll', queueParallax, { passive: true });
+                window.addEventListener('resize', queueParallax);
+            }
 
             // Initial call to set the correct position
             updateParallax();
         }
-    }
-    // Parallax effect for Travels page
-    if (document.querySelector('.travels-page')) {
-        const parallax = document.querySelector('.parallax-background');
-
-        function updateParallax() {
-            const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const scrollProgress = totalHeight > 0 ? Math.min(Math.max(window.pageYOffset / totalHeight, 0), 1) : 0;
-            const moveDistance = parallax.offsetHeight - window.innerHeight;
-
-            parallax.style.transform = `translateY(${-moveDistance * scrollProgress}px)`;
-        }
-
-        window.addEventListener('scroll', updateParallax, { passive: true });
-        window.addEventListener('resize', updateParallax);
-
-        // Initial call to set the correct position
-        updateParallax();
     }
 });
