@@ -2539,8 +2539,21 @@ function setParkStatus(msg) {
 
 // ── Metro Hunter ──────────────────────────────────────────────────────────────
 
-const METRO_TOTAL = 200;   // total metros in metros.json (3 PR metros have no polygon)
 const METRO_COLOR = '#FFC107';  // amber
+const METRO_TOP_OPTIONS = [50, 100, 200];   // metros.json holds the top 200 (3 PR metros have no polygon)
+const METRO_TOP_KEY = 'metro_top_n';
+const METRO_TOP_DEFAULT = 100;
+
+// How many of the ranked metros the section tracks. Only the view changes —
+// detection and the saved worker state always cover all 200.
+let metroTopN = (() => {
+    try {
+        const n = Number(localStorage.getItem(METRO_TOP_KEY));
+        if (METRO_TOP_OPTIONS.includes(n)) return n;
+    } catch {}
+    return METRO_TOP_DEFAULT;
+})();
+let metroRankById = {};   // id → rank, built from the GeoJSON
 
 let metroMap = null;
 let metroMapInitialized = false;
@@ -2587,6 +2600,9 @@ async function initMetroMap() {
 
     const metros = preprocessMetros(geojson);
     const index  = buildSpatialIndex(metros);
+    metroGeoJsonRef = geojson;
+    metroRankById = {};
+    metros.forEach(m => { metroRankById[m.id] = m.rank; });
 
     const needsBackfill = visitedMetroIds.size > 0 && Object.keys(metroDiscoveries).length === 0;
     if (needsBackfill) {
@@ -2626,6 +2642,7 @@ async function initMetroMap() {
     setMetroStatus('Loading activity routes…');
     await addPolylineOverlay(metroMap, { interactive: true });
 
+    renderMetroTopSwitch();
     renderMetroMap(geojson);
     renderMetroStats();
     renderMetroComparison();
@@ -2721,8 +2738,38 @@ function restyleUnvisitedMetros() {
     if (metroGeoJsonLayer) metroGeoJsonLayer.setStyle(metroFeatureStyle);
 }
 
+// Visited metros that fall inside the selected top N.
+function metroVisitedInTop() {
+    let n = 0;
+    for (const id of visitedMetroIds) if (metroRankById[id] <= metroTopN) n++;
+    return n;
+}
+
+function renderMetroTopSwitch() {
+    const el = document.getElementById('metro-top-switch');
+    if (!el) return;
+    const pills = METRO_TOP_OPTIONS.map(n =>
+        `<button class="filter-pill${n === metroTopN ? ' active' : ''}" onclick="setMetroTopN(${n})">Top ${n}</button>`
+    ).join('');
+    el.innerHTML = `<div class="filter-pills">${pills}</div>`;
+}
+
+function setMetroTopN(n) {
+    if (!METRO_TOP_OPTIONS.includes(n) || n === metroTopN) return;
+    metroTopN = n;
+    try { localStorage.setItem(METRO_TOP_KEY, String(n)); } catch {}
+    renderMetroTopSwitch();
+    if (!metroMapInitialized) return;
+    if (metroGeoJsonLayer) metroMap.removeLayer(metroGeoJsonLayer);
+    renderMetroMap(metroGeoJsonRef);
+    renderMetroStats();
+    renderMetroComparisonBody();
+    renderRecentMetros();
+}
+
 function renderMetroMap(geojson) {
     metroGeoJsonLayer = L.geoJSON(geojson, {
+        filter: feature => feature.properties.rank <= metroTopN,
         style: metroFeatureStyle,
         onEachFeature: (feature, layer) => {
             const { id, rank, name, census_name, state, population } = feature.properties;
@@ -2763,14 +2810,15 @@ function renderMetroMap(geojson) {
 function renderMetroStats() {
     const el = document.getElementById('metro-stats-bar');
     if (!el) return;
-    const pct = ((visitedMetroIds.size / METRO_TOTAL) * 100).toFixed(1);
+    const visited = metroVisitedInTop();
+    const pct = ((visited / metroTopN) * 100).toFixed(1);
     el.innerHTML = `
         <div class="county-stat-item">
-            <span class="county-stat-number">${visitedMetroIds.size.toLocaleString()}</span>
+            <span class="county-stat-number">${visited.toLocaleString()}</span>
             <span class="county-stat-label">Metros Visited</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${METRO_TOTAL.toLocaleString()}</span>
+            <span class="county-stat-number">${metroTopN.toLocaleString()}</span>
             <span class="county-stat-label">Top US Metros</span>
         </div>
         <div class="county-stat-item">
@@ -2784,7 +2832,7 @@ let metroGeoJsonRef = null;
 
 function renderRecentMetros(geojson) {
     const el = document.getElementById('metro-recent-table');
-    if (!el || !Object.keys(metroDiscoveries).length) return;
+    if (!el) return;
     if (geojson) metroGeoJsonRef = geojson;
     if (!metroGeoJsonRef) return;
 
@@ -2795,7 +2843,7 @@ function renderRecentMetros(geojson) {
     }
 
     let rows = Object.entries(metroDiscoveries)
-        .filter(([id]) => infoById[id])
+        .filter(([id]) => infoById[id] && infoById[id].rank <= metroTopN)
         .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
 
     rows.sort((a, b) => {
@@ -2815,7 +2863,7 @@ function renderRecentMetros(geojson) {
     });
 
     rows = rows.slice(0, 25);
-    if (!rows.length) return;
+    if (!rows.length) { el.innerHTML = ''; return; }
 
     const headers = [
         { label: 'Rank',         col: 'rank' },
@@ -2914,11 +2962,11 @@ function renderMetroComparisonBody() {
     const metrosData = metroComparisonDataCache;
     if (!el || !metrosData) return;
 
-    const manuallyVisited = metrosData.filter(m => m.visited);
-    const manualIds       = new Set(manuallyVisited.map(metroIdFromEntry));
+    const topData         = metrosData.filter(m => m.rank <= metroTopN);
+    const manuallyVisited = topData.filter(m => m.visited);
 
     const preStrava  = manuallyVisited.filter(m => !visitedMetroIds.has(metroIdFromEntry(m)));
-    const stravaOnly = metrosData.filter(m => !m.visited && visitedMetroIds.has(metroIdFromEntry(m)));
+    const stravaOnly = topData.filter(m => !m.visited && visitedMetroIds.has(metroIdFromEntry(m)));
     const confirmed  = manuallyVisited.filter(m => visitedMetroIds.has(metroIdFromEntry(m)));
 
     const contentEl = document.createElement('div');
@@ -2932,7 +2980,7 @@ function renderMetroComparisonBody() {
             <span class="county-stat-label">Manually Marked</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${visitedMetroIds.size}</span>
+            <span class="county-stat-number">${metroVisitedInTop()}</span>
             <span class="county-stat-label">Strava Detected</span>
         </div>
         <div class="county-stat-item">
