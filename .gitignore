@@ -17,3 +17,5 @@ node_modules/
 # Never commit; the sync job reads them from the YTMUSIC_AUTH secret.
 browser.json
 ytmusic-auth.json
+
+__pycache__/
