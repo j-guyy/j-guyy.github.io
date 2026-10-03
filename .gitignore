@@ -12,3 +12,8 @@ node_modules/
 *.sbx
 *.cpg
 *.shp.xml
+
+# YouTube Music auth headers (scripts/ytmusic) — contain session cookies.
+# Never commit; the sync job reads them from the YTMUSIC_AUTH secret.
+browser.json
+ytmusic-auth.json
