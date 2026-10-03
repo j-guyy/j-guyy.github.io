@@ -1,10 +1,12 @@
 // ── Cloudflare Worker for j-guyy.github.io ──────────────────────────────────
 //
 // KV-backed API for Strava activity data, geocoding cache, hunter features
-// (counties, tiles, peaks, summits), and travel tracking.
+// (counties, tiles, peaks, summits), and travel tracking; D1-backed YouTube
+// Music song leaderboard.
 //
 // Deploy: wrangler deploy
-// Bindings: STRAVA_DATA (KV), STRAVA_KV (KV), CLIENT_ID, CLIENT_SECRET, TRAVEL_PASSWORD (secrets)
+// Bindings: STRAVA_DATA (KV), STRAVA_KV (KV), MUSIC_DB (D1), CLIENT_ID,
+//           CLIENT_SECRET, TRAVEL_PASSWORD, MUSIC_SYNC_TOKEN (secrets)
 
 const ALLOWED_ORIGIN = 'https://j-guyy.github.io';
 
@@ -296,6 +298,24 @@ export default {
 
             if (path === '/summary' && request.method === 'GET') {
                 return await handleSummary(env);
+            }
+
+            // ── Music (YouTube Music song leaderboard) ──
+            // The daily GitHub Action (scripts/ytmusic/sync_history.py) reads
+            // /music/state, works out the plays since its last run, and posts
+            // them to /music/plays. Both need MUSIC_SYNC_TOKEN (or the admin
+            // password); the leaderboard itself is public-read.
+
+            if (path === '/music/leaderboard' && request.method === 'GET') {
+                return await handleMusicLeaderboard(url, env);
+            }
+            if (path === '/music/state' && request.method === 'GET') {
+                if (!isMusicWriter(request, env)) return unauthorized();
+                return await handleMusicState(env);
+            }
+            if (path === '/music/plays' && request.method === 'POST') {
+                if (!isMusicWriter(request, env)) return unauthorized();
+                return await handleMusicPlays(request, env);
             }
 
             // ── Mountain Hunter — server-side Overpass proxy ──
@@ -928,6 +948,143 @@ async function handleBackfillElev(env) {
         rateLimited,
         updated,
     });
+}
+
+// ── Music — YouTube Music song leaderboard (D1) ──────────────────────────────
+//
+// Plays live in the MUSIC_DB D1 database (SQLite). The tables are created on
+// first use, so a fresh, empty database bound as MUSIC_DB is all the setup
+// needed. The sync script does the history diffing (get_history() has no
+// timestamps, so new plays are found by comparing against the previous
+// snapshot — see scripts/ytmusic/sync_history.py); the worker only stores.
+//
+//   songs(video_id PK, title, artists, album, duration_seconds, first_seen, last_seen)
+//   plays(id, video_id, played_label, played_date, synced_at)
+//   sync_state(key PK, value)  — 'snapshot' (JSON videoId list), 'last_sync'
+
+const MUSIC_SCHEMA = [
+    `CREATE TABLE IF NOT EXISTS songs (
+        video_id TEXT PRIMARY KEY, title TEXT NOT NULL, artists TEXT NOT NULL, album TEXT,
+        duration_seconds INTEGER, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS plays (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, video_id TEXT NOT NULL REFERENCES songs(video_id),
+        played_label TEXT, played_date TEXT, synced_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS plays_video_id ON plays(video_id)`,
+    `CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
+];
+
+// D1 caps a statement at 100 bound parameters, so multi-row inserts are chunked.
+const D1_MAX_PARAMS = 100;
+
+let musicSchemaReady = false;
+
+function isMusicWriter(request, env) {
+    const token = request.headers.get('X-Music-Token');
+    return (Boolean(token) && Boolean(env.MUSIC_SYNC_TOKEN) && token === env.MUSIC_SYNC_TOKEN)
+        || isAdmin(request, env);
+}
+
+async function musicDb(env) {
+    if (!env.MUSIC_DB) throw new Error('MUSIC_DB (D1) binding is not configured');
+    if (!musicSchemaReady) {
+        await env.MUSIC_DB.batch(MUSIC_SCHEMA.map(sql => env.MUSIC_DB.prepare(sql)));
+        musicSchemaReady = true;
+    }
+    return env.MUSIC_DB;
+}
+
+async function musicState(db) {
+    const { results } = await db.prepare('SELECT key, value FROM sync_state').all();
+    const state = Object.fromEntries(results.map(r => [r.key, r.value]));
+    return {
+        snapshot: state.snapshot ? JSON.parse(state.snapshot) : [],
+        last_sync: state.last_sync || null,
+    };
+}
+
+async function handleMusicLeaderboard(url, env) {
+    const db = await musicDb(env);
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit'), 10) || 100, 1), 500);
+    const [board, totals, lastSync] = await db.batch([
+        db.prepare(`
+            SELECT s.title, s.artists, COUNT(*) AS plays,
+                   MAX(COALESCE(p.played_date, substr(p.synced_at, 1, 10))) AS last_played
+            FROM plays p JOIN songs s ON s.video_id = p.video_id
+            GROUP BY p.video_id
+            ORDER BY plays DESC, last_played DESC, s.title
+            LIMIT ?`).bind(limit),
+        db.prepare('SELECT COUNT(*) AS plays, COUNT(DISTINCT video_id) AS songs FROM plays'),
+        db.prepare("SELECT value FROM sync_state WHERE key = 'last_sync'"),
+    ]);
+    return json({
+        songs: board.results,
+        total_plays: totals.results[0].plays,
+        total_songs: totals.results[0].songs,
+        last_sync: lastSync.results[0]?.value || null,
+    }, 200, { 'Cache-Control': 'public, max-age=300' });
+}
+
+async function handleMusicState(env) {
+    return json(await musicState(await musicDb(env)));
+}
+
+// Body: { expected_last_sync, synced_at, snapshot: [videoId],
+//         songs: [{ video_id, title, artists, album, duration_seconds }],
+//         plays: [{ video_id, played_label, played_date }]  (oldest first) }
+// expected_last_sync must match the stored last_sync (null on the first run),
+// so a sync computed against a stale snapshot is refused instead of
+// double-counting. Everything is written in one batch, which D1 runs as a
+// single transaction.
+async function handleMusicPlays(request, env) {
+    const db = await musicDb(env);
+    const body = await request.json();
+    const { synced_at, snapshot, songs = [], plays = [] } = body;
+    if (!synced_at || !Array.isArray(snapshot) || !Array.isArray(songs) || !Array.isArray(plays)) {
+        return json({ error: 'Expected synced_at, snapshot, songs and plays' }, 400);
+    }
+    const known = new Set(songs.map(s => s.video_id));
+    if (plays.some(p => !known.has(p.video_id))) {
+        return json({ error: 'Every play must reference a song in songs' }, 400);
+    }
+
+    const state = await musicState(db);
+    if ((body.expected_last_sync ?? null) !== state.last_sync) {
+        return json({ error: 'Stale snapshot', last_sync: state.last_sync }, 409);
+    }
+
+    const stmts = [];
+    for (const chunk of chunked(songs, Math.floor(D1_MAX_PARAMS / 7))) {
+        stmts.push(db.prepare(`
+            INSERT INTO songs (video_id, title, artists, album, duration_seconds, first_seen, last_seen)
+            VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}
+            ON CONFLICT(video_id) DO UPDATE SET
+                title = excluded.title,
+                artists = excluded.artists,
+                album = COALESCE(excluded.album, songs.album),
+                duration_seconds = COALESCE(excluded.duration_seconds, songs.duration_seconds),
+                last_seen = excluded.last_seen`)
+            .bind(...chunk.flatMap(s => [s.video_id, s.title || '(unknown)', s.artists || '(unknown)',
+                                         s.album ?? null, s.duration_seconds ?? null, synced_at, synced_at])));
+    }
+    for (const chunk of chunked(plays, Math.floor(D1_MAX_PARAMS / 4))) {
+        stmts.push(db.prepare(`
+            INSERT INTO plays (video_id, played_label, played_date, synced_at)
+            VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(', ')}`)
+            .bind(...chunk.flatMap(p => [p.video_id, p.played_label ?? null, p.played_date ?? null, synced_at])));
+    }
+    stmts.push(db.prepare(`
+        INSERT INTO sync_state (key, value) VALUES ('snapshot', ?), ('last_sync', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+        .bind(JSON.stringify(snapshot), synced_at));
+    await db.batch(stmts);
+
+    return json({ ok: true, songs: songs.length, plays: plays.length });
+}
+
+function chunked(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
 }
 
 // ── Strava OAuth ─────────────────────────────────────────────────────────────

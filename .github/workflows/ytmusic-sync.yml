@@ -1,8 +1,9 @@
 # Daily YouTube Music history sync for the song leaderboard (music.html).
 #
-# Runs scripts/ytmusic/sync_history.py with the YTMUSIC_AUTH secret (the auth
-# JSON from scripts/ytmusic/setup_auth.py) and commits data/music/history.db
-# back to main when new plays were found; that push redeploys GitHub Pages.
+# Runs scripts/ytmusic/sync_history.py, which reads history with ytmusicapi and
+# posts the new plays to the Cloudflare worker's D1 database. Secrets:
+#   YTMUSIC_AUTH      auth JSON from scripts/ytmusic/setup_auth.py
+#   MUSIC_SYNC_TOKEN  same value as the worker secret of that name
 # get_history() only returns the last ~200 songs, so a daily cadence keeps the
 # window comfortably ahead of how much is played between runs.
 name: YouTube Music sync
@@ -13,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ytmusic-sync
@@ -36,16 +37,5 @@ jobs:
       - name: Sync history
         env:
           YTMUSIC_AUTH: ${{ secrets.YTMUSIC_AUTH }}
+          MUSIC_SYNC_TOKEN: ${{ secrets.MUSIC_SYNC_TOKEN }}
         run: python scripts/ytmusic/sync_history.py
-      - name: Commit the database
-        run: |
-          if [ -z "$(git status --porcelain -- data/music/history.db)" ]; then
-            echo "No new plays."
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/music/history.db
-          git commit -m "Music: sync YouTube Music history"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"

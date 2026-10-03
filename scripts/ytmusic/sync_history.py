@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Pull YouTube Music listening history into data/music/history.db.
+"""Push new YouTube Music plays to the worker's D1 database.
 
-Run daily by .github/workflows/ytmusic-sync.yml; music.html reads the database
-directly in the browser to build the song leaderboard.
+Run daily by .github/workflows/ytmusic-sync.yml; music.html shows the result
+via the worker's /music/leaderboard.
 
-Auth: the YTMUSIC_AUTH environment variable holds the JSON written by
-setup_auth.py (or pass --auth PATH for a file outside the repo).
+Environment:
+  YTMUSIC_AUTH      auth JSON written by setup_auth.py (or --auth PATH)
+  MUSIC_SYNC_TOKEN  matches the worker secret of the same name
+  WORKER_URL        optional, defaults to the production worker
 
 What get_history() gives us, and why plays are diffed rather than copied:
   * Only the most recent ~200 items, newest first.
@@ -13,64 +15,31 @@ What get_history() gives us, and why plays are diffed rather than copied:
     "Yesterday", "This week", "Last week", a month name, ...).
   * A song appears once: replaying it moves it back to the top instead of
     adding a second row.
-So each run compares the fresh list with the one saved last run. The items in
-front of the point where the two lists line up again are the plays since the
-last sync; everything after is history we have already counted. A replayed
-song shows up as one of those new front items (it is removed from its old
-position, which the alignment accounts for). Play counts are therefore exact
-as long as no song is played twice between two syncs and fewer than ~200
-songs are played per day — the daily schedule keeps both true in practice.
-The very first run has nothing to compare against and records every item in
-the list once, as a baseline.
+So each run fetches the list saved last run (GET /music/state) and compares.
+The items in front of the point where the two lists line up again are the
+plays since the last sync; everything after is history already counted. A
+replayed song shows up as one of those new front items (it is removed from its
+old position, which the alignment accounts for). Play counts are therefore
+exact as long as no song is played twice between two syncs and fewer than
+~200 songs are played per day — the daily schedule keeps both true in
+practice. The very first run has nothing to compare against and records every
+item in the list once, as a baseline.
 
-Schema:
-  songs(video_id PK, title, artists, album, duration_seconds, first_seen, last_seen)
-    upserted on every sighting so titles/artists stay current.
-  plays(id, video_id, played_label, played_date, synced_at)
-    one row per detected play. played_date is the calendar day (UTC) when the
-    bucket label pins one down ("Today"/"Yesterday"), else NULL; synced_at is
-    when the play was detected.
-  sync_state(key PK, value)
-    `snapshot` = JSON list of the videoIds from the last run, `last_sync`.
+The new plays, the songs they reference, and the new snapshot go to
+POST /music/plays in one request, which the worker writes in one transaction.
 """
 
 import argparse
 import json
 import os
-import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-DEFAULT_DB = Path(__file__).resolve().parents[2] / "data" / "music" / "history.db"
+DEFAULT_WORKER_URL = "https://strava-worker.justinguyette.workers.dev"
 
 # How many consecutive items must line up with the previous snapshot before we
 # trust that we've reached already-counted history.
 ALIGN_WINDOW = 5
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS songs (
-    video_id         TEXT PRIMARY KEY,
-    title            TEXT NOT NULL,
-    artists          TEXT NOT NULL,
-    album            TEXT,
-    duration_seconds INTEGER,
-    first_seen       TEXT NOT NULL,
-    last_seen        TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS plays (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    video_id     TEXT NOT NULL REFERENCES songs(video_id),
-    played_label TEXT,
-    played_date  TEXT,
-    synced_at    TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS plays_video_id ON plays(video_id);
-CREATE TABLE IF NOT EXISTS sync_state (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-"""
 
 
 def new_play_count(current, previous):
@@ -115,88 +84,79 @@ def parse_item(item):
     if not video_id:  # unavailable/removed tracks come back without one
         return None
     artists = ", ".join(a["name"] for a in item.get("artists") or [] if a.get("name"))
-    album = (item.get("album") or {}).get("name")
     return {
         "video_id": video_id,
         "title": item.get("title") or "(unknown)",
         "artists": artists or "(unknown)",
-        "album": album,
+        "album": (item.get("album") or {}).get("name"),
         "duration_seconds": item.get("duration_seconds"),
         "played_label": item.get("played"),
     }
 
 
-def sync(conn, history, now):
-    """Upsert songs and record new plays. Returns the number of plays added."""
+def build_payload(history, state, now):
+    """The POST /music/plays body for the plays since `state`, or None if there are none."""
     items = [p for p in (parse_item(i) for i in history) if p]
     current = [i["video_id"] for i in items]
-
-    conn.executescript(SCHEMA)
-    row = conn.execute("SELECT value FROM sync_state WHERE key = 'snapshot'").fetchone()
-    previous = json.loads(row[0]) if row else []
-
-    k = new_play_count(current, previous)
+    k = new_play_count(current, state.get("snapshot") or [])
     if k == 0:
-        return 0
+        return None
 
-    stamp = now.isoformat(timespec="seconds")
-    with conn:
-        conn.executemany(
-            """
-            INSERT INTO songs (video_id, title, artists, album, duration_seconds, first_seen, last_seen)
-            VALUES (:video_id, :title, :artists, :album, :duration_seconds, :stamp, :stamp)
-            ON CONFLICT(video_id) DO UPDATE SET
-                title = excluded.title,
-                artists = excluded.artists,
-                album = COALESCE(excluded.album, songs.album),
-                duration_seconds = COALESCE(excluded.duration_seconds, songs.duration_seconds),
-                last_seen = excluded.last_seen
-            """,
-            [{**i, "stamp": stamp} for i in items[:k]],
-        )
-        # Oldest first, so ascending ids follow listening order.
-        conn.executemany(
-            "INSERT INTO plays (video_id, played_label, played_date, synced_at) VALUES (?, ?, ?, ?)",
-            [(i["video_id"], i["played_label"], played_date(i["played_label"], now), stamp)
-             for i in reversed(items[:k])],
-        )
-        conn.executemany(
-            "INSERT INTO sync_state (key, value) VALUES (?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            [("snapshot", json.dumps(current)), ("last_sync", stamp)],
-        )
-    return k
+    new = items[:k]
+    songs = {}
+    for i in new:
+        songs.setdefault(i["video_id"], {key: i[key] for key in
+                                         ("video_id", "title", "artists", "album", "duration_seconds")})
+    return {
+        "expected_last_sync": state.get("last_sync"),
+        "synced_at": now.isoformat(timespec="seconds"),
+        "snapshot": current,
+        "songs": list(songs.values()),
+        # Oldest first, so ascending play ids follow listening order.
+        "plays": [{"video_id": i["video_id"], "played_label": i["played_label"],
+                   "played_date": played_date(i["played_label"], now)} for i in reversed(new)],
+    }
 
 
-def load_auth(path):
-    if path:
-        return str(path)
-    auth = os.environ.get("YTMUSIC_AUTH")
-    if not auth:
-        sys.exit("Set YTMUSIC_AUTH to the auth JSON from setup_auth.py (or pass --auth PATH).")
-    return auth
+def require_env(name):
+    value = os.environ.get(name)
+    if not value:
+        sys.exit(f"Set {name} (see scripts/ytmusic/setup_auth.py).")
+    return value
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Sync YouTube Music history into SQLite.")
-    parser.add_argument("--db", type=Path, default=DEFAULT_DB)
-    parser.add_argument("--auth", type=Path, help="auth JSON file (default: $YTMUSIC_AUTH)")
+    parser = argparse.ArgumentParser(description="Sync YouTube Music history to the worker.")
+    parser.add_argument("--auth", help="auth JSON file (default: $YTMUSIC_AUTH)")
+    parser.add_argument("--dry-run", action="store_true", help="print the payload instead of posting it")
     args = parser.parse_args()
 
-    from ytmusicapi import YTMusic  # imported here so the tests don't need it
+    # Imported here so the unit tests need neither.
+    import requests
+    from ytmusicapi import YTMusic
 
-    history = YTMusic(load_auth(args.auth)).get_history()
+    worker = os.environ.get("WORKER_URL", DEFAULT_WORKER_URL).rstrip("/")
+    headers = {"X-Music-Token": require_env("MUSIC_SYNC_TOKEN")}
+
+    history = YTMusic(args.auth or require_env("YTMUSIC_AUTH")).get_history()
     if not history:
-        sys.exit("get_history() returned nothing — expired auth or history paused? Not touching the db.")
+        sys.exit("get_history() returned nothing — expired auth or history paused? Not syncing.")
 
-    args.db.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(args.db)
-    try:
-        added = sync(conn, history, datetime.now(timezone.utc))
-        total = conn.execute("SELECT COUNT(*) FROM plays").fetchone()[0]
-    finally:
-        conn.close()
-    print(f"{added} new plays ({len(history)} history items read, {total} plays stored).")
+    res = requests.get(f"{worker}/music/state", headers=headers, timeout=30)
+    res.raise_for_status()
+    payload = build_payload(history, res.json(), datetime.now(timezone.utc))
+
+    if payload is None:
+        print(f"No new plays ({len(history)} history items read).")
+        return
+    if args.dry_run:
+        print(json.dumps(payload, indent=2))
+        return
+
+    res = requests.post(f"{worker}/music/plays", headers=headers, json=payload, timeout=30)
+    if not res.ok:
+        sys.exit(f"Worker rejected the sync: HTTP {res.status_code} {res.text}")
+    print(f"{len(payload['plays'])} new plays synced ({len(history)} history items read).")
 
 
 if __name__ == "__main__":

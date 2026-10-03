@@ -1,13 +1,14 @@
 """Unit tests for the history diffing: python3 -m unittest scripts/ytmusic/test_sync_history.py"""
 
-import sqlite3
 import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from sync_history import new_play_count, sync  # noqa: E402
+from sync_history import build_payload, new_play_count  # noqa: E402
+
+NOW = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
 
 
 def item(vid, played="Today"):
@@ -39,21 +40,30 @@ class NewPlayCount(unittest.TestCase):
         self.assertEqual(new_play_count(list("uvwxyz"), list("abcdefg")), 6)
 
 
-class Sync(unittest.TestCase):
-    def test_counts_accumulate(self):
-        conn = sqlite3.connect(":memory:")
-        now = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
-        self.assertEqual(sync(conn, [item(v) for v in "abc"], now), 3)
-        self.assertEqual(sync(conn, [item(v) for v in "abc"], now), 0)
-        self.assertEqual(sync(conn, [item(v) for v in "cab"], now), 1)
-        counts = dict(conn.execute("SELECT video_id, COUNT(*) FROM plays GROUP BY video_id"))
-        self.assertEqual(counts, {"a": 1, "b": 1, "c": 2})
-        self.assertEqual(conn.execute("SELECT DISTINCT played_date FROM plays").fetchall(), [("2026-10-03",)])
+class BuildPayload(unittest.TestCase):
+    def test_first_run(self):
+        p = build_payload([item("a"), item("b", "Yesterday"), item("c", "Last week")], {}, NOW)
+        self.assertIsNone(p["expected_last_sync"])
+        self.assertEqual(p["snapshot"], ["a", "b", "c"])
+        self.assertEqual([s["video_id"] for s in p["songs"]], ["a", "b", "c"])
+        # oldest first, with dates only where the label pins one down
+        self.assertEqual([(x["video_id"], x["played_date"]) for x in p["plays"]],
+                         [("c", None), ("b", "2026-10-02"), ("a", "2026-10-03")])
+
+    def test_no_new_plays(self):
+        state = {"snapshot": ["a", "b", "c"], "last_sync": "2026-10-02T09:17:00+00:00"}
+        self.assertIsNone(build_payload([item(v) for v in "abc"], state, NOW))
+
+    def test_replay(self):
+        state = {"snapshot": ["a", "b", "c"], "last_sync": "2026-10-02T09:17:00+00:00"}
+        p = build_payload([item(v) for v in "cab"], state, NOW)
+        self.assertEqual(p["expected_last_sync"], "2026-10-02T09:17:00+00:00")
+        self.assertEqual([x["video_id"] for x in p["plays"]], ["c"])
+        self.assertEqual(p["snapshot"], ["c", "a", "b"])
 
     def test_skips_items_without_video_id(self):
-        conn = sqlite3.connect(":memory:")
-        now = datetime(2026, 10, 3, tzinfo=timezone.utc)
-        self.assertEqual(sync(conn, [item("a"), {"title": "gone", "played": "Today"}], now), 1)
+        p = build_payload([item("a"), {"title": "gone", "played": "Today"}], {}, NOW)
+        self.assertEqual(p["snapshot"], ["a"])
 
 
 if __name__ == "__main__":

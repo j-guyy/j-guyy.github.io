@@ -26,8 +26,15 @@ Then store the result as a repo secret (requires the gh CLI):
 or paste the file's contents into GitHub -> Settings -> Secrets and variables
 -> Actions -> New repository secret, named YTMUSIC_AUTH.
 
-For a local sync run, export it instead of pointing at a file:
-  export YTMUSIC_AUTH="$(cat ~/.config/ytmusic/browser.json)"
+The sync job also needs a token the worker accepts for music writes. Generate
+one and set it on both sides (same value):
+  TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+  echo "$TOKEN" | npx wrangler secret put MUSIC_SYNC_TOKEN
+  echo "$TOKEN" | gh secret set MUSIC_SYNC_TOKEN
+
+For a local sync run, export both instead:
+  export YTMUSIC_AUTH="$(cat ~/.config/ytmusic/browser.json)" MUSIC_SYNC_TOKEN=...
+  python3 scripts/ytmusic/sync_history.py --dry-run
 
 The cookies last until you sign out of that browser session (signing out
 invalidates them), so use a session you leave signed in. When the daily job
@@ -89,6 +96,7 @@ def main():
 
     print("\nNext: store it as the GitHub Actions secret the sync job reads:")
     print(f"  gh secret set YTMUSIC_AUTH < {out}")
+    print("and set MUSIC_SYNC_TOKEN if you haven't (see this script's docstring).")
     print("Do not commit this file.")
 
 
