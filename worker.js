@@ -861,6 +861,7 @@ function slimActivities(activities) {
             d: a.start_date_local?.slice(0, 10) || '',
             i: a.id,
             e: a.total_elevation_gain ?? 0,
+            m: a.moving_time ?? 0,   // seconds; feeds the dashboard's hours view
         }));
 }
 
