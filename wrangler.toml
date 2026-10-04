@@ -25,6 +25,3 @@ id = "1a5eee59c7b447489a07bed10f4798e0"
 # midnight UTC. Keep it identical to the dashboard's cron expression.
 [triggers]
 crons = ["0 0 * * *"]
-
-# If the dashboard also shows routes, a custom domain or plain-text variables,
-# add them here ([vars] / routes = [...]) before the first deploy.
