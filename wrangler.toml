@@ -1,0 +1,38 @@
+# Cloudflare Worker config for the Strava/travel API (worker.js).
+#
+# A `wrangler deploy` REPLACES the Worker's bindings, triggers and variables with
+# what is listed here, so this file must mirror everything the dashboard shows
+# (Workers & Pages -> strava-worker -> Settings). Anything missing gets removed.
+#
+# Secrets (CLIENT_ID, CLIENT_SECRET, TRAVEL_PASSWORD) live in Cloudflare, are NOT
+# listed here, and are preserved across deploys. MUSIC_SYNC_TOKEN is uploaded by
+# the deploy workflow from the GitHub secret of the same name. Never put secret
+# values in this repo.
+
+name = "strava-worker"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# Namespace ids (from the dashboard's KV list). The deploy workflow refuses to run
+# if a placeholder id is ever reintroduced.
+[[kv_namespaces]]
+binding = "STRAVA_DATA"
+id = "a2e8d7f7069c4948a2f7e2f0bdddc208"
+
+[[kv_namespaces]]
+binding = "STRAVA_KV"
+id = "1a5eee59c7b447489a07bed10f4798e0"
+
+# YouTube Music song leaderboard (music.html). Create the database once in the
+# dashboard (Storage & Databases -> D1 -> Create, name "music") and paste its id;
+# the worker creates its tables on first use. The deploy workflow refuses to run
+# while the placeholder is here.
+[[d1_databases]]
+binding = "MUSIC_DB"
+database_name = "music"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Cron trigger (Settings -> Triggers). Cloudflare crons run in UTC; this is
+# midnight UTC. Keep it identical to the dashboard's cron expression.
+[triggers]
+crons = ["0 0 * * *"]

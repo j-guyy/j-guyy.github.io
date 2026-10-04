@@ -416,6 +416,35 @@
     color: var(--app-accent);
 }
 
+.app-page .metric-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 3px;
+    gap: 2px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface-2);
+}
+
+.app-page .metric-toggle-btn {
+    min-height: 28px;
+    padding: 4px 13px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: none;
+    color: var(--app-text-dim);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 550;
+    cursor: pointer;
+}
+
+.app-page .metric-toggle-btn.active {
+    border-color: var(--app-accent-border);
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+}
+
 .app-page .filter-pill {
     min-height: 34px;
     padding: 6px 13px;

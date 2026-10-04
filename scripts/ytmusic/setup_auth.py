@@ -26,11 +26,10 @@ Then store the result as a repo secret (requires the gh CLI):
 or paste the file's contents into GitHub -> Settings -> Secrets and variables
 -> Actions -> New repository secret, named YTMUSIC_AUTH.
 
-The sync job also needs a token the worker accepts for music writes. Generate
-one and set it on both sides (same value):
-  TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
-  echo "$TOKEN" | npx wrangler secret put MUSIC_SYNC_TOKEN
-  echo "$TOKEN" | gh secret set MUSIC_SYNC_TOKEN
+The sync job also needs a token the worker accepts for music writes. Set it as
+a repository secret only; the worker deploy workflow uploads the same value to
+Cloudflare on every deploy:
+  python3 -c "import secrets; print(secrets.token_urlsafe(32))" | gh secret set MUSIC_SYNC_TOKEN
 
 For a local sync run, export both instead:
   export YTMUSIC_AUTH="$(cat ~/.config/ytmusic/browser.json)" MUSIC_SYNC_TOKEN=...
