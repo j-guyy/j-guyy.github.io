@@ -11,16 +11,15 @@ name = "strava-worker"
 main = "worker.js"
 compatibility_date = "2025-09-01"
 
-# TODO(owner): replace both ids with the real namespace ids
-# (Settings -> Bindings -> the KV namespace). The deploy workflow refuses to run
-# while a REPLACE_WITH_* placeholder remains.
+# Namespace ids (from the dashboard's KV list). The deploy workflow refuses to run
+# if a placeholder id is ever reintroduced.
 [[kv_namespaces]]
 binding = "STRAVA_DATA"
-id = "REPLACE_WITH_STRAVA_DATA_NAMESPACE_ID"
+id = "a2e8d7f7069c4948a2f7e2f0bdddc208"
 
 [[kv_namespaces]]
 binding = "STRAVA_KV"
-id = "REPLACE_WITH_STRAVA_KV_NAMESPACE_ID"
+id = "1a5eee59c7b447489a07bed10f4798e0"
 
 # TODO(owner): check Settings -> Triggers and Settings -> Variables and add here
 # anything present in the dashboard, e.g.:
