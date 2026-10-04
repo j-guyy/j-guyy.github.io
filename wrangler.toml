@@ -21,11 +21,10 @@ id = "a2e8d7f7069c4948a2f7e2f0bdddc208"
 binding = "STRAVA_KV"
 id = "1a5eee59c7b447489a07bed10f4798e0"
 
-# TODO(owner): check Settings -> Triggers and Settings -> Variables and add here
-# anything present in the dashboard, e.g.:
-#   [triggers]
-#   crons = ["0 * * * *"]
-#   [vars]
-#   SOME_NAME = "value"
-#   routes / custom domain via `routes = [...]`
-# If the dashboard shows none, leave this as is.
+# Cron trigger (Settings -> Triggers). Cloudflare crons run in UTC; this is
+# midnight UTC. Keep it identical to the dashboard's cron expression.
+[triggers]
+crons = ["0 0 * * *"]
+
+# If the dashboard also shows routes, a custom domain or plain-text variables,
+# add them here ([vars] / routes = [...]) before the first deploy.
