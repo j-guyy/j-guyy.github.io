@@ -181,9 +181,14 @@ function hunterStatText(key, s) {
             if (!s.pass) return '';
             return s.pass.total ? `${n(s.pass.climbed)} / ${n(s.pass.total)} passes` : `${n(s.pass.climbed)} passes`;
         case 'city':
-        case 'trail':
-            // Not stored server-side (computed from Overpass in the browser).
-            return '';
+        case 'trail': {
+            // Saved by the page after it computes coverage (/progress/save);
+            // null until then, or while an older worker is deployed.
+            const p = s[key];
+            if (!p || !Number.isFinite(Number(p.pct))) return '';
+            const place = String(p.name || '').split(',')[0].replace(/ National Park$/, '').trim();
+            return `${Number(p.pct).toFixed(0)}%` + (place ? ` · ${place}` : '');
+        }
         default:
             return '';
     }
@@ -233,10 +238,11 @@ function renderOverviewStats() {
 
 // Scroll to a section and open its lazy body via the existing toggle — only if
 // it is still closed, since the toggles flip open/closed.
-function openHunterSection(key, { smooth = true } = {}) {
+function openHunterSection(key, { smooth = true, settle = false } = {}) {
     const h = HUNTER_SECTIONS.find(s => s.key === key);
     if (!h) return;
     document.getElementById(h.key)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    if (settle) keepSectionInView(h.key);
     if (!h.panel) return;
     if (h.needsData && currentSlim.length === 0) {
         pendingSectionOpen = key;   // picked up by geocodeAndRender once data lands
@@ -246,6 +252,29 @@ function openHunterSection(key, { smooth = true } = {}) {
     if (panel && panel.style.display === 'none') h.open();
 }
 
+// Sections above a deep-link target (overview stats, Mountain / Pass tables,
+// regions) fill in after load and push it down, so keep re-aligning it while
+// the page's height changes. Stops on the first sign the user is scrolling or
+// tapping, or after a few seconds either way, so it never fights them.
+let stopKeepInView = null;
+function keepSectionInView(key, maxMs = 6000) {
+    if (stopKeepInView) stopKeepInView();
+    const target = document.getElementById(key);
+    if (!target || typeof ResizeObserver === 'undefined') return;
+    const userEvents = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+    const observer = new ResizeObserver(() => target.scrollIntoView({ behavior: 'auto', block: 'start' }));
+    const stop = () => {
+        observer.disconnect();
+        clearTimeout(timer);
+        userEvents.forEach(ev => window.removeEventListener(ev, stop));
+        if (stopKeepInView === stop) stopKeepInView = null;
+    };
+    const timer = setTimeout(stop, maxMs);
+    userEvents.forEach(ev => window.addEventListener(ev, stop, { passive: true }));
+    observer.observe(document.body);
+    stopKeepInView = stop;
+}
+
 // strava.html#<section> (e.g. #statshunters, where the old standalone page
 // redirects) opens that section and scrolls to it. On the app shell these
 // hashes are the router's screens, so leave them to app.js.
@@ -253,7 +282,7 @@ function openSectionFromHash() {
     if (isAppPage()) return;
     const key = location.hash.replace(/^#/, '');
     if (!HUNTER_SECTIONS.some(h => h.key === key)) return;
-    openHunterSection(key, { smooth: false });
+    openHunterSection(key, { smooth: false, settle: true });
     // On page load the summary, tables and regions above render later and push
     // the section down, so scroll again once the first render lands (opening
     // is idempotent — an already-open section is only scrolled to).
@@ -3526,6 +3555,38 @@ function switchCity(cityKey) {
     }
 }
 
+// Persist just a headline for City / Trail Hunter (their coverage is computed
+// here from Overpass data and otherwise never stored) so /summary can show it
+// on the overview cards and app home. Skipped when unchanged since the last
+// report from this browser; failures are silent — an older worker has no
+// /progress/save and the cards simply keep their caption.
+async function reportHunterProgress(kind, key, name, completedWays) {
+    const totalNodes   = completedWays.reduce((n, w) => n + w.total, 0);
+    const visitedNodes = completedWays.reduce((n, w) => n + w.visited, 0);
+    const report = {
+        kind, key, name,
+        complete: completedWays.filter(w => w.pct === 1).length,
+        partial:  completedWays.filter(w => w.pct > 0 && w.pct < 1).length,
+        total:    completedWays.length,
+        pct:      totalNodes > 0 ? Math.round(visitedNodes / totalNodes * 1000) / 10 : 0,
+    };
+    const sig = `progress_${kind}_${key}`;
+    const sigValue = `${report.complete}|${report.partial}|${report.total}|${report.pct}`;
+    try { if (localStorage.getItem(sig) === sigValue) return; } catch {}
+    try {
+        const res = await fetch(`${WORKER_URL}/progress/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(report),
+        });
+        if (!res.ok) return;
+        try { localStorage.setItem(sig, sigValue); } catch {}
+        dbg(`${kind} progress saved: ${report.pct}% of ${name}`);
+    } catch (err) {
+        dbg(`${kind} progress save failed: ${err.message}`);
+    }
+}
+
 async function initCityMap() {
     const cfg = CITY_CONFIGS[ACTIVE_CITY];
     setCityStatus('Loading road network…');
@@ -3601,6 +3662,7 @@ async function initCityMap() {
     const done = completedWays.filter(w => w.pct === 1).length;
     setCityStatus('');
     dbg(`City Hunter: ${done}/${completedWays.length} ways complete`);
+    reportHunterProgress('city', ACTIVE_CITY, cfg.name, completedWays);
 }
 
 // ── OSM road data ─────────────────────────────────────────────────────────────
@@ -4632,12 +4694,18 @@ function renderTileStats() {
 
 async function saveTilesToWorker() {
     try {
+        // The worker's /summary reports max cluster / square; computing them
+        // here (already needed for the map) saves it doing so on every read.
+        let maxCluster = 0, maxSquare = 0;
+        for (const v of computeClusters(visitedTiles).values()) if (v > maxCluster) maxCluster = v;
+        for (const v of computeSquares(visitedTiles).values())  if (v > maxSquare)  maxSquare  = v;
         const res = await fetch(`${WORKER_URL}/tiles/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 tiles: [...visitedTiles],
                 processedIds: [...tileProcessedIds],
+                stats: { visited: visitedTiles.size, maxCluster, maxSquare },
             }),
         });
         const data = await res.json();
@@ -5051,6 +5119,7 @@ async function initTrailMap() {
     const done = completedWays.filter(w => w.pct === 1).length;
     setTrailStatus('');
     dbg(`Trail Hunter: ${done}/${completedWays.length} trails complete`);
+    reportHunterProgress('trail', ACTIVE_TRAIL, cfg.name, completedWays);
 }
 
 // Fetch hiking trails from the COTrex ArcGIS MapServer, paginating 2 000 records
@@ -7942,7 +8011,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     if (pendingSectionOpen) {
         const key = pendingSectionOpen;
         pendingSectionOpen = null;
-        openHunterSection(key, { smooth: false });
+        openHunterSection(key, { smooth: false, settle: true });
     }
 
     // Mountain Hunter — runs in background after main UI paints

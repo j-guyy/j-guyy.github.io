@@ -131,7 +131,8 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |
 | `/peaks/all`, `/peaks/save`, `/peaks/reset` | GET/POST | Mountain peak cell cache |
 | `/summits/all`, `/summits/save`, `/summits/reset` | GET/POST | Summit detection cache |
-| `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above; feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
+| `/progress/all`, `/progress/save`, `/progress/reset` | GET/POST | City / Trail Hunter completion headline (per city / trail region: complete, partial, total, node-coverage %), saved by the page once it has computed coverage from Overpass / COTrex; `/progress/save` is validated + merged per key, `/reset` is admin-only |
+| `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above (tile max-cluster/square arrive precomputed with each `/tiles/save`, in `strava_tile_stats`, and are only computed at read time for tile data saved before that; city/trail come from `/progress/save`); feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
 | `/travel/*` | GET/POST | Travel dashboard data (toggle, seed) |
 
 ### Adding Content
