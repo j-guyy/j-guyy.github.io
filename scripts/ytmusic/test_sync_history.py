@@ -83,6 +83,23 @@ class AuthJson(unittest.TestCase):
         self.assertEqual(headers["x-goog-authuser"], "0")
         self.assertNotIn("host", headers)
 
+    def test_chrome_curl_is_converted(self):
+        try:
+            import ytmusicapi  # noqa: F401
+        except ImportError:
+            self.skipTest("ytmusicapi not installed")
+        curl = (
+            "curl 'https://music.youtube.com/youtubei/v1/browse?prettyPrint=false' \\\r\n"
+            "  -H 'accept: */*' \\\r\n"
+            "  -H 'authorization: SAPISIDHASH 123_abc' \\\r\n"
+            "  -b 'SAPISID=abc; HSID=def; __Secure-3PAPISID=ghi' \\\r\n"
+            "  -H 'x-goog-authuser: 0' \\\r\n"
+            "  --data-raw '{\"context\":{\"client\":{}}}'\r\n"
+        )
+        headers = json.loads(auth_json(curl))
+        self.assertEqual(headers["cookie"], "SAPISID=abc; HSID=def; __Secure-3PAPISID=ghi")
+        self.assertEqual(headers["x-goog-authuser"], "0")
+
 
 if __name__ == "__main__":
     unittest.main()

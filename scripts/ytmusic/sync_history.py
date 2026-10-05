@@ -5,9 +5,10 @@ Run daily by .github/workflows/ytmusic-sync.yml; music.html shows the result
 via the worker's /music/leaderboard.
 
 Environment:
-  YTMUSIC_AUTH      either the request headers copied from a logged-in
-                    music.youtube.com /browse request (pasted as-is), or the
-                    auth JSON written by setup_auth.py (or --auth PATH)
+  YTMUSIC_AUTH      a logged-in music.youtube.com /browse request, pasted
+                    as-is: either Chrome's "Copy as cURL (bash)" or the raw
+                    request headers. The auth JSON written by setup_auth.py
+                    also works (or --auth PATH).
   MUSIC_SYNC_TOKEN  matches the worker secret of the same name
   WORKER_URL        optional, defaults to the production worker
 
@@ -34,6 +35,7 @@ POST /music/plays in one request, which the worker writes in one transaction.
 import argparse
 import json
 import os
+import shlex
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -120,8 +122,21 @@ def build_payload(history, state, now):
     }
 
 
+def curl_to_headers(command):
+    """The request headers of a "Copy as cURL (bash)" command, as "name: value" lines."""
+    # Drop the backslash line continuations before tokenising.
+    tokens = shlex.split(command.replace("\\\n", " "))
+    lines = []
+    for flag, value in zip(tokens, tokens[1:]):
+        if flag in ("-H", "--header"):
+            lines.append(value)
+        elif flag in ("-b", "--cookie"):  # newer Chrome puts cookies here
+            lines.append(f"cookie: {value}")
+    return "\n".join(lines)
+
+
 def auth_json(value):
-    """YTMUSIC_AUTH as the JSON ytmusicapi wants, converting raw copied headers if needed."""
+    """YTMUSIC_AUTH as the JSON ytmusicapi wants, converting a copied request if needed."""
     try:
         if isinstance(json.loads(value), dict):
             return value
@@ -129,7 +144,10 @@ def auth_json(value):
         pass
     import ytmusicapi
     # Normalise Windows line endings; ytmusicapi splits the paste on "\n".
-    return ytmusicapi.setup(headers_raw=value.replace("\r\n", "\n").replace("\r", "\n").strip())
+    value = value.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if value.startswith("curl "):
+        value = curl_to_headers(value)
+    return ytmusicapi.setup(headers_raw=value)
 
 
 def require_env(name):

@@ -2,7 +2,8 @@
 """One-time YouTube Music auth setup for the song leaderboard sync.
 
 Optional: you can skip this script entirely and paste the copied request
-headers (steps 1-4 below) straight into the YTMUSIC_AUTH repository secret —
+headers (steps 1-4 below) — or, if your Chrome has no "Copy request headers",
+the request's "Copy as cURL (bash)" — straight into the YTMUSIC_AUTH secret;
 the sync job converts them itself. This script just converts and checks them
 locally first.
 
