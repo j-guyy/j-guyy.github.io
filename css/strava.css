@@ -815,6 +815,39 @@
     padding-top: 2px;
 }
 
+/* Activities / Hours switch: what the summary and tables count */
+.metric-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.metric-toggle-btn + .metric-toggle-btn {
+    border-left: 1px solid rgba(255,255,255,0.2);
+}
+
+.metric-toggle-btn:hover {
+    color: var(--primary-color);
+}
+
+.metric-toggle-btn.active {
+    background: rgba(76, 175, 80, 0.18);
+    color: var(--primary-color);
+}
+
 .filter-all-btn {
     background: none;
     border: 1px solid rgba(255,255,255,0.2);
@@ -892,6 +925,11 @@
 
 .filter-pill:hover {
     opacity: 0.75;
+}
+
+/* Metro Hunter top-N switch (Top 50 / 100 / 200) */
+.metro-top-switch {
+    margin-bottom: 12px;
 }
 
 .filter-pill-count {

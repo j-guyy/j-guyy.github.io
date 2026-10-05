@@ -679,12 +679,48 @@ function cleanSubdivision(s) {
 }
 
 
+// ── Dashboard metric ──────────────────────────────────────────────────────────
+// The summary, By Country and Regions tables can rank by activity count or by
+// total moving time. Buckets carry both (`b[col]` = count, `b.sec[col]` =
+// seconds); metricValue() picks the one being shown. Region "visited" logic
+// stays count-based either way.
+const METRIC_KEY = 'strava_dashboard_metric';
+let dashboardMetric = (() => {
+    try { return localStorage.getItem(METRIC_KEY) === 'hours' ? 'hours' : 'count'; } catch { return 'count'; }
+})();
+
+function metricValue(bucket, col) {
+    return dashboardMetric === 'hours' ? (bucket.sec?.[col] || 0) / 3600 : (bucket[col] || 0);
+}
+
+// Whole hours once there's enough to round, one decimal below that.
+function formatMetric(v) {
+    if (dashboardMetric !== 'hours') return Number(v).toLocaleString();
+    if (!v) return '0';
+    return v >= 10 ? Math.round(v).toLocaleString() : String(Number(v.toFixed(1)));
+}
+
+function setDashboardMetric(metric) {
+    if (metric === dashboardMetric) return;
+    dashboardMetric = metric;
+    try { localStorage.setItem(METRIC_KEY, metric); } catch {}
+    renderFilters();
+    applyFilters();
+}
+
 // ── Build data ────────────────────────────────────────────────────────────────
 
 function newBucket() {
-    const b = { total: 0 };
-    GROUP_KEYS.forEach(g => b[g] = 0);
+    const b = { total: 0, sec: { total: 0 } };
+    GROUP_KEYS.forEach(g => { b[g] = 0; b.sec[g] = 0; });
     return b;
+}
+
+function addToBucket(b, group, a) {
+    b[group]++;
+    b.total++;
+    b.sec[group] += a.m || 0;
+    b.sec.total += a.m || 0;
 }
 
 // All 50 US states + DC — pre-populated so states with 0 activities still appear
@@ -716,14 +752,12 @@ function buildData(slim, cache) {
         const group = getGroup(a.t);
 
         if (!countries[country]) countries[country] = newBucket();
-        countries[country][group]++;
-        countries[country].total++;
+        addToBucket(countries[country], group, a);
 
         const cfg = SUBDIVISION_BY_COUNTRY[country];
         if (cfg && geo.s) {
             if (!subdivisions[cfg.id][geo.s]) subdivisions[cfg.id][geo.s] = newBucket();
-            subdivisions[cfg.id][geo.s][group]++;
-            subdivisions[cfg.id][geo.s].total++;
+            addToBucket(subdivisions[cfg.id][geo.s], group, a);
         }
     });
 
@@ -748,8 +782,8 @@ function sortedEntries(data, state, nameCol) {
             const cmp = nameA.localeCompare(nameB);
             return state.dir === 'asc' ? cmp : -cmp;
         }
-        const aVal = data[nameA][col] ?? 0;
-        const bVal = data[nameB][col] ?? 0;
+        const aVal = metricValue(data[nameA], col);
+        const bVal = metricValue(data[nameB], col);
         return state.dir === 'asc' ? aVal - bVal : bVal - aVal;
     });
 }
@@ -792,8 +826,13 @@ function renderFilters() {
         return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleSportType('${t}')">${typeLabel(t)} <span class="filter-pill-count">${count}</span></button>`;
     }).join('');
 
+    const metricHtml = [['count', 'Activities'], ['hours', 'Hours']].map(([m, label]) =>
+        `<button type="button" class="metric-toggle-btn${dashboardMetric === m ? ' active' : ''}" aria-pressed="${dashboardMetric === m}" onclick="setDashboardMetric('${m}')">${label}</button>`
+    ).join('');
+
     container.innerHTML = `
         <div class="filter-bar">
+            <div class="metric-toggle" role="group" aria-label="Rank by">${metricHtml}</div>
             <div class="filter-controls">
                 <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
                 <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
@@ -856,7 +895,7 @@ function applyFilters() {
 function buildSortableTable(data, state, nameCol, onSort) {
     const headers = [
         { label: nameCol, col: nameCol.toLowerCase() },
-        { label: 'Total', col: 'total' },
+        { label: dashboardMetric === 'hours' ? 'Hours' : 'Total', col: 'total' },
         ...GROUP_KEYS.map(g => ({ label: `${GROUP_ICONS[g]} ${g}`, col: g })),
     ];
 
@@ -896,8 +935,8 @@ function buildSortableTable(data, state, nameCol, onSort) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${name}</td>
-            <td style="text-align:center"><strong>${d.total}</strong></td>
-            ${GROUP_KEYS.map(g => `<td style="text-align:center">${d[g] || 0}</td>`).join('')}
+            <td style="text-align:center"><strong>${formatMetric(metricValue(d, 'total'))}</strong></td>
+            ${GROUP_KEYS.map(g => `<td style="text-align:center">${formatMetric(metricValue(d, g))}</td>`).join('')}
         `;
         tbody.appendChild(row);
     });
@@ -955,18 +994,27 @@ function makeCollapsible(title, contentEl, { collapsed = true, onOpen = null } =
 
 function renderSummary(slim, countries, total) {
     const countryCount = Object.keys(countries).length;
+    const hours = dashboardMetric === 'hours';
     const groupTotals = {};
     GROUP_KEYS.forEach(g => {
-        groupTotals[g] = Object.values(countries).reduce((s, c) => s + (c[g] || 0), 0);
+        groupTotals[g] = Object.values(countries).reduce((s, c) => s + metricValue(c, g), 0);
     });
+    // Hours come from the GPS activities' moving time; the count total also
+    // includes non-GPS activities, which the store doesn't keep.
+    const headline = hours
+        ? Object.values(countries).reduce((s, c) => s + metricValue(c, 'total'), 0)
+        : total;
+    // Activities stored before the worker kept moving time have none until
+    // the next sync rewrites the store.
+    const missingTime = hours && slim.length > 0 && !slim.some(a => a.m);
 
     document.getElementById('strava-summary').innerHTML = `
         <div class="summary-stats-container">
             <div class="summary-stat strava-total">
                 <div class="stat-number-container">
-                    <span class="stat-number">${total.toLocaleString()}</span>
+                    <span class="stat-number">${formatMetric(headline)}</span>
                 </div>
-                <span class="stat-label">Total Activities</span>
+                <span class="stat-label">${hours ? 'Total Hours' : 'Total Activities'}</span>
             </div>
             <div class="other-stats strava-group-stats">
                 <div class="summary-stat">
@@ -978,12 +1026,13 @@ function renderSummary(slim, countries, total) {
                 ${GROUP_KEYS.map(g => `
                 <div class="summary-stat">
                     <div class="stat-number-container">
-                        <span class="stat-number">${(groupTotals[g] || 0).toLocaleString()}</span>
+                        <span class="stat-number">${formatMetric(groupTotals[g] || 0)}</span>
                     </div>
                     <span class="stat-label">${GROUP_ICONS[g]} ${g}</span>
                 </div>`).join('')}
             </div>
         </div>
+        ${missingTime ? '<p class="no-location-note" style="margin-top:8px">Activity durations load with the next sync.</p>' : ''}
     `;
 }
 
@@ -1256,10 +1305,12 @@ function computeRegionVisited(cfg) {
         if (!bucket.total) return;
         const id = state.byAlias[regionKey(name)];
         if (!id) { unmatched++; return; }
-        if (!visited[id]) visited[id] = { total: 0, groups: {} };
+        if (!visited[id]) visited[id] = { total: 0, groups: {}, sec: { total: 0 }, groupSec: {} };
         visited[id].total += bucket.total;
+        visited[id].sec.total += bucket.sec?.total || 0;
         GROUP_KEYS.forEach(g => {
             if (bucket[g]) visited[id].groups[g] = (visited[id].groups[g] || 0) + bucket[g];
+            if (bucket.sec?.[g]) visited[id].groupSec[g] = (visited[id].groupSec[g] || 0) + bucket.sec[g];
         });
     });
     state.visited = visited;
@@ -1287,15 +1338,19 @@ function regionPopupHtml(cfg, feature) {
                 <div class="activity-popup-date" style="color:#888">No activities yet</div>
             </div>`;
     }
+    const hours = dashboardMetric === 'hours';
     const breakdown = GROUP_KEYS
         .filter(g => v.groups[g])
-        .map(g => `${GROUP_ICONS[g]} ${v.groups[g]}`)
+        .map(g => `${GROUP_ICONS[g]} ${hours ? formatMetric((v.groupSec[g] || 0) / 3600) + 'h' : v.groups[g]}`)
         .join(' · ');
+    const totalLine = hours
+        ? `${formatMetric(v.sec.total / 3600)} hours · ${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}`
+        : `${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}`;
     return `
         <div class="activity-popup-inner">
             <div class="activity-popup-type" style="color:${REGION_COLOR}">${cfg.flag} ${cfg.colLabel}</div>
             <div class="activity-popup-name">${name}</div>
-            <div class="activity-popup-date">${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}</div>
+            <div class="activity-popup-date">${totalLine}</div>
             ${breakdown ? `<div class="activity-popup-date">${breakdown}</div>` : ''}
         </div>`;
 }
@@ -1324,7 +1379,11 @@ function renderRegionStats(cfg) {
         items.push([total.toLocaleString(), `Total ${cfg.colLabel}s`]);
         items.push([`${((visited / total) * 100).toFixed(1)}%`, 'Complete']);
     }
-    items.push([activities.toLocaleString(), 'Activities']);
+    if (dashboardMetric === 'hours') {
+        items.push([formatMetric(buckets.reduce((sum, b) => sum + metricValue(b, 'total'), 0)), 'Hours']);
+    } else {
+        items.push([activities.toLocaleString(), 'Activities']);
+    }
 
     sec.statsBar.innerHTML = items.map(([num, label]) => `
         <div class="county-stat-item">
@@ -2568,8 +2627,21 @@ function setParkStatus(msg) {
 
 // ── Metro Hunter ──────────────────────────────────────────────────────────────
 
-const METRO_TOTAL = 200;   // total metros in metros.json (3 PR metros have no polygon)
 const METRO_COLOR = '#FFC107';  // amber
+const METRO_TOP_OPTIONS = [50, 100, 200];   // metros.json holds the top 200 (3 PR metros have no polygon)
+const METRO_TOP_KEY = 'metro_top_n';
+const METRO_TOP_DEFAULT = 100;
+
+// How many of the ranked metros the section tracks. Only the view changes —
+// detection and the saved worker state always cover all 200.
+let metroTopN = (() => {
+    try {
+        const n = Number(localStorage.getItem(METRO_TOP_KEY));
+        if (METRO_TOP_OPTIONS.includes(n)) return n;
+    } catch {}
+    return METRO_TOP_DEFAULT;
+})();
+let metroRankById = {};   // id → rank, built from the GeoJSON
 
 let metroMap = null;
 let metroMapInitialized = false;
@@ -2616,6 +2688,9 @@ async function initMetroMap() {
 
     const metros = preprocessMetros(geojson);
     const index  = buildSpatialIndex(metros);
+    metroGeoJsonRef = geojson;
+    metroRankById = {};
+    metros.forEach(m => { metroRankById[m.id] = m.rank; });
 
     const needsBackfill = visitedMetroIds.size > 0 && Object.keys(metroDiscoveries).length === 0;
     if (needsBackfill) {
@@ -2655,6 +2730,7 @@ async function initMetroMap() {
     setMetroStatus('Loading activity routes…');
     await addPolylineOverlay(metroMap, { interactive: true });
 
+    renderMetroTopSwitch();
     renderMetroMap(geojson);
     renderMetroStats();
     renderMetroComparison();
@@ -2750,8 +2826,38 @@ function restyleUnvisitedMetros() {
     if (metroGeoJsonLayer) metroGeoJsonLayer.setStyle(metroFeatureStyle);
 }
 
+// Visited metros that fall inside the selected top N.
+function metroVisitedInTop() {
+    let n = 0;
+    for (const id of visitedMetroIds) if (metroRankById[id] <= metroTopN) n++;
+    return n;
+}
+
+function renderMetroTopSwitch() {
+    const el = document.getElementById('metro-top-switch');
+    if (!el) return;
+    const pills = METRO_TOP_OPTIONS.map(n =>
+        `<button class="filter-pill${n === metroTopN ? ' active' : ''}" onclick="setMetroTopN(${n})">Top ${n}</button>`
+    ).join('');
+    el.innerHTML = `<div class="filter-pills">${pills}</div>`;
+}
+
+function setMetroTopN(n) {
+    if (!METRO_TOP_OPTIONS.includes(n) || n === metroTopN) return;
+    metroTopN = n;
+    try { localStorage.setItem(METRO_TOP_KEY, String(n)); } catch {}
+    renderMetroTopSwitch();
+    if (!metroMapInitialized) return;
+    if (metroGeoJsonLayer) metroMap.removeLayer(metroGeoJsonLayer);
+    renderMetroMap(metroGeoJsonRef);
+    renderMetroStats();
+    renderMetroComparisonBody();
+    renderRecentMetros();
+}
+
 function renderMetroMap(geojson) {
     metroGeoJsonLayer = L.geoJSON(geojson, {
+        filter: feature => feature.properties.rank <= metroTopN,
         style: metroFeatureStyle,
         onEachFeature: (feature, layer) => {
             const { id, rank, name, census_name, state, population } = feature.properties;
@@ -2792,14 +2898,15 @@ function renderMetroMap(geojson) {
 function renderMetroStats() {
     const el = document.getElementById('metro-stats-bar');
     if (!el) return;
-    const pct = ((visitedMetroIds.size / METRO_TOTAL) * 100).toFixed(1);
+    const visited = metroVisitedInTop();
+    const pct = ((visited / metroTopN) * 100).toFixed(1);
     el.innerHTML = `
         <div class="county-stat-item">
-            <span class="county-stat-number">${visitedMetroIds.size.toLocaleString()}</span>
+            <span class="county-stat-number">${visited.toLocaleString()}</span>
             <span class="county-stat-label">Metros Visited</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${METRO_TOTAL.toLocaleString()}</span>
+            <span class="county-stat-number">${metroTopN.toLocaleString()}</span>
             <span class="county-stat-label">Top US Metros</span>
         </div>
         <div class="county-stat-item">
@@ -2813,7 +2920,7 @@ let metroGeoJsonRef = null;
 
 function renderRecentMetros(geojson) {
     const el = document.getElementById('metro-recent-table');
-    if (!el || !Object.keys(metroDiscoveries).length) return;
+    if (!el) return;
     if (geojson) metroGeoJsonRef = geojson;
     if (!metroGeoJsonRef) return;
 
@@ -2824,7 +2931,7 @@ function renderRecentMetros(geojson) {
     }
 
     let rows = Object.entries(metroDiscoveries)
-        .filter(([id]) => infoById[id])
+        .filter(([id]) => infoById[id] && infoById[id].rank <= metroTopN)
         .map(([id, disc]) => ({ id, disc, info: infoById[id] }));
 
     rows.sort((a, b) => {
@@ -2844,7 +2951,7 @@ function renderRecentMetros(geojson) {
     });
 
     rows = rows.slice(0, 25);
-    if (!rows.length) return;
+    if (!rows.length) { el.innerHTML = ''; return; }
 
     const headers = [
         { label: 'Rank',         col: 'rank' },
@@ -2943,11 +3050,11 @@ function renderMetroComparisonBody() {
     const metrosData = metroComparisonDataCache;
     if (!el || !metrosData) return;
 
-    const manuallyVisited = metrosData.filter(m => m.visited);
-    const manualIds       = new Set(manuallyVisited.map(metroIdFromEntry));
+    const topData         = metrosData.filter(m => m.rank <= metroTopN);
+    const manuallyVisited = topData.filter(m => m.visited);
 
     const preStrava  = manuallyVisited.filter(m => !visitedMetroIds.has(metroIdFromEntry(m)));
-    const stravaOnly = metrosData.filter(m => !m.visited && visitedMetroIds.has(metroIdFromEntry(m)));
+    const stravaOnly = topData.filter(m => !m.visited && visitedMetroIds.has(metroIdFromEntry(m)));
     const confirmed  = manuallyVisited.filter(m => visitedMetroIds.has(metroIdFromEntry(m)));
 
     const contentEl = document.createElement('div');
@@ -2961,7 +3068,7 @@ function renderMetroComparisonBody() {
             <span class="county-stat-label">Manually Marked</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${visitedMetroIds.size}</span>
+            <span class="county-stat-number">${metroVisitedInTop()}</span>
             <span class="county-stat-label">Strava Detected</span>
         </div>
         <div class="county-stat-item">

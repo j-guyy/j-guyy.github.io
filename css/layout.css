@@ -216,6 +216,16 @@ body {
     overflow-x: clip;
 }
 
+/* Safari < 16 ignores `clip`, and iOS lets touch-pan past an html-only
+   `hidden`; there body gets `hidden` too. This is safe only because body has
+   an auto height (never `height: 100%`), so it grows with its content and the
+   window stays the vertical scroller. */
+@supports not (overflow: clip) {
+    body {
+        overflow-x: hidden;
+    }
+}
+
 .navbar,
 .parallax-background,
 .parallax-overlay,
@@ -358,54 +368,85 @@ body {
 
 /* Mobile hamburger menu styles */
 @media (max-width: 768px) {
+    /* A real 48px bar (menu button left, "JG" right) rather than a bare
+       button floating over the page, so it never sits on top of headings or
+       table rows. It slides away while scrolling down and returns on the first
+       scroll up (js/navbar-component.js toggles .navbar-hidden). */
     .navbar {
-        background-color: transparent;
-        backdrop-filter: none;
+        height: 48px;
         padding: 0;
-        pointer-events: none;
-        touch-action: pan-y;
+        box-sizing: border-box;
+        background-color: rgba(10, 13, 11, 0.78);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+        transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+    }
+
+    .navbar.navbar-hidden {
+        transform: translateY(-100%);
+    }
+
+    /* Over the homepage's full-screen photo, stay see-through until the page
+       scrolls. */
+    .home-page .navbar.navbar-at-top {
+        background-color: transparent;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom-color: transparent;
     }
 
     .navbar-container {
-        padding: 0.5rem 0.5rem;
-        justify-content: flex-start;
-        pointer-events: none;
-        touch-action: pan-y;
+        height: 100%;
+        padding: 0 0.5rem 0 0.25rem;
+        justify-content: space-between;
     }
 
     .navbar-brand {
-        display: none;
+        order: 2;
+        padding-right: 0.5rem;
+        font-size: 1.2rem;
     }
 
     .hamburger {
         display: flex;
-        position: absolute;
-        top: 0.5rem;
-        left: 0.5rem;
-        z-index: 1003;
-        pointer-events: auto;
-        touch-action: auto;
+        order: 1;
+        margin: 0;
+        min-width: 44px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
     }
 
+    /* Full-width sheet dropping from under the bar; scrolls itself if the
+       open accordions are taller than the screen. */
     .nav-menu {
         position: absolute;
         top: 100%;
         left: 0;
+        right: 0;
+        width: auto;
+        max-height: calc(100vh - 48px);
+        max-height: calc(100dvh - 48px);
         flex-direction: column;
-        background-color: var(--bg-transparent);
+        background-color: rgba(10, 13, 11, 0.97);
         backdrop-filter: blur(15px);
-        width: 250px;
+        -webkit-backdrop-filter: blur(15px);
         text-align: left;
         transition: 0.3s;
-        box-shadow: 0 10px 27px rgba(0, 0, 0, 0.3);
-        padding: 3rem 0 0.5rem 0;
-        border-radius: 10px;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+        padding: 0.25rem 0 0.5rem;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0 0 14px 14px;
         opacity: 0;
         visibility: hidden;
         z-index: 1002;
         pointer-events: none;
-        touch-action: pan-y;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     .nav-menu.nav-menu-active {
@@ -521,5 +562,10 @@ body {
         /* Ensures consistent width for + and − */
         width: 1.2rem;
         text-align: center;
+    }
+}
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+    .navbar {
+        transition: none;
     }
 }

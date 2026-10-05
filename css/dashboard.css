@@ -452,6 +452,13 @@
     .travel-table--fit td.col-name {
         white-space: normal;
         padding-left: 10px;
+        font-size: 0.9em;
+        line-height: 1.25;
+    }
+
+    .travel-table--fit td {
+        padding-top: 6px;
+        padding-bottom: 6px;
     }
 
     .travel-table--fit th.col-name {
@@ -476,14 +483,28 @@
         z-index: 2;
     }
 
+    /* Compact controls so the owner buttons (Export CSV, Edit Mode, Log out)
+       share the select's row on a phone; if they still don't fit, the row
+       wraps and the lock/log-out button stays right-aligned. */
     .table-controls {
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
+    }
+
+    .table-controls #table-selector {
+        min-width: 0;
+        padding: 6px 8px;
+        font-size: 0.8em;
     }
 
     .table-action-btn {
-        padding: 6px 12px;
+        padding: 6px 8px;
         font-size: 0.8em;
+        white-space: nowrap;
+    }
+
+    .table-action-btn.owner-lock {
+        padding: 6px 4px;
     }
 }
 
@@ -753,6 +774,7 @@ Controls Styling */
 
     .toggle-label {
         width: 100%;
+        box-sizing: border-box;
         justify-content: center;
     }
 }

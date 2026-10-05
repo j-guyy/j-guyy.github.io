@@ -91,6 +91,9 @@ class NavbarComponent extends HTMLElement {
         // Initialize hamburger menu
         this.initializeHamburgerMenu();
 
+        // Hide-on-scroll phone bar
+        this.initializeScrollBehavior();
+
         // Add keyboard shortcut to toggle tools menu (Ctrl+Shift+T on Mac, Alt+Shift+T on Windows)
         document.addEventListener('keydown', function (event) {
             const isMacShortcut = event.ctrlKey && event.shiftKey && event.key === 'T';
@@ -483,6 +486,51 @@ class NavbarComponent extends HTMLElement {
                 });
             });
         }
+    }
+
+    // Phone bar: slide away while scrolling down, come back on the first scroll
+    // up, and flag the very top of the page (the homepage keeps the bar
+    // see-through there). The classes only have styles below 768px, so the
+    // desktop navbar is unaffected.
+    initializeScrollBehavior() {
+        const navbar = this.querySelector('.navbar');
+        const navMenu = this.querySelector('.nav-menu');
+        if (!navbar) return;
+
+        const THRESHOLD = 6;     // ignore scroll jitter smaller than this
+        const REVEAL_ZONE = 80;  // always shown this close to the top
+        let lastY = window.scrollY;
+        let ticking = false;
+
+        const update = () => {
+            ticking = false;
+            const y = Math.max(0, window.scrollY);
+            navbar.classList.toggle('navbar-at-top', y < 8);
+
+            const menuOpen = navMenu && navMenu.classList.contains('nav-menu-active');
+            if (menuOpen || y < REVEAL_ZONE) {
+                navbar.classList.remove('navbar-hidden');
+            } else if (y > lastY + THRESHOLD) {
+                navbar.classList.add('navbar-hidden');
+            } else if (y < lastY - THRESHOLD) {
+                navbar.classList.remove('navbar-hidden');
+            } else {
+                return; // within the jitter band: keep lastY as the reference
+            }
+            lastY = y;
+        };
+
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(update);
+            }
+        }, { passive: true });
+
+        // Keyboard users tabbing into the nav must be able to see it
+        this.addEventListener('focusin', () => navbar.classList.remove('navbar-hidden'));
+
+        update();
     }
 
     handleResize() {
