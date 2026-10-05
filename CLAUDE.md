@@ -54,6 +54,7 @@ cd game && node --test "tests/*.test.mjs"   # everything, ~35s
 ### Key Libraries (CDN-loaded, no npm)
 
 - **Leaflet.js** `1.9.4` — interactive 2D maps (US map, world map, trip report maps, hunter maps). Still the current stable release; 2.0 is ESM-only with no global `L`, so it is not adoptable without a build step. Plugins: `leaflet.fullscreen@5.3.3` (exports `L.Control.FullScreen`, fires `enterFullscreen`/`exitFullscreen`, and has no `map.isFullscreen()`), `leaflet-gesture-handling@1.2.2`, `leaflet-draw@1.0.4`. **Pin every CDN URL to an exact version** — an unpinned unpkg URL silently follows upstream releases.
+- **CARTO raster basemaps** (`dark_all` / `light_all` on `basemaps.cartocdn.com`) — CARTO now watermarks keyless tiles with "API KEY REQUIRED", so every CARTO tile URL carries `?key=`. It is a public browser-side tile key (like Thunderforest's `TF_KEY`), defined as `CARTO_KEY` in `setupStravaBasemaps()` (`js/strava.js`, which also serves `/app/`) and again in `js/us-ecoregions.js` — rotate it in both places. Attribution to OSM + CARTO must stay on the layers.
 - **Cesium.js v1.124** — 3D globe on `about.html` (life journey visualization)
 - **Google `<model-viewer>`** — 3D GLB model display on trip reports (e.g., Pico de Orizaba)
 
@@ -133,7 +134,8 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |
 | `/peaks/all`, `/peaks/save`, `/peaks/reset` | GET/POST | Mountain peak cell cache |
 | `/summits/all`, `/summits/save`, `/summits/reset` | GET/POST | Summit detection cache |
-| `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above; feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
+| `/progress/all`, `/progress/save`, `/progress/reset` | GET/POST | City / Trail Hunter completion headline (per city / trail region: complete, partial, total, node-coverage %), saved by the page once it has computed coverage from Overpass / COTrex; `/progress/save` is validated + merged per key, `/reset` is admin-only |
+| `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above (tile max-cluster/square arrive precomputed with each `/tiles/save`, in `strava_tile_stats`, and are only computed at read time for tile data saved before that; city/trail come from `/progress/save`); feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
 | `/travel/*` | GET/POST | Travel dashboard data (toggle, seed) |
 | `/music/leaderboard` | GET | Song play counts from D1 (`?limit=`, max 500) |
 | `/music/state`, `/music/plays` | GET/POST | YouTube Music sync: last snapshot, and new plays (`X-Music-Token`) |

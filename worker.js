@@ -44,6 +44,8 @@ const PARKS_KEY       = 'strava_parks';
 const STATE_PARKS_KEY = 'strava_state_parks';
 const METRO_HUNTER_KEY = 'strava_metro_hunter';
 const PASSES_KEY      = 'strava_passes';
+const TILE_STATS_KEY = 'strava_tile_stats';   // { visited, maxCluster, maxSquare } saved with the tiles
+const PROGRESS_KEY   = 'strava_progress';     // City / Trail Hunter completion summaries
 
 const TRAVEL_KEYS = {
     highpoints:    'travel_highpoints',
@@ -160,11 +162,38 @@ export default {
             if (path === '/tiles/save' && request.method === 'POST') {
                 const data = await request.json();
                 await env.STRAVA_DATA.put(TILES_KEY, JSON.stringify(data));
+                // The page computes max cluster / square anyway, so it sends
+                // them along and /summary never has to. A save without valid
+                // stats (an older cached page) must drop the previous ones or
+                // they would describe a tile list that no longer exists.
+                const stats = cleanTileStats(data.stats, (data.tiles || []).length);
+                if (stats) await env.STRAVA_DATA.put(TILE_STATS_KEY, JSON.stringify(stats));
+                else await env.STRAVA_DATA.delete(TILE_STATS_KEY);
                 return json({ ok: true, tiles: (data.tiles || []).length });
             }
             if (path === '/tiles/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(TILES_KEY);
+                await env.STRAVA_DATA.delete(TILE_STATS_KEY);
+                return json({ ok: true });
+            }
+
+            // ── City / Trail Hunter progress ──
+            // Their completion is computed in the browser from Overpass / COTrex
+            // data and never stored, so the page saves just a tiny summary per
+            // city / trail region for /summary to surface.
+            // Data: { city: { <configKey>: { name, complete, partial, total, pct, ts } }, trail: { … } }
+
+            if (path === '/progress/all') {
+                const data = await env.STRAVA_DATA.get(PROGRESS_KEY, 'json');
+                return json(data || { city: {}, trail: {} });
+            }
+            if (path === '/progress/save' && request.method === 'POST') {
+                return await handleProgressSave(request, env);
+            }
+            if (path === '/progress/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
+                await env.STRAVA_DATA.delete(PROGRESS_KEY);
                 return json({ ok: true });
             }
 
@@ -364,8 +393,8 @@ export default {
 // ── Hunter summary ───────────────────────────────────────────────────────────
 //
 // Response shape (any hunter whose blob is missing or unreadable is null; city
-// and trail progress are computed client-side from Overpass and never stored,
-// so they are always null):
+// and trail are null until the page has computed and saved their progress —
+// see /progress/save):
 //   { generatedAt,
 //     activities: { total, syncedAt },
 //     county:   { visited, total },
@@ -374,7 +403,8 @@ export default {
 //     tile:     { visited, maxCluster, maxSquare },
 //     mountain: { summited, summits },
 //     pass:     { climbed, total },
-//     city: null, trail: null }
+//     city:  { key, name, pct, complete, partial, total, ts } | null,
+//     trail: { … same … } | null }
 //
 // Totals mirror the constants in js/strava.js (county stats bar, FEDERAL_PARK_TOTAL,
 // STATE_PARK_TOTAL, METRO_TOTAL); keep them in step.
@@ -386,17 +416,18 @@ const SUMMARY_CACHE_SECONDS = 300;
 
 async function handleSummary(env) {
     const kv = env.STRAVA_DATA;
-    const [activitiesText, counties, parks, stateParks, metros, tiles, summits, hidden, passes] =
+    const [activitiesText, counties, parks, stateParks, metros, tileStats, summits, hidden, passes, progress] =
         await Promise.all([
             kv.get(ACTIVITIES_KEY, 'text'),
             kv.get(COUNTIES_KEY, 'json'),
             kv.get(PARKS_KEY, 'json'),
             kv.get(STATE_PARKS_KEY, 'json'),
             kv.get(METRO_HUNTER_KEY, 'json'),
-            kv.get(TILES_KEY, 'json'),
+            kv.get(TILE_STATS_KEY, 'json'),
             kv.get(SUMMITS_KEY, 'json'),
             kv.get(HIDDEN_PEAKS_KEY, 'json'),
             kv.get(PASSES_KEY, 'json'),
+            kv.get(PROGRESS_KEY, 'json'),
         ]);
 
     // Each hunter is derived independently so one malformed blob can't blank
@@ -415,17 +446,77 @@ async function handleSummary(env) {
             stateParksTotal: SUMMARY_TOTALS.stateParks,
         } : null,
         metro: metros ? { visited: count(metros.ids), total: SUMMARY_TOTALS.metros } : null,
-        tile: tiles ? safe(() => summarizeTilesMemo(tiles.tiles || [])) : null,
+        tile: await safeAsync(() => summarizeTileStats(env, tileStats)),
         mountain: summits ? safe(() => summarizeSummits(summits, hidden)) : null,
         pass: passes ? {
             climbed: Object.keys(passes.discoveries || {}).length || count(passes.ids),
             total: count(passes.catalogIds) || null,
         } : null,
-        city: null,
-        trail: null,
+        city: safe(() => headlineProgress(progress?.city)),
+        trail: safe(() => headlineProgress(progress?.trail)),
     };
 
     return json(summary, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+async function safeAsync(fn) {
+    try { return await fn(); } catch (e) { console.log(`summary: ${e.message}`); return null; }
+}
+
+// Tile stats come precomputed from the page's last /tiles/save (a few bytes, no
+// CPU). Only tile data saved before that existed falls back to the old
+// read-time computation over the whole tile list, memoised per isolate.
+async function summarizeTileStats(env, stats) {
+    if (stats) return stats;
+    const tiles = await env.STRAVA_DATA.get(TILES_KEY, 'json');
+    return tiles ? summarizeTilesMemo(tiles.tiles || []) : null;
+}
+
+// Accepts { visited, maxCluster, maxSquare } only when they are sane integers
+// and `visited` matches the tile count actually saved.
+function cleanTileStats(stats, tileCount) {
+    if (!stats || typeof stats !== 'object') return null;
+    const { visited, maxCluster, maxSquare } = stats;
+    const ok = (v) => Number.isInteger(v) && v >= 0 && v <= tileCount;
+    if (visited !== tileCount || !ok(maxCluster) || !ok(maxSquare)) return null;
+    return { visited, maxCluster, maxSquare };
+}
+
+// ── City / Trail Hunter progress ─────────────────────────────────────────────
+
+const PROGRESS_KINDS = ['city', 'trail'];
+
+// Merge one { kind, key, name, complete, partial, total, pct } report into the
+// stored summaries. Public like the other /save endpoints, so every field is
+// validated and the blob stays tiny (bounded number of short keys).
+async function handleProgressSave(request, env) {
+    const body = await request.json();
+    const key = typeof body.key === 'string' && /^[a-z0-9-]{1,40}$/.test(body.key) ? body.key : null;
+    const int = (v) => (Number.isInteger(v) && v >= 0 && v <= 1e7 ? v : null);
+    const complete = int(body.complete), partial = int(body.partial), total = int(body.total);
+    const pct = Number(body.pct);
+    if (!PROGRESS_KINDS.includes(body.kind) || !key || complete === null || partial === null ||
+        total === null || !(pct >= 0 && pct <= 100)) {
+        return json({ error: 'Invalid progress' }, 400);
+    }
+    const name = String(body.name || key).slice(0, 60);
+    const stored = (await env.STRAVA_DATA.get(PROGRESS_KEY, 'json')) || {};
+    const group = stored[body.kind] || {};
+    if (!group[key] && Object.keys(group).length >= 20) return json({ error: 'Too many entries' }, 400);
+    group[key] = { name, complete, partial, total, pct: Math.round(pct * 10) / 10, ts: Date.now() };
+    stored[body.kind] = group;
+    await env.STRAVA_DATA.put(PROGRESS_KEY, JSON.stringify(stored));
+    return json({ ok: true });
+}
+
+// The card shows one entry per hunter: the most recently computed city / trail
+// region (the one the owner last looked at).
+function headlineProgress(group) {
+    let best = null;
+    for (const [key, v] of Object.entries(group || {})) {
+        if (v && (!best || v.ts > best.ts)) best = { key, ...v };
+    }
+    return best;
 }
 
 // The activity store is several MB of polylines; parsing it all just for two
