@@ -4754,7 +4754,11 @@ function setTileStatus(msg) {
 // can restyle "not yet reached" features (faint white reads on the dark
 // basemap but vanishes on the light ones — see faint* helpers below).
 function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}) {
-    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // CARTO stamps keyless raster tiles with an "API KEY REQUIRED" watermark.
+    // Like TF_KEY below this is a public tile key (browser requests carry it);
+    // js/us-ecoregions.js has its own copy.
+    const CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
+    const darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
     });
@@ -4762,7 +4766,7 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
     });
-    const greyscaleLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    const greyscaleLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
     });
