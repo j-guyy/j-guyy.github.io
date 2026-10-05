@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """One-time YouTube Music auth setup for the song leaderboard sync.
 
+Optional: you can skip this script entirely and paste the copied request
+headers (steps 1-4 below) straight into the YTMUSIC_AUTH repository secret —
+the sync job converts them itself. This script just converts and checks them
+locally first.
+
 ytmusicapi's browser auth works by replaying the request headers (cookies
 included) of a logged-in music.youtube.com session. This script turns those
 pasted headers into the JSON ytmusicapi expects, proves they work by reading

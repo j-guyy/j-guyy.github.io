@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from sync_history import build_payload, new_play_count  # noqa: E402
+from sync_history import auth_json, build_payload, new_play_count  # noqa: E402
+import json  # noqa: E402
 
 NOW = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
 
@@ -64,6 +65,23 @@ class BuildPayload(unittest.TestCase):
     def test_skips_items_without_video_id(self):
         p = build_payload([item("a"), {"title": "gone", "played": "Today"}], {}, NOW)
         self.assertEqual(p["snapshot"], ["a"])
+
+
+class AuthJson(unittest.TestCase):
+    def test_json_passes_through(self):
+        value = json.dumps({"cookie": "a=b", "x-goog-authuser": "0"})
+        self.assertEqual(auth_json(value), value)
+
+    def test_raw_headers_are_converted(self):
+        try:
+            import ytmusicapi  # noqa: F401
+        except ImportError:
+            self.skipTest("ytmusicapi not installed")
+        raw = "accept: */*\r\ncookie: SAPISID=abc; HSID=def\r\nx-goog-authuser: 0\r\nhost: music.youtube.com\r\n"
+        headers = json.loads(auth_json(raw))
+        self.assertEqual(headers["cookie"], "SAPISID=abc; HSID=def")
+        self.assertEqual(headers["x-goog-authuser"], "0")
+        self.assertNotIn("host", headers)
 
 
 if __name__ == "__main__":

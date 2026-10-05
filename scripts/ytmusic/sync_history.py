@@ -5,7 +5,9 @@ Run daily by .github/workflows/ytmusic-sync.yml; music.html shows the result
 via the worker's /music/leaderboard.
 
 Environment:
-  YTMUSIC_AUTH      auth JSON written by setup_auth.py (or --auth PATH)
+  YTMUSIC_AUTH      either the request headers copied from a logged-in
+                    music.youtube.com /browse request (pasted as-is), or the
+                    auth JSON written by setup_auth.py (or --auth PATH)
   MUSIC_SYNC_TOKEN  matches the worker secret of the same name
   WORKER_URL        optional, defaults to the production worker
 
@@ -118,6 +120,18 @@ def build_payload(history, state, now):
     }
 
 
+def auth_json(value):
+    """YTMUSIC_AUTH as the JSON ytmusicapi wants, converting raw copied headers if needed."""
+    try:
+        if isinstance(json.loads(value), dict):
+            return value
+    except ValueError:
+        pass
+    import ytmusicapi
+    # Normalise Windows line endings; ytmusicapi splits the paste on "\n".
+    return ytmusicapi.setup(headers_raw=value.replace("\r\n", "\n").replace("\r", "\n").strip())
+
+
 def require_env(name):
     value = os.environ.get(name)
     if not value:
@@ -138,7 +152,7 @@ def main():
     worker = os.environ.get("WORKER_URL", DEFAULT_WORKER_URL).rstrip("/")
     headers = {"X-Music-Token": require_env("MUSIC_SYNC_TOKEN")}
 
-    history = YTMusic(args.auth or require_env("YTMUSIC_AUTH")).get_history()
+    history = YTMusic(args.auth or auth_json(require_env("YTMUSIC_AUTH"))).get_history()
     if not history:
         sys.exit("get_history() returned nothing — expired auth or history paused? Not syncing.")
 
