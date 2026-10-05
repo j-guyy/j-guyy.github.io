@@ -5,7 +5,9 @@
 # (Workers & Pages -> strava-worker -> Settings). Anything missing gets removed.
 #
 # Secrets (CLIENT_ID, CLIENT_SECRET, TRAVEL_PASSWORD) live in Cloudflare, are NOT
-# listed here, and are preserved across deploys. Never put secret values in this repo.
+# listed here, and are preserved across deploys. MUSIC_SYNC_TOKEN is uploaded by
+# the deploy workflow from the GitHub secret of the same name. Never put secret
+# values in this repo.
 
 name = "strava-worker"
 main = "worker.js"
@@ -20,6 +22,13 @@ id = "a2e8d7f7069c4948a2f7e2f0bdddc208"
 [[kv_namespaces]]
 binding = "STRAVA_KV"
 id = "1a5eee59c7b447489a07bed10f4798e0"
+
+# YouTube Music song leaderboard (music.html): the D1 database "music"
+# (Storage & Databases -> D1). The worker creates its tables on first use.
+[[d1_databases]]
+binding = "MUSIC_DB"
+database_name = "music"
+database_id = "dbc5b954-373a-48d8-b445-52a0c2381758"
 
 # Cron trigger (Settings -> Triggers). Cloudflare crons run in UTC; this is
 # midnight UTC. Keep it identical to the dashboard's cron expression.

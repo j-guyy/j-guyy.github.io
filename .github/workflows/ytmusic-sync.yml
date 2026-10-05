@@ -1,0 +1,41 @@
+# Daily YouTube Music history sync for the song leaderboard (music.html).
+#
+# Runs scripts/ytmusic/sync_history.py, which reads history with ytmusicapi and
+# posts the new plays to the Cloudflare worker's D1 database. Secrets:
+#   YTMUSIC_AUTH      auth JSON from scripts/ytmusic/setup_auth.py
+#   MUSIC_SYNC_TOKEN  same value as the worker secret of that name
+# get_history() only returns the last ~200 songs, so a daily cadence keeps the
+# window comfortably ahead of how much is played between runs.
+name: YouTube Music sync
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # daily, 09:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ytmusic-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/ytmusic/requirements.txt
+      - name: Install ytmusicapi
+        run: pip install -r scripts/ytmusic/requirements.txt
+      - name: Check the history diffing
+        run: python -m unittest scripts/ytmusic/test_sync_history.py
+      - name: Sync history
+        env:
+          YTMUSIC_AUTH: ${{ secrets.YTMUSIC_AUTH }}
+          MUSIC_SYNC_TOKEN: ${{ secrets.MUSIC_SYNC_TOKEN }}
+        run: python scripts/ytmusic/sync_history.py
