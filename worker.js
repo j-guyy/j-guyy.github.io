@@ -346,6 +346,12 @@ export default {
                 if (!isMusicWriter(request, env)) return unauthorized();
                 return await handleMusicPlays(request, env);
             }
+            // One-off Google Takeout backfill (music.html's owner-only Import
+            // button); admin password only.
+            if (path === '/music/import' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
+                return await handleMusicImport(request, env);
+            }
 
             // ── Mountain Hunter — server-side Overpass proxy ──
             // Fetches peaks for a 5°×5° cell from Overpass on behalf of the client,
@@ -1044,15 +1050,21 @@ async function handleBackfillElev(env) {
 
 // ── Music — YouTube Music song leaderboard (D1) ──────────────────────────────
 //
-// Plays live in the MUSIC_DB D1 database (SQLite). The tables are created on
-// first use, so a fresh, empty database bound as MUSIC_DB is all the setup
-// needed. The sync script does the history diffing (get_history() has no
-// timestamps, so new plays are found by comparing against the previous
-// snapshot — see scripts/ytmusic/sync_history.py); the worker only stores.
+// Plays live in the MUSIC_DB D1 database (SQLite). The tables are created (and
+// migrated) on first use, so a fresh, empty database bound as MUSIC_DB is all
+// the setup needed. Plays come from two sources:
+//   * 'sync'    — the daily sync (scripts/ytmusic/sync_history.py). get_history()
+//                 has no timestamps, so the script finds new plays by diffing
+//                 against the previous snapshot; the worker only stores them.
+//                 played_at is NULL; synced_at is when the play was detected.
+//   * 'takeout' — a one-off Google Takeout backfill (POST /music/import), with
+//                 each play's real timestamp in played_at.
 //
 //   songs(video_id PK, title, artists, album, duration_seconds, first_seen, last_seen)
-//   plays(id, video_id, played_label, played_date, synced_at)
-//   sync_state(key PK, value)  — 'snapshot' (JSON videoId list), 'last_sync'
+//   plays(id, video_id, played_label, played_date, synced_at, played_at, source)
+//   sync_state(key PK, value)  — 'snapshot' (JSON videoId list), 'last_sync',
+//                                'baseline_sync' (the first sync's synced_at),
+//                                'takeout_import' (JSON summary of the last import)
 
 const MUSIC_SCHEMA = [
     `CREATE TABLE IF NOT EXISTS songs (
@@ -1064,6 +1076,13 @@ const MUSIC_SCHEMA = [
     `CREATE INDEX IF NOT EXISTS plays_video_id ON plays(video_id)`,
     `CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
 ];
+
+// Columns added after the first release; musicDb() adds whichever are missing.
+const MUSIC_PLAYS_COLUMNS = { played_at: 'TEXT', source: "TEXT NOT NULL DEFAULT 'sync'" };
+
+// Rows per json_each() statement in /music/import, keeping each bound JSON
+// string well under D1's 2 MB value limit.
+const MUSIC_IMPORT_CHUNK = 2000;
 
 // D1 caps a statement at 100 bound parameters, so multi-row inserts are chunked.
 const D1_MAX_PARAMS = 100;
@@ -1079,7 +1098,14 @@ function isMusicWriter(request, env) {
 async function musicDb(env) {
     if (!env.MUSIC_DB) throw new Error('MUSIC_DB (D1) binding is not configured');
     if (!musicSchemaReady) {
-        await env.MUSIC_DB.batch(MUSIC_SCHEMA.map(sql => env.MUSIC_DB.prepare(sql)));
+        const db = env.MUSIC_DB;
+        await db.batch(MUSIC_SCHEMA.map(sql => db.prepare(sql)));
+        const { results } = await db.prepare('PRAGMA table_info(plays)').all();
+        const have = new Set(results.map(c => c.name));
+        const missing = Object.entries(MUSIC_PLAYS_COLUMNS).filter(([name]) => !have.has(name));
+        if (missing.length) {
+            await db.batch(missing.map(([name, type]) => db.prepare(`ALTER TABLE plays ADD COLUMN ${name} ${type}`)));
+        }
         musicSchemaReady = true;
     }
     return env.MUSIC_DB;
@@ -1091,6 +1117,8 @@ async function musicState(db) {
     return {
         snapshot: state.snapshot ? JSON.parse(state.snapshot) : [],
         last_sync: state.last_sync || null,
+        baseline_sync: state.baseline_sync || null,
+        takeout_import: state.takeout_import ? JSON.parse(state.takeout_import) : null,
     };
 }
 
@@ -1100,16 +1128,17 @@ async function handleMusicLeaderboard(url, env) {
     const [board, totals, lastSync] = await db.batch([
         db.prepare(`
             SELECT s.title, s.artists, COUNT(*) AS plays,
-                   MAX(COALESCE(p.played_date, substr(p.synced_at, 1, 10))) AS last_played
+                   MAX(COALESCE(substr(p.played_at, 1, 10), p.played_date, substr(p.synced_at, 1, 10))) AS last_played,
+                   MAX(COALESCE(p.played_at, p.synced_at)) AS last_ts
             FROM plays p JOIN songs s ON s.video_id = p.video_id
             GROUP BY p.video_id
-            ORDER BY plays DESC, last_played DESC, s.title
+            ORDER BY plays DESC, last_ts DESC, s.title
             LIMIT ?`).bind(limit),
         db.prepare('SELECT COUNT(*) AS plays, COUNT(DISTINCT video_id) AS songs FROM plays'),
         db.prepare("SELECT value FROM sync_state WHERE key = 'last_sync'"),
     ]);
     return json({
-        songs: board.results,
+        songs: board.results.map(({ last_ts, ...song }) => song),
         total_plays: totals.results[0].plays,
         total_songs: totals.results[0].songs,
         last_sync: lastSync.results[0]?.value || null,
@@ -1160,17 +1189,90 @@ async function handleMusicPlays(request, env) {
     }
     for (const chunk of chunked(plays, Math.floor(D1_MAX_PARAMS / 4))) {
         stmts.push(db.prepare(`
-            INSERT INTO plays (video_id, played_label, played_date, synced_at)
-            VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(', ')}`)
+            INSERT INTO plays (video_id, played_label, played_date, synced_at, source)
+            VALUES ${chunk.map(() => "(?, ?, ?, ?, 'sync')").join(', ')}`)
             .bind(...chunk.flatMap(p => [p.video_id, p.played_label ?? null, p.played_date ?? null, synced_at])));
     }
     stmts.push(db.prepare(`
         INSERT INTO sync_state (key, value) VALUES ('snapshot', ?), ('last_sync', ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
         .bind(JSON.stringify(snapshot), synced_at));
+    if (state.last_sync === null) {
+        // The first sync can't diff against anything, so it records every song
+        // in the history once. /music/import replaces it with real counts.
+        stmts.push(db.prepare("INSERT OR IGNORE INTO sync_state (key, value) VALUES ('baseline_sync', ?)")
+            .bind(synced_at));
+    }
     await db.batch(stmts);
 
     return json({ ok: true, songs: songs.length, plays: plays.length });
+}
+
+// Body: { plays: [[video_id, title, artist, played_at], ...] }, played_at an
+// ISO-8601 UTC timestamp — the YouTube Music entries of a Takeout
+// watch-history.json, parsed in the browser by js/music.js.
+//
+// Replaces, in one transaction, the sync plays the export makes redundant:
+//   * the baseline sync (every song once — a placeholder, not real counts);
+//   * every sync up to `cutoff`, the last sync at or before the export's newest
+//     play. Takeout plays after `cutoff` are dropped instead: the next sync
+//     after `cutoff` already counted them, by diffing against that snapshot.
+// Previously imported Takeout plays are replaced too, so importing a newer
+// export later is safe.
+async function handleMusicImport(request, env) {
+    const db = await musicDb(env);
+    const { plays } = await request.json();
+    const valid = Array.isArray(plays) && plays.length > 0 && plays.every(p =>
+        Array.isArray(p) && p.length === 4 && p.every(v => typeof v === 'string' && v)
+        && !Number.isNaN(Date.parse(p[3])));
+    if (!valid) return json({ error: 'Expected plays: [[video_id, title, artist, played_at], ...]' }, 400);
+
+    const rows = plays
+        .map(([vid, title, artist, at]) => [vid, title, artist, new Date(at).toISOString()])
+        .sort((a, b) => a[3].localeCompare(b[3]));  // ascending, so play ids follow time
+    const newest = rows[rows.length - 1][3];
+
+    const state = await musicState(db);
+    const { results: syncs } = await db.prepare(
+        "SELECT DISTINCT synced_at FROM plays WHERE source = 'sync' ORDER BY synced_at").all();
+    const syncTimes = syncs.map(r => r.synced_at);
+    // Older databases predate 'baseline_sync'; before any import their first
+    // sync is the baseline.
+    const baseline = state.baseline_sync || (state.takeout_import ? null : syncTimes[0] || null);
+    const cutoffSync = syncTimes.filter(t => Date.parse(t) <= Date.parse(newest)).pop() || null;
+    const cutoff = cutoffSync ? new Date(cutoffSync).toISOString() : null;
+    const kept = cutoff ? rows.filter(r => r[3] <= cutoff) : rows;
+
+    const stmts = [
+        db.prepare("DELETE FROM plays WHERE source = 'takeout'"),
+        db.prepare("DELETE FROM plays WHERE source = 'sync' AND (synced_at = ?1 OR synced_at <= ?2)")
+            .bind(baseline, cutoffSync),
+    ];
+    const importedAt = new Date().toISOString();
+    for (const chunk of chunked(kept, MUSIC_IMPORT_CHUNK)) {
+        const data = JSON.stringify(chunk);
+        // WHERE true: SQLite needs it to parse an upsert whose source is a SELECT.
+        stmts.push(db.prepare(`
+            INSERT INTO songs (video_id, title, artists, first_seen, last_seen)
+            SELECT value->>0, value->>1, value->>2, value->>3, value->>3 FROM json_each(?) WHERE true
+            ON CONFLICT(video_id) DO UPDATE SET
+                first_seen = MIN(songs.first_seen, excluded.first_seen),
+                last_seen = MAX(songs.last_seen, excluded.last_seen)`).bind(data));
+        stmts.push(db.prepare(`
+            INSERT INTO plays (video_id, played_date, played_at, synced_at, source)
+            SELECT value->>0, substr(value->>3, 1, 10), value->>3, ?, 'takeout' FROM json_each(?)`)
+            .bind(importedAt, data));
+    }
+    const summary = {
+        imported_at: importedAt, plays: kept.length, dropped_after_cutoff: rows.length - kept.length,
+        oldest: rows[0][3], newest, cutoff,
+    };
+    stmts.push(db.prepare(`
+        INSERT INTO sync_state (key, value) VALUES ('takeout_import', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(JSON.stringify(summary)));
+
+    const results = await db.batch(stmts);
+    return json({ ok: true, ...summary, removed_sync_plays: results[1].meta.changes });
 }
 
 function chunked(arr, size) {
