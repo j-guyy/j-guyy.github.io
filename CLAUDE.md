@@ -92,6 +92,7 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 | `adventures.html` | Adventure portfolio and trip reports |
 | `family-travels.html` | Family travel tracking |
 | `about.html` | About page with 3D Cesium globe |
+| `us-ecoregions.html` / `colorado-ecoregions.html` | EPA Level IV ecoregion maps (linked from the navbar Tools menu). Both use `js/map-controls.js` + `css/map-controls.css` — a standalone copy of the Strava hunters' basemap switcher and live-location control (`setupStravaBasemaps` / `LocationControl` in `strava.js`), with an `onLocate` hook that reports which ecoregion you're standing in. They pass `renderer: L.canvas/svg({ padding: 0.5 })` because Leaflet's default 10% padding makes polygons vanish at the leading edge while dragging on desktop. Keep the CARTO/Thunderforest keys in sync with `strava.js` |
 
 ### Strava Page Architecture (`js/strava.js`)
 
