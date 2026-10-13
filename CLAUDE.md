@@ -118,6 +118,7 @@ Near the top of strava.html, an **overview grid** (`#strava-overview`, website o
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters
 - Activity pipeline (`runPipeline`) — loads activities, renders immediately, syncs in background
 - Geocoding (`geocodeAndRender`) — renders with cached data first, geocodes missing cells in background
+- Overpass / COTrex fetches (`fetchOverpass`, `fetchWithTimeout`) — browser-side Overpass queries go through `fetchOverpass`, which tries every `OVERPASS_MIRRORS` entry with a per-request deadline and a retry round (Mountain Hunter's peak queries go through the worker's `/peaks/fetch`, which races the same mirrors). When a refresh fails, City/Trail Hunter fall back to the expired localStorage copy (`readTimedCache`) and Mountain Hunter keeps the cell's old peaks, so a busy Overpass never wipes data
 - All tables use `.travel-table` class with sortable headers and `.table-scroll-wrapper` for mobile
 
 ### Cloudflare Worker API (`worker.js`)
