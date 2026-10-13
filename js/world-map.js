@@ -649,82 +649,99 @@ const RoutesLayer = CanvasOverlay.extend({
     },
 });
 
-// ── Wheel / trackpad zoom speed ───────────────────────────────────────────────
+// ── Wheel / trackpad zoom ─────────────────────────────────────────────────────
 //
-// Leaflet 1.9.4 divides every wheel delta by 3× the pixel ratio on a Mac (6×
-// on Retina) and 2× elsewhere, then maps it through a sigmoid, so a trackpad
-// pinch or a mouse notch moved the map a sliver of a level. Here the wheel is
-// read the way Google / Apple / MapLibre maps read it:
-//   • a mouse-wheel notch is one zoom level, however many pixels the OS
-//     reports for it (100 on Windows, 4.000244… multiples on macOS, 3 lines
-//     in Firefox);
-//   • a trackpad pinch (a ctrl+wheel event with a small delta) follows the
-//     fingers: Chrome/Edge/Firefox report it as deltaY = −100·ln(scale);
-//   • a two-finger scroll (fullscreen, where plain scrolling zooms) is about
-//     a level per 100 px.
+// Fluid zoom, the way Google Maps and MapLibre do it, instead of Leaflet's
+// wheel handler — which turns each 40 ms batch of wheel input into a separate
+// 250 ms zoom animation (and, in 1.9.4, divides the input by 3× the pixel
+// ratio on a Mac, 2× elsewhere, so it crawled). Here every wheel event nudges
+// a target zoom in proportion to how far it scrolled, and the map glides
+// toward that target frame by frame, keeping the point under the cursor
+// still. A mouse-wheel notch (≈100 px on every OS) is one level; a trackpad
+// pinch or a free-spinning wheel streams small deltas that add up smoothly.
 // Touch pinch is Leaflet's own TouchZoom and already follows the fingers.
 
-const MAC_WHEEL_NOTCH = 4.000244140625;  // macOS mouse wheels scroll in multiples of this
-const PINCH_PX_PER_LEVEL = 100 * Math.LN2;
-const SCROLL_PX_PER_LEVEL = 100;
-const MAX_WHEEL_LEVELS = 2;              // per 40 ms batch, so accelerated wheels don't fling
+const WHEEL_PX_PER_LEVEL = 100;            // one mouse-wheel notch ≈ one zoom level
+const PINCH_PX_PER_LEVEL = 100 * Math.LN2; // Chrome/Edge/Firefox send a trackpad pinch as ctrl+wheel with deltaY = −100·ln(scale)
+const WHEEL_EASE_MS = 60;                  // time constant of the glide: a notch lands in ~200 ms
+const MAX_EVENT_LEVELS = 2;                // one event never moves the target further (accelerated wheels)
 
+// How many zoom levels one wheel event asks for (+ = in).
 function wheelZoomLevels(e) {
     if (!e.deltaY) return 0;  // horizontal scroll
-    let px = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1);
+    // Lines (Firefox's mouse wheel, 3 per notch) and pages to pixels.
+    let px = e.deltaY * (e.deltaMode === 1 ? WHEEL_PX_PER_LEVEL / 3 : e.deltaMode === 2 ? 800 : 1);
     if (L.Browser.gecko && e.deltaMode === 0) px /= window.devicePixelRatio || 1;  // Firefox doubles them on Retina
-    const abs = Math.abs(px);
-    const notch = e.deltaMode !== 0
-        || (abs >= 50 && Number.isInteger(px))
-        || (abs % MAC_WHEEL_NOTCH === 0);
-    if (notch) return px > 0 ? -1 : 1;
-    return -px / (e.ctrlKey ? PINCH_PX_PER_LEVEL : SCROLL_PX_PER_LEVEL);
+    // A pinch arrives as ctrl+wheel with small fractional deltas; scale it so
+    // the map follows the fingers.
+    const pinch = e.ctrlKey && !Number.isInteger(px) && Math.abs(px) < 10;
+    const levels = -px / (pinch ? PINCH_PX_PER_LEVEL : WHEEL_PX_PER_LEVEL);
+    return Math.max(-MAX_EVENT_LEVELS, Math.min(MAX_EVENT_LEVELS, levels));
 }
 
 function tuneWheelZoom(map) {
     const wheel = map.scrollWheelZoom;
-    wheel._onWheelScroll = function (e) {
-        this._delta += wheelZoomLevels(e);
-        this._lastMousePos = this._map.mouseEventToContainerPoint(e);
-        if (!this._startTime) this._startTime = Date.now();
-        const left = Math.max(this._map.options.wheelDebounceTime - (Date.now() - this._startTime), 0);
-        clearTimeout(this._timer);
-        this._timer = setTimeout(() => this._performZoom(), left);
-        L.DomEvent.stop(e);
-    };
-    wheel._performZoom = function () {
-        const map = this._map;
-        const snap = map.options.zoomSnap || 0;
-        const total = Math.max(-MAX_WHEEL_LEVELS, Math.min(MAX_WHEEL_LEVELS, this._delta));
-        // Zoom by whole snap steps and carry the remainder, so a slow pinch
-        // still adds up instead of rounding away (or up) every batch.
-        const step = snap ? Math.trunc(total / snap) * snap : total;
-        this._delta = total - step;
-        this._startTime = null;
-        if (!step) return;
-        // Leaflet drops a zoom request that lands while a zoom is still
-        // animating (~250 ms), so fast scrolling lost notches. Track where the
-        // wheel is heading instead, and move on to it whenever a zoom lands.
-        const from = this._target ?? map.getZoom();
-        const zoom = map._limitZoom(from + step);
-        if (zoom === from) { this._delta = 0; return; }
-        this._target = zoom;
-        if (!this._busy) this._go();
-    };
-    wheel._go = function () {
-        const map = this._map;
-        clearTimeout(this._busyTimer);
-        if (this._target == null || this._target === map.getZoom()) {
-            this._busy = false;
-            this._target = null;
-            return;
+    // The glide in progress: target zoom, current zoom, and the spot that
+    // stays under the cursor.
+    let glide = null, glideFrame = 0, lastTime = 0;
+
+    function step(now) {
+        glideFrame = 0;
+        // rAF stamps a frame with its start, which can be just before the
+        // event that scheduled it.
+        const dt = Math.max(4, Math.min(64, now - lastTime));
+        lastTime = now;
+        const g = glide;
+        g.zoom += (g.target - g.zoom) * (1 - Math.exp(-dt / WHEEL_EASE_MS));
+        const done = Math.abs(g.target - g.zoom) < 0.002;
+        if (done) g.zoom = g.target;
+        const offset = g.point.subtract(map.getSize().divideBy(2));
+        let center = map.unproject(map.project(g.latlng, g.zoom).subtract(offset), g.zoom);
+        if (map.options.maxBounds) center = map._limitCenter(center, g.zoom, map.options.maxBounds);
+        if (done) {
+            glide = null;
+            map._move(center, g.zoom)._moveEnd(true);  // zoomend + moveend: tiles load, layers redraw
+        } else {
+            // `flyTo` is how Leaflet's own flyTo moves the map every frame:
+            // tiles and vectors are scaled, not reloaded, until the end.
+            map._move(center, g.zoom, { flyTo: true });
+            glideFrame = L.Util.requestAnimFrame(step);
         }
-        this._busy = true;
-        this._busyTimer = setTimeout(() => this._go(), 700);  // in case no zoomend arrives
-        map._stop();
-        map.setZoomAround(this._lastMousePos, this._target);
+    }
+
+    // Stop gliding where the map is now (a drag, a button zoom, …).
+    function stopGlide() {
+        if (!glide) return;
+        L.Util.cancelAnimFrame(glideFrame);
+        glideFrame = 0;
+        glide = null;
+        map._moveEnd(true);
+    }
+    const leafletStop = map._stop;
+    map._stop = function () {
+        stopGlide();
+        return leafletStop.apply(this, arguments);
     };
-    map.on('zoomend', () => { if (wheel._busy) wheel._go(); });
+
+    wheel._onWheelScroll = function (e) {
+        L.DomEvent.stop(e);
+        const levels = wheelZoomLevels(e);
+        if (!levels || map._animatingZoom) return;
+        if (!glide) {
+            map._stop();  // pan inertia, flyTo
+            glide = { zoom: map.getZoom(), target: map.getZoom() };
+            map._moveStart(true, false);
+        }
+        // Re-anchor on the cursor every event, so moving the mouse while
+        // zooming zooms toward wherever it now points.
+        glide.point = map.mouseEventToContainerPoint(e);
+        glide.latlng = map.containerPointToLatLng(glide.point);
+        glide.target = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), glide.target + levels));
+        if (!glideFrame) {
+            lastTime = performance.now();
+            glideFrame = L.Util.requestAnimFrame(step);
+        }
+    };
 
     // The handler bound its listener when it was enabled; rebind to the above.
     if (wheel.enabled()) { wheel.disable(); wheel.enable(); }
