@@ -70,12 +70,14 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/forbes100cities.json').then(response => response.json()),
         fetch('data/interstateHighways.json').then(response => response.json()),
         fetch('data/highways.json').then(response => response.json()),
-        fetch('data/world-countries.geojson').then(response => response.json())
+        fetch('data/world-countries.geojson').then(response => response.json()),
+        // Only fills Alaska / Hawaii, so a failure shouldn't take the map down.
+        TravelAPI.fetchVisitedStates().catch(() => ({}))
     ])
-        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData, countriesGeojson]) => {
+        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData, countriesGeojson, visitedStates]) => {
             displayWorldTravelSummary(worldData);
             createWorldMap('world-map', {
-                worldData, countriesGeojson,
+                worldData, countriesGeojson, visitedStates,
                 places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data }),
                 drivenSegments: collectDrivenSegments(interstateData, highwaysData),
             });
@@ -510,7 +512,7 @@ const FootprintLayer = L.Layer.extend({
 
 // ── The map ───────────────────────────────────────────────────────────────────
 
-function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegments }) {
+function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, places, drivenSegments }) {
     const container = document.getElementById(mapId);
     // The furthest out the map may zoom: where the world (256·2^z px tall)
     // still fills the map's height, so there's never grey above the Arctic or
@@ -547,7 +549,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
         mode: ['countries', 'footprint', 'fog'].includes(wmStore(STORAGE.mode)) ? wmStore(STORAGE.mode) : 'countries',
         isDark: true,
         stravaRoutes: [],           // makeRoute() per Strava activity, once loaded
-        stravaByCountry: new Map(), // country name → Strava activity count
+        stravaByPart: new Map(),    // outline feature → Strava activity count
     };
 
     // ── Layers ──
@@ -567,28 +569,39 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     new MapLocationControl().addTo(map);
 
     // ── Countries ──
+    // An outline is a country's core or one of its outlying parts (the Azores,
+    // the Canaries, Hawaii, …; `part` names it). Counts are kept per outline so
+    // only the land I've actually been to fills. Home's outlying parts (Alaska,
+    // Hawaii) also count when the US dashboard marks that state visited.
     const locate = makeCountryLocator(countriesGeojson.features);
-    const placesByCountry = new Map();
+    const placesByPart = new Map();
     places.forEach(p => {
         const f = locate(p.lat, p.lng);
-        if (f) placesByCountry.set(f.properties.name, (placesByCountry.get(f.properties.name) || 0) + 1);
+        if (f) placesByPart.set(f, (placesByPart.get(f) || 0) + 1);
     });
     const listed = new Map();
     CONTINENT_KEYS.forEach(k => worldData[k].forEach(c => listed.set(c.name, c)));
 
-    function countryStatus(name) {
-        if (name === HOME_COUNTRY) return 'home';
+    function countryStatus(feature) {
+        const { name, part } = feature.properties;
+        const been = placesByPart.get(feature) || state.stravaByPart.get(feature)
+            || (name === HOME_COUNTRY && visitedStates[part] === true);
         const entry = listed.get(name);
-        if (entry && entry.visited) return 'visited';
+        // A home / visited country fills its core; an outlying part only once
+        // I've a place or a route inside it.
+        if (name === HOME_COUNTRY || (entry && entry.visited)) {
+            if (part && !been) return 'none';
+            return name === HOME_COUNTRY ? 'home' : 'visited';
+        }
         // Territories aren't in countries.json: they count once I've a place
         // or a route inside them.
-        if (!entry && (placesByCountry.get(name) || state.stravaByCountry.get(name))) return 'visited';
-        if (state.stravaByCountry.get(name)) return 'strava';
+        if (!entry && been) return 'visited';
+        if (state.stravaByPart.get(feature)) return 'strava';
         return 'none';
     }
 
     function countryStyle(feature) {
-        const status = countryStatus(feature.properties.name);
+        const status = countryStatus(feature);
         const line = state.isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(40, 40, 40, 0.35)';
         if (status === 'none') {
             return { color: line, weight: 0.6, fillColor: state.isDark ? '#fff' : '#000', fillOpacity: 0.03 };
@@ -603,23 +616,24 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     }
 
     function countryPopup(feature) {
-        const { name, iso, sov } = feature.properties;
+        const { name, iso, sov, part } = feature.properties;
         const entry = listed.get(name);
-        const status = countryStatus(name);
-        const placeCount = placesByCountry.get(name) || 0;
-        const stravaCount = state.stravaByCountry.get(name) || 0;
+        const status = countryStatus(feature);
+        const placeCount = placesByPart.get(feature) || 0;
+        const stravaCount = state.stravaByPart.get(feature) || 0;
         const statusText = {
             home: 'Home', visited: 'Visited', none: 'Not yet visited',
             strava: 'Strava activity, not marked visited',
         }[status];
         const lines = [];
-        if (!entry) lines.push(sov && sov !== name ? `Territory of ${escapeHtml(sov)}` : 'Not counted as a country');
-        if (entry && entry.population) lines.push(`Population ${entry.population.toLocaleString()}`);
+        if (part) lines.push(`Part of ${escapeHtml(name)}`);
+        else if (!entry) lines.push(sov && sov !== name ? `Territory of ${escapeHtml(sov)}` : 'Not counted as a country');
+        if (entry && entry.population && !part) lines.push(`Population ${entry.population.toLocaleString()}`);
         if (placeCount) lines.push(`${placeCount.toLocaleString()} place${placeCount === 1 ? '' : 's'} on the map`);
         if (stravaCount) lines.push(`${stravaCount.toLocaleString()} Strava ${stravaCount === 1 ? 'activity' : 'activities'}`);
         return `
             <div class="wm-popup">
-                <h3>${flagEmoji(iso)} ${escapeHtml(name)}</h3>
+                <h3>${flagEmoji(iso)} ${escapeHtml(part || name)}</h3>
                 <div class="wm-popup-status wm-status-${status}">${statusText}</div>
                 ${lines.map(l => `<p>${l}</p>`).join('')}
                 ${entry ? '<p><a href="world-dashboard.html">See all countries →</a></p>' : ''}
@@ -679,7 +693,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
                 L.polyline(points, { ...stravaStyle(), renderer: stravaRenderer }).addTo(stravaGroup);
                 state.stravaRoutes.push(makeRoute(points));
                 const f = locate(points[0][0], points[0][1]);
-                if (f) state.stravaByCountry.set(f.properties.name, (state.stravaByCountry.get(f.properties.name) || 0) + 1);
+                if (f) state.stravaByPart.set(f, (state.stravaByPart.get(f) || 0) + 1);
             });
             stravaStatus = 'ready';
             restyleCountries();
@@ -812,7 +826,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
         if (!el) return;
         const swatch = (color, label, outline) => `<div><span class="legend-swatch" style="background:${outline ? 'transparent' : color};${outline ? `border-color:${color}` : ''}"></span> ${label}</div>`;
         if (state.mode === 'countries') {
-            const anyStrava = [...state.stravaByCountry.keys()].some(n => countryStatus(n) === 'strava');
+            const anyStrava = [...state.stravaByPart.keys()].some(f => countryStatus(f) === 'strava');
             el.innerHTML = swatch(COUNTRY_COLORS.home, 'Home country')
                 + swatch(COUNTRY_COLORS.visited, 'Visited')
                 + (anyStrava ? swatch(COUNTRY_COLORS.strava, 'Strava only') : '')
