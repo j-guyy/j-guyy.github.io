@@ -11,6 +11,7 @@ let map = null;
 let l4Layer = null;       // Level IV filled polygons
 let l3OutlineLayer = null; // Level III boundaries on top
 let allFeatures = [];
+let loadedMsg = '';
 let l4ColorMap = {};
 let l3ColorMap = {};
 
@@ -35,15 +36,56 @@ function initMap() {
     map = L.map('eco-map', {
         center: COLORADO_CENTER,
         zoom: 7,
+        // Leaflet's default vector padding is 10% of the viewport, so polygons
+        // stop at that edge while dragging on desktop until the mouse is
+        // released. Half a screen keeps them drawn through a normal drag.
+        renderer: L.svg({ padding: 0.5 }),
         gestureHandling: true,
         tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true
     });
 
-    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenTopoMap (CC-BY-SA), © OSM contributors',
-        maxZoom: 17
+    // Same basemap switcher + live-location control as the Strava hunters
+    // (js/map-controls.js). OpenTopoMap stays the default for terrain context.
+    setupMapBasemaps(map, { defaultBasemap: 'topo' });
+    new MapLocationControl({
+        onLocate: onLocate,
+        onStop: () => setStatus(loadedMsg),
+        onError: msg => setStatus('Location: ' + msg)
     }).addTo(map);
+}
+
+// ── Where am I? ─────────────────────────────────────────────────────────────
+
+function ringContains(ring, x, y) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+function featureContains(f, lng, lat) {
+    if (!f.geometry) return false;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    return polys.some(rings => ringContains(rings[0], lng, lat) &&
+        !rings.slice(1).some(hole => ringContains(hole, lng, lat)));
+}
+
+function onLocate({ lat, lng, source }) {
+    const f = allFeatures.find(feat => featureContains(feat, lng, lat));
+    if (!f) {
+        setStatus('Your location is outside the mapped Colorado ecoregions');
+        return;
+    }
+    const p = f.properties;
+    setStatus(`You are in: ${l4Name(p)} (${l4Code(p)}) · ${l3Name(p)}`);
+    if (source === 'goto' && l4Layer) {
+        l4Layer.eachLayer(layer => {
+            if (layer.feature === f) layer.openPopup([lat, lng]);
+        });
+    }
 }
 
 function setStatus(msg) {
@@ -67,7 +109,8 @@ function loadData() {
             renderLayers(geojson);
             renderLegend();
             renderSummary();
-            setStatus(allFeatures.length + ' polygons loaded');
+            loadedMsg = allFeatures.length + ' polygons loaded';
+            setStatus(loadedMsg);
         })
         .catch(err => {
             console.error('Could not load ecoregion data:', err);

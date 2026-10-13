@@ -3,6 +3,8 @@
 // GeoJSON in-browser, and renders to an HTML5 canvas via Leaflet.
 // Polygons are colored by Level III (US_L3CODE), legend is grouped by
 // Level I biome (NA_L1NAME). Level IV detail surfaces in click popups.
+// js/map-controls.js supplies the basemap switcher and live-location control
+// shared with the Strava hunters.
 
 const TOPOJSON_URL = '/data/us-ecoregions.topojson';
 const CONUS_CENTER = [39.5, -98.5];
@@ -14,7 +16,8 @@ let allFeatures = [];
 let l3ColorMap = {};
 let l1ColorMap = {};
 let activeL3 = null;
-let activeLayers = []; // layers currently highlighted by search/legend click
+let mapIsDark = false;   // active basemap is the dark one (highlight outlines flip to white)
+let loadedMsg = '';
 
 document.addEventListener('DOMContentLoaded', function () {
     initMap();
@@ -36,20 +39,94 @@ function initMap() {
     map = L.map('eco-map', {
         center: CONUS_CENTER,
         zoom: CONUS_ZOOM,
-        preferCanvas: true, // critical for 5,847 polygons
+        // Canvas for 5,847 polygons. Leaflet's default canvas only extends 10%
+        // past the viewport, so while dragging on desktop the polygons ended
+        // at that edge and the map looked blank until the mouse was released.
+        // Half a screen of padding keeps them drawn through a normal drag.
+        renderer: L.canvas({ padding: 0.5 }),
         gestureHandling: true,
         tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         worldCopyJump: false
     });
 
-    // Public tile key: CARTO watermarks keyless raster tiles (same key as js/strava.js).
-    const CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        maxZoom: 18,
-        subdomains: 'abcd'
+    // Light greyscale stays the default so the fills read as before; the other
+    // basemaps are one click away in the layer control.
+    mapIsDark = setupMapBasemaps(map, {
+        defaultBasemap: 'greyscale',
+        onThemeChange: isDark => { mapIsDark = isDark; restyleAll(); }
+    }).isDark;
+
+    new MapLocationControl({
+        onLocate: onLocate,
+        onStop: () => setStatus(loadedMsg),
+        onError: msg => setStatus('Location: ' + msg)
     }).addTo(map);
+}
+
+// Outline for highlighted polygons — dark on light tiles, white on the dark one.
+function hiStroke() { return mapIsDark ? '#ffffff' : '#222222'; }
+
+// Re-apply whatever the legend click / search currently has selected (used when
+// the basemap changes, since the outline colour depends on it).
+function restyleAll() {
+    if (!ecoLayer) return;
+    const query = document.getElementById('eco-search').value.trim().toLowerCase();
+    if (query) applySearch(query, false);
+    else if (activeL3) setActiveL3(activeL3, false);
+    else ecoLayer.eachLayer(layer => applyStyleFor(layer));
+}
+
+// ── Where am I? ─────────────────────────────────────────────────────────────
+
+function ringContains(ring, x, y) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+function polygonContains(rings, x, y) {
+    if (!ringContains(rings[0], x, y)) return false;
+    for (let i = 1; i < rings.length; i++) if (ringContains(rings[i], x, y)) return false; // hole
+    return true;
+}
+
+// The Level IV feature containing a point, or null (outside the lower 48 / water).
+function featureAt(lat, lng) {
+    for (const f of allFeatures) {
+        if (!f.geometry) continue;
+        if (!f._bb) {
+            let x0 = 180, y0 = 90, x1 = -180, y1 = -90;
+            const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+            polys.forEach(rings => rings[0].forEach(([x, y]) => {
+                if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }));
+            f._bb = [x0, y0, x1, y1];
+        }
+        const bb = f._bb;
+        if (lng < bb[0] || lng > bb[2] || lat < bb[1] || lat > bb[3]) continue;
+        const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+        if (polys.some(rings => polygonContains(rings, lng, lat))) return f;
+    }
+    return null;
+}
+
+function onLocate({ lat, lng, source }) {
+    const f = featureAt(lat, lng);
+    if (!f) {
+        setStatus('Your location is outside the mapped ecoregions');
+        return;
+    }
+    const p = f.properties;
+    setStatus(`You are in: ${p.US_L4NAME} (${p.US_L4CODE}) · ${p.US_L3NAME}`);
+    if (source === 'goto') {
+        ecoLayer.eachLayer(layer => {
+            if (layer.feature === f) layer.openPopup([lat, lng]);
+        });
+    }
 }
 
 function setStatus(msg) {
@@ -72,7 +149,8 @@ function loadData() {
             renderLayer(geojson);
             renderLegend();
             renderSummary();
-            setStatus(allFeatures.length.toLocaleString() + ' polygons loaded');
+            loadedMsg = allFeatures.length.toLocaleString() + ' polygons loaded';
+            setStatus(loadedMsg);
         })
         .catch(err => {
             console.error('Could not load ecoregion data:', err);
@@ -113,7 +191,7 @@ function renderLayer(geojson) {
         onEachFeature: (feature, layer) => {
             layer.bindPopup(buildPopup(feature.properties));
             layer.on('mouseover', () => {
-                layer.setStyle({ weight: 1.5, color: '#222', fillOpacity: 0.8 });
+                layer.setStyle({ weight: 1.5, color: hiStroke(), fillOpacity: 0.8 });
                 layer.bringToFront();
             });
             layer.on('mouseout', () => {
@@ -140,7 +218,7 @@ function applyStyleFor(layer) {
     layer.setStyle(isActive ? {
         fillColor: l3ColorMap[p.US_L3CODE],
         fillOpacity: 0.85,
-        color: '#222',
+        color: hiStroke(),
         weight: 1.2,
         opacity: 1
     } : baseStyle(layer.feature));
@@ -221,7 +299,7 @@ function renderLegend() {
     });
 }
 
-function setActiveL3(l3Code) {
+function setActiveL3(l3Code, fit = true) {
     clearActive();
     activeL3 = l3Code;
     document.querySelectorAll(`.eco-legend-row[data-l3="${CSS.escape(l3Code)}"]`)
@@ -239,7 +317,7 @@ function setActiveL3(l3Code) {
             layer.setStyle({ fillOpacity: 0.15, opacity: 0.3 });
         }
     });
-    if (bounds) map.fitBounds(bounds, { padding: [30, 30] });
+    if (bounds && fit) map.fitBounds(bounds, { padding: [30, 30] });
 }
 
 function clearActive() {
@@ -250,7 +328,7 @@ function clearActive() {
 
 // ── Search ──────────────────────────────────────────────────────────────────
 
-function applySearch(query) {
+function applySearch(query, fit = true) {
     if (!ecoLayer) return;
     if (!query) {
         ecoLayer.eachLayer(layer => applyStyleFor(layer));
@@ -264,7 +342,7 @@ function applySearch(query) {
             layer.setStyle({
                 fillColor: l3ColorMap[p.US_L3CODE],
                 fillOpacity: 0.85,
-                color: '#222',
+                color: hiStroke(),
                 weight: 1,
                 opacity: 1
             });
@@ -275,7 +353,7 @@ function applySearch(query) {
             layer.setStyle({ fillOpacity: 0.1, opacity: 0.2, weight: 0.2 });
         }
     });
-    if (matchBounds) map.fitBounds(matchBounds, { padding: [30, 30], maxZoom: 9 });
+    if (matchBounds && fit) map.fitBounds(matchBounds, { padding: [30, 30], maxZoom: 9 });
 }
 
 // ── Summary stats ───────────────────────────────────────────────────────────
