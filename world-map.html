@@ -48,6 +48,11 @@
                     <button class="view-mode-btn" data-mode="footprint" aria-pressed="false">Footprint</button>
                     <button class="view-mode-btn" data-mode="fog" aria-pressed="false">Fog of War</button>
                 </div>
+                <div class="view-mode-selector wm-detail-selector" id="detail-control" role="group" aria-label="How much of a country to fill">
+                    <button class="view-mode-btn" data-detail="countries" aria-pressed="false" title="Fill every visited country whole, overseas territories included">Countries</button>
+                    <button class="view-mode-btn active" data-detail="lands" aria-pressed="true" title="Fill only the islands and lands I've been to">Lands</button>
+                    <button class="view-mode-btn" data-detail="subregions" aria-pressed="false" title="Fill only the states and provinces I've been to">Subregions</button>
+                </div>
                 <div class="radius-control" id="radius-control" hidden>
                     <label for="radius-slider">Place radius: <span id="radius-value">100</span> km</label>
                     <input type="range" id="radius-slider" min="10" max="500" value="100" step="10">

@@ -17,8 +17,15 @@
     min-height: 360px;
 }
 
-.radius-control[hidden] {
+.radius-control[hidden],
+.wm-detail-selector[hidden] {
     display: none;
+}
+
+/* Countries / Lands / Subregions: a quieter twin of the view-mode buttons. */
+.wm-detail-selector .view-mode-btn {
+    padding: 6px 14px;
+    font-size: 0.85em;
 }
 
 #route-radius-slider {
