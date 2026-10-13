@@ -90,8 +90,8 @@
     text-align: center;
 }
 
-/* Footprint / fog canvas (FootprintLayer). */
-.wm-footprint-canvas {
+/* Footprint / fog and Strava route canvases (CanvasOverlay in js/world-map.js). */
+.wm-canvas-overlay {
     position: absolute;
     top: 0;
     left: 0;
