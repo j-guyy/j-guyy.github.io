@@ -88,11 +88,11 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 | `us-dashboard.html` | US travel tracking (metros, highpoints, parks, states) |
 | `world-dashboard.html` | World travel tracking (countries by continent) |
 | `us-map.html` | Interactive US map visualization |
-| `world-map.html` | Interactive world map visualization |
+| `world-map.html` | World Travel Map (`js/world-map.js`) — the one map of everywhere I've been: country outlines from the slim local `data/world-countries.geojson` (regenerate with `python3 scripts/build-world-countries.py`; its `ALIASES` maps Natural Earth names to `countries.json` names) filled by visited status, every visited place from the travel data files as toggleable marker categories (chips above the map + overlays in the basemap control), and every Strava route lazily fetched from the worker's `/polylines/all`. Countries / Footprint / Fog of War views; Footprint and Fog are one canvas layer (`FootprintLayer`) that masks everything within N km of a place or route (driven highways + Strava). A country with Strava activity that `countries.json` doesn't mark visited shows as "Strava only" — a prompt to update the data. Uses `js/map-controls.js` for the basemap switcher + location |
 | `adventures.html` | Adventure portfolio and trip reports |
 | `family-travels.html` | Family travel tracking |
 | `about.html` | About page with 3D Cesium globe |
-| `us-ecoregions.html` / `colorado-ecoregions.html` | EPA Level IV ecoregion maps (linked from the navbar Tools menu). Both use `js/map-controls.js` + `css/map-controls.css` — a standalone copy of the Strava hunters' basemap switcher and live-location control (`setupStravaBasemaps` / `LocationControl` in `strava.js`), with an `onLocate` hook that reports which ecoregion you're standing in. They pass `renderer: L.canvas/svg({ padding: 0.5 })` because Leaflet's default 10% padding makes polygons vanish at the leading edge while dragging on desktop. Keep the CARTO/Thunderforest keys in sync with `strava.js` |
+| `us-ecoregions.html` / `colorado-ecoregions.html` | EPA Level IV ecoregion maps (linked from the navbar Tools menu). Both (and `world-map.html`) use `js/map-controls.js` + `css/map-controls.css` — a standalone copy of the Strava hunters' basemap switcher and live-location control (`setupStravaBasemaps` / `LocationControl` in `strava.js`), with an `onLocate` hook that reports which ecoregion you're standing in. They pass `renderer: L.canvas/svg({ padding: 0.5 })` because Leaflet's default 10% padding makes polygons vanish at the leading edge while dragging on desktop. Keep the CARTO/Thunderforest keys in sync with `strava.js` |
 
 ### Strava Page Architecture (`js/strava.js`)
 
