@@ -65905,13 +65905,13 @@
                         -87.645
                     ],
                     "to": [
-                        42.2569,
-                        -88.965
+                        41.9889,
+                        -87.8554
                     ],
-                    "description": "Chicago to Rockford",
-                    "miles": 80,
+                    "description": "Chicago to O'Hare",
+                    "miles": 15,
                     "fromCity": "Chicago",
-                    "toCity": "Rockford",
+                    "toCity": "O'Hare",
                     "states": [],
                     "waypoints": [
                         [
@@ -65966,6 +65966,28 @@
                             41.9826,
                             -87.8131
                         ],
+                        [
+                            41.9889,
+                            -87.8554
+                        ]
+                    ],
+                    "drivenBy": []
+                },
+                {
+                    "from": [
+                        41.9889,
+                        -87.8554
+                    ],
+                    "to": [
+                        42.2569,
+                        -88.965
+                    ],
+                    "description": "O'Hare to Rockford",
+                    "miles": 65,
+                    "fromCity": "O'Hare",
+                    "toCity": "Rockford",
+                    "states": [],
+                    "waypoints": [
                         [
                             41.9889,
                             -87.8554
@@ -66091,7 +66113,9 @@
                             -88.965
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -66197,7 +66221,9 @@
                             -88.9767
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -66379,7 +66405,9 @@
                             -89.2826
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -104955,7 +104983,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105067,7 +105096,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105111,7 +105141,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105163,7 +105194,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105207,7 +105239,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105251,7 +105284,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105323,7 +105357,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -105383,7 +105418,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 }
             ]
@@ -134177,7 +134213,9 @@
                             -88.975
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -134271,7 +134309,9 @@
                             -88.9946
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -134381,7 +134421,9 @@
                             -89.2771
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -151429,7 +151471,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -151489,7 +151532,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -151565,7 +151609,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -151597,7 +151642,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -151629,7 +151675,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -151713,7 +151760,8 @@
                         ]
                     ],
                     "drivenBy": [
-                        "person2"
+                        "person2",
+                        "person1"
                     ]
                 },
                 {
@@ -154557,7 +154605,9 @@
                             -88.0806
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
