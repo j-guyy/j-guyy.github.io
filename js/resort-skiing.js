@@ -220,8 +220,7 @@ function createSkiMap(resorts) {
         center: [30, 0],
         zoom: 2,
         zoomSnap: 0.1,
-        zoomDelta: 0.5,
-        wheelPxPerZoomLevel: 120,
+        zoomDelta: 1,  // +/− buttons, double-click; wheel zoom is js/fluid-zoom.js
         gestureHandling: true,
         tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true

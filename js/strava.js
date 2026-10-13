@@ -4374,17 +4374,21 @@ const TileHunterLayer = L.Layer.extend({
         this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
         map.getPanes().overlayPane.appendChild(this._canvas);
         map.on('moveend zoomend resize', this._redraw, this);
+        // Scale with the map while it zooms (js/fluid-zoom.js); redrawn at the end.
+        this._follow = new L.ZoomFollower(this._canvas).addTo(map);
         this._redraw();
     },
     onRemove(map) {
         this._canvas.remove();
         map.off('moveend zoomend resize', this._redraw, this);
+        this._follow.remove();
     },
     _redraw() {
         const map = this._map;
         const size = map.getSize();
         const topLeft = map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
+        this._follow.drawn();
         this._canvas.width  = size.x;
         this._canvas.height = size.y;
 
@@ -4653,17 +4657,21 @@ const TileGridLayer = L.Layer.extend({
         this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
         map.getPanes().overlayPane.appendChild(this._canvas);
         map.on('moveend zoomend resize', this._redraw, this);
+        // Scale with the map while it zooms (js/fluid-zoom.js); redrawn at the end.
+        this._follow = new L.ZoomFollower(this._canvas).addTo(map);
         this._redraw();
     },
     onRemove(map) {
         this._canvas.remove();
         map.off('moveend zoomend resize', this._redraw, this);
+        this._follow.remove();
     },
     _redraw() {
         const map  = this._map;
         const size = map.getSize();
         const topLeft = map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
+        this._follow.drawn();
         this._canvas.width  = size.x;
         this._canvas.height = size.y;
 
