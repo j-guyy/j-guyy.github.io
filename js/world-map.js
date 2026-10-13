@@ -68,17 +68,16 @@ document.addEventListener('DOMContentLoaded', function () {
         TravelAPI.fetchPeaksWithFallback('adk46ers', 'data/adirondack46ers.json'),
         TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json'),
         TravelAPI.fetchPeaksWithFallback('countryHighpoints', 'data/country-highpoints.json'),
-        TravelAPI.fetchPeaksWithFallback('countryMainlandHighpoints', 'data/country-mainland-highpoints.json'),
         fetch('data/forbes100cities.json').then(response => response.json()),
         fetch('data/interstateHighways.json').then(response => response.json()),
         fetch('data/highways.json').then(response => response.json()),
         fetch('data/world-countries.geojson').then(response => response.json())
     ])
-        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, countryMainlandData, forbes100Data, interstateData, highwaysData, countriesGeojson]) => {
+        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson]) => {
             displayWorldTravelSummary(worldData);
             createWorldMap('world-map', {
                 worldData, countriesGeojson,
-                places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, countryMainlandData, forbes100Data }),
+                places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
                 drivenSegments: collectDrivenSegments(interstateData, highwaysData),
             });
         })
@@ -173,12 +172,10 @@ function collectPlaces(d) {
         if (p) p.details.push('<p><em>Forbes 100 Most Visited Cities</em></p>');
     });
 
-    // Country high points and the mainland ones where they differ (the Peaks
-    // dashboard lists) + other notable mountains (worldMountains.json).
+    // Country high points (the Peaks dashboard list) + other notable mountains
+    // (worldMountains.json).
     d.countryHighpointsData.filter(p => p.climbed).forEach(p => add('highpoints', p.coords[1], p.coords[0], p.name,
         row('Country', p.country) + row('Elevation', `${p.elevationM.toLocaleString()} m`)));
-    d.countryMainlandData.filter(p => p.climbed).forEach(p => add('highpoints', p.coords[1], p.coords[0], p.name,
-        row('Country', `${p.country} (mainland)`) + row('Elevation', `${p.elevationM.toLocaleString()} m`)));
     const elev = m => row('Elevation', `${m.elevation.toLocaleString()} ${m.elevationUnit}`);
     (d.highPointsData.otherMountains || []).forEach(m => add('mountains', m.latitude, m.longitude, m.name,
         row('Country', m.country) + elev(m) + `<p>${escapeHtml(m.description)}</p>`));

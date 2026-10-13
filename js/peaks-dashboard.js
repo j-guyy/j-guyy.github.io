@@ -8,26 +8,12 @@
 // key: the field /travel/toggle identifies an entry by; done: the completion
 // flag (state highpoints are shared with the US dashboard, which uses
 // `visited`); unit: the elevation unit stored in the file (shown in feet).
-// A `hidden` list is loaded but has no card of its own; a `derive`d list is
-// built from its `sources` and edits go to whichever list a row came from.
 const PEAK_LISTS = {
     adk46ers:          { label: 'Adirondack 46ers',        url: 'data/adirondack46ers.json',        csv: 'adirondack-46ers.csv',         key: 'name',    done: 'climbed' },
     colorado14ers:     { label: 'Colorado 14ers',          url: 'data/colorado14ers.json',          csv: 'colorado-14ers.csv',           key: 'name',    done: 'climbed' },
     highpoints:        { label: 'US State High Points',    url: 'data/highPoints.json',             csv: 'state-highpoints.csv',         key: 'state',   done: 'visited', region: 'state',   regionLabel: 'State' },
     britishIsles:      { label: 'British Isles High Five', url: 'data/british-isles-high-five.json', csv: 'british-isles-high-five.csv', key: 'name',    done: 'climbed', region: 'country', regionLabel: 'Country', unit: 'm' },
     countryHighpoints: { label: 'Country High Points',     url: 'data/country-highpoints.json',     csv: 'country-highpoints.csv',       key: 'country', done: 'climbed', region: 'country', regionLabel: 'Country' },
-    // Only the countries whose mainland high point differs (Mulhacén vs Teide).
-    countryMainlandHighpoints: { label: 'Mainland High Points', url: 'data/country-mainland-highpoints.json', key: 'country', done: 'climbed', hidden: true },
-    // Each country's mainland entry where it has one, otherwise the country
-    // entry itself (the same object, so ticking Everest counts in both lists).
-    countryMainland: {
-        label: 'Country High Points (Mainland)', csv: 'country-mainland-highpoints.csv', key: 'country', done: 'climbed', region: 'country', regionLabel: 'Country',
-        sources: ['countryHighpoints', 'countryMainlandHighpoints'],
-        derive: () => {
-            const mainland = new Map(lists.countryMainlandHighpoints.data.map(p => [p.country, p]));
-            return lists.countryHighpoints.data.map(p => mainland.get(p.country) || p);
-        },
-    },
 };
 
 // A summited OSM peak this close to a list peak is that peak. Further out
@@ -40,7 +26,6 @@ const NAME_STOPWORDS = new Set(['mount', 'mt', 'mont', 'monte', 'mountain', 'pic
     'cerro', 'gora', 'volcan', 'nevado', 'the', 'de', 'del', 'la', 'jabal', 'jebel', 'hill', 'doi', 'bukit', 'puncak']);
 
 const lists = {};          // type → { data, source, reason }
-const itemType = new Map(); // list entry → the stored list it belongs to
 const sortState = {};      // type → { col, dir }
 let summitedPeaks = null;  // from /summits/peaks; null while loading
 let stravaError = null;
@@ -48,21 +33,17 @@ let editMode = false;
 let refreshOwnerUI = () => {};
 
 document.addEventListener('DOMContentLoaded', async function () {
-    const types = Object.keys(PEAK_LISTS).filter(t => PEAK_LISTS[t].url);
+    const types = Object.keys(PEAK_LISTS);
     try {
         const results = await Promise.all(types.map(t => TravelAPI.fetchPeakList(t, PEAK_LISTS[t].url)));
         types.forEach((t, i) => {
             lists[t] = results[i];
-            lists[t].data.forEach(item => itemType.set(item, t));
+            sortState[t] = { col: 'elevation', dir: 'desc' };
         });
     } catch (error) {
         console.error('Error loading peak data:', error);
         return;
     }
-    Object.entries(PEAK_LISTS).forEach(([t, cfg]) => {
-        if (cfg.derive) lists[t] = { data: cfg.derive() };
-        sortState[t] = { col: 'elevation', dir: 'desc' };
-    });
     const selector = document.getElementById('table-selector');
     selector.addEventListener('change', () => render());
     setupEditMode();
@@ -234,10 +215,9 @@ async function ensureSeeded(type, password) {
     delete list.reason;
 }
 
-async function handleToggle(item) {
+async function handleToggle(type, item) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
-    const type = itemType.get(item);
     const cfg = PEAK_LISTS[type];
 
     try {
@@ -261,7 +241,7 @@ function displayPeaksSummary() {
     const summaryContainer = document.getElementById('travel-summary');
     const selected = currentType();
 
-    const cards = Object.entries(PEAK_LISTS).filter(([, cfg]) => !cfg.hidden).map(([type, cfg]) => {
+    const cards = Object.entries(PEAK_LISTS).map(([type, cfg]) => {
         const data = lists[type].data;
         const done = data.filter(item => isDone(type, item)).length;
         const pct = data.length ? ((done / data.length) * 100).toFixed(0) : 0;
@@ -294,14 +274,14 @@ function displayPeaksSummary() {
 
 function renderSourceNote(type) {
     const el = document.getElementById('peaks-source');
-    const pending = (PEAK_LISTS[type].sources || [type]).map(t => lists[t]).filter(l => l.source !== 'cloudflare');
-    if (!pending.length) {
+    const list = lists[type];
+    if (list.source === 'cloudflare') {
         el.textContent = '';
         el.hidden = true;
         return;
     }
     el.hidden = false;
-    el.textContent = pending.every(l => l.reason === 'unseeded')
+    el.textContent = list.reason === 'unseeded'
         ? 'This list isn’t saved in Cloudflare yet — showing the copy bundled with the site. Your first edit saves it to Cloudflare.'
         : 'Couldn’t reach Cloudflare — showing the copy bundled with the site, which may be out of date.';
 }
@@ -406,7 +386,7 @@ function updateTable(type) {
         if (item.note) row.querySelector('.col-name').title = item.note;
 
         if (editMode) {
-            row.querySelector('.col-status').addEventListener('click', () => handleToggle(item));
+            row.querySelector('.col-status').addEventListener('click', () => handleToggle(type, item));
         }
         tbody.appendChild(row);
     });
@@ -497,7 +477,7 @@ function renderComparison(type) {
                 <td class="col-num">${elevationFt(type, item).toLocaleString()}</td>
                 ${withStrava ? `<td class="col-strava">${stravaLink(match.peak.first)}</td><td class="col-num">${match.peak.activities}</td>` : ''}
                 ${showAction ? '<td class="col-status"><button type="button" class="table-action-btn">Mark climbed</button></td>' : ''}`;
-            if (showAction) tr.querySelector('button').addEventListener('click', () => handleToggle(item));
+            if (showAction) tr.querySelector('button').addEventListener('click', () => handleToggle(type, item));
             tbody.appendChild(tr);
         });
         table.appendChild(tbody);

@@ -783,6 +783,20 @@
         "note": "On Saba, in the Caribbean Netherlands"
     },
     {
+        "country": "Netherlands (Mainland)",
+        "continent": "europe",
+        "name": "Vaalserberg",
+        "elevation": 1056,
+        "elevationM": 322,
+        "coords": [
+            6.0208,
+            50.7547
+        ],
+        "climbed": false,
+        "mainland": true,
+        "note": "European Netherlands, at the Belgium–Germany tripoint; the country's highest is Mount Scenery (887 m) on Saba"
+    },
+    {
         "country": "North Macedonia",
         "continent": "europe",
         "name": "Mount Korab",
@@ -830,6 +844,20 @@
         ],
         "climbed": false,
         "note": "On Pico Island, in the Azores"
+    },
+    {
+        "country": "Portugal (Mainland)",
+        "continent": "europe",
+        "name": "Torre",
+        "elevation": 6539,
+        "elevationM": 1993,
+        "coords": [
+            -7.6131,
+            40.3217
+        ],
+        "climbed": false,
+        "mainland": true,
+        "note": "In the Serra da Estrela; Portugal's highest is Mount Pico (2,351 m) in the Azores"
     },
     {
         "country": "Romania",
@@ -915,6 +943,20 @@
         ],
         "climbed": false,
         "note": "On Tenerife, in the Canary Islands"
+    },
+    {
+        "country": "Spain (Mainland)",
+        "continent": "europe",
+        "name": "Mulhacén",
+        "elevation": 11414,
+        "elevationM": 3479,
+        "coords": [
+            -3.3119,
+            37.0533
+        ],
+        "climbed": true,
+        "mainland": true,
+        "note": "Spain's highest is Teide (3,715 m) on Tenerife"
     },
     {
         "country": "Sweden",
@@ -2047,6 +2089,20 @@
         "note": "In Sabah, on Borneo"
     },
     {
+        "country": "Malaysia (Mainland)",
+        "continent": "asia",
+        "name": "Gunung Tahan",
+        "elevation": 7175,
+        "elevationM": 2187,
+        "coords": [
+            102.2339,
+            4.6328
+        ],
+        "climbed": false,
+        "mainland": true,
+        "note": "Peninsular Malaysia; the country's highest is Mount Kinabalu (4,095 m) in Sabah, on Borneo"
+    },
+    {
         "country": "Maldives",
         "continent": "asia",
         "name": "Mount Villingili",
@@ -2202,6 +2258,20 @@
         ],
         "climbed": true,
         "note": "On Jeju Island"
+    },
+    {
+        "country": "South Korea (Mainland)",
+        "continent": "asia",
+        "name": "Jirisan (Cheonwangbong)",
+        "elevation": 6283,
+        "elevationM": 1915,
+        "coords": [
+            127.7306,
+            35.3369
+        ],
+        "climbed": false,
+        "mainland": true,
+        "note": "South Korea's highest is Hallasan (1,947 m) on Jeju Island"
     },
     {
         "country": "Sri Lanka",

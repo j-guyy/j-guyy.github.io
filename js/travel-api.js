@@ -5,7 +5,6 @@ const TRAVEL_PATHS = {
     visitedStates: 'visited-states',
     britishIsles: 'british-isles',
     countryHighpoints: 'country-highpoints',
-    countryMainlandHighpoints: 'country-mainland-highpoints',
 };
 
 const TravelAPI = {
