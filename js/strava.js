@@ -4855,6 +4855,7 @@ function faintPolyStyle(isDark) {
 // button on the topright of any map. Clicking it opens a small panel with:
 //   • "Current location" — fly the map to the user's GPS position
 //   • "Show my location" — toggle a live dot that refreshes every 10 seconds
+//     (every 5 seconds in the phone app, where it's used on the move)
 //
 // Each map gets its own instance; state and intervals are fully self-contained
 // and are cleaned up when the map is destroyed.
@@ -4938,8 +4939,9 @@ const LocationControl = L.Control.extend({
     _startTracking() {
         if (this._watching) return;
         this._watching = true;
+        this._refreshMs = isAppPage() ? 5000 : 10000;
         this._updateLocation();
-        this._intervalId = setInterval(() => this._updateLocation(), 10000);
+        this._intervalId = setInterval(() => this._updateLocation(), this._refreshMs);
     },
 
     _stopTracking() {
@@ -4952,8 +4954,12 @@ const LocationControl = L.Control.extend({
     },
 
     _updateLocation() {
-        if (!this._watching || !navigator.geolocation) return;
+        // A slow GPS fix can outlast the refresh interval; skip a tick rather
+        // than stack requests.
+        if (!this._watching || this._pending || !navigator.geolocation) return;
+        this._pending = true;
         navigator.geolocation.getCurrentPosition(pos => {
+            this._pending = false;
             if (!this._watching) return;
             const { latitude: lat, longitude: lng, accuracy } = pos.coords;
             if (this._marker) {
@@ -4972,8 +4978,8 @@ const LocationControl = L.Control.extend({
                 }).addTo(this._map);
             }
         },
-        err => dbg(`Location update failed: ${err.message}`),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 });
+        err => { this._pending = false; dbg(`Location update failed: ${err.message}`); },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: this._refreshMs / 2 });
     },
 });
 
