@@ -79,6 +79,15 @@ const MapLocationControl = L.Control.extend({
         this._ring = null;
         this._intervalId = null;
 
+        // The dot gets its own pane above the overlay pane. In the shared one it
+        // sits in the same canvas/SVG as the ecoregion polygons, and every
+        // bringToFront() on a polygon (selection, search, hover) drew over it.
+        if (!map.getPane('locationPane')) {
+            const pane = map.createPane('locationPane');
+            pane.style.zIndex = 450;            // overlays are 400, markers 600
+            pane.style.pointerEvents = 'none';  // clicks fall through to the polygons
+        }
+
         const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control loc-control');
         L.DomEvent.disableClickPropagation(wrap);
         L.DomEvent.disableScrollPropagation(wrap);
@@ -175,11 +184,11 @@ const MapLocationControl = L.Control.extend({
             } else {
                 this._ring = L.circle([lat, lng], {
                     radius: accuracy, color: '#29B6F6', fillColor: '#29B6F6',
-                    fillOpacity: 0.10, weight: 1, interactive: false,
+                    fillOpacity: 0.10, weight: 1, interactive: false, pane: 'locationPane',
                 }).addTo(this._map);
                 this._marker = L.circleMarker([lat, lng], {
                     radius: 8, color: '#fff', fillColor: '#29B6F6',
-                    fillOpacity: 1, weight: 2.5, interactive: false,
+                    fillOpacity: 1, weight: 2.5, interactive: false, pane: 'locationPane',
                 }).addTo(this._map);
             }
             if (this.options.onLocate) this.options.onLocate({ lat, lng, accuracy, source: 'live' });
