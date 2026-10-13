@@ -57,12 +57,15 @@ const TRAVEL_KEYS = {
     colorado14ers: 'travel_colorado14ers',
     britishIsles:  'travel_british_isles',
     countryHighpoints: 'travel_country_highpoints',
+    countryMainlandHighpoints: 'travel_country_mainland_highpoints',
 };
 
 // Peak lists (Peaks dashboard): type → the field /travel/toggle matches `key`
 // against. They store `climbed`, so the stored shape matches the static /data
 // JSON files the map/quest pages fall back to. Country highpoints are keyed by
-// country because one peak can top several (Everest, Mount Korab, …). State
+// country because one peak can top several (Everest, Mount Korab, …); the
+// mainland list only holds the countries whose mainland high point differs
+// (Mulhacén vs Teide), the rest share the country entry. State
 // highpoints are a peak list too but predate these and keep their own
 // `visited` branch, shared with the US dashboard.
 const PEAK_LIST_KEYS = {
@@ -70,6 +73,7 @@ const PEAK_LIST_KEYS = {
     colorado14ers:     'name',
     britishIsles:      'name',
     countryHighpoints: 'country',
+    countryMainlandHighpoints: 'country',
 };
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -102,6 +106,7 @@ export default {
             if (path === '/travel/colorado14ers')     return await handleTravelGet(env, 'colorado14ers');
             if (path === '/travel/british-isles')     return await handleTravelGet(env, 'britishIsles');
             if (path === '/travel/country-highpoints') return await handleTravelGet(env, 'countryHighpoints');
+            if (path === '/travel/country-mainland-highpoints') return await handleTravelGet(env, 'countryMainlandHighpoints');
 
             if (path === '/travel/toggle' && request.method === 'POST') {
                 return await handleTravelToggle(request, env);

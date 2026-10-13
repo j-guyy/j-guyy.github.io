@@ -1,15 +1,6 @@
 {
     "otherMountains": [
         {
-            "name": "Mulhacén",
-            "country": "Spain",
-            "latitude": 37.0533,
-            "longitude": -3.3119,
-            "elevation": 3482,
-            "elevationUnit": "meters",
-            "description": "Mainland Spain's highest peak (Teide on Tenerife is higher), located in the Sierra Nevada mountain range in Andalusia."
-        },
-        {
             "name": "Sincholagua",
             "country": "Ecuador",
             "latitude": -0.4833,
