@@ -2,15 +2,18 @@
 """
 Build data/admin1/<country>.geojson — first-level administrative regions for
 the countries the Strava page breaks activities down by (see
-SUBDIVISION_CONFIG in js/strava.js). One file per country so a region map only
-downloads the boundaries it draws.
+SUBDIVISION_CONFIG in js/strava.js) and the World Travel Map's Subregions view
+(ADMIN1_FILES in js/world-map.js), which covers every country I've visited.
+One file per country so a region map only downloads the boundaries it draws.
 
 Source: Natural Earth 10m admin-1 states/provinces (public domain).
     https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson
 
 Natural Earth splits Italy and Spain into provinces, not the regions /
 autonomous communities that Nominatim reports as `address.state`, so those two
-are dissolved up a level using Natural Earth's own `region` field.
+are dissolved up a level using Natural Earth's own `region` field. So are
+France (departments → regions) and the UK (councils → England's regions plus
+Scotland, Wales and Northern Ireland).
 
 Each output feature carries:
     id       stable region key, e.g. "IT-52"
@@ -56,6 +59,9 @@ MIN_PART_AREA = 0.0004
 #   dissolve  True when Natural Earth is a level finer than the region we want,
 #             so the grouped features' own names are province names and must
 #             not be used as aliases for the region they sit in
+#   regroup   grouped value → the region it belongs to, for Natural Earth
+#             features that are a piece of a region (Dublin's four councils,
+#             Scotland's and Wales's statistical regions)
 #   fold_in   other Natural Earth `admin` values to add as one region each,
 #             mapped to (region name, id). Natural Earth files Hong Kong and
 #             Macau as their own countries, split into districts, but Nominatim
@@ -69,6 +75,30 @@ COUNTRIES = [
      'fold_in': {'Hong Kong S.A.R.': ('Hong Kong', 'CN-HK'), 'Macau S.A.R': ('Macau', 'CN-MO')}},
     {'id': 'spain',     'admin': 'Spain',                    'group_by': 'region',     'id_from': None,         'dissolve': True},
     {'id': 'italy',     'admin': 'Italy',                    'group_by': 'region',     'id_from': 'region_cod', 'dissolve': True},
+    # World Travel Map only (not in SUBDIVISION_CONFIG).
+    {'id': 'belgium',     'admin': 'Belgium',        'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'belize',      'admin': 'Belize',         'group_by': 'name',    'id_from': 'iso_3166_2'},
+    {'id': 'ecuador',     'admin': 'Ecuador',        'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'france',      'admin': 'France',         'group_by': 'region',  'id_from': None,         'dissolve': True},
+    {'id': 'germany',     'admin': 'Germany',        'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'greece',      'admin': 'Greece',         'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'haiti',       'admin': 'Haiti',          'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'iceland',     'admin': 'Iceland',        'group_by': 'name_en', 'id_from': 'iso_3166_2',
+     'regroup': {'Reykjavík': 'Capital'}},
+    {'id': 'india',       'admin': 'India',          'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'ireland',     'admin': 'Ireland',        'group_by': 'name_en', 'id_from': 'iso_3166_2', 'dissolve': True,
+     'regroup': {'Dún Laoghaire–Rathdown': 'Dublin', 'Fingal': 'Dublin', 'South Dublin': 'Dublin'}},
+    {'id': 'jamaica',     'admin': 'Jamaica',        'group_by': 'name',    'id_from': 'iso_3166_2'},
+    {'id': 'japan',       'admin': 'Japan',          'group_by': 'name',    'id_from': 'iso_3166_2'},
+    {'id': 'netherlands', 'admin': 'Netherlands',    'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'new-zealand', 'admin': 'New Zealand',    'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'portugal',    'admin': 'Portugal',       'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'south-korea', 'admin': 'South Korea',    'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'sweden',      'admin': 'Sweden',         'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'switzerland', 'admin': 'Switzerland',    'group_by': 'name_en', 'id_from': 'iso_3166_2'},
+    {'id': 'uk',          'admin': 'United Kingdom', 'group_by': 'region',  'id_from': None,         'dissolve': True,
+     'regroup': {'Highlands and Islands': 'Scotland', 'North Eastern': 'Scotland', 'Eastern': 'Scotland',
+                 'South Western': 'Scotland', 'West Wales and the Valleys': 'Wales', 'East Wales': 'Wales'}},
 ]
 
 # Display-name overrides, keyed by (country id, grouped value).
@@ -80,6 +110,18 @@ DISPLAY_NAMES = {
     ('spain', 'Valenciana'): 'Comunidad Valenciana',
     ('italy', 'Sicily'): 'Sicilia',
     ('italy', 'Apulia'): 'Puglia',
+    ('belgium', 'Brussels Capital'): 'Brussels',
+    ('france', 'Guyane française'): 'French Guiana',
+    ('germany', 'Free Hanseatic Bremen'): 'Bremen',
+    ('greece', 'Centre Macedonia'): 'Central Macedonia',
+    ('iceland', 'Capital'): 'Capital Region',
+    ('iceland', 'Southern'): 'Southern Region',
+    ('iceland', 'Western'): 'Western Region',
+    ('iceland', 'Northwestern'): 'Northwestern Region',
+    ('iceland', 'Northeastern'): 'Northeastern Region',
+    ('iceland', 'Austurland'): 'Eastern Region',
+    ('uk', 'East'): 'East of England',
+    ('uk', 'Greater London'): 'London',
 }
 
 # Extra spellings accepted when matching a geocoded name to a polygon, keyed by
@@ -141,6 +183,22 @@ ALIASES = {
     ('italy', 'Trentino-Alto Adige'): ['Trentino-South Tyrol', 'Trentino Alto Adige',
                                        'Trentino-Alto Adige/Südtirol', 'South Tyrol'],
     ('italy', "Valle d'Aosta"): ['Aosta Valley', "Vallée d'Aoste", 'Aosta'],
+
+    # ── World Travel Map countries ── (English and native names, for a later
+    # SUBDIVISION_CONFIG entry; the world map itself matches by geometry)
+    ('france', 'Bretagne'): ['Brittany'],
+    ('france', 'Normandie'): ['Normandy'],
+    ('france', 'Corse'): ['Corsica'],
+    ('france', 'Bourgogne-Franche-Comté'): ['Burgundy-Franche-Comté'],
+    ('france', 'Centre-Val de Loire'): ['Centre-Loire Valley'],
+    ("france", "Provence-Alpes-Côte-d'Azur"): ["Provence-Alpes-Côte d'Azur", 'PACA'],
+    ('france', 'Guyane française'): ['Guyane', 'French Guiana'],
+    ('france', 'Réunion'): ['La Réunion'],
+    ('iceland', 'Capital'): ['Höfuðborgarsvæðið', 'Höfuðborgarsvæði', 'Reykjavík'],
+    ('ireland', 'Dublin'): ['County Dublin'],
+    ('uk', 'East'): ['East of England'],
+    ('uk', 'Greater London'): ['London'],
+    ('uk', 'Yorkshire and the Humber'): ['Yorkshire'],
 }
 
 # Names Natural Earth attaches to a region that actually belong to another one
@@ -152,7 +210,11 @@ DROP_ALIASES = {
 
 # Natural Earth entries that are not real first-level regions (disputed claims,
 # uninhabited outliers) — dropped so the "N regions" totals stay honest.
-SKIP_ISO = {'CN-X01~', 'MX-X01~', 'AU-X02~', 'AU-X03~'}
+SKIP_ISO = {'CN-X01~', 'MX-X01~', 'AU-X02~', 'AU-X03~',
+            # New Zealand's uninhabited outlying islands, and Tokelau
+            'NZ-X01~', 'NZ-X03~', 'NZ-X04~', 'NZ-X05~', 'NZ-X06~', 'NZ-X07~', 'TK-X01~',
+            # Saba / Sint Eustatius: Caribbean special municipalities, not provinces
+            'NL-BQ2', 'NL-BQ3'}
 
 
 def norm(s):
@@ -212,6 +274,7 @@ def main():
             if p.get('iso_3166_2') in SKIP_ISO:
                 continue
             key = p.get(cfg['group_by'])
+            key = (cfg.get('regroup') or {}).get(key, key)
             if not key:
                 print(f"  ! {cfg['id']}: feature with no {cfg['group_by']} — skipped")
                 continue

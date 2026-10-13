@@ -36,7 +36,25 @@ const OVERLAY_MARKER_ZOOM = 5;
 
 const COUNTRY_COLORS = { home: '#FFC107', visited: '#4CAF50', strava: '#FC4C02' };
 
-const STORAGE = { mode: 'world_map_mode', layers: 'world_map_layers_off', radius: 'world_map_radius', route: 'world_map_route_radius' };
+// How much of a visited country the Countries view fills (the detail toggle).
+const DETAIL_LEVELS = ['countries', 'lands', 'subregions'];
+
+// Countries with first-level regions in data/admin1/ (built by
+// scripts/build-admin1-regions.py; the first seven are also the Strava page's
+// Regions section). Covers every country I've visited — add a country's file
+// here after its first trip.
+const ADMIN1_FILES = {
+    'United States of America': 'us', 'Canada': 'canada', 'Australia': 'australia',
+    'Mexico': 'mexico', 'China': 'china', 'Spain': 'spain', 'Italy': 'italy',
+    'Belgium': 'belgium', 'Belize': 'belize', 'Ecuador': 'ecuador', 'France': 'france',
+    'Germany': 'germany', 'Greece': 'greece', 'Haiti': 'haiti', 'Iceland': 'iceland',
+    'India': 'india', 'Ireland': 'ireland', 'Jamaica': 'jamaica', 'Japan': 'japan',
+    'Netherlands': 'netherlands', 'New Zealand': 'new-zealand', 'Portugal': 'portugal',
+    'South Korea': 'south-korea', 'Sweden': 'sweden', 'Switzerland': 'switzerland',
+    'United Kingdom': 'uk',
+};
+
+const STORAGE = { mode: 'world_map_mode', detail: 'world_map_detail', layers: 'world_map_layers_off', radius: 'world_map_radius', route: 'world_map_route_radius' };
 
 function wmStore(key, value) {
     try {
@@ -307,6 +325,30 @@ function pointInRing(lng, lat, ring) {
 function pointInGeometry(lng, lat, geometry) {
     const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
     return polys.some(rings => pointInRing(lng, lat, rings[0]) && !rings.slice(1).some(h => pointInRing(lng, lat, h)));
+}
+
+// A [lng, lat] inside a geometry's largest polygon (by bounding box): the
+// midpoint of the first two crossings of a line through the middle of it.
+function interiorPoint(geometry) {
+    const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+    let best = null, bestArea = -1;
+    polys.forEach(rings => {
+        const b = featureBBox({ type: 'Polygon', coordinates: rings });
+        const area = (b.n - b.s) * (b.e - b.w);
+        if (area > bestArea) { bestArea = area; best = { ring: rings[0], b }; }
+    });
+    if (!best) return null;
+    // Nudged off the middle so the line doesn't run exactly through a vertex.
+    const lat = best.b.s + (best.b.n - best.b.s) * 0.5001;
+    const xs = [];
+    const ring = best.ring;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > lat) !== (yj > lat)) xs.push((xj - xi) * (lat - yi) / (yj - yi) + xi);
+    }
+    if (xs.length < 2) return null;
+    xs.sort((a, b) => a - b);
+    return [(xs[0] + xs[1]) / 2, lat];
 }
 
 // Returns a lookup (lat, lng) → country feature or null, cached on a ~1 km grid.
@@ -768,11 +810,14 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
 
     map.createPane('footprintPane').style.zIndex = 350;  // over the basemap, under routes and markers
     map.getPane('footprintPane').style.pointerEvents = 'none';
+    map.createPane('regionPane').style.zIndex = 399;     // just under the country outlines and routes
 
     const state = {
         mode: ['countries', 'footprint', 'fog'].includes(wmStore(STORAGE.mode)) ? wmStore(STORAGE.mode) : 'countries',
         isDark: true,
+        detail: DETAIL_LEVELS.includes(wmStore(STORAGE.detail)) ? wmStore(STORAGE.detail) : 'lands',
         stravaRoutes: [],           // makeRoute() per Strava activity, once loaded
+        stravaStarts: [],           // [lat, lng] where each Strava activity starts
         stravaByPart: new Map(),    // outline feature → Strava activity count
     };
 
@@ -796,44 +841,80 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
 
     // ── Countries ──
     // An outline is a country's core or one of its outlying parts (the Azores,
-    // the Canaries, Hawaii, …; `part` names it). Counts are kept per outline so
-    // only the land I've actually been to fills. Home's outlying parts (Alaska,
-    // Hawaii) also count when the US dashboard marks that state visited.
+    // the Canaries, Hawaii, …; `part` names it). The detail toggle picks how
+    // much of a visited country fills:
+    //   countries   all of it, overseas parts included
+    //   lands       its core, plus each outlying part I've been to
+    //   subregions  each first-level region (state, province) I've been to, for
+    //               the countries in ADMIN1_FILES; lands everywhere else
+    // "Been to" is a place or a Strava route start inside it, or for Alaska /
+    // Hawaii (and US states) the US dashboard marking the state visited.
     const locate = makeCountryLocator(countriesGeojson.features);
     const placesByPart = new Map();
     places.forEach(p => {
         const f = locate(p.lat, p.lng);
         if (f) placesByPart.set(f, (placesByPart.get(f) || 0) + 1);
     });
+    const partsByCountry = new Map();
+    countriesGeojson.features.forEach(f => {
+        const name = f.properties.name;
+        if (!partsByCountry.has(name)) partsByCountry.set(name, []);
+        partsByCountry.get(name).push(f);
+    });
     const listed = new Map();
     CONTINENT_KEYS.forEach(k => worldData[k].forEach(c => listed.set(c.name, c)));
 
+    // Subregions (filled in by loadRegions below).
+    const regionData = new Map();   // country name → { locate } once loaded
+    const regionCovered = new Set();  // outline features the loaded regions cover
+    const regionLoads = new Set();  // country names fetched or being fetched
+    const placesByRegion = new Map();
+    const stravaByRegion = new Map();
+
+    const isVisitedCountry = name => name === HOME_COUNTRY || !!(listed.get(name) || {}).visited;
+    const visitedColor = name => name === HOME_COUNTRY ? 'home' : 'visited';
+    const lineColor = () => state.isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(40, 40, 40, 0.35)';
+
+    function beenToPart(f) {
+        return placesByPart.get(f) || state.stravaByPart.get(f)
+            || (f.properties.name === HOME_COUNTRY && visitedStates[f.properties.part] === true);
+    }
+
     function countryStatus(feature) {
         const { name, part } = feature.properties;
-        const been = placesByPart.get(feature) || state.stravaByPart.get(feature)
-            || (name === HOME_COUNTRY && visitedStates[part] === true);
-        const entry = listed.get(name);
-        // A home / visited country fills its core; an outlying part only once
-        // I've a place or a route inside it.
-        if (name === HOME_COUNTRY || (entry && entry.visited)) {
-            if (part && !been) return 'none';
-            return name === HOME_COUNTRY ? 'home' : 'visited';
+        const scope = state.detail === 'countries' ? partsByCountry.get(name) : [feature];
+        const been = scope.some(beenToPart);
+        if (isVisitedCountry(name)) {
+            // Outside the whole-country view, an outlying part fills only once
+            // I've been to it.
+            if (part && !been && state.detail !== 'countries') return 'none';
+            return visitedColor(name);
         }
         // Territories aren't in countries.json: they count once I've a place
         // or a route inside them.
-        if (!entry && been) return 'visited';
-        if (state.stravaByPart.get(feature)) return 'strava';
+        if (!listed.has(name) && been) return 'visited';
+        if (scope.some(f => state.stravaByPart.get(f))) return 'strava';
         return 'none';
     }
 
-    function countryStyle(feature) {
-        const status = countryStatus(feature);
-        const line = state.isDark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(40, 40, 40, 0.35)';
+    // Subregions view: an outline whose regions are drawn keeps only its border.
+    // Parts no region covers (Tokelau, the Dutch Caribbean) keep the lands fill.
+    const regionsShown = f => state.detail === 'subregions' && regionCovered.has(f);
+
+    function fillStyle(status) {
         if (status === 'none') {
-            return { color: line, weight: 0.6, fillColor: state.isDark ? '#fff' : '#000', fillOpacity: 0.03 };
+            return { color: lineColor(), weight: 0.6, opacity: 1, fill: true, fillColor: state.isDark ? '#fff' : '#000', fillOpacity: 0.03 };
         }
         const color = COUNTRY_COLORS[status];
-        return { color, weight: 1, opacity: 0.9, fillColor: color, fillOpacity: status === 'strava' ? 0.3 : 0.5 };
+        return { color, weight: 1, opacity: 0.9, fill: true, fillColor: color, fillOpacity: status === 'strava' ? 0.3 : 0.5 };
+    }
+
+    function countryStyle(feature) {
+        if (regionsShown(feature)) {
+            // No fill, so clicks reach the regions underneath.
+            return { color: state.isDark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(40, 40, 40, 0.6)', weight: 1, opacity: 1, fill: false };
+        }
+        return fillStyle(countryStatus(feature));
     }
 
     function flagEmoji(iso) {
@@ -878,7 +959,109 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         },
     });
 
-    function restyleCountries() { countryLayer.setStyle(countryStyle); }
+    function restyleCountries() {
+        countryLayer.setStyle(countryStyle);
+        regionLayer.setStyle(regionStyle);
+    }
+
+    // ── Subregions ──
+    // Boundaries are fetched per country, the first time the Subregions view
+    // needs them, and only for countries I've been to.
+
+    function beenToRegion(f) {
+        const { wmCountry, aliases } = f.properties;
+        return placesByRegion.get(f) || stravaByRegion.get(f)
+            || (wmCountry === HOME_COUNTRY && (aliases || [f.properties.name]).some(a => visitedStates[a] === true));
+    }
+
+    function regionStatus(f) {
+        const country = f.properties.wmCountry;
+        if (isVisitedCountry(country)) return beenToRegion(f) ? visitedColor(country) : 'none';
+        return stravaByRegion.get(f) ? 'strava' : 'none';
+    }
+
+    function regionStyle(f) {
+        const style = fillStyle(regionStatus(f));
+        // Region borders are the fine ones; the country border sits on top.
+        return regionStatus(f) === 'none' ? { ...style, weight: 0.4 } : { ...style, color: lineColor(), weight: 0.6 };
+    }
+
+    function regionPopup(f) {
+        const { name, wmCountry, aliases } = f.properties;
+        const status = regionStatus(f);
+        const placeCount = placesByRegion.get(f) || 0;
+        const stravaCount = stravaByRegion.get(f) || 0;
+        const lines = [`Part of ${escapeHtml(wmCountry)}`];
+        if (placeCount) lines.push(`${placeCount.toLocaleString()} place${placeCount === 1 ? '' : 's'} on the map`);
+        if (stravaCount) lines.push(`${stravaCount.toLocaleString()} Strava ${stravaCount === 1 ? 'activity' : 'activities'}`);
+        if (wmCountry === HOME_COUNTRY && (aliases || [name]).some(a => visitedStates[a] === true)) lines.push('Marked visited on the US dashboard');
+        const statusText = { home: 'Visited', visited: 'Visited', none: 'Not yet visited', strava: 'Strava activity, country not marked visited' }[status];
+        return `
+            <div class="wm-popup">
+                <h3>${escapeHtml(name)}</h3>
+                <div class="wm-popup-status wm-status-${status}">${statusText}</div>
+                ${lines.map(l => `<p>${l}</p>`).join('')}
+            </div>`;
+    }
+
+    const regionLayer = L.geoJSON(null, {
+        pane: 'regionPane',
+        renderer: L.svg({ padding: 0.5, pane: 'regionPane' }),
+        style: regionStyle,
+        onEachFeature(feature, layer) {
+            layer.bindPopup(() => regionPopup(feature), { maxWidth: 260 });
+            layer.on('mouseover', () => layer.setStyle({ weight: 2, fillOpacity: Math.min(0.75, (regionStyle(feature).fillOpacity || 0) + 0.15) }));
+            layer.on('mouseout', () => regionLayer.resetStyle(layer));
+        },
+    });
+
+    function countRegions() {
+        placesByRegion.clear();
+        stravaByRegion.clear();
+        const bump = (m, f) => { if (f) m.set(f, (m.get(f) || 0) + 1); };
+        regionData.forEach(({ locate: locateRegion }) => {
+            places.forEach(p => bump(placesByRegion, locateRegion(p.lat, p.lng)));
+            state.stravaStarts.forEach(([lat, lng]) => bump(stravaByRegion, locateRegion(lat, lng)));
+        });
+    }
+
+    function loadRegions() {
+        Object.entries(ADMIN1_FILES).forEach(([name, file]) => {
+            if (regionLoads.has(name)) return;
+            const parts = partsByCountry.get(name) || [];
+            if (!isVisitedCountry(name) && !parts.some(f => beenToPart(f))) return;
+            regionLoads.add(name);
+            fetch(`data/admin1/${file}.geojson`)
+                .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+                .then(geojson => {
+                    geojson.features.forEach(f => { f.properties.wmCountry = name; });
+                    const locateRegion = makeCountryLocator(geojson.features);
+                    regionData.set(name, { locate: locateRegion });
+                    parts.forEach(f => {
+                        const pt = interiorPoint(f.geometry);
+                        if (pt && locateRegion(pt[1], pt[0])) regionCovered.add(f);
+                    });
+                    countRegions();
+                    regionLayer.addData(geojson);
+                    restyleCountries();
+                    renderLegend();
+                })
+                .catch(err => {
+                    // Without its regions the country just keeps its lands view.
+                    console.warn(`Regions for ${name} unavailable:`, err);
+                    regionLoads.delete(name);
+                });
+        });
+    }
+
+    function updateRegionLayer() {
+        if (state.mode === 'countries' && state.detail === 'subregions') {
+            loadRegions();
+            regionLayer.addTo(map);
+        } else {
+            map.removeLayer(regionLayer);
+        }
+    }
 
     // ── Place markers ──
     const catById = Object.fromEntries(PLACE_CATEGORIES.map(c => [c.id, c]));
@@ -915,11 +1098,14 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
                 const points = decodeWorldPolyline(enc);
                 if (!points.length) return;
                 state.stravaRoutes.push(makeRoute(points));
+                state.stravaStarts.push(points[0]);
                 const f = locate(points[0][0], points[0][1]);
                 if (f) state.stravaByPart.set(f, (state.stravaByPart.get(f) || 0) + 1);
             });
             stravaStatus = 'ready';
             stravaLayer.redraw();
+            countRegions();
+            if (state.mode === 'countries' && state.detail === 'subregions') loadRegions();
             restyleCountries();
             renderLegend();
             if (footprint && map.hasLayer(stravaLayer)) footprint.redraw();
@@ -942,7 +1128,9 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     });
 
     // ── Toolbar: view modes, sliders, layer chips ──
-    const modeButtons = document.querySelectorAll('.view-mode-btn');
+    const modeButtons = document.querySelectorAll('.view-mode-btn[data-mode]');
+    const detailButtons = document.querySelectorAll('.view-mode-btn[data-detail]');
+    const detailRow = document.getElementById('detail-control');
     const sliderRows = [document.getElementById('radius-control'), document.getElementById('route-radius-control')];
     const chipBar = document.getElementById('wm-layer-chips');
 
@@ -955,7 +1143,9 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
             b.setAttribute('aria-pressed', on);
         });
         sliderRows.forEach(r => { if (r) r.hidden = mode === 'countries'; });
+        if (detailRow) detailRow.hidden = mode !== 'countries';
         updateMarkerVisibility();
+        updateRegionLayer();
         if (mode === 'countries') {
             if (footprint) { map.removeLayer(footprint); footprint = null; }
             countryLayer.addTo(map);
@@ -978,6 +1168,23 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
 
     modeButtons.forEach(btn => btn.addEventListener('click', () => {
         if (btn.dataset.mode !== state.mode) setMode(btn.dataset.mode);
+    }));
+
+    function setDetail(detail) {
+        state.detail = detail;
+        wmStore(STORAGE.detail, detail);
+        detailButtons.forEach(b => {
+            const on = b.dataset.detail === detail;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', on);
+        });
+        updateRegionLayer();
+        restyleCountries();
+        renderLegend();
+    }
+
+    detailButtons.forEach(btn => btn.addEventListener('click', () => {
+        if (btn.dataset.detail !== state.detail) setDetail(btn.dataset.detail);
     }));
 
     [[radiusSlider, 'radius-value', STORAGE.radius, 'pointKm'], [routeSlider, 'route-radius-value', STORAGE.route, 'routeKm']]
@@ -1050,7 +1257,8 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         if (!el) return;
         const swatch = (color, label, outline) => `<div><span class="legend-swatch" style="background:${outline ? 'transparent' : color};${outline ? `border-color:${color}` : ''}"></span> ${label}</div>`;
         if (state.mode === 'countries') {
-            const anyStrava = [...state.stravaByPart.keys()].some(f => countryStatus(f) === 'strava');
+            const anyStrava = [...state.stravaByPart.keys()].some(f => !regionsShown(f) && countryStatus(f) === 'strava')
+                || (map.hasLayer(regionLayer) && [...stravaByRegion.keys()].some(f => regionStatus(f) === 'strava'));
             el.innerHTML = swatch(COUNTRY_COLORS.home, 'Home country')
                 + swatch(COUNTRY_COLORS.visited, 'Visited')
                 + (anyStrava ? swatch(COUNTRY_COLORS.strava, 'Strava only') : '')
@@ -1066,6 +1274,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     // ── Initial state ──
     PLACE_CATEGORIES.forEach(c => { if (!hiddenLayers.has(c.id)) placeGroups[c.id].addTo(map); });
     if (!hiddenLayers.has(STRAVA_LAYER.id)) stravaLayer.addTo(map);  // → loadStrava() via layeradd
+    setDetail(state.detail);
     setMode(state.mode);
     renderChips();
 }
