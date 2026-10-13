@@ -385,6 +385,18 @@ const FootprintLayer = L.Layer.extend({
         L.DomUtil.setTransform(this._canvas, offset, scale);
     },
 
+    // The blurred mask recoloured to `color` (alpha where the mask is solid).
+    _tinted(mask, color) {
+        const t = this._tint || (this._tint = document.createElement('canvas'));
+        t.width = mask.width; t.height = mask.height;
+        const c = t.getContext('2d');
+        c.drawImage(mask, 0, 0);
+        c.globalCompositeOperation = 'source-in';
+        c.fillStyle = color;
+        c.fillRect(0, 0, t.width, t.height);
+        return t;
+    },
+
     redraw() {
         const map = this._map;
         if (!map || !this._canvas) return this;
@@ -481,6 +493,10 @@ const FootprintLayer = L.Layer.extend({
             }
             ctx.globalCompositeOperation = 'destination-out';
             ctx.drawImage(blurred, 0, 0, w, h);
+            // On the dark basemap the cleared ground is nearly as dark as the
+            // fog, so lift it with a faint wash to make the explored areas read.
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(this._tinted(blurred, 'rgba(190, 230, 190, 0.16)'), 0, 0, w, h);
         } else {
             ctx.drawImage(blurred, 0, 0, w, h);
             ctx.globalCompositeOperation = 'source-in';
@@ -496,10 +512,17 @@ const FootprintLayer = L.Layer.extend({
 
 function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegments }) {
     const container = document.getElementById(mapId);
+    // The furthest out the map may zoom: where the world (256·2^z px tall)
+    // still fills the map's height, so there's never grey above the Arctic or
+    // below Antarctica — on a tall phone map that's past zoom 1.
+    const fillZoom = () => Math.max(1, Math.ceil(Math.log2(map.getSize().y / 256) * 10) / 10);
+    const narrow = container && container.clientWidth < 600;
     const map = L.map(mapId, {
-        center: [25, 10],
-        zoom: container && container.clientWidth < 600 ? 1 : 2,
+        center: narrow ? [30, -40] : [25, 10],  // phones: the US and Europe
+        zoom: narrow ? 1 : 2,
         minZoom: 1,
+        maxBounds: [[-85.06, -540], [85.06, 540]],  // vertical clamp only; worldCopyJump wraps sideways
+        maxBoundsViscosity: 1,
         zoomSnap: 0.1,
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120,
@@ -513,6 +536,9 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     // Gesture handling (two-finger / ctrl-scroll) only makes sense inline.
     map.on('enterFullscreen', () => map.gestureHandling.disable());
     map.on('exitFullscreen',  () => map.gestureHandling.enable());
+    map.setMinZoom(fillZoom());
+    if (map.getZoom() < map.getMinZoom()) map.setZoom(map.getMinZoom(), { animate: false });
+    map.on('resize', () => map.setMinZoom(fillZoom()));  // fullscreen / rotation
 
     map.createPane('footprintPane').style.zIndex = 350;  // over the basemap, under routes and markers
     map.getPane('footprintPane').style.pointerEvents = 'none';
