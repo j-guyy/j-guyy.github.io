@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
         TravelAPI.fetchPeaksWithFallback('colorado14ers', '/data/colorado14ers.json'),
         TravelAPI.fetchPeaksWithFallback('adk46ers', '/data/adirondack46ers.json'),
-        fetch('/data/british-isles-high-five.json').then(response => response.json())
+        TravelAPI.fetchPeaksWithFallback('britishIsles', '/data/british-isles-high-five.json')
     ])
         .then(([colorado14ers, adirondack46ers, britishIsles]) => {
             if (document.getElementById('colorado-map'))

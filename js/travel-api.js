@@ -1,5 +1,12 @@
 const TRAVEL_WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 
+// Worker path for each travel type whose URL isn't its type name.
+const TRAVEL_PATHS = {
+    visitedStates: 'visited-states',
+    britishIsles: 'british-isles',
+    countryHighpoints: 'country-highpoints',
+};
+
 const TravelAPI = {
     async fetchHighPoints() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/highpoints`);
@@ -40,16 +47,33 @@ const TravelAPI = {
     // when the worker is unreachable (local dev — CORS only allows the live
     // origin) or the KV key hasn't been seeded yet (empty array).
     async fetchPeaksWithFallback(type, fallbackUrl) {
+        return (await this.fetchPeakList(type, fallbackUrl)).data;
+    },
+
+    // Same, but also says where the list came from: source is 'cloudflare'
+    // (KV), or 'static' with reason 'unseeded' (KV key empty) or 'offline'
+    // (worker unreachable). The Peaks dashboard seeds an unseeded list from
+    // the static copy on the owner's first edit.
+    async fetchPeakList(type, fallbackUrl) {
+        let reason = 'offline';
         try {
-            const res = await fetch(`${TRAVEL_WORKER_URL}/travel/${type}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) return data;
-            throw new Error('Empty or unseeded data');
-        } catch (err) {
-            const res = await fetch(fallbackUrl);
-            return res.json();
-        }
+            const res = await fetch(`${TRAVEL_WORKER_URL}/travel/${TRAVEL_PATHS[type] || type}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) return { data, source: 'cloudflare' };
+                reason = 'unseeded';
+            }
+        } catch (err) { /* offline */ }
+        const res = await fetch(fallbackUrl);
+        return { data: await res.json(), source: 'static', reason };
+    },
+
+    // Peaks Mountain Hunter has detected a summit of, with coordinates:
+    // [{ id, name, lat, lng, ele, activities, first, last }].
+    async fetchSummitedPeaks() {
+        const res = await fetch(`${TRAVEL_WORKER_URL}/summits/peaks`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return (await res.json()).peaks || [];
     },
 
     async toggleVisited(type, key, password, continent) {

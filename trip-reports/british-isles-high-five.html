@@ -131,8 +131,7 @@
     <script src="../js/leaflet.js"></script>
     <script src="../js/navbar-component.js"></script>
     <script>
-        fetch('../data/british-isles-high-five.json')
-            .then(r => r.json())
+        TravelAPI.fetchPeaksWithFallback('britishIsles', '../data/british-isles-high-five.json')
             .then(data => {
                 const climbed = data.filter(p => p.climbed).length;
                 const total = data.length;

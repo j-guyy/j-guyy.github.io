@@ -1,70 +1,14 @@
 {
-    "countryHighPoints": [
+    "otherMountains": [
         {
-            "name": "Carrauntoohil",
-            "country": "Ireland",
-            "latitude": 52.0397,
-            "longitude": -9.7423,
-            "elevation": 1038,
-            "elevationUnit": "meters",
-            "description": "Ireland's highest peak, located in County Kerry's MacGillycuddy's Reeks mountain range."
-        },
-        {
-            "name": "Ben Nevis",
-            "country": "United Kingdom",
-            "latitude": 56.7969,
-            "longitude": -5.0036,
-            "elevation": 1345,
-            "elevationUnit": "meters",
-            "description": "The highest mountain in Scotland and the United Kingdom, located near Fort William in the Scottish Highlands."
-        },
-        {
-            "name": "Pico de Orizaba",
-            "country": "Mexico",
-            "latitude": 19.03,
-            "longitude": -97.2687,
-            "elevation": 5636,
-            "elevationUnit": "meters",
-            "description": "Mexico's highest peak and the third-highest in North America, a dormant stratovolcano on the border of Veracruz and Puebla."
-        },
-        {
-            "name": "Hallasan",
-            "country": "South Korea",
-            "latitude": 33.3617,
-            "longitude": 126.5292,
-            "elevation": 1947,
-            "elevationUnit": "meters",
-            "description": "South Korea's highest mountain, a shield volcano on Jeju Island with a crater lake at its summit."
-        },
-        {
-            "name": "Mulhac\u00e9n",
+            "name": "Mulhacén",
             "country": "Spain",
             "latitude": 37.0533,
             "longitude": -3.3119,
             "elevation": 3482,
             "elevationUnit": "meters",
-            "description": "Spain's highest peak, located in the Sierra Nevada mountain range in Andalusia."
+            "description": "Mainland Spain's highest peak (Teide on Tenerife is higher), located in the Sierra Nevada mountain range in Andalusia."
         },
-        {
-            "name": "Mount Kosciuszko",
-            "country": "Australia",
-            "latitude": -36.456,
-            "longitude": 148.2634,
-            "elevation": 2228,
-            "elevationUnit": "meters",
-            "description": "Australia's highest mountain, located in Kosciuszko National Park in New South Wales."
-        },
-        {
-            "name": "Mount Fuji",
-            "country": "Japan",
-            "latitude": 35.3606,
-            "longitude": 138.7274,
-            "elevation": 3776,
-            "elevationUnit": "meters",
-            "description": "Japan's highest peak and iconic sacred mountain, an active stratovolcano located southwest of Tokyo."
-        }
-    ],
-    "otherMountains": [
         {
             "name": "Sincholagua",
             "country": "Ecuador",
@@ -75,7 +19,7 @@
             "description": "A stratovolcano in the Cordillera Real of Ecuador, known for its challenging climbing routes and stunning views of the surrounding Andes."
         },
         {
-            "name": "Iztacc\u00edhuatl",
+            "name": "Iztaccíhuatl",
             "country": "Mexico",
             "latitude": 19.1786,
             "longitude": -98.6422,
@@ -90,16 +34,16 @@
             "longitude": -78.535,
             "elevation": 4680,
             "elevationUnit": "meters",
-            "description": "A volcanic peak towering above Quito, accessible via the Telef\u00e9riQo cable car followed by a steep hike through p\u00e1ramo grasslands."
+            "description": "A volcanic peak towering above Quito, accessible via the TelefériQo cable car followed by a steep hike through páramo grasslands."
         },
         {
-            "name": "Krist\u00ednartindar",
+            "name": "Kristínartindar",
             "country": "Iceland",
             "latitude": 64.0167,
             "longitude": -16.9667,
             "elevation": 1119,
             "elevationUnit": "meters",
-            "description": "A dramatic ridge near Skaftafell in Vatnaj\u00f6kull National Park, offering panoramic views of glaciers and black sand plains."
+            "description": "A dramatic ridge near Skaftafell in Vatnajökull National Park, offering panoramic views of glaciers and black sand plains."
         },
         {
             "name": "Montserrat",
@@ -198,7 +142,7 @@
             "longitude": 18.055,
             "elevation": 53,
             "elevationUnit": "meters",
-            "description": "The highest natural point on S\u00f6dermalm island in Stockholm, a popular viewpoint overlooking the city skyline and Lake M\u00e4laren."
+            "description": "The highest natural point on Södermalm island in Stockholm, a popular viewpoint overlooking the city skyline and Lake Mälaren."
         },
         {
             "name": "Mitake-san",
