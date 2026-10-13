@@ -254,15 +254,26 @@ function thinPoints(points, step) {
     return out;
 }
 
-// A route prepared for the footprint layer: thinned point lists for low and
-// high zoom, its bounding box and middle latitude (for the corridor width).
+// A route prepared for the canvas layers: copies thinned to a ladder of steps
+// (coarse → fine, then the full points), its bounding box and middle latitude
+// (for the corridor width). Drawing picks the coarsest copy that's still
+// finer than a pixel (routes) or a fraction of the corridor (footprint).
+const THIN_STEPS = [0.05, 0.015, 0.005, 0.0015, 0.0005];  // degrees; ~5.5 km … 55 m
+
 function makeRoute(points) {
     let s = 90, n = -90, w = 180, e = -180;
     points.forEach(([lat, lng]) => {
         if (lat < s) s = lat; if (lat > n) n = lat;
         if (lng < w) w = lng; if (lng > e) e = lng;
     });
-    return { coarse: thinPoints(points, 0.05), fine: thinPoints(points, 0.005), s, n, w, e, midLat: (s + n) / 2 };
+    const levels = THIN_STEPS.map(step => ({ step, pts: thinPoints(points, step) }));
+    levels.push({ step: 0, pts: points });
+    return { levels, s, n, w, e, midLat: (s + n) / 2 };
+}
+
+// The coarsest thinned copy of a route whose step is at most `maxStepDeg`.
+function routePoints(route, maxStepDeg) {
+    return route.levels.find(l => l.step <= maxStepDeg).pts;
 }
 
 // ── Point in country ──────────────────────────────────────────────────────────
@@ -345,32 +356,50 @@ function getFogTexture(onReady) {
     return null;
 }
 
-const FootprintLayer = L.Layer.extend({
-    options: { pane: 'footprintPane', mode: 'footprint', pointKm: 100, routeKm: 50 },
-
-    // getSources() → { points: [{lat, lng}], routes: [makeRoute()] }
-    initialize(getSources, options) {
-        this._getSources = getSources;
-        L.setOptions(this, options);
-    },
+// A canvas the size of the view plus half a screen on every side (so a drag
+// doesn't expose its edge before the redraw at moveend), redrawn on every
+// move/zoom and scaled during Leaflet's zoom animation. Subclasses implement
+// _draw(frame); frame.project(scale) gives fast lat/lng → canvas-pixel
+// functions (Spherical Mercator by hand, as L.CRS.EPSG3857 does — much faster
+// than latLngToLayerPoint for hundreds of thousands of route points).
+const CanvasOverlay = L.Layer.extend({
+    options: { className: '', hiDPI: false },
 
     onAdd(map) {
-        this._canvas = L.DomUtil.create('canvas', 'wm-footprint-canvas', this.getPane());
+        this._canvas = L.DomUtil.create('canvas', 'wm-canvas-overlay ' + this.options.className, this.getPane());
         if (map._zoomAnimated) L.DomUtil.addClass(this._canvas, 'leaflet-zoom-animated');
-        this._mask = document.createElement('canvas');
-        this._blurred = document.createElement('canvas');
         this.redraw();
     },
 
     onRemove() {
+        L.Util.cancelAnimFrame(this._frame);
+        this._frame = null;
         L.DomUtil.remove(this._canvas);
         this._canvas = null;
     },
 
     getEvents() {
-        const events = { moveend: this.redraw, viewreset: this.redraw, resize: this.redraw };
+        // `zoom` fires on every frame of a pinch (touch, or a Safari trackpad
+        // pinch), which moves the map without a zoom animation; follow it
+        // the way Leaflet's own renderers do.
+        const events = { moveend: this._redrawSoon, viewreset: this.redraw, resize: this.redraw, zoom: this._onZoom };
         if (this._map && this._map._zoomAnimated) events.zoomanim = this._animateZoom;
         return events;
+    },
+
+    _onZoom() {
+        this._animateZoom({ zoom: this._map.getZoom(), center: this._map.getCenter() });
+    },
+
+    // While the wheel is still spinning, the next zoom step starts in the
+    // frame after this one lands; skip the redraw then (the zoom animation
+    // just scales the current canvas) and draw once the map comes to rest.
+    _redrawSoon() {
+        if (this._frame) return;
+        this._frame = L.Util.requestAnimFrame(() => {
+            this._frame = null;
+            if (this._map && !this._map._animatingZoom) this.redraw();
+        });
     },
 
     setOptions(options) {
@@ -385,6 +414,60 @@ const FootprintLayer = L.Layer.extend({
         L.DomUtil.setTransform(this._canvas, offset, scale);
     },
 
+    redraw() {
+        const map = this._map;
+        if (!map || !this._canvas) return this;
+        const size = map.getSize();
+        const pad = Math.round(Math.max(size.x, size.y) * 0.5);
+        const w = size.x + pad * 2, h = size.y + pad * 2;
+        const topLeft = map.containerPointToLayerPoint([-pad, -pad]);
+        const zoom = map.getZoom();
+        this._topLeftLatLng = map.layerPointToLatLng(topLeft);
+        this._zoom = zoom;
+
+        const dpr = this.options.hiDPI ? Math.min(2, window.devicePixelRatio || 1) : 1;
+        const canvas = this._canvas;
+        canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        L.DomUtil.setPosition(canvas, topLeft);
+
+        const worldPx = 256 * Math.pow(2, zoom);
+        const origin = map.getPixelOrigin();
+        const ox = topLeft.x + origin.x, oy = topLeft.y + origin.y;
+        const project = scale => ({
+            px: lng => ((lng + 180) / 360 * worldPx - ox) * scale,
+            py: lat => {
+                const c = Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180;
+                return ((1 - Math.log(Math.tan(c) + 1 / Math.cos(c)) / Math.PI) / 2 * worldPx - oy) * scale;
+            },
+        });
+        this._draw({
+            canvas, w, h, dpr, zoom, worldPx, ox, oy, project,
+            view: L.latLngBounds(this._topLeftLatLng, map.layerPointToLatLng(topLeft.add([w, h]))),
+            // km → CSS pixels at a latitude.
+            kmToPx: (km, lat) => km * 1000 / (EARTH_CIRCUMFERENCE_M * Math.cos(lat * Math.PI / 180) / worldPx),
+        });
+        return this;
+    },
+});
+
+// Is a route (makeRoute()) at least partly inside `view`, padded by `marginDeg`?
+function routeInView(r, view, marginDeg = 0) {
+    return !(r.n < view.getSouth() - marginDeg || r.s > view.getNorth() + marginDeg ||
+             r.e < view.getWest() - marginDeg || r.w > view.getEast() + marginDeg);
+}
+
+const FootprintLayer = CanvasOverlay.extend({
+    options: { pane: 'footprintPane', className: 'wm-footprint-canvas', mode: 'footprint', pointKm: 100, routeKm: 50 },
+
+    // getSources() → { points: [{lat, lng}], routes: [makeRoute()] }
+    initialize(getSources, options) {
+        this._getSources = getSources;
+        L.setOptions(this, options);
+        this._mask = document.createElement('canvas');
+        this._blurred = document.createElement('canvas');
+    },
+
     // The blurred mask recoloured to `color` (alpha where the mask is solid).
     _tinted(mask, color) {
         const t = this._tint || (this._tint = document.createElement('canvas'));
@@ -397,36 +480,9 @@ const FootprintLayer = L.Layer.extend({
         return t;
     },
 
-    redraw() {
-        const map = this._map;
-        if (!map || !this._canvas) return this;
-        const size = map.getSize();
-        const pad = Math.round(Math.max(size.x, size.y) * 0.5);
-        const w = size.x + pad * 2, h = size.y + pad * 2;
-        const topLeft = map.containerPointToLayerPoint([-pad, -pad]);
-        const zoom = map.getZoom();
-        this._topLeftLatLng = map.layerPointToLatLng(topLeft);
-        this._zoom = zoom;
-
-        const canvas = this._canvas;
-        canvas.width = w; canvas.height = h;
-        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-        L.DomUtil.setPosition(canvas, topLeft);
-
-        // Spherical Mercator by hand (what L.CRS.EPSG3857 does) — much faster
-        // than latLngToLayerPoint for tens of thousands of route points.
-        const worldPx = 256 * Math.pow(2, zoom);
-        const origin = map.getPixelOrigin();
-        const ox = topLeft.x + origin.x, oy = topLeft.y + origin.y;
+    _draw({ canvas, w, h, worldPx, ox, oy, project, view, kmToPx }) {
         const s = MASK_SCALE;
-        const px = lng => ((lng + 180) / 360 * worldPx - ox) * s;
-        const py = lat => {
-            const c = Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180;
-            return ((1 - Math.log(Math.tan(c) + 1 / Math.cos(c)) / Math.PI) / 2 * worldPx - oy) * s;
-        };
-        // km → full-resolution pixels at a latitude.
-        const kmToPx = (km, lat) => km * 1000 / (EARTH_CIRCUMFERENCE_M * Math.cos(lat * Math.PI / 180) / worldPx);
-
+        const { px, py } = project(s);
         const mw = Math.ceil(w * s), mh = Math.ceil(h * s);
         const mask = this._mask;
         mask.width = mw; mask.height = mh;
@@ -448,23 +504,25 @@ const FootprintLayer = L.Layer.extend({
         m.fill();
 
         // Routes: cull by bounding box against the canvas extent (plus the
-        // corridor), then stroke the thinned points with a corridor-wide pen.
-        const view = L.latLngBounds(this._topLeftLatLng, map.layerPointToLatLng(topLeft.add([w, h])));
-        const fine = zoom >= 6;
+        // corridor), then stroke a copy thinned to a third of the corridor
+        // (or a pixel, if finer) with a corridor-wide pen. Routes whose pens
+        // round to the same width share one path and one stroke.
+        const pxDeg = 360 / worldPx;
+        const maxStep = Math.max(this.options.routeKm / 3 / 111, pxDeg);
+        const paths = new Map();  // rounded mask-px width → Path2D
         routes.forEach(r => {
-            const width = Math.max(MIN_ROUTE_PX, kmToPx(this.options.routeKm, r.midLat) * 2) * s;
+            const width = Math.round(Math.max(MIN_ROUTE_PX, kmToPx(this.options.routeKm, r.midLat) * 2) * s);
             const marginDeg = this.options.routeKm / 111 / Math.max(0.1, Math.cos(r.midLat * Math.PI / 180));
-            if (r.n < view.getSouth() - marginDeg || r.s > view.getNorth() + marginDeg ||
-                r.e < view.getWest() - marginDeg || r.w > view.getEast() + marginDeg) return;
-            const pts = fine ? r.fine : r.coarse;
-            m.lineWidth = width;
-            m.beginPath();
-            m.moveTo(px(pts[0][1]), py(pts[0][0]));
-            for (let i = 1; i < pts.length; i++) m.lineTo(px(pts[i][1]), py(pts[i][0]));
-            if (pts.length === 1) m.lineTo(px(pts[0][1]) + 0.01, py(pts[0][0]));
-            m.stroke();
+            if (!routeInView(r, view, marginDeg)) return;
+            const pts = routePoints(r, maxStep);
+            let path = paths.get(width);
+            if (!path) paths.set(width, path = new Path2D());
+            path.moveTo(px(pts[0][1]), py(pts[0][0]));
+            for (let i = 1; i < pts.length; i++) path.lineTo(px(pts[i][1]), py(pts[i][0]));
+            if (pts.length === 1) path.lineTo(px(pts[0][1]) + 0.01, py(pts[0][0]));
             if (width / 2 > maxR) maxR = width / 2;
         });
+        paths.forEach((path, width) => { m.lineWidth = Math.max(1, width); m.stroke(path); });
 
         // Soften the mask edge in proportion to its size (blur ≈ 8% of the
         // largest radius at full resolution, as the old SVG fog did).
@@ -504,9 +562,170 @@ const FootprintLayer = L.Layer.extend({
             ctx.fillRect(0, 0, w, h);
         }
         ctx.globalCompositeOperation = 'source-over';
-        return this;
     },
 });
+
+// Every Strava route on one canvas. One L.polyline per route meant Leaflet
+// re-projected, clipped and simplified every point of every route after each
+// zoom — over a second per zoom step with a few thousand routes. Here routes
+// outside the view are skipped and each zoom draws copies thinned to about a
+// pixel, all in a single stroke. The routes aren't interactive, so nothing is
+// lost by not being Leaflet paths.
+const RoutesLayer = CanvasOverlay.extend({
+    options: { className: 'wm-routes-canvas', hiDPI: true, color: '#FC4C02', weight: 1.4, opacity: 0.75 },
+
+    // getRoutes() → [makeRoute()]
+    initialize(getRoutes, options) {
+        this._getRoutes = getRoutes;
+        L.setOptions(this, options);
+    },
+
+    _draw({ canvas, dpr, worldPx, project, view }) {
+        const { px, py } = project(dpr);
+        const maxStep = 1.2 * 360 / worldPx;  // about a pixel
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = this.options.color;
+        ctx.globalAlpha = this.options.opacity;
+        ctx.lineWidth = this.options.weight * dpr;
+        ctx.lineCap = ctx.lineJoin = 'round';
+        ctx.beginPath();
+        this._getRoutes().forEach(r => {
+            if (!routeInView(r, view)) return;
+            const pts = routePoints(r, maxStep);
+            ctx.moveTo(px(pts[0][1]), py(pts[0][0]));
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(px(pts[i][1]), py(pts[i][0]));
+        });
+        ctx.stroke();
+    },
+});
+
+// ── Wheel / trackpad zoom speed ───────────────────────────────────────────────
+//
+// Leaflet 1.9.4 divides every wheel delta by 3× the pixel ratio on a Mac (6×
+// on Retina) and 2× elsewhere, then maps it through a sigmoid, so a trackpad
+// pinch or a mouse notch moved the map a sliver of a level. Here the wheel is
+// read the way Google / Apple / MapLibre maps read it:
+//   • a mouse-wheel notch is one zoom level, however many pixels the OS
+//     reports for it (100 on Windows, 4.000244… multiples on macOS, 3 lines
+//     in Firefox);
+//   • a trackpad pinch (a ctrl+wheel event with a small delta) follows the
+//     fingers: Chrome/Edge/Firefox report it as deltaY = −100·ln(scale);
+//   • a two-finger scroll (fullscreen, where plain scrolling zooms) is about
+//     a level per 100 px.
+// Touch pinch is Leaflet's own TouchZoom and already follows the fingers.
+
+const MAC_WHEEL_NOTCH = 4.000244140625;  // macOS mouse wheels scroll in multiples of this
+const PINCH_PX_PER_LEVEL = 100 * Math.LN2;
+const SCROLL_PX_PER_LEVEL = 100;
+const MAX_WHEEL_LEVELS = 2;              // per 40 ms batch, so accelerated wheels don't fling
+
+function wheelZoomLevels(e) {
+    if (!e.deltaY) return 0;  // horizontal scroll
+    let px = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1);
+    if (L.Browser.gecko && e.deltaMode === 0) px /= window.devicePixelRatio || 1;  // Firefox doubles them on Retina
+    const abs = Math.abs(px);
+    const notch = e.deltaMode !== 0
+        || (abs >= 50 && Number.isInteger(px))
+        || (abs % MAC_WHEEL_NOTCH === 0);
+    if (notch) return px > 0 ? -1 : 1;
+    return -px / (e.ctrlKey ? PINCH_PX_PER_LEVEL : SCROLL_PX_PER_LEVEL);
+}
+
+function tuneWheelZoom(map) {
+    const wheel = map.scrollWheelZoom;
+    wheel._onWheelScroll = function (e) {
+        this._delta += wheelZoomLevels(e);
+        this._lastMousePos = this._map.mouseEventToContainerPoint(e);
+        if (!this._startTime) this._startTime = Date.now();
+        const left = Math.max(this._map.options.wheelDebounceTime - (Date.now() - this._startTime), 0);
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => this._performZoom(), left);
+        L.DomEvent.stop(e);
+    };
+    wheel._performZoom = function () {
+        const map = this._map;
+        const snap = map.options.zoomSnap || 0;
+        const total = Math.max(-MAX_WHEEL_LEVELS, Math.min(MAX_WHEEL_LEVELS, this._delta));
+        // Zoom by whole snap steps and carry the remainder, so a slow pinch
+        // still adds up instead of rounding away (or up) every batch.
+        const step = snap ? Math.trunc(total / snap) * snap : total;
+        this._delta = total - step;
+        this._startTime = null;
+        if (!step) return;
+        // Leaflet drops a zoom request that lands while a zoom is still
+        // animating (~250 ms), so fast scrolling lost notches. Track where the
+        // wheel is heading instead, and move on to it whenever a zoom lands.
+        const from = this._target ?? map.getZoom();
+        const zoom = map._limitZoom(from + step);
+        if (zoom === from) { this._delta = 0; return; }
+        this._target = zoom;
+        if (!this._busy) this._go();
+    };
+    wheel._go = function () {
+        const map = this._map;
+        clearTimeout(this._busyTimer);
+        if (this._target == null || this._target === map.getZoom()) {
+            this._busy = false;
+            this._target = null;
+            return;
+        }
+        this._busy = true;
+        this._busyTimer = setTimeout(() => this._go(), 700);  // in case no zoomend arrives
+        map._stop();
+        map.setZoomAround(this._lastMousePos, this._target);
+    };
+    map.on('zoomend', () => { if (wheel._busy) wheel._go(); });
+
+    // The handler bound its listener when it was enabled; rebind to the above.
+    if (wheel.enabled()) { wheel.disable(); wheel.enable(); }
+
+    // leaflet-gesture-handling switches wheel zoom on from inside the first
+    // ctrl/⌘+wheel event, too late for that event to reach it, so the first
+    // notch after scrolling the page did nothing. Switch it on one step
+    // earlier, in the capture phase of the same event.
+    map.getContainer().addEventListener('wheel', e => {
+        if ((e.ctrlKey || e.metaKey) && !wheel.enabled()) wheel.enable();
+    }, { capture: true, passive: true });
+
+    // Safari on a Mac sends trackpad pinches as gesture events, not wheel
+    // events, and Leaflet ignores them — the pinch zoomed the whole page.
+    // Follow them the way Leaflet's TouchZoom follows a touch pinch: move the
+    // map every frame around the point under the cursor, snap at the end.
+    // Touch devices fire these alongside touch events, which TouchZoom handles
+    // (L.Browser.touch is true for any pointer-events browser, desktop Safari
+    // included, so test for real touch events).
+    if (L.Browser.touchNative) return;
+    const el = map.getContainer();
+    let pinch = null, frame = 0;
+    el.addEventListener('gesturestart', e => {
+        e.preventDefault();
+        map._stop();
+        const pt = map.mouseEventToContainerPoint(e);
+        pinch = { zoom: map.getZoom(), latlng: map.containerPointToLatLng(pt), center: map.getCenter(), at: map.getZoom() };
+        map._moveStart(true, false);
+    });
+    el.addEventListener('gesturechange', e => {
+        e.preventDefault();
+        if (!pinch) return;
+        const zoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), pinch.zoom + Math.log2(e.scale)));
+        const offset = map.mouseEventToContainerPoint(e).subtract(map.getSize().divideBy(2));
+        pinch.at = zoom;
+        pinch.center = map.unproject(map.project(pinch.latlng, zoom).subtract(offset), zoom);
+        L.Util.cancelAnimFrame(frame);
+        frame = L.Util.requestAnimFrame(() => map._move(pinch.center, pinch.at, { pinch: true, round: false }), null, true);
+    });
+    el.addEventListener('gestureend', e => {
+        e.preventDefault();
+        if (!pinch) return;
+        L.Util.cancelAnimFrame(frame);
+        const { center, at, zoom } = pinch;
+        pinch = null;
+        if (at === zoom) { map._moveEnd(false); return; }  // fingers didn't move
+        if (map._zoomAnimated) map._animateZoom(center, map._limitZoom(at), true, map.options.zoomSnap);
+        else map._resetView(center, map._limitZoom(at));
+    });
+}
 
 // ── The map ───────────────────────────────────────────────────────────────────
 
@@ -524,8 +743,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
         maxBounds: [[-85.06, -540], [85.06, 540]],  // vertical clamp only; worldCopyJump wraps sideways
         maxBoundsViscosity: 1,
         zoomSnap: 0.1,
-        zoomDelta: 0.5,
-        wheelPxPerZoomLevel: 120,
+        zoomDelta: 1,  // +/− buttons, double-click / double-tap, keyboard: one level, as on other maps
         worldCopyJump: true,
         gestureHandling: true,
         tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
@@ -539,6 +757,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     map.setMinZoom(fillZoom());
     if (map.getZoom() < map.getMinZoom()) map.setZoom(map.getMinZoom(), { animate: false });
     map.on('resize', () => map.setMinZoom(fillZoom()));  // fullscreen / rotation
+    tuneWheelZoom(map);
 
     map.createPane('footprintPane').style.zIndex = 350;  // over the basemap, under routes and markers
     map.getPane('footprintPane').style.pointerEvents = 'none';
@@ -553,11 +772,13 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     // ── Layers ──
     const placeGroups = {};
     PLACE_CATEGORIES.forEach(cat => { placeGroups[cat.id] = L.layerGroup(); });
-    const stravaGroup = L.layerGroup();
+    // Light basemaps get a heavier, more opaque line so the routes stay punchy.
+    const stravaStyle = () => ({ weight: state.isDark ? 1.4 : 2, opacity: state.isDark ? 0.75 : 0.9 });
+    const stravaLayer = new RoutesLayer(() => state.stravaRoutes, { color: STRAVA_LAYER.color, ...stravaStyle() });
     const overlayLabel = c => `<span class="wm-layer-symbol" style="color:${c.color}">${c.symbol}</span> ${c.label}`;
     const overlays = {};
     PLACE_CATEGORIES.forEach(cat => { overlays[overlayLabel(cat)] = placeGroups[cat.id]; });
-    overlays[overlayLabel(STRAVA_LAYER)] = stravaGroup;
+    overlays[overlayLabel(STRAVA_LAYER)] = stravaLayer;
 
     setupMapBasemaps(map, {
         overlays,
@@ -659,10 +880,8 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
 
     // ── Strava routes ──
     // Fetched once, the first time the layer is switched on.
-    const stravaStyle = () => ({ color: STRAVA_LAYER.color, weight: state.isDark ? 1.4 : 2, opacity: state.isDark ? 0.75 : 0.9, interactive: false });
-    const stravaRenderer = L.canvas({ padding: 0.5 });
     let stravaStatus = 'idle';  // idle | loading | ready | error
-    function restyleStrava() { stravaGroup.eachLayer(l => l.setStyle(stravaStyle())); }
+    function restyleStrava() { stravaLayer.setOptions(stravaStyle()); }
 
     async function loadStrava() {
         if (stravaStatus !== 'idle') return;
@@ -676,19 +895,19 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
                 if (!enc) return;
                 const points = decodeWorldPolyline(enc);
                 if (!points.length) return;
-                L.polyline(points, { ...stravaStyle(), renderer: stravaRenderer }).addTo(stravaGroup);
                 state.stravaRoutes.push(makeRoute(points));
                 const f = locate(points[0][0], points[0][1]);
                 if (f) state.stravaByCountry.set(f.properties.name, (state.stravaByCountry.get(f.properties.name) || 0) + 1);
             });
             stravaStatus = 'ready';
+            stravaLayer.redraw();
             restyleCountries();
             renderLegend();
-            if (footprint && map.hasLayer(stravaGroup)) footprint.redraw();
+            if (footprint && map.hasLayer(stravaLayer)) footprint.redraw();
         } catch (err) {
             console.warn('Strava routes unavailable:', err);
             stravaStatus = 'error';
-            map.removeLayer(stravaGroup);
+            map.removeLayer(stravaLayer);
         }
         renderChips();
     }
@@ -700,7 +919,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
     const routeSlider = document.getElementById('route-radius-slider');
     const footprintSources = () => ({
         points: places,
-        routes: map.hasLayer(stravaGroup) ? highwayRoutes.concat(state.stravaRoutes) : highwayRoutes,
+        routes: map.hasLayer(stravaLayer) ? highwayRoutes.concat(state.stravaRoutes) : highwayRoutes,
     });
 
     // ── Toolbar: view modes, sliders, layer chips ──
@@ -761,7 +980,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
         });
 
     const hiddenLayers = new Set((wmStore(STORAGE.layers) || '').split(',').filter(Boolean));
-    const layerFor = id => id === STRAVA_LAYER.id ? stravaGroup : placeGroups[id];
+    const layerFor = id => id === STRAVA_LAYER.id ? stravaLayer : placeGroups[id];
 
     function renderChips() {
         if (!chipBar) return;
@@ -786,7 +1005,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
 
     // Chips and the layer control's checkboxes both land here.
     map.on('layeradd layerremove', e => {
-        const id = e.layer === stravaGroup ? STRAVA_LAYER.id
+        const id = e.layer === stravaLayer ? STRAVA_LAYER.id
             : Object.keys(placeGroups).find(k => placeGroups[k] === e.layer);
         if (!id) return;
         // A failed Strava fetch switches the layer off; don't remember that as
@@ -818,7 +1037,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
                 + (anyStrava ? swatch(COUNTRY_COLORS.strava, 'Strava only') : '')
                 + swatch('rgba(255,255,255,0.5)', 'Not yet visited', true);
         } else {
-            const routes = map.hasLayer(stravaGroup) && stravaStatus === 'ready' ? 'highways &amp; Strava routes' : 'driven highways';
+            const routes = map.hasLayer(stravaLayer) && stravaStatus === 'ready' ? 'highways &amp; Strava routes' : 'driven highways';
             el.innerHTML = `<div class="wm-legend-note">${state.mode === 'fog' ? 'Cleared' : 'Green'}: within ${radiusSlider.value} km of a place, ${routeSlider.value} km of ${routes}</div>`
                 + (markersHidden() ? '<div class="wm-legend-note wm-legend-hint">Zoom in to see the places</div>' : '');
         }
@@ -827,7 +1046,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, places, drivenSegm
 
     // ── Initial state ──
     PLACE_CATEGORIES.forEach(c => { if (!hiddenLayers.has(c.id)) placeGroups[c.id].addTo(map); });
-    if (!hiddenLayers.has(STRAVA_LAYER.id)) stravaGroup.addTo(map);  // → loadStrava() via layeradd
+    if (!hiddenLayers.has(STRAVA_LAYER.id)) stravaLayer.addTo(map);  // → loadStrava() via layeradd
     setMode(state.mode);
     renderChips();
 }
