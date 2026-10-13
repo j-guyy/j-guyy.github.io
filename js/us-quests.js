@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
         TravelAPI.fetchPeaksWithFallback('colorado14ers', '/data/colorado14ers.json'),
         TravelAPI.fetchPeaksWithFallback('adk46ers', '/data/adirondack46ers.json'),
-        fetch('/data/british-isles-high-five.json').then(response => response.json())
+        TravelAPI.fetchPeaksWithFallback('britishIsles', '/data/british-isles-high-five.json')
     ])
         .then(([colorado14ersData, adirondack46ersData, britishIslesData]) => {
             colorado14ers = colorado14ersData;

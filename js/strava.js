@@ -3509,8 +3509,70 @@ let ACTIVE_CITY = 'superior-co';
 const VISIT_THRESHOLD_M = 25; // a node is "visited" if any polyline point is within 25 m
 const OVERPASS_MIRRORS = [
     'https://overpass-api.de/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
 ];
+
+// fetch() with a deadline covering the whole response, body included. A busy
+// public server can hold a request open for minutes before answering 504.
+async function fetchWithTimeout(url, opts, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { ...opts, signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        throw e.name === 'AbortError' ? new Error(`timed out after ${timeoutMs / 1000}s`) : e;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+// Run an Overpass query, trying each mirror in turn. Public Overpass load is
+// bursty, so once every mirror has failed it waits and goes round again
+// (`rounds`). A 200 whose remark reports a runtime error (query timeout, out
+// of memory) holds partial data, so it counts as a failure and is never cached.
+async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) {
+    for (let round = 0; round < rounds; round++) {
+        if (round > 0) {
+            const wait = 15000 * round;
+            dbg(`${label}: every Overpass mirror failed — retrying in ${wait / 1000}s`);
+            onStatus?.(`OpenStreetMap is busy — retrying in ${wait / 1000}s…`);
+            await new Promise(r => setTimeout(r, wait));
+        }
+        for (const [i, mirror] of OVERPASS_MIRRORS.entries()) {
+            if (i > 0 || round > 0) onStatus?.(`OpenStreetMap is busy — trying server ${i + 1} of ${OVERPASS_MIRRORS.length}…`);
+            try {
+                const data = await fetchWithTimeout(mirror, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(query),
+                }, timeoutMs);
+                if (/runtime error/i.test(data.remark || '')) throw new Error(data.remark);
+                return data;
+            } catch (e) {
+                dbg(`${label}: Overpass mirror ${mirror} failed (${e.message}), trying next…`);
+            }
+        }
+    }
+    throw new Error('All Overpass mirrors failed');
+}
+
+// Read a { ts, … } localStorage cache entry. An expired entry is still
+// returned (fresh: false) so a failed refresh can fall back to it.
+function readTimedCache(key, ttl) {
+    try {
+        const entry = JSON.parse(localStorage.getItem(key));
+        if (entry && entry.ts) return { entry, fresh: Date.now() - entry.ts < ttl };
+    } catch {}
+    return { entry: null, fresh: false };
+}
+
+function cacheAgeText(ts) {
+    const days = Math.floor((Date.now() - ts) / 86400000);
+    return days >= 1 ? `${days} day${days === 1 ? '' : 's'} old` : 'from today';
+}
 
 let cityMap = null;
 let cityMapInitialized = false;
@@ -3671,38 +3733,34 @@ async function fetchCityRoads(cfg) {
     const cacheKey = `city_hunter_${ACTIVE_CITY}`;
     const TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-    try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey));
-        if (cached && Date.now() - cached.ts < TTL) {
-            dbg(`City roads: ${cached.ways.length} ways from localStorage cache`);
-            return cached.ways;
-        }
-    } catch {}
+    const { entry: cached, fresh } = readTimedCache(cacheKey, TTL);
+    if (cached && fresh) {
+        dbg(`City roads: ${cached.ways.length} ways from localStorage cache`);
+        return cached.ways;
+    }
 
     setCityStatus('Fetching road network from OpenStreetMap…');
     const [south, west, north, east] = cfg.bbox;
-    const query = `[out:json][timeout:90];`
+    // A smaller declared timeout makes Overpass more willing to admit the query
+    // when it is busy; the client deadline sits just above it.
+    const query = `[out:json][timeout:60];`
         + `(way["highway"~"^(${cfg.highways})$"](${south},${west},${north},${east}););`
         + `out body;>;out skel qt;`;
 
     dbg('Overpass API: fetching ways…');
-    let res = null;
-    for (const mirror of OVERPASS_MIRRORS) {
-        try {
-            res = await fetch(mirror, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-            });
-            if (res.ok) break;
-            dbg(`Overpass mirror ${mirror} returned ${res.status}, trying next…`);
-        } catch (e) {
-            dbg(`Overpass mirror ${mirror} failed: ${e.message}, trying next…`);
-        }
+    let data;
+    try {
+        data = await fetchOverpass(query, {
+            label: 'City roads',
+            timeoutMs: 75000,
+            rounds: cached ? 1 : 2,   // an expired copy is good enough to skip the retry wait
+            onStatus: setCityStatus,
+        });
+    } catch (err) {
+        if (!cached) throw err;
+        dbg(`City roads: Overpass unavailable — using cached copy (${cacheAgeText(cached.ts)}, ${cached.ways.length} ways)`);
+        return cached.ways;
     }
-    if (!res || !res.ok) throw new Error(`All Overpass mirrors failed`);
-
-    const data = await res.json();
     const ways = parseOverpassWays(data);
     dbg(`City roads: ${ways.length} ways fetched from Overpass`);
 
@@ -3799,10 +3857,8 @@ async function fetchCityBoundary(cfg, cacheKey = null) {
     const resolvedKey = cacheKey !== null ? cacheKey : `city_boundary_${ACTIVE_CITY}`;
     const TTL = 30 * 24 * 60 * 60 * 1000; // 30 days — boundaries rarely change
 
-    try {
-        const cached = JSON.parse(localStorage.getItem(resolvedKey));
-        if (cached && Date.now() - cached.ts < TTL) return cached.rings;
-    } catch {}
+    const { entry: cached, fresh } = readTimedCache(resolvedKey, TTL);
+    if (cached && fresh) return cached.rings;
 
     const [south, west, north, east] = cfg.bbox;
     const boundaryType = cfg.boundaryType || 'administrative';
@@ -3820,20 +3876,19 @@ async function fetchCityBoundary(cfg, cacheKey = null) {
             + `out geom;`;
     }
 
-    let res = null;
-    for (const mirror of OVERPASS_MIRRORS) {
-        try {
-            res = await fetch(mirror, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-            });
-            if (res.ok) break;
-        } catch {}
+    // No onStatus: this runs alongside the road / trail fetch, which owns the status line.
+    let data;
+    try {
+        data = await fetchOverpass(query, {
+            label: `Boundary ${cfg.boundaryName}`,
+            timeoutMs: boundaryType === 'administrative' ? 45000 : 75000,
+            rounds: cached ? 1 : 2,
+        });
+    } catch (err) {
+        if (!cached) throw new Error(`Boundary fetch failed: ${err.message}`);
+        dbg(`Boundary ${cfg.boundaryName}: Overpass unavailable — using cached copy (${cacheAgeText(cached.ts)})`);
+        return cached.rings;
     }
-    if (!res || !res.ok) throw new Error('Boundary fetch failed');
-
-    const data = await res.json();
     // Each relation member of type 'way' with role 'outer' carries geometry
     const rings = [];
     data.elements.forEach(el => {
@@ -4855,6 +4910,7 @@ function faintPolyStyle(isDark) {
 // button on the topright of any map. Clicking it opens a small panel with:
 //   • "Current location" — fly the map to the user's GPS position
 //   • "Show my location" — toggle a live dot that refreshes every 10 seconds
+//     (every 5 seconds in the phone app, where it's used on the move)
 //
 // Each map gets its own instance; state and intervals are fully self-contained
 // and are cleaned up when the map is destroyed.
@@ -4938,8 +4994,9 @@ const LocationControl = L.Control.extend({
     _startTracking() {
         if (this._watching) return;
         this._watching = true;
+        this._refreshMs = isAppPage() ? 5000 : 10000;
         this._updateLocation();
-        this._intervalId = setInterval(() => this._updateLocation(), 10000);
+        this._intervalId = setInterval(() => this._updateLocation(), this._refreshMs);
     },
 
     _stopTracking() {
@@ -4952,8 +5009,12 @@ const LocationControl = L.Control.extend({
     },
 
     _updateLocation() {
-        if (!this._watching || !navigator.geolocation) return;
+        // A slow GPS fix can outlast the refresh interval; skip a tick rather
+        // than stack requests.
+        if (!this._watching || this._pending || !navigator.geolocation) return;
+        this._pending = true;
         navigator.geolocation.getCurrentPosition(pos => {
+            this._pending = false;
             if (!this._watching) return;
             const { latitude: lat, longitude: lng, accuracy } = pos.coords;
             if (this._marker) {
@@ -4972,8 +5033,8 @@ const LocationControl = L.Control.extend({
                 }).addTo(this._map);
             }
         },
-        err => dbg(`Location update failed: ${err.message}`),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 });
+        err => { this._pending = false; dbg(`Location update failed: ${err.message}`); },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: this._refreshMs / 2 });
     },
 });
 
@@ -5133,14 +5194,22 @@ async function fetchCOTrexTrails(cfg) {
     const cacheKey = `trail_hunter_${ACTIVE_TRAIL}`;
     const TTL = 7 * 24 * 60 * 60 * 1000;
 
-    try {
-        const cached = JSON.parse(localStorage.getItem(cacheKey));
-        if (cached && Date.now() - cached.ts < TTL) {
-            dbg(`COTrex cache: ${cached.ways.length} trail segments from localStorage`);
-            return cached.ways;
-        }
-    } catch {}
+    const { entry: cached, fresh } = readTimedCache(cacheKey, TTL);
+    if (cached && fresh) {
+        dbg(`COTrex cache: ${cached.ways.length} trail segments from localStorage`);
+        return cached.ways;
+    }
 
+    try {
+        return await fetchCOTrexPages(cfg, cacheKey, cached ? 1 : 2);
+    } catch (err) {
+        if (!cached) throw err;
+        dbg(`COTrex unavailable (${err.message}) — using cached copy (${cacheAgeText(cached.ts)}, ${cached.ways.length} segments)`);
+        return cached.ways;
+    }
+}
+
+async function fetchCOTrexPages(cfg, cacheKey, attempts) {
     const [south, west, north, east] = cfg.bbox;
     const PAGE = 2000;
     const ways = [];
@@ -5165,14 +5234,18 @@ async function fetchCOTrexTrails(cfg) {
         });
 
         let data;
-        try {
-            const res = await fetch(`${COTREX_URL}?${params}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            data = await res.json();
-        } catch (e) {
-            throw new Error(`COTrex fetch failed: ${e.message}`);
+        for (let attempt = 1; ; attempt++) {
+            try {
+                data = await fetchWithTimeout(`${COTREX_URL}?${params}`, {}, 45000);
+                if (data.error) throw new Error(data.error.message);
+                break;
+            } catch (e) {
+                if (attempt >= attempts) throw new Error(`COTrex fetch failed: ${e.message}`);
+                dbg(`COTrex page at offset ${offset} failed (${e.message}) — retrying in 10s`);
+                setTrailStatus('COTrex is busy — retrying in 10s…');
+                await new Promise(r => setTimeout(r, 10000));
+            }
         }
-        if (data.error) throw new Error(`COTrex error: ${data.error.message}`);
 
         for (const f of (data.features || [])) {
             const { name = '', type = 'trail', surface = '' } = f.attributes || {};
@@ -5641,25 +5714,52 @@ async function savePeakCache() {
     }
 }
 
-// Fetch peaks for a single 5°×5° grid cell — retries on 429/504 with mirror fallback
-async function fetchPeaksForCell(cellKey, south, west, north, east, depth = 0) {
-    // Only top-level cells (depth 0) are cached on the server. Sub-cells from
-    // splitting are merged into the parent's cache entry, so we don't pollute
-    // the cache with thousands of micro-cells that wouldn't be reused on reload.
-    if (depth === 0) {
-        const cached = peakCellCache[cellKey];
-        if (cached) {
-            if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
-                dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
-                return [];
-            }
-            if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
-                dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
-                return cached.peaks;
-            }
+// Fetch peaks for a single top-level grid cell, through the server cache.
+// Only top-level cells are cached on the server. Sub-cells from splitting are
+// merged into the parent's cache entry, so we don't pollute the cache with
+// thousands of micro-cells that wouldn't be reused on reload.
+async function fetchPeaksForCell(cellKey, south, west, north, east) {
+    const cached = peakCellCache[cellKey];
+    if (cached) {
+        if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
+            dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
+            return [];
+        }
+        if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+            dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
+            return cached.peaks;
         }
     }
 
+    const { peaks, complete } = await fetchPeaksRegion(cellKey, south, west, north, east, 0);
+    if (complete) {
+        peakCellCache[cellKey] = { peaks, ts: Date.now() };
+        return peaks;
+    }
+
+    // Some or all of the cell failed. Never cache that as a full 7-day result:
+    // an expired copy is kept as is (wiping it would drop the cell's summits),
+    // otherwise whatever loaded is kept. Either way ts is back-dated so the
+    // cell is retried after MOUNTAIN_FAIL_CACHE_TTL, like a failed one.
+    const retryTs = Date.now() - MOUNTAIN_PEAK_CACHE_TTL + MOUNTAIN_FAIL_CACHE_TTL;
+    if (cached && !cached.failed && cached.peaks?.length) {
+        dbg(`Mountain peaks cell ${cellKey}: refresh failed — keeping ${cached.peaks.length} cached peaks until Overpass recovers`);
+        peakCellCache[cellKey] = { peaks: cached.peaks, ts: retryTs };
+        return cached.peaks;
+    }
+    if (peaks.length) {
+        dbg(`Mountain peaks cell ${cellKey}: only partly loaded (${peaks.length} peaks) — will retry in ${MOUNTAIN_FAIL_CACHE_TTL / 60000}m`);
+        peakCellCache[cellKey] = { peaks, ts: retryTs };
+        return peaks;
+    }
+    peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
+    return [];
+}
+
+// Fetch peaks for a bbox via the worker's Overpass proxy — retries on 429/504
+// (the worker races the mirrors), then splits into quadrants when the whole
+// box keeps failing. `complete` is false if any part could not be fetched.
+async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
     const workerUrl = `${WORKER_URL}/peaks/fetch?south=${south}&west=${west}&north=${north}&east=${east}`;
     const maxAttempts = depth === 0 ? 3 : 2;  // sub-cells get fewer retries since we'll split further if they fail
 
@@ -5685,41 +5785,40 @@ async function fetchPeaksForCell(cellKey, south, west, north, east, depth = 0) {
         }
 
         dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks${depth > 0 ? ` (sub-cell d${depth})` : ''}`);
-        if (depth === 0) peakCellCache[cellKey] = { peaks: data.peaks, ts: Date.now() };
-        return data.peaks;
+        return { peaks: data.peaks, complete: true };
     }
 
     // All retries failed. If we still have splitting headroom, recurse into 4 quadrants.
     // Each split halves bbox dimensions, so depth 2 = 16 sub-cells each ~1/16 the original area.
     const MAX_DEPTH = 2;
-    if (depth < MAX_DEPTH) {
-        const midLat = (south + north) / 2;
-        const midLng = (west + east) / 2;
-        dbg(`Mountain peaks cell ${cellKey}: splitting into 4 sub-cells (depth ${depth + 1})`);
-        const quadrants = [
-            { s: south,  w: west,   n: midLat, e: midLng },
-            { s: south,  w: midLng, n: midLat, e: east   },
-            { s: midLat, w: west,   n: north,  e: midLng },
-            { s: midLat, w: midLng, n: north,  e: east   },
-        ];
-        const merged = [];
-        const seen = new Set();
-        for (const q of quadrants) {
-            await new Promise(r => setTimeout(r, 1500));  // small gap so we don't hammer Overpass
-            const subKey = `${cellKey}/${q.s},${q.w}`;
-            const subPeaks = await fetchPeaksForCell(subKey, q.s, q.w, q.n, q.e, depth + 1);
-            for (const p of subPeaks) {
-                if (!seen.has(p.id)) { seen.add(p.id); merged.push(p); }
-            }
-        }
-        dbg(`Mountain peaks cell ${cellKey}: ${merged.length} peaks (merged from 4 sub-cells)`);
-        if (depth === 0) peakCellCache[cellKey] = { peaks: merged, ts: Date.now() };
-        return merged;
+    if (depth >= MAX_DEPTH) {
+        dbg(`Mountain peaks cell ${cellKey}: all attempts failed at depth ${depth} — giving up`);
+        return { peaks: [], complete: false };
     }
 
-    dbg(`Mountain peaks cell ${cellKey}: all attempts failed at depth ${depth} — giving up`);
-    if (depth === 0) peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
-    return [];
+    const midLat = (south + north) / 2;
+    const midLng = (west + east) / 2;
+    dbg(`Mountain peaks cell ${cellKey}: splitting into 4 sub-cells (depth ${depth + 1})`);
+    const quadrants = [
+        { s: south,  w: west,   n: midLat, e: midLng },
+        { s: south,  w: midLng, n: midLat, e: east   },
+        { s: midLat, w: west,   n: north,  e: midLng },
+        { s: midLat, w: midLng, n: north,  e: east   },
+    ];
+    const merged = [];
+    const seen = new Set();
+    let complete = true;
+    for (const q of quadrants) {
+        await new Promise(r => setTimeout(r, 1500));  // small gap so we don't hammer Overpass
+        const subKey = `${cellKey}/${q.s},${q.w}`;
+        const sub = await fetchPeaksRegion(subKey, q.s, q.w, q.n, q.e, depth + 1);
+        if (!sub.complete) complete = false;
+        for (const p of sub.peaks) {
+            if (!seen.has(p.id)) { seen.add(p.id); merged.push(p); }
+        }
+    }
+    dbg(`Mountain peaks cell ${cellKey}: ${merged.length} peaks (merged from 4 sub-cells${complete ? '' : ', some failed'})`);
+    return { peaks: merged, complete };
 }
 
 // Fetch peaks across all 5°×5° cells that contain Hike/TrailRun/ski activities.

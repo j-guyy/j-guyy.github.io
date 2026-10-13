@@ -1,0 +1,168 @@
+/* World Travel Map (world-map.html / js/world-map.js). Loaded after map.css,
+   which still owns the marker glyphs and the view-mode buttons. */
+
+/* The map gets its own height. The shared .map-container is a 4:3 box and
+   #world-map has a 500px floor (map.css), so on phones the bottom of the map —
+   legend and attribution included — was clipped by .map-legend-container. */
+.wm-map-wrap,
+.wm-map-container {
+    height: auto;
+    max-height: none;
+    aspect-ratio: auto;
+    margin-bottom: 0;
+}
+
+#world-map {
+    height: min(78vh, 760px);
+    min-height: 360px;
+}
+
+.radius-control[hidden],
+.wm-detail-selector[hidden] {
+    display: none;
+}
+
+/* Countries / Lands / Subregions: a quieter twin of the view-mode buttons. */
+.wm-detail-selector .view-mode-btn {
+    padding: 6px 14px;
+    font-size: 0.85em;
+}
+
+#route-radius-slider {
+    width: 180px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+/* Layer chips: one per marker category + Strava routes. They double as the
+   marker legend, so they stay visible on phones where the in-map legend hides. */
+.wm-layer-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 0 14px;
+}
+
+.wm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: var(--text-xs);
+    line-height: 1.3;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.wm-chip:hover {
+    background: var(--surface-2-hover);
+}
+
+.wm-chip.active {
+    color: var(--text);
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+}
+
+/* Off: dim the whole chip, glyph included, so the state reads at a glance. */
+.wm-chip:not(.active) {
+    opacity: 0.55;
+}
+
+.wm-chip:disabled {
+    cursor: default;
+    opacity: 0.35;
+}
+
+.wm-chip-symbol {
+    font-size: 1em;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.wm-chip-count {
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Basemap/overlay control: glyphs in front of the overlay names. */
+.wm-layer-symbol {
+    display: inline-block;
+    width: 1.1em;
+    text-align: center;
+}
+
+/* Footprint / fog and Strava route canvases (CanvasOverlay in js/world-map.js). */
+.wm-canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.wm-legend-note {
+    display: block !important;
+    max-width: 210px;
+    line-height: 1.4;
+}
+
+/* Country popup */
+.wm-popup {
+    font-family: Arial, sans-serif;
+    min-width: 180px;
+}
+
+.wm-popup h3 {
+    margin: 0 0 6px;
+    color: #333;
+    font-size: 16px;
+}
+
+.wm-popup p {
+    margin: 4px 0;
+    font-size: 13px;
+    color: #555;
+}
+
+.wm-popup a {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.wm-popup-status {
+    display: inline-block;
+    margin-bottom: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #333;
+    background: #eee;
+}
+
+.wm-status-home    { background: #FFE082; }
+.wm-status-visited { background: #C8E6C9; color: #1B5E20; }
+.wm-status-strava  { background: #FFCCBC; color: #BF360C; }
+
+@media (max-width: 768px) {
+    #route-radius-slider,
+    #radius-slider {
+        width: 140px;
+    }
+}
+
+/* Footprint / Fog overview (js/world-map.js markersHidden()). */
+.wm-hide-markers .leaflet-marker-pane,
+.wm-hide-markers .leaflet-shadow-pane {
+    visibility: hidden;
+}
+
+.wm-legend-hint {
+    margin-top: 4px;
+    opacity: 0.7;
+}

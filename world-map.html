@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/map-controls.css">
+    <link rel="stylesheet" href="css/world-map.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" />
     <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css'
@@ -39,28 +41,30 @@
 
         <div class="section">
             <h2>Global Adventures</h2>
-            <p class="map-description">Map of all of my visited countries and cities</p>
+            <p class="map-description">Every country I've visited, the places I've pinned, and every route I've recorded on Strava</p>
             <div class="map-view-toggle">
-                <div class="view-mode-selector">
-                    <button class="view-mode-btn active" data-mode="country">Country View</button>
-                    <button class="view-mode-btn" data-mode="radius">Radius View</button>
-                    <button class="view-mode-btn" data-mode="fog">Fog of War</button>
+                <div class="view-mode-selector" role="group" aria-label="Map view">
+                    <button class="view-mode-btn active" data-mode="countries" aria-pressed="true">Countries</button>
+                    <button class="view-mode-btn" data-mode="footprint" aria-pressed="false">Footprint</button>
+                    <button class="view-mode-btn" data-mode="fog" aria-pressed="false">Fog of War</button>
                 </div>
-                <div class="radius-control" id="radius-control" style="display: none;">
-                    <label for="radius-slider">Point Radius: <span id="radius-value">100</span> km</label>
+                <div class="view-mode-selector wm-detail-selector" id="detail-control" role="group" aria-label="How much of a country to fill">
+                    <button class="view-mode-btn" data-detail="countries" aria-pressed="false" title="Fill every visited country whole, overseas territories included">Countries</button>
+                    <button class="view-mode-btn active" data-detail="lands" aria-pressed="true" title="Fill only the islands and lands I've been to">Lands</button>
+                    <button class="view-mode-btn" data-detail="subregions" aria-pressed="false" title="Fill only the states and provinces I've been to">Subregions</button>
+                </div>
+                <div class="radius-control" id="radius-control" hidden>
+                    <label for="radius-slider">Place radius: <span id="radius-value">100</span> km</label>
                     <input type="range" id="radius-slider" min="10" max="500" value="100" step="10">
                 </div>
-                <div class="radius-control" id="highway-radius-control" style="display: none;">
-                    <label for="highway-radius-slider">Highway Radius: <span id="highway-radius-value">50</span>
-                        km</label>
-                    <input type="range" id="highway-radius-slider" min="5" max="300" value="50" step="5">
+                <div class="radius-control" id="route-radius-control" hidden>
+                    <label for="route-radius-slider">Route radius: <span id="route-radius-value">50</span> km</label>
+                    <input type="range" id="route-radius-slider" min="5" max="300" value="50" step="5">
                 </div>
             </div>
-        </div>
-
-        <div class="section">
-            <div class="map-legend-container">
-                <div class="map-container">
+            <div class="wm-layer-chips" id="wm-layer-chips" role="group" aria-label="Map layers"></div>
+            <div class="map-legend-container wm-map-wrap">
+                <div class="map-container wm-map-container">
                     <div id="world-map"></div>
                 </div>
             </div>
@@ -70,6 +74,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
     <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
+    <script src="js/map-controls.js"></script>
     <script src="js/travel-api.js"></script>
     <script src="js/rest-countries.js"></script>
     <script src="js/world-map.js"></script>

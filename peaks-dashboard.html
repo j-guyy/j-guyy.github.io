@@ -4,21 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peaks Dashboard — Justin Guyette</title>
-    <meta name="description" content="Tracking peak-bagging progress across the Adirondack 46ers and Colorado 14ers with interactive data tables.">
-    <meta property="og:title" content="Peaks Dashboard — Justin Guyette">
-    <meta property="og:description" content="Tracking peak-bagging progress across the Adirondack 46ers and Colorado 14ers with interactive data tables.">
+    <title>Peaks — Justin Guyette</title>
+    <meta name="description" content="Tracking peak-bagging progress across the Adirondack 46ers, Colorado 14ers, US state high points, British Isles High Five and country high points, checked against Strava.">
+    <meta property="og:title" content="Peaks — Justin Guyette">
+    <meta property="og:description" content="Tracking peak-bagging progress across the Adirondack 46ers, Colorado 14ers, US state high points, British Isles High Five and country high points, checked against Strava.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://j-guyy.github.io/peaks-dashboard.html">
     <meta property="og:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Peaks Dashboard — Justin Guyette">
-    <meta name="twitter:description" content="Tracking peak-bagging progress across the Adirondack 46ers and Colorado 14ers with interactive data tables.">
+    <meta name="twitter:title" content="Peaks — Justin Guyette">
+    <meta name="twitter:description" content="Tracking peak-bagging progress across the Adirondack 46ers, Colorado 14ers, US state high points, British Isles High Five and country high points, checked against Strava.">
     <meta name="twitter:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/peaks-dashboard.css">
 </head>
 
 <body class="page">
@@ -29,7 +30,7 @@
 
     <div class="content">
         <div class="hero">
-            <h1>Peaks Dashboard</h1>
+            <h1>Peaks</h1>
         </div>
 
         <div class="section">
@@ -37,18 +38,25 @@
             <div class="cross-nav">
                 <a href="trip-reports/adirondack-46ers.html" class="cross-nav-link">ADK 46ers trip report →</a>
                 <a href="trip-reports/colorado-14ers.html" class="cross-nav-link">CO 14ers trip report →</a>
+                <a href="trip-reports/british-isles-high-five.html" class="cross-nav-link">British Isles High Five →</a>
+                <a href="strava.html#mountain" class="cross-nav-link">Mountain Hunter →</a>
             </div>
             <div id="travel-summary"></div>
             <div class="table-controls">
                 <select id="table-selector">
                     <option value="adk46ers">Adirondack 46ers</option>
                     <option value="colorado14ers">Colorado 14ers</option>
+                    <option value="highpoints">US State High Points</option>
+                    <option value="britishIsles">British Isles High Five</option>
+                    <option value="countryHighpoints">Country High Points</option>
                 </select>
                 <button id="export-csv-btn" class="table-action-btn" data-owner-only hidden>Export CSV</button>
                 <button id="edit-mode-btn" class="table-action-btn" data-owner-only hidden>Edit Mode</button>
                 <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
+            <p id="peaks-source" class="peaks-source" hidden></p>
             <div id="travel-table-container"></div>
+            <div id="strava-comparison" class="peaks-compare"></div>
         </div>
     </div>
 

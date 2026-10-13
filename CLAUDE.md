@@ -74,7 +74,7 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 | Directory | Purpose |
 |-----------|---------|
 | `/data/` | JSON data files for adventures, geography, travel stats |
-| `/data/admin1/` | Per-country first-level region boundaries for the Strava regional breakdown maps (generated) |
+| `/data/admin1/` | Per-country first-level region boundaries (generated) for the Strava regional breakdown maps and the World Travel Map's Subregions view — every visited country has one |
 | `/trip-reports/` | Individual HTML trip report pages |
 | `/images/` | Photos organized by category (`/hiking`, `/cycling`) |
 | `/css/` | Stylesheets |
@@ -88,10 +88,12 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 | `us-dashboard.html` | US travel tracking (metros, highpoints, parks, states) |
 | `world-dashboard.html` | World travel tracking (countries by continent) |
 | `us-map.html` | Interactive US map visualization |
-| `world-map.html` | Interactive world map visualization |
+| `world-map.html` | World Travel Map (`js/world-map.js`) — the one map of everywhere I've been: country outlines from the slim local `data/world-countries.geojson` (regenerate with `python3 scripts/build-world-countries.py`; its `ALIASES` maps Natural Earth names to `countries.json` names) filled by visited status. Outlines are Natural Earth *map subunits*, so outlying land (the Azores, the Canaries, French overseas regions, Hawaii, Alaska, …) is its own feature with a `part` name: a visited country fills only its core (largest subunit), and a part fills only once a place or Strava route lies inside it (or, for Alaska / Hawaii, the state is marked visited); `KEEP_WHOLE` in the script lists countries whose subunits are internal divisions and stay one outline. That is the default **Lands** level of the Countries view's detail toggle (`state.detail`, remembered in `localStorage` `world_map_detail`); **Countries** fills every outline of a visited country, and **Subregions** swaps in the `/data/admin1/` boundaries (mapped by `ADMIN1_FILES`, which covers every visited country; fetched only for countries I've been to) and fills each state / province with a place or Strava route start in it (US states also from the dashboard's visited states). An outline no region covers (Tokelau, the Dutch Caribbean, or a country without admin-1 data) keeps its Lands fill. When a new country is visited, add it to `COUNTRIES` in `scripts/build-admin1-regions.py`, re-run it, and add the file to `ADMIN1_FILES`. every visited place from the travel data files as toggleable marker categories (chips above the map + overlays in the basemap control), and every Strava route lazily fetched from the worker's `/polylines/all`. Countries / Footprint / Fog of War views; Footprint and Fog are one canvas layer (`FootprintLayer`) that masks everything within N km of a place or route (driven highways + Strava). A country with Strava activity that `countries.json` doesn't mark visited shows as "Strava only" — a prompt to update the data. Strava routes are drawn by `RoutesLayer` (one canvas, routes thinned to ~1 px per zoom), not one `L.polyline` each, which cost over a second per zoom step with a few thousand routes; both canvases share `CanvasOverlay`. Zoom speed is set by `tuneWheelZoom()`: one mouse-wheel notch = one level on every OS, a trackpad pinch follows the fingers, notches arriving mid-animation are queued rather than dropped, and Safari's `gesture*` pinch events are handled — don't go back to Leaflet's `wheelPxPerZoomLevel`, whose Mac/Windows pixel-ratio divisors made the wheel crawl. Uses `js/map-controls.js` for the basemap switcher + location |
 | `adventures.html` | Adventure portfolio and trip reports |
+| `peaks-dashboard.html` | Peaks (navbar: Adventures → Peaks, `js/peaks-dashboard.js`) — ADK 46ers, CO 14ers, US state high points, British Isles High Five, country high points (where a country's mainland high point differs, e.g. Mulhacén vs Teide, it gets a second row keyed `"<country> (Mainland)"` with `mainland: true`). Every list lives in worker KV (`/travel/<type>`; `PEAK_LIST_KEYS` in `worker.js` says which field a toggle matches) and falls back to its `/data` file until seeded — the owner's first edit of an unseeded list seeds it from that file. Each list is matched against Mountain Hunter's `/summits/peaks` (within 400 m, or 3 km when the names agree, one summit per list peak) to show where the list and Strava disagree, like Metro Hunter's comparison. Adding a list: data file + `PEAK_LISTS` entry + `TRAVEL_KEYS`/`PEAK_LIST_KEYS`/route in `worker.js` + `seed-travel-data.html` |
 | `family-travels.html` | Family travel tracking |
 | `about.html` | About page with 3D Cesium globe |
+| `us-ecoregions.html` / `colorado-ecoregions.html` | EPA Level IV ecoregion maps (linked from the navbar Tools menu). Both (and `world-map.html`) use `js/map-controls.js` + `css/map-controls.css` — a standalone copy of the Strava hunters' basemap switcher and live-location control (`setupStravaBasemaps` / `LocationControl` in `strava.js`), with an `onLocate` hook that reports which ecoregion you're standing in. They pass `renderer: L.canvas/svg({ padding: 0.5 })` because Leaflet's default 10% padding makes polygons vanish at the leading edge while dragging on desktop. Keep the CARTO/Thunderforest keys in sync with `strava.js` |
 
 ### Strava Page Architecture (`js/strava.js`)
 
@@ -117,6 +119,7 @@ Near the top of strava.html, an **overview grid** (`#strava-overview`, website o
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters
 - Activity pipeline (`runPipeline`) — loads activities, renders immediately, syncs in background
 - Geocoding (`geocodeAndRender`) — renders with cached data first, geocodes missing cells in background
+- Overpass / COTrex fetches (`fetchOverpass`, `fetchWithTimeout`) — browser-side Overpass queries go through `fetchOverpass`, which tries every `OVERPASS_MIRRORS` entry with a per-request deadline and a retry round (Mountain Hunter's peak queries go through the worker's `/peaks/fetch`, which races the same mirrors). When a refresh fails, City/Trail Hunter fall back to the expired localStorage copy (`readTimedCache`) and Mountain Hunter keeps the cell's old peaks, so a busy Overpass never wipes data
 - All tables use `.travel-table` class with sortable headers and `.table-scroll-wrapper` for mobile
 
 ### Cloudflare Worker API (`worker.js`)
@@ -134,9 +137,10 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/tiles/all`, `/tiles/save` | GET/POST | Tile Hunter state |
 | `/peaks/all`, `/peaks/save`, `/peaks/reset` | GET/POST | Mountain peak cell cache |
 | `/summits/all`, `/summits/save`, `/summits/reset` | GET/POST | Summit detection cache |
+| `/summits/peaks` | GET | Summited peaks with coordinates + first/last activity (summit cache joined with the peak cell cache, hidden sub-peaks dropped); the Peaks dashboard matches its lists against it |
 | `/progress/all`, `/progress/save`, `/progress/reset` | GET/POST | City / Trail Hunter completion headline (per city / trail region: complete, partial, total, node-coverage %), saved by the page once it has computed coverage from Overpass / COTrex; `/progress/save` is validated + merged per key, `/reset` is admin-only |
 | `/summary` | GET | Headline number per hunter (counties, parks, metros, tiles + max cluster/square, peaks, passes, activity total) derived at read time from the blobs above (tile max-cluster/square arrive precomputed with each `/tiles/save`, in `strava_tile_stats`, and are only computed at read time for tile data saved before that; city/trail come from `/progress/save`); feeds the app home grid and the strava.html overview. Clients fall back to `/counties/all` while an older worker without it is deployed |
-| `/travel/*` | GET/POST | Travel dashboard data (toggle, seed) |
+| `/travel/*` | GET/POST | Travel dashboard data (toggle, seed), including the peak lists (`adk46ers`, `colorado14ers`, `highpoints`, `british-isles`, `country-highpoints`) |
 | `/music/leaderboard` | GET | Song play counts from D1 (`?limit=`, max 500) |
 | `/music/state`, `/music/plays` | GET/POST | YouTube Music sync: last snapshot, and new plays (`X-Music-Token`) |
 | `/music/import` | POST | Google Takeout backfill (admin password); see the Song leaderboard note above |
@@ -147,4 +151,4 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 - **New map data**: Add JSON to `/data/`, fetch and render in the relevant JS file
 - **New page**: Create HTML file at root, link `js/navbar-component.js` and use `<nav-bar>` element, add corresponding CSS/JS files as needed
 - **New hunter feature**: Add section to `strava.html`, implement in `js/strava.js`, add KV key + endpoints to `worker.js`; give the section an `id`, add it to `HUNTER_SECTIONS` (overview card + deep link) and, if it has a cheap headline number, derive it in the worker's `/summary` and `hunterStatText()`
-- **New country regional breakdown**: Add an entry to `SUBDIVISION_CONFIG` in `js/strava.js` and to `COUNTRIES` in `scripts/build-admin1-regions.py`, then re-run that script to emit `/data/admin1/<id>.geojson`
+- **New country regional breakdown**: Add an entry to `SUBDIVISION_CONFIG` in `js/strava.js` and to `COUNTRIES` in `scripts/build-admin1-regions.py`, then re-run that script to emit `/data/admin1/<id>.geojson` (the world-map-only countries already in `COUNTRIES` just need the `SUBDIVISION_CONFIG` entry)
