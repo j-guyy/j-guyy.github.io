@@ -71,8 +71,11 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('data/interstateHighways.json').then(response => response.json()),
         fetch('data/highways.json').then(response => response.json()),
         fetch('data/world-countries.geojson').then(response => response.json()),
-        // Only fills Alaska / Hawaii, so a failure shouldn't take the map down.
-        TravelAPI.fetchVisitedStates().catch(() => ({}))
+        // Fills Alaska / Hawaii. The worker (what the dashboards edit) is the
+        // source of truth; the bundled JSON only covers it being unreachable.
+        TravelAPI.fetchVisitedStates()
+            .catch(() => fetch('data/visitedStates.json').then(response => response.json()))
+            .catch(() => ({}))
     ])
         .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, forbes100Data, interstateData, highwaysData, countriesGeojson, visitedStates]) => {
             displayWorldTravelSummary(worldData);
