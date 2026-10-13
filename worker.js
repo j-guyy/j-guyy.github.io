@@ -654,12 +654,13 @@ async function handlePeaksFetch(url) {
     if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, 400);
 
     const cell = `(${s},${w},${n},${e})`;
-    // Race both mirrors in parallel — first success wins. Wall clock max is one
+    // Race every mirror in parallel — first success wins. Wall clock max is one
     // attempt's worth (~22s), well under Cloudflare's 30s limit, and we get the
-    // benefit of either mirror responding fast without random-mirror bad luck.
+    // benefit of any mirror responding fast without random-mirror bad luck.
     const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
+        'https://overpass.private.coffee/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
     ];
 
