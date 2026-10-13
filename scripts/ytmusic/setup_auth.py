@@ -14,14 +14,18 @@ your history, and tells you how to hand them to the daily GitHub Action as a
 secret. The file it writes holds live session cookies: it is saved OUTSIDE the
 repo by default and is never meant to be committed.
 
-Getting the headers (Chrome/Edge; Firefox is the same idea):
-  1. Open https://music.youtube.com while logged in.
+Getting the headers (Chrome/Edge; Firefox is the same idea). Google rotates
+the session cookies of a browser window that stays open, which kills a copy
+within days, so take them from a private window you then close:
+  1. Open a private/incognito window, sign in at https://music.youtube.com.
   2. Open DevTools (F12) -> Network tab, filter on "browse".
   3. Click around (e.g. open Library) until a POST to /youtubei/v1/browse appears.
   4. Click it -> Headers -> Request Headers -> copy them all.
      Chrome: right-click the request -> Copy -> Copy request headers.
   5. Run this script and paste when prompted, then press Ctrl-D
      (Ctrl-Z then Enter on Windows).
+  6. Close the private window WITHOUT signing out (signing out kills the
+     cookies too) and never reuse it.
 
 Usage:
   pip install -r scripts/ytmusic/requirements.txt
@@ -41,9 +45,9 @@ For a local sync run, export both instead:
   export YTMUSIC_AUTH="$(cat ~/.config/ytmusic/browser.json)" MUSIC_SYNC_TOKEN=...
   python3 scripts/ytmusic/sync_history.py --dry-run
 
-The cookies last until you sign out of that browser session (signing out
-invalidates them), so use a session you leave signed in. When the daily job
-starts failing with an auth error, re-run this script and update the secret.
+Captured that way the cookies last a long time. When the daily job starts
+failing with "didn't return your history", capture them again and update the
+secret.
 """
 
 import argparse

@@ -166,11 +166,19 @@ def main():
     # Imported here so the unit tests need neither.
     import requests
     from ytmusicapi import YTMusic
+    from ytmusicapi.exceptions import YTMusicServerError
 
     worker = os.environ.get("WORKER_URL", DEFAULT_WORKER_URL).rstrip("/")
     headers = {"X-Music-Token": require_env("MUSIC_SYNC_TOKEN")}
 
-    history = YTMusic(args.auth or auth_json(require_env("YTMUSIC_AUTH"))).get_history()
+    try:
+        history = YTMusic(args.auth or auth_json(require_env("YTMUSIC_AUTH"))).get_history()
+    except YTMusicServerError as exc:
+        # YouTube answers a request with dead cookies with a page that isn't the
+        # history, which ytmusicapi reports as an error with no message.
+        sys.exit(f"YouTube Music didn't return your history ({exc}). The login in YTMUSIC_AUTH has most "
+                 "likely expired: copy a fresh /browse request from a private/incognito window, then close "
+                 "that window without signing out (see scripts/ytmusic/setup_auth.py), and update the secret.")
     if not history:
         sys.exit("get_history() returned nothing — expired auth or history paused? Not syncing.")
 
