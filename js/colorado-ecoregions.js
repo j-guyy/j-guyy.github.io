@@ -1,4 +1,5 @@
 // Colorado Ecoregions test page
+// Colours come from js/eco-colors.js (shared with the US page).
 // Expects EPA Level IV ecoregion data at /data/colorado-ecoregions.geojson
 // (already reprojected to WGS84). Field names follow EPA conventions:
 //   US_L4CODE, US_L4NAME, US_L3CODE, US_L3NAME
@@ -135,23 +136,8 @@ function l3Name(props) {
 }
 
 // ── Color generation ────────────────────────────────────────────────────────
-// Hash a string to a stable HSL color so the same code always gets the same
-// hue across page loads. Saturation/lightness picked for legibility on top of
-// the OpenTopoMap basemap.
-
-function hashString(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-}
-
-function colorForKey(key, sat, light) {
-    const hue = hashString(key) % 360;
-    return `hsl(${hue}, ${sat}%, ${light}%)`;
-}
+// Shared with the US page (js/eco-colors.js): each Level IV is a shade of its
+// Level III's hue, and the Level III outlines are a darker version of that hue.
 
 function buildColorMaps(features) {
     l4ColorMap = {};
@@ -159,8 +145,8 @@ function buildColorMaps(features) {
     features.forEach(f => {
         const l4 = l4Code(f.properties) || l4Name(f.properties);
         const l3 = l3Code(f.properties) || l3Name(f.properties);
-        if (!l4ColorMap[l4]) l4ColorMap[l4] = colorForKey(l4, 55, 60);
-        if (!l3ColorMap[l3]) l3ColorMap[l3] = colorForKey(l3, 70, 35);
+        if (!l4ColorMap[l4]) l4ColorMap[l4] = ecoL4Color(l4, l3);
+        if (!l3ColorMap[l3]) l3ColorMap[l3] = ecoL3OutlineColor(l3);
     });
 }
 
@@ -172,7 +158,7 @@ function renderLayers(geojson) {
             const l4 = l4Code(feature.properties) || l4Name(feature.properties);
             return {
                 fillColor: l4ColorMap[l4] || '#cccccc',
-                fillOpacity: 0.55,
+                fillOpacity: 0.6,
                 color: '#ffffff',
                 weight: 0.5,
                 opacity: 0.8
@@ -249,11 +235,16 @@ function renderLegend() {
                 const swatch = l4ColorMap[l4Key] || '#ccc';
                 return `<div class="eco-legend-row" data-l4="${escapeHtml(l4Key)}">
                     <span class="eco-legend-swatch" style="background:${swatch}"></span>
-                    <span>${escapeHtml(l4.code || '')} ${escapeHtml(l4.name)}</span>
+                    <span class="eco-legend-code">${escapeHtml(l4.code || '')}</span>
+                    <span>${escapeHtml(l4.name)}</span>
                 </div>`;
             }).join('');
         return `<div class="eco-legend-group" style="--l3-color:${l3Color}">
-            <div class="eco-legend-group-title">${escapeHtml(g.code || '')} ${escapeHtml(g.name)}</div>
+            <div class="eco-legend-group-title">
+                <span class="eco-legend-group-dot"></span>
+                <span class="eco-legend-code">${escapeHtml(g.code || '')}</span>
+                <span>${escapeHtml(g.name)}</span>
+            </div>
             ${l4Rows}
         </div>`;
     }).join('');
