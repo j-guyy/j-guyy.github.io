@@ -55,6 +55,23 @@ const TRAVEL_KEYS = {
     visitedStates: 'travel_visited_states',
     adk46ers:      'travel_adk46ers',
     colorado14ers: 'travel_colorado14ers',
+    britishIsles:  'travel_british_isles',
+    countryHighpoints: 'travel_country_highpoints',
+};
+
+// Peak lists (Peaks dashboard): type → the field /travel/toggle matches `key`
+// against. They store `climbed`, so the stored shape matches the static /data
+// JSON files the map/quest pages fall back to. Country highpoints are keyed by
+// country because one peak can top several (Everest, Mount Korab, …); a
+// country whose mainland high point differs has a second row keyed
+// "<country> (Mainland)" (Mulhacén next to Teide). State
+// highpoints are a peak list too but predate these and keep their own
+// `visited` branch, shared with the US dashboard.
+const PEAK_LIST_KEYS = {
+    adk46ers:          'name',
+    colorado14ers:     'name',
+    britishIsles:      'name',
+    countryHighpoints: 'country',
 };
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -85,6 +102,8 @@ export default {
             if (path === '/travel/visited-states')    return await handleTravelGet(env, 'visitedStates');
             if (path === '/travel/adk46ers')          return await handleTravelGet(env, 'adk46ers');
             if (path === '/travel/colorado14ers')     return await handleTravelGet(env, 'colorado14ers');
+            if (path === '/travel/british-isles')     return await handleTravelGet(env, 'britishIsles');
+            if (path === '/travel/country-highpoints') return await handleTravelGet(env, 'countryHighpoints');
 
             if (path === '/travel/toggle' && request.method === 'POST') {
                 return await handleTravelToggle(request, env);
@@ -317,6 +336,14 @@ export default {
                 if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(SUMMITS_KEY);
                 return json({ ok: true });
+            }
+
+            // Summited peaks with their coordinates. The summit cache keys visits
+            // by OSM id only, so this joins it with the peak cell cache for pages
+            // outside strava.html (the Peaks dashboard) that match their own lists
+            // against Strava without downloading every cached peak.
+            if (path === '/summits/peaks' && request.method === 'GET') {
+                return await handleSummitedPeaks(env);
             }
 
             // ── Hunter summary ──
@@ -623,6 +650,40 @@ function summarizeSummits(summits, hidden) {
     return { summited, summits: total };
 }
 
+// Response: { peaks: [{ id, name, lat, lng, ele, activities, first, last }] }
+// where first/last are { actId, actName, date } and activities counts distinct
+// activities (a visit is one lap). Sub-peaks the owner hid are left out, like
+// in summarizeSummits. A summited peak missing from the cell cache (its cell
+// was reset) has no coordinates and is skipped until Mountain Hunter refetches it.
+async function handleSummitedPeaks(env) {
+    const [summits, peakCache, hidden] = await Promise.all([
+        env.STRAVA_DATA.get(SUMMITS_KEY, 'json'),
+        env.STRAVA_DATA.get(PEAKS_KEY, 'json'),
+        env.STRAVA_DATA.get(HIDDEN_PEAKS_KEY, 'json'),
+    ]);
+    const visits = summits?.visits || {};
+    const hiddenIds = new Set((hidden?.ids || []).map(Number));
+    const peaks = [];
+    const seen = new Set();
+    for (const cell of Object.values(peakCache?.cells || {})) {
+        for (const p of cell.peaks || []) {
+            const id = Number(p.id);
+            const pvs = visits[id];
+            if (!Array.isArray(pvs) || !pvs.length || hiddenIds.has(id) || seen.has(id)) continue;
+            seen.add(id);
+            const sorted = [...pvs].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+            const brief = v => ({ actId: v.actId, actName: v.actName, date: v.date });
+            peaks.push({
+                id, name: p.name || '', lat: p.lat, lng: p.lng, ele: p.ele,
+                activities: new Set(pvs.map(v => v.actId)).size,
+                first: brief(sorted[0]),
+                last: brief(sorted[sorted.length - 1]),
+            });
+        }
+    }
+    return json({ peaks }, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
 // ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────
 
 async function tryOverpass(mirror, query, cell) {
@@ -766,10 +827,9 @@ async function handleTravelToggle(request, env) {
             item.visited = !item.visited;
             toggled = true;
         }
-    } else if (type === 'adk46ers' || type === 'colorado14ers') {
-        // Peak lists use `climbed` rather than `visited` so the stored shape
-        // matches the static /data JSON files that map/quest pages fall back to.
-        const item = data.find(p => p.name === key);
+    } else if (PEAK_LIST_KEYS[type]) {
+        const field = PEAK_LIST_KEYS[type];
+        const item = data.find(p => p[field] === key);
         if (item) {
             item.climbed = !item.climbed;
             toggled = true;

@@ -1,36 +1,157 @@
-let adk46ers, colorado14ers;
+// Peaks dashboard. Every list lives in Cloudflare KV (/travel/<type>) and falls
+// back to its static /data copy until it has been seeded; the owner's first
+// edit of an unseeded list seeds it from that copy. Each list is also matched
+// against Mountain Hunter's Strava summits (/summits/peaks) so the page shows
+// where the hand-kept list and Strava disagree, the step before the lists are
+// ticked off from Strava directly.
+
+// key: the field /travel/toggle identifies an entry by; done: the completion
+// flag (state highpoints are shared with the US dashboard, which uses
+// `visited`); unit: the elevation unit stored in the file (shown in feet).
+const PEAK_LISTS = {
+    adk46ers:          { label: 'Adirondack 46ers',        url: 'data/adirondack46ers.json',        csv: 'adirondack-46ers.csv',         key: 'name',    done: 'climbed' },
+    colorado14ers:     { label: 'Colorado 14ers',          url: 'data/colorado14ers.json',          csv: 'colorado-14ers.csv',           key: 'name',    done: 'climbed' },
+    highpoints:        { label: 'US State High Points',    url: 'data/highPoints.json',             csv: 'state-highpoints.csv',         key: 'state',   done: 'visited', region: 'state',   regionLabel: 'State' },
+    britishIsles:      { label: 'British Isles High Five', url: 'data/british-isles-high-five.json', csv: 'british-isles-high-five.csv', key: 'name',    done: 'climbed', region: 'country', regionLabel: 'Country', unit: 'm' },
+    countryHighpoints: { label: 'Country High Points',     url: 'data/country-highpoints.json',     csv: 'country-highpoints.csv',       key: 'country', done: 'climbed', region: 'country', regionLabel: 'Country' },
+};
+
+// A summited OSM peak this close to a list peak is that peak. Further out
+// (list coordinates are rougher than OSM's, especially abroad) it only counts
+// when the names agree; OSM names are often in local script, so distance has
+// to carry the match on its own for those.
+const STRAVA_NEAR_M = 400;
+const STRAVA_NAMED_M = 3000;
+const NAME_STOPWORDS = new Set(['mount', 'mt', 'mont', 'monte', 'mountain', 'pico', 'pic', 'peak',
+    'cerro', 'gora', 'volcan', 'nevado', 'the', 'de', 'del', 'la', 'jabal', 'jebel', 'hill', 'doi', 'bukit', 'puncak']);
+
+const lists = {};          // type → { data, source, reason }
+const sortState = {};      // type → { col, dir }
+let summitedPeaks = null;  // from /summits/peaks; null while loading
+let stravaError = null;
 let editMode = false;
 let refreshOwnerUI = () => {};
 
-const sortState = {
-    adk46ers:      { col: 'elevation', dir: 'desc' },
-    colorado14ers: { col: 'elevation', dir: 'desc' }
-};
+document.addEventListener('DOMContentLoaded', async function () {
+    const types = Object.keys(PEAK_LISTS);
+    try {
+        const results = await Promise.all(types.map(t => TravelAPI.fetchPeakList(t, PEAK_LISTS[t].url)));
+        types.forEach((t, i) => {
+            lists[t] = results[i];
+            sortState[t] = { col: 'elevation', dir: 'desc' };
+        });
+    } catch (error) {
+        console.error('Error loading peak data:', error);
+        return;
+    }
+    const selector = document.getElementById('table-selector');
+    selector.addEventListener('change', () => render());
+    setupEditMode();
+    setupCsvExport();
+    render();
 
-const PEAK_LISTS = {
-    adk46ers:      { label: 'Adirondack 46ers', csv: 'adirondack-46ers.csv' },
-    colorado14ers: { label: 'Colorado 14ers',   csv: 'colorado-14ers.csv' }
-};
-
-document.addEventListener('DOMContentLoaded', function () {
-    Promise.all([
-        TravelAPI.fetchPeaksWithFallback('adk46ers', 'data/adirondack46ers.json'),
-        TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json')
-    ])
-        .then(([adk46ersData, colorado14ersData]) => {
-            adk46ers = adk46ersData;
-            colorado14ers = colorado14ersData;
-            displayPeaksSummary();
-            updateTable('adk46ers');
-            setupEditMode();
-            setupCsvExport();
-        })
-        .catch(error => console.error('Error loading peak data:', error));
+    try {
+        summitedPeaks = await TravelAPI.fetchSummitedPeaks();
+    } catch (err) {
+        stravaError = err.message;
+        summitedPeaks = [];
+    }
+    render();
 });
 
-function peakData(tableType) {
-    return tableType === 'adk46ers' ? adk46ers : colorado14ers;
+function currentType() {
+    return document.getElementById('table-selector').value;
 }
+
+function render() {
+    displayPeaksSummary();
+    updateTable(currentType());
+    renderSourceNote(currentType());
+    renderComparison(currentType());
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function isDone(type, item) {
+    return Boolean(item[PEAK_LISTS[type].done]);
+}
+
+function elevationFt(type, item) {
+    return PEAK_LISTS[type].unit === 'm' ? Math.round(item.elevation * 3.28084) : item.elevation;
+}
+
+function regionOf(type, item) {
+    const field = PEAK_LISTS[type].region;
+    return field ? item[field] || '' : '';
+}
+
+function stravaLink(visit) {
+    return `<a href="https://www.strava.com/activities/${encodeURIComponent(visit.actId)}" target="_blank" rel="noopener" title="${esc(visit.actName)}">${esc(visit.date || 'Strava')}</a>`;
+}
+
+function haversineM(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+    const dφ = (lat2 - lat1) * Math.PI / 180;
+    const dλ = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// "Mount Stanley (Margherita Peak)" / "Corrán Tuathail / Carrauntoohil" →
+// ['stanley', 'margherita'] / ['corran tuathail', 'carrauntoohil']
+function nameKeys(name) {
+    return String(name || '').split(/[\/();,]/)
+        .map(part => part.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+            .replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+            .filter(w => w && !NAME_STOPWORDS.has(w)).join(' '))
+        .filter(k => k.length >= 2);
+}
+
+function namesAgree(a, b) {
+    const ka = nameKeys(a), kb = nameKeys(b);
+    return ka.some(x => kb.some(y => x === y ||
+        (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)))));
+}
+
+// ── Strava matching ─────────────────────────────────────────────────────────
+
+const matchCache = new Map();  // type → Map(item → { peak, distance })
+
+// One summited peak confirms at most one list peak, so two list peaks a few
+// hundred metres apart (North Maroon / Maroon) can't both claim one summit.
+// Name-confirmed pairs are assigned first, then the closest.
+function stravaMatches(type) {
+    if (!summitedPeaks) return null;
+    if (matchCache.has(type)) return matchCache.get(type);
+    const pairs = [];
+    lists[type].data.forEach(item => {
+        if (!Array.isArray(item.coords)) return;
+        const [lng, lat] = item.coords;
+        summitedPeaks.forEach(peak => {
+            const d = haversineM(lat, lng, peak.lat, peak.lng);
+            if (d > STRAVA_NAMED_M) return;
+            const named = namesAgree(item.name, peak.name);
+            if (named || d <= STRAVA_NEAR_M) pairs.push({ item, peak, d, named });
+        });
+    });
+    pairs.sort((a, b) => (b.named - a.named) || (a.d - b.d));
+    const matches = new Map();
+    const usedPeaks = new Set();
+    pairs.forEach(({ item, peak, d }) => {
+        if (matches.has(item) || usedPeaks.has(peak.id)) return;
+        matches.set(item, { peak, distance: Math.round(d) });
+        usedPeaks.add(peak.id);
+    });
+    matchCache.set(type, matches);
+    return matches;
+}
+
+// ── Owner controls ──────────────────────────────────────────────────────────
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
@@ -47,19 +168,22 @@ function setEditMode(on) {
     editMode = on;
     btn.classList.toggle('active', on);
     btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
-    updateTable(document.getElementById('table-selector').value);
+    render();
 }
 
 function setupCsvExport() {
     document.getElementById('export-csv-btn').addEventListener('click', () => {
-        const tableType = document.getElementById('table-selector').value;
-        const { col, dir } = sortState[tableType];
-        const headers = ['Rank', 'Peak Name', 'Elevation (ft)', 'Status'];
-        const sorted = sortTableData(peakData(tableType), col, dir);
-        const rows = sorted.map((item, i) => [
-            i + 1, item.name, item.elevation, item.climbed ? 'Summited' : 'Not Summited'
-        ]);
-        downloadCsv(headers, rows, PEAK_LISTS[tableType].csv);
+        const type = currentType();
+        const cfg = PEAK_LISTS[type];
+        const matches = stravaMatches(type);
+        const headers = ['Rank', 'Peak Name']
+            .concat(cfg.region ? [cfg.regionLabel] : [])
+            .concat(['Elevation (ft)', 'Status', 'Strava First Summit']);
+        const rows = sortedData(type).map((item, i) => [i + 1, item.name]
+            .concat(cfg.region ? [regionOf(type, item)] : [])
+            .concat([elevationFt(type, item), isDone(type, item) ? 'Summited' : 'Not Summited',
+                matches?.get(item)?.peak.first.date || '']));
+        downloadCsv(headers, rows, cfg.csv);
     });
 }
 
@@ -80,15 +204,27 @@ function downloadCsv(headers, rows, filename) {
     URL.revokeObjectURL(link.href);
 }
 
-async function handleToggle(tableType, item) {
+// A list that isn't in Cloudflare yet is seeded from the static copy the page
+// is showing before its first edit, so the edit lands on top of it.
+async function ensureSeeded(type, password) {
+    const list = lists[type];
+    if (list.source === 'cloudflare') return;
+    if (list.reason !== 'unseeded') throw new Error('Cloudflare is unreachable — reload and try again');
+    await TravelAPI.seed(type, list.data, password);
+    list.source = 'cloudflare';
+    delete list.reason;
+}
+
+async function handleToggle(type, item) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
+    const cfg = PEAK_LISTS[type];
 
     try {
-        await TravelAPI.toggleVisited(tableType, item.name, password);
-        item.climbed = !item.climbed;
-        displayPeaksSummary();
-        updateTable(tableType);
+        await ensureSeeded(type, password);
+        await TravelAPI.toggleVisited(type, item[cfg.key], password);
+        item[cfg.done] = !item[cfg.done];
+        render();
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
@@ -99,140 +235,161 @@ async function handleToggle(tableType, item) {
     }
 }
 
+// ── Rendering ───────────────────────────────────────────────────────────────
+
 function displayPeaksSummary() {
     const summaryContainer = document.getElementById('travel-summary');
-    const tableSelector = document.getElementById('table-selector');
+    const selected = currentType();
 
-    const adkCount = adk46ers.filter(peak => peak.climbed).length;
-    const adkPercentage = ((adkCount / adk46ers.length) * 100).toFixed(0);
-    const coCount = colorado14ers.filter(peak => peak.climbed).length;
-    const coPercentage = ((coCount / colorado14ers.length) * 100).toFixed(0);
+    const cards = Object.entries(PEAK_LISTS).map(([type, cfg]) => {
+        const data = lists[type].data;
+        const done = data.filter(item => isDone(type, item)).length;
+        const pct = data.length ? ((done / data.length) * 100).toFixed(0) : 0;
+        const matches = stravaMatches(type);
+        const strava = matches ? `<span class="stat-sub">${matches.size} on Strava</span>` : '';
+        return `
+            <button type="button" class="summary-stat peaks-card${type === selected ? ' active' : ''}" data-type="${type}">
+                <div class="stat-number-container">
+                    <span class="stat-number">${done}</span>
+                    <span class="stat-total">/${data.length}</span>
+                    <span class="stat-percentage">(${pct}%)</span>
+                </div>
+                <span class="stat-label">${cfg.label}</span>
+                ${strava}
+            </button>`;
+    }).join('');
 
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
-            <div class="other-stats other-stats-duo">
-                <div class="summary-stat">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${adkCount}</span>
-                        <span class="stat-total">/${adk46ers.length}</span>
-                        <span class="stat-percentage">(${adkPercentage}%)</span>
-                    </div>
-                    <span class="stat-label">Adirondack 46ers Summited</span>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${coCount}</span>
-                        <span class="stat-total">/${colorado14ers.length}</span>
-                        <span class="stat-percentage">(${coPercentage}%)</span>
-                    </div>
-                    <span class="stat-label">Colorado 14ers Summited</span>
-                </div>
-            </div>
-        </div>
-    `;
+            <div class="other-stats peaks-cards">${cards}</div>
+        </div>`;
 
-    // Set up event listener for table selector (only once)
-    if (!tableSelector.dataset.bound) {
-        tableSelector.dataset.bound = 'true';
-        tableSelector.addEventListener('change', function () {
-            updateTable(this.value);
+    summaryContainer.querySelectorAll('.peaks-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.getElementById('table-selector').value = card.dataset.type;
+            render();
         });
-    }
-}
-
-function sortTableData(data, col, dir) {
-    return [...data].sort((a, b) => {
-        let aVal = a[col];
-        let bVal = b[col];
-
-        if (typeof aVal === 'boolean') {
-            aVal = aVal ? 1 : 0;
-            bVal = bVal ? 1 : 0;
-        }
-
-        if (typeof aVal === 'string') {
-            const cmp = aVal.localeCompare(bVal);
-            return dir === 'asc' ? cmp : -cmp;
-        }
-
-        return dir === 'asc' ? aVal - bVal : bVal - aVal;
     });
 }
 
-function updateTable(tableType) {
+function renderSourceNote(type) {
+    const el = document.getElementById('peaks-source');
+    const list = lists[type];
+    if (list.source === 'cloudflare') {
+        el.textContent = '';
+        el.hidden = true;
+        return;
+    }
+    el.hidden = false;
+    el.textContent = list.reason === 'unseeded'
+        ? 'This list isn’t saved in Cloudflare yet — showing the copy bundled with the site. Your first edit saves it to Cloudflare.'
+        : 'Couldn’t reach Cloudflare — showing the copy bundled with the site, which may be out of date.';
+}
+
+function sortValue(type, item, col) {
+    switch (col) {
+        case 'elevation': return elevationFt(type, item);
+        case 'name':      return item.name;
+        case 'region':    return regionOf(type, item);
+        case 'strava':    return stravaMatches(type)?.get(item)?.peak.first.date || '';
+        case 'done':      return isDone(type, item) ? 1 : 0;
+        default:          return 0;
+    }
+}
+
+function sortedData(type) {
+    const { col, dir } = sortState[type];
+    const sign = dir === 'asc' ? 1 : -1;
+    return [...lists[type].data].sort((a, b) => {
+        const av = sortValue(type, a, col), bv = sortValue(type, b, col);
+        const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+        return sign * cmp || elevationFt(type, b) - elevationFt(type, a);
+    });
+}
+
+function updateTable(type) {
+    const cfg = PEAK_LISTS[type];
     const tableContainer = document.getElementById('travel-table-container');
     tableContainer.innerHTML = '';
+
+    const matches = stravaMatches(type);
+    const showStrava = !stravaError;
+
+    const columns = [
+        { label: 'Rank', key: 'elevation', cls: 'col-rank' },
+        { label: 'Peak Name', key: 'name', cls: 'col-name' },
+        cfg.region && { label: cfg.regionLabel, key: 'region', cls: 'col-region' },
+        { label: 'Elevation (ft)', key: 'elevation', cls: 'col-num' },
+        showStrava && { label: 'Strava', key: 'strava', cls: 'col-strava' },
+        { label: 'Status', key: 'done', cls: 'col-status' },
+    ].filter(Boolean);
 
     const table = document.createElement('table');
     table.className = 'travel-table travel-table--fit';
 
-    const tableHeaders = ['Rank', 'Peak Name', 'Elevation (ft)', 'Status'];
-    const sortKeys     = ['elevation', 'name', 'elevation', 'climbed'];
-    const colClasses   = ['col-rank', 'col-name', 'col-num', 'col-status'];
-
-    const { col, dir } = sortState[tableType];
-    const tableData = sortTableData(peakData(tableType), col, dir);
-
-    // Create sortable table header
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-
-    tableHeaders.forEach((header, i) => {
+    const { col, dir } = sortState[type];
+    columns.forEach(({ label, key, cls }) => {
         const th = document.createElement('th');
-        const key = sortKeys[i];
         const isActive = col === key;
-
-        th.classList.add('sortable', colClasses[i]);
+        th.classList.add('sortable', cls);
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
         indicator.className = 'sort-indicator';
         indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
-
-        th.appendChild(document.createTextNode(header));
+        th.appendChild(document.createTextNode(label));
         th.appendChild(indicator);
 
         th.addEventListener('click', () => {
-            const state = sortState[tableType];
+            const state = sortState[type];
             if (state.col === key) {
-                sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
+                state.dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'climbed' || key === 'elevation') ? 'desc' : 'asc';
-                sortState[tableType] = { col: key, dir: defaultDir };
+                const defaultDir = (key === 'done' || key === 'elevation' || key === 'strava') ? 'desc' : 'asc';
+                sortState[type] = { col: key, dir: defaultDir };
             }
-            updateTable(tableType);
+            updateTable(type);
         });
-
         headerRow.appendChild(th);
     });
-
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // Create table body
     const tbody = document.createElement('tbody');
-    tableData.forEach((item, index) => {
+    sortedData(type).forEach((item, index) => {
+        const done = isDone(type, item);
         const row = document.createElement('tr');
-        row.className = item.climbed ? 'visited' : 'not-visited';
+        row.className = done ? 'visited' : 'not-visited';
 
-        const statusIcon = item.climbed ? '✅' : '⬜';
-        const statusClass = editMode ? 'status-toggle' : '';
+        const match = matches?.get(item);
+        let stravaCell = '';
+        if (showStrava) {
+            const content = !matches ? '…'
+                : match ? stravaLink(match.peak.first) : '—';
+            const cls = match && !done ? ' strava-only' : '';
+            const title = match
+                ? ` title="${esc(`${match.peak.name || 'OSM peak'} · ${match.peak.activities} activit${match.peak.activities === 1 ? 'y' : 'ies'} · ${match.distance} m from the list point`)}"`
+                : '';
+            stravaCell = `<td class="col-strava${cls}"${title}>${content}</td>`;
+        }
 
         row.innerHTML = `
             <td class="col-rank">${index + 1}</td>
-            <td class="col-name">${item.name}</td>
-            <td class="col-num">${item.elevation.toLocaleString()}</td>
-            <td class="col-status ${statusClass}">${statusIcon}</td>
+            <td class="col-name">${esc(item.name)}</td>
+            ${cfg.region ? `<td class="col-region">${esc(regionOf(type, item))}</td>` : ''}
+            <td class="col-num">${elevationFt(type, item).toLocaleString()}</td>
+            ${stravaCell}
+            <td class="col-status ${editMode ? 'status-toggle' : ''}">${done ? '✅' : '⬜'}</td>
         `;
+        if (item.note) row.querySelector('.col-name').title = item.note;
 
         if (editMode) {
-            const statusCell = row.querySelector('.status-toggle');
-            statusCell.addEventListener('click', () => handleToggle(tableType, item));
+            row.querySelector('.col-status').addEventListener('click', () => handleToggle(type, item));
         }
-
         tbody.appendChild(row);
     });
-
     table.appendChild(tbody);
 
     const wrapper = document.createElement('div');
@@ -249,4 +406,95 @@ function updateTable(tableType) {
     }
     wrapper.addEventListener('scroll', checkScroll);
     checkScroll();
+}
+
+// Where the hand-kept list and Strava disagree, like Metro Hunter's
+// comparison on strava.html: marked but never summited on Strava (climbed
+// before Strava, not recorded, or coordinates too far from OSM's) and summited
+// on Strava but not marked yet.
+function renderComparison(type) {
+    const el = document.getElementById('strava-comparison');
+    const cfg = PEAK_LISTS[type];
+
+    if (stravaError) {
+        el.innerHTML = `<h3>Marked vs. Strava</h3>
+            <p class="peaks-compare-note">Couldn’t load Strava summits (${esc(stravaError)}).</p>`;
+        return;
+    }
+    const matches = stravaMatches(type);
+    if (!matches) {
+        el.innerHTML = `<h3>Marked vs. Strava</h3><p class="peaks-compare-note">Loading Strava summits…</p>`;
+        return;
+    }
+
+    const byElevation = (a, b) => elevationFt(type, b) - elevationFt(type, a);
+    const data = lists[type].data;
+    const marked = data.filter(item => isDone(type, item));
+    const confirmed = marked.filter(item => matches.has(item));
+    const markedOnly = marked.filter(item => !matches.has(item)).sort(byElevation);
+    const stravaOnly = data.filter(item => !isDone(type, item) && matches.has(item)).sort(byElevation);
+
+    const stat = (n, label, cls = '') =>
+        `<div class="peaks-compare-stat ${cls}"><span class="peaks-compare-number">${n}</span><span class="peaks-compare-label">${label}</span></div>`;
+
+    el.innerHTML = `
+        <h3>Marked vs. Strava</h3>
+        <p class="peaks-compare-note">Strava summits come from
+            <a href="strava.html#mountain">Mountain Hunter</a>: an activity that passes within 50&nbsp;m of
+            an OpenStreetMap summit. Activities count once Mountain Hunter has processed them on the Strava page.</p>
+        <div class="peaks-compare-stats">
+            ${stat(marked.length, 'Marked')}
+            ${stat(matches.size, 'On Strava')}
+            ${stat(confirmed.length, 'Both', 'is-confirmed')}
+            ${stat(markedOnly.length, 'Marked only', 'is-marked-only')}
+            ${stat(stravaOnly.length, 'Strava only', 'is-strava-only')}
+        </div>`;
+
+    const section = (title, cls, items, withStrava) => {
+        if (!items.length) return;
+        const h = document.createElement('h4');
+        h.className = `peaks-compare-heading ${cls}`;
+        h.textContent = title;
+        el.appendChild(h);
+
+        const showAction = withStrava && editMode;
+        const table = document.createElement('table');
+        table.className = 'travel-table travel-table--fit';
+        table.innerHTML = `<thead><tr>
+            <th class="col-name">Peak Name</th>
+            ${cfg.region ? `<th class="col-region">${cfg.regionLabel}</th>` : ''}
+            <th class="col-num">Elevation (ft)</th>
+            ${withStrava ? '<th class="col-strava">First summit</th><th class="col-num">Activities</th>' : ''}
+            ${showAction ? '<th class="col-status"></th>' : ''}
+        </tr></thead>`;
+        const tbody = document.createElement('tbody');
+        items.forEach(item => {
+            const match = matches.get(item);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="col-name">${esc(item.name)}</td>
+                ${cfg.region ? `<td class="col-region">${esc(regionOf(type, item))}</td>` : ''}
+                <td class="col-num">${elevationFt(type, item).toLocaleString()}</td>
+                ${withStrava ? `<td class="col-strava">${stravaLink(match.peak.first)}</td><td class="col-num">${match.peak.activities}</td>` : ''}
+                ${showAction ? '<td class="col-status"><button type="button" class="table-action-btn">Mark climbed</button></td>' : ''}`;
+            if (showAction) tr.querySelector('button').addEventListener('click', () => handleToggle(type, item));
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-scroll-wrapper';
+        wrapper.appendChild(table);
+        el.appendChild(wrapper);
+    };
+
+    section(`Marked but not on Strava (${markedOnly.length}) — climbed before Strava, or not recorded`,
+        'is-marked-only', markedOnly, false);
+    section(`On Strava but not marked (${stravaOnly.length}) — summited on a recorded activity`,
+        'is-strava-only', stravaOnly, true);
+    if (!markedOnly.length && !stravaOnly.length) {
+        const p = document.createElement('p');
+        p.className = 'peaks-compare-note';
+        p.textContent = 'The list and Strava agree.';
+        el.appendChild(p);
+    }
 }

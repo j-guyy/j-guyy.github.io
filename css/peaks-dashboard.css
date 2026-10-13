@@ -1,0 +1,104 @@
+/* Peaks dashboard (peaks-dashboard.html) — loaded after dashboard.css. */
+
+/* The list cards double as the list picker. */
+.peaks-card {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    width: 100%;
+}
+
+.peaks-card.active {
+    background-color: var(--accent-soft);
+    border-color: var(--accent-border);
+}
+
+.peaks-card .stat-sub {
+    margin-top: 6px;
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+}
+
+.peaks-source {
+    margin: -16px 0 16px;
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+}
+
+.travel-table td.col-strava {
+    white-space: nowrap;
+}
+
+.travel-table td.col-strava a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.travel-table td.col-strava a:hover {
+    text-decoration: underline;
+}
+
+/* Summited on Strava but not marked — the same amber as Metro Hunter's
+   Strava-only rows. */
+.travel-table td.col-strava.strava-only a {
+    color: #FFC107;
+}
+
+/* ── Marked vs. Strava ─────────────────────────────────────────────────── */
+
+.peaks-compare {
+    margin-top: 32px;
+}
+
+.peaks-compare h3 {
+    margin-bottom: 4px;
+}
+
+.peaks-compare-note {
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    margin: 0 0 16px;
+}
+
+.peaks-compare-note a {
+    color: var(--primary-color);
+}
+
+.peaks-compare-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 32px;
+    margin-bottom: 8px;
+}
+
+.peaks-compare-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.peaks-compare-number {
+    font-size: 1.8rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+}
+
+.peaks-compare-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.peaks-compare-stat.is-confirmed .peaks-compare-number { color: #4CAF50; }
+.peaks-compare-stat.is-marked-only .peaks-compare-number { color: #FF9800; }
+.peaks-compare-stat.is-strava-only .peaks-compare-number { color: #FFC107; }
+
+.peaks-compare-heading {
+    margin: 20px 0 8px;
+}
+
+.peaks-compare-heading.is-marked-only { color: #FF9800; }
+.peaks-compare-heading.is-strava-only { color: #FFC107; }

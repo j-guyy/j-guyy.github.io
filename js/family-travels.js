@@ -1086,14 +1086,14 @@ async function mergeAdditionalPerson1Data(ftData) {
         }
     }
 
-    const [worldCities, highPoints, stateHighPoints, nationalParks, skiResorts, sevenWonders, britishIsles, adk46ers, colorado14ers] = await Promise.all([
+    const [worldCities, countryHighpoints, stateHighPoints, nationalParks, skiResorts, sevenWonders, britishIsles, adk46ers, colorado14ers] = await Promise.all([
         fetch('data/worldCities.json').then(r => r.json()),
-        fetch('data/worldMountains.json').then(r => r.json()),
+        TravelAPI.fetchPeaksWithFallback('countryHighpoints', 'data/country-highpoints.json'),
         TravelAPI.fetchHighPoints(),
         TravelAPI.fetchNationalParks(),
         fetch('data/skiResorts.json').then(r => r.json()),
         fetch('data/sevenWonders.json').then(r => r.json()),
-        fetch('data/british-isles-high-five.json').then(r => r.json()),
+        TravelAPI.fetchPeaksWithFallback('britishIsles', 'data/british-isles-high-five.json'),
         TravelAPI.fetchPeaksWithFallback('adk46ers', 'data/adirondack46ers.json'),
         TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json')
     ]);
@@ -1101,8 +1101,10 @@ async function mergeAdditionalPerson1Data(ftData) {
     // World cities (all are visited)
     worldCities.visitedCities.forEach(c => addIfNew(c.latitude, c.longitude, c.name, c.country));
 
-    // World high points (all are visited/climbed)
-    highPoints.countryHighPoints.forEach(hp => addIfNew(hp.latitude, hp.longitude, hp.name, hp.country));
+    // Country high points (climbed only); a mainland row's country reads
+    // "Spain (Mainland)", so strip that to group it under the country.
+    countryHighpoints.filter(hp => hp.climbed).forEach(hp =>
+        addIfNew(hp.coords[1], hp.coords[0], hp.name, hp.country.replace(/ \(Mainland\)$/, '')));
 
     // US state high points (visited only)
     stateHighPoints.filter(hp => hp.visited).forEach(hp => addIfNew(hp.coords[1], hp.coords[0], hp.name, 'United States'));
