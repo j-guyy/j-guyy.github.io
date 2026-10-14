@@ -1,0 +1,22 @@
+[
+    {
+        "id": -1,
+        "name": "Hallasan",
+        "lat": 33.360937,
+        "lng": 126.535679,
+        "ele": 1947,
+        "replacesIds": [8334051398],
+        "replacesNames": ["한라산", "Hallasan"],
+        "note": "East rim summit (한라산 동릉 정상), where the trails end. The true summit on the west rim of the crater is closed to hikers."
+    },
+    {
+        "id": -2,
+        "name": "Mauna Kea",
+        "lat": 19.822805,
+        "lng": -155.469229,
+        "ele": 4207,
+        "replacesIds": [],
+        "replacesNames": ["Mauna Kea", "Mauna a Wākea"],
+        "note": "Where the summit hike tops out (4,200 m). The summit cone, Puʻu Wēkiu, is about 250 m further on and is a sacred site visitors are asked not to climb."
+    }
+]

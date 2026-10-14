@@ -665,7 +665,10 @@ async function handleSummitedPeaks(env) {
     const hiddenIds = new Set((hidden?.ids || []).map(Number));
     const peaks = [];
     const seen = new Set();
-    for (const cell of Object.values(peakCache?.cells || {})) {
+    // Hiker summits (data/hiker-summits.json) aren't in the cell cache; the
+    // summit cache carries them as extraPeaks.
+    const sources = Object.values(peakCache?.cells || {}).concat({ peaks: summits?.extraPeaks || [] });
+    for (const cell of sources) {
         for (const p of cell.peaks || []) {
             const id = Number(p.id);
             const pvs = visits[id];
