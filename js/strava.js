@@ -5920,12 +5920,14 @@ async function detectMountainSummits(peaks) {
     // be re-checked. Force a full re-scan. This runs after loadSummitCache, so
     // it compares against the saved scan rather than an empty set on page load;
     // a summit cache saved before cell counts were recorded re-scans once.
+    // Visits are dropped only for peaks loaded now (the re-scan rebuilds them),
+    // so a cell that happens to be failing this run keeps its summits.
     const grown = Object.keys(mountainCellCounts)
         .filter(key => mountainCellCounts[key] > (summitScannedCells[key] || 0));
     if (grown.length && summitProcessedIds.size > 0) {
         dbg(`Summit detection: ${grown.length} cell(s) gained peaks since the last scan (${grown.slice(0, 5).join('; ')}) — full re-scan`);
         summitProcessedIds.clear();
-        mountainVisits.clear();
+        for (const peak of peaks) mountainVisits.delete(peak.id);
     }
     summitScannedCells = { ...mountainCellCounts };
 
