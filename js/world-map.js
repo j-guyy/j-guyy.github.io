@@ -994,7 +994,18 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
                     regionData.set(name, geojson.features);
                     regionLayer.addData(geojson);
                 });
-                locateRegion = makeCountryLocator([...regionData.values()].flat());
+                // Every other country's outline goes in after the regions, so a
+                // point in San Marino, the Vatican or Monaco (no Italian or
+                // French region holds it) stops there instead of snapping ~1 km
+                // into the region next door. Regions are tested first, so a
+                // point a region holds still counts where the coarser country
+                // outlines disagree.
+                const others = countriesGeojson.features.filter(f => !regionData.has(f.properties.name));
+                const locateAny = makeCountryLocator([...regionData.values()].flat().concat(others));
+                locateRegion = (lat, lng) => {
+                    const f = locateAny(lat, lng);
+                    return f && f.properties.wmCountry ? f : null;
+                };
                 loaded.forEach(({ name }) => (partsByCountry.get(name) || []).forEach(f => {
                     const pt = interiorPoint(f.geometry);
                     const hit = pt && locateRegion(pt[1], pt[0]);

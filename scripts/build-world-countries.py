@@ -73,28 +73,13 @@ KEEP_WHOLE = {
     'Palestine', 'Russia', 'Antarctica',
 }
 
-# Enclaves whose Natural Earth outline is wrong, as ADMIN → (the country around
-# it, its real outer ring). The outline replaces Natural Earth's and is punched
-# out of the surrounding country in place of the old hole. Kept at 4 decimals
-# (~10 m): at PRECISION a half-square-kilometre country moves by up to 100 m.
-#   Vatican  Natural Earth's 1:50m outline sits ~1 km west of the real one, in
-#            the Gianicolo (its 1:10m one is just the basilica), so a walk into
-#            St Peter's Square counted as Italy. Ring from geoBoundaries
-#            (VAT ADM0, public domain), simplified to ~15 m.
-ENCLAVE_FIXES = {
-    'Vatican': ('Italy', [
-        (12.4555, 41.9075), (12.4532, 41.9067), (12.4513, 41.9063), (12.4513, 41.9065),
-        (12.4504, 41.9065), (12.4502, 41.9058), (12.4504, 41.9057), (12.4493, 41.9049),
-        (12.4491, 41.9051), (12.4487, 41.905), (12.4487, 41.9046), (12.4489, 41.9046),
-        (12.4485, 41.9035), (12.4482, 41.9036), (12.4478, 41.9033), (12.4477, 41.9029),
-        (12.4468, 41.9021), (12.4466, 41.9023), (12.4457, 41.9019), (12.4466, 41.9015),
-        (12.4467, 41.9017), (12.448, 41.901), (12.4478, 41.9008), (12.448, 41.9007),
-        (12.4487, 41.9009), (12.4507, 41.9007), (12.4507, 41.9005), (12.4516, 41.9004),
-        (12.454, 41.9003), (12.4543, 41.9009), (12.4565, 41.9013), (12.4572, 41.901),
-        (12.458, 41.9012), (12.4584, 41.9016), (12.4585, 41.9022), (12.4583, 41.9028),
-        (12.4576, 41.9032), (12.4577, 41.9058), (12.4558, 41.9063), (12.4555, 41.9075),
-    ]),
-}
+# Enclaves whose Natural Earth outline is wrong (the Vatican ~1 km off, San
+# Marino a 7-point blob), from scripts/enclaves.json (build-enclaves.py), which
+# build-admin1-regions.py reads too so both draw the same border. Each outline
+# replaces Natural Earth's and is punched out of the surrounding country in
+# place of the old hole, at its own 4 decimals: at PRECISION a half-square-
+# kilometre country moves by up to 100 m.
+ENCLAVES = os.path.join(ROOT, 'scripts', 'enclaves.json')
 
 PRECISION = 3
 
@@ -159,7 +144,7 @@ def fix_enclave(parts, admin, host, outline):
     outline = [list(pt) for pt in outline]
     old = [u for u in parts.get(admin, []) if u[2] is not None]
     if not old or host not in parts:
-        sys.exit(f'ENCLAVE_FIXES: no outline for {admin} or {host}')
+        sys.exit(f'enclaves.json: no outline for {admin} or {host}')
     w, s, e, n = bbox([poly[0] for u in old for poly in polygons(u[2])])
     inside = lambda b: b[0] >= w and b[1] >= s and b[2] <= e and b[3] <= n
     subunit, props, _ = old[0]
@@ -171,7 +156,7 @@ def fix_enclave(parts, admin, host, outline):
                 # Holes wind the other way round from outer rings.
                 poly[1:] = holes + [outline[::-1]]
                 return
-    sys.exit(f'ENCLAVE_FIXES: {host} has no hole for {admin}')
+    sys.exit(f'enclaves.json: {host} has no hole for {admin}')
 
 
 def main():
@@ -202,8 +187,9 @@ def main():
         if p['ADMIN'] not in KEEP_WHOLE:
             parts.setdefault(p['ADMIN'], []).append((p['SUBUNIT'], p, geometry(feat['geometry'])))
 
-    for admin, (host, outline) in ENCLAVE_FIXES.items():
-        fix_enclave(parts, admin, host, outline)
+    with open(ENCLAVES, encoding='utf-8') as f:
+        for admin, enclave in json.load(f).items():
+            fix_enclave(parts, admin, enclave['host'], enclave['ring'])
 
     features = []
     for admin, units in parts.items():

@@ -36,13 +36,24 @@ import tempfile
 import unicodedata
 import urllib.request
 
-from shapely.geometry import shape, mapping
+from shapely.geometry import MultiPolygon, Point, Polygon, shape, mapping
 from shapely.ops import unary_union
 
 NE_URL = ('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/'
           'master/geojson/ne_10m_admin_1_states_provinces.geojson')
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'admin1')
+
+# Countries wholly inside another (the Vatican, San Marino) — Natural Earth's
+# regions leave the wrong hole for them, so each is cut out of the regions
+# around it along its real outline (build-enclaves.py, shared with the World
+# Travel Map's country outlines), keyed by Natural Earth ADMIN name.
+ENCLAVES = os.path.join(os.path.dirname(__file__), 'enclaves.json')
+
+# How far (degrees, ~5 km) around an enclave a region counts as its neighbour
+# and a gap as its own — Natural Earth's San Marino hole sits up to 2.5 km west
+# of the real border.
+ENCLAVE_NEAR = 0.05
 
 # Simplification tolerance in degrees (~1.1 km). These maps are viewed at
 # country scale, so this keeps shapes faithful while cutting the file ~20x.
@@ -238,6 +249,54 @@ def clean_geometry(geom):
     return geom
 
 
+def cut_enclaves(admin, geoms, enclaves):
+    """Cuts each enclave in `admin` out of the regions around it, hands them any
+    gap left between them and its border, and moves the points where a region's
+    border meets the enclave onto the enclave's own vertices — so each region
+    and the enclave share exactly the same border, vertex for vertex."""
+    for name, enclave in enclaves.items():
+        if enclave['host'] != admin:
+            continue
+        e = Polygon(enclave['ring'])
+        near = [i for i, g in enumerate(geoms) if g.distance(e) < ENCLAVE_NEAR]
+        if not near:
+            raise SystemExit(f'{name}: no region of {admin} near it')
+        for i in near:
+            geoms[i] = geoms[i].difference(e)
+        # Where Natural Earth's hole was bigger than the real outline. Only gaps
+        # enclosed by the regions — a sliver between two regions that runs on
+        # past the neighbourhood is their mismatch, not the enclave's.
+        area = e.buffer(ENCLAVE_NEAR)
+        gap = area.difference(unary_union([geoms[i] for i in near] + [e]))
+        for piece in getattr(gap, 'geoms', [gap]):
+            if piece.is_empty or piece.distance(e) > 1e-9 or piece.distance(area.exterior) < 1e-9:
+                continue
+            best = max(near, key=lambda i: piece.boundary.intersection(geoms[i].buffer(1e-7)).length)
+            geoms[best] = geoms[best].union(piece)
+        vertices = list(e.exterior.coords)[:-1]
+        for i in near:
+            geoms[i] = snap_to_ring(geoms[i], e.exterior, vertices)
+            if not geoms[i].is_valid:
+                raise SystemExit(f'{name}: cutting it out left an invalid region')
+    return geoms
+
+
+def snap_to_ring(geom, ring, vertices):
+    """Moves every vertex of `geom` that lies on `ring` but isn't one of its
+    vertices (where a region's own border crosses it) to the nearest one."""
+    def fix(coords):
+        out = []
+        for x, y in coords:
+            if (x, y) not in vertices and ring.distance(Point(x, y)) < 1e-9:
+                x, y = min(vertices, key=lambda v: (v[0] - x) ** 2 + (v[1] - y) ** 2)
+            if not out or out[-1] != (x, y):
+                out.append((x, y))
+        return out
+    polys = geom.geoms if geom.geom_type == 'MultiPolygon' else [geom]
+    polys = [Polygon(fix(p.exterior.coords), [fix(h.coords) for h in p.interiors]) for p in polys]
+    return polys[0] if len(polys) == 1 else MultiPolygon(polys)
+
+
 def round_coords(obj, nd=4):
     """~11 m precision — plenty for country-scale maps, and halves the file."""
     if isinstance(obj, (list, tuple)):
@@ -257,6 +316,9 @@ def main():
 
     with open(src) as fh:
         ne = json.load(fh)
+
+    with open(ENCLAVES, encoding='utf-8') as fh:
+        enclaves = json.load(fh)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     for cfg in COUNTRIES:
@@ -308,12 +370,15 @@ def main():
                     seen.add(n)
                     aliases.append(cand)
 
-            geom = clean_geometry(unary_union([g for g, _ in parts]))
             out_features.append({
                 'type': 'Feature',
                 'properties': {'id': rid, 'country': cfg['id'], 'name': name, 'aliases': aliases},
-                'geometry': {'type': geom.geom_type, 'coordinates': round_coords(mapping(geom)['coordinates'])},
+                'geometry': clean_geometry(unary_union([g for g, _ in parts])),
             })
+
+        geoms = cut_enclaves(cfg['admin'], [f['geometry'] for f in out_features], enclaves)
+        for f, geom in zip(out_features, geoms):
+            f['geometry'] = {'type': geom.geom_type, 'coordinates': round_coords(mapping(geom)['coordinates'])}
 
         # Guard against a source change silently merging two regions into one.
         seen = {}
