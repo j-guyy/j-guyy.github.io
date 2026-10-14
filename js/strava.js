@@ -5777,11 +5777,19 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
 // Fetch peaks for a bbox via the worker's Overpass proxy — retries on 429/504
 // (the worker races the mirrors), then splits into quadrants when the whole
 // box keeps failing. `complete` is false if any part could not be fetched.
+// Consecutive failed /peaks/fetch requests. Once it reaches the limit Overpass
+// is treated as down for the rest of the refresh: every request left fails at
+// once, instead of each cell grinding through retries and 16 sub-cells.
+let overpassFailStreak = 0;
+const OVERPASS_GIVE_UP_STREAK = 6;
+
 async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
+    if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) return { peaks: [], complete: false };
     const workerUrl = `${WORKER_URL}/peaks/fetch?south=${south}&west=${west}&north=${north}&east=${east}`;
     const maxAttempts = depth === 0 ? 3 : 2;  // sub-cells get fewer retries since we'll split further if they fail
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) return { peaks: [], complete: false };
         if (attempt > 0) {
             const wait = attempt * 10000;  // 10s, 20s
             dbg(`Mountain peaks cell ${cellKey}: retry ${attempt} — waiting ${wait / 1000}s`);
@@ -5794,14 +5802,17 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
             data = await res.json();
         } catch (err) {
             dbg(`Mountain peaks cell ${cellKey}: worker error — ${err.message}`);
+            overpassFailStreak++;
             continue;
         }
 
         if (!res.ok || data.failed) {
             dbg(`Mountain peaks cell ${cellKey}: worker returned failure — will retry`);
+            overpassFailStreak++;
             continue;
         }
 
+        overpassFailStreak = 0;
         dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks${depth > 0 ? ` (sub-cell d${depth})` : ''}`);
         return { peaks: data.peaks, complete: true };
     }
@@ -5809,7 +5820,7 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
     // All retries failed. If we still have splitting headroom, recurse into 4 quadrants.
     // Each split halves bbox dimensions, so depth 2 = 16 sub-cells each ~1/16 the original area.
     const MAX_DEPTH = 2;
-    if (depth >= MAX_DEPTH) {
+    if (depth >= MAX_DEPTH || overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) {
         dbg(`Mountain peaks cell ${cellKey}: all attempts failed at depth ${depth} — giving up`);
         return { peaks: [], complete: false };
     }
@@ -5827,6 +5838,7 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
     const seen = new Set();
     let complete = true;
     for (const q of quadrants) {
+        if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) { complete = false; break; }
         await new Promise(r => setTimeout(r, 1500));  // small gap so we don't hammer Overpass
         const subKey = `${cellKey}/${q.s},${q.w}`;
         const sub = await fetchPeaksRegion(subKey, q.s, q.w, q.n, q.e, depth + 1);
@@ -5843,17 +5855,19 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
 // Uses MOUNTAIN_CELL_TYPES (not all foot types) so flat city runs in 23 countries
 // don't cause cells to be created worldwide. Summit detection still runs on all
 // MOUNTAIN_ACTIVITY_TYPES — the cell set just controls which regions are queried.
-async function fetchMountainPeaks(footActs) {
+// Mountain Hunter's cells: unique 2.5° grid cells holding the start of a
+// mountain-type activity with real elevation gain. Returns null when there
+// are none. Loads the server peak cache, so the cache is current afterwards.
+async function planMountainCells(footActs) {
     // Only Hike/TrailRun/ski activities with real elevation gain drive cell selection.
     // The 100 m (≈330 ft) threshold drops flat-area hikes in lowland countries so
     // we don't fire dozens of useless Overpass queries.
     const cellActs = footActs.filter(a => MOUNTAIN_CELL_TYPES.has(a.t) && (a.e || 0) >= 100);
     if (!cellActs.length) {
         dbg('Mountain peaks: no mountain-type activities with ≥100 m gain — skipping Overpass');
-        return [];
+        return null;
     }
 
-    // Build unique set of 2.5° grid cells covered by those activity starts.
     // 2.5° (with 0.5° pad → 3.5° bbox query) keeps Overpass query work small
     // enough that even dense regions like Wyoming/Utah complete reliably.
     const cells = new Map(); // cellKey → {south, west, north, east}
@@ -5867,57 +5881,62 @@ async function fetchMountainPeaks(footActs) {
         }
     }
 
-    // Load server cache before checking which cells need fetching
     await loadPeakCache();
+    const stale = [...cells.keys()].filter(key => !cellIsFresh(peakCellCache[key]));
+    dbg(`Mountain peaks: ${cells.size} cells (${cells.size - stale.length} cached, ${stale.length} need Overpass) for ${footActs.length} foot activities`);
+    return { cells, stale };
+}
 
-    // Count how many cells already have valid cache
-    let cachedCount = 0;
-    for (const key of cells.keys()) {
-        const c = peakCellCache[key];
-        if (c && Date.now() - c.ts < MOUNTAIN_PEAK_CACHE_TTL) cachedCount++;
-    }
-    const needCount = cells.size - cachedCount;
-    dbg(`Mountain peaks: ${cells.size} cells (${cachedCount} cached, ${needCount} need Overpass) for ${footActs.length} foot activities`);
+function cellIsFresh(c) {
+    return Boolean(c) && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
+}
 
+// Every peak the cell cache holds for these cells — expired copies included,
+// since stale peaks beat none — plus the hiker summits. Records each cell's
+// peak count for detectMountainSummits' re-scan check.
+async function peaksFromCache(cells) {
     const allPeaks = [];
     const seenIds = new Set();
-    let cellIdx = 0;
-    let fetchedCount = 0;  // how many new cells we've fetched from Overpass
     mountainCellCounts = {};
-
-    for (const [cellKey, { south, west, north, east }] of cells) {
-        cellIdx++;
-        const pct = (cellIdx - 1) / cells.size * 50;   // first 50% = fetching cells
-        setMountainProgress(pct, `Fetching peaks… region ${cellIdx} of ${cells.size}`);
-
-        // Only throttle between actual Overpass requests, not cached hits
-        const c = peakCellCache[cellKey];
-        const isCached = c && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
-        if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
-
-        const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
-        mountainCellCounts[cellKey] = peaks.length;
-        if (!isCached) {
-            fetchedCount++;
-            // Checkpoint save every 5 new fetches so progress isn't lost if the page closes
-            if (fetchedCount % 5 === 0) {
-                dbg(`Peak cache checkpoint: ${fetchedCount} new cells fetched — saving…`);
-                await savePeakCache();
-            }
-        }
-
+    for (const key of cells.keys()) {
+        const peaks = peakCellCache[key]?.peaks || [];
+        mountainCellCounts[key] = peaks.length;
         for (const p of peaks) {
             if (!seenIds.has(p.id)) { seenIds.add(p.id); allPeaks.push(p); }
         }
     }
-
-    // Final save if we fetched anything new
-    if (fetchedCount > 0) await savePeakCache();
-
     const withHikers = await applyHikerSummits(allPeaks, [...cells.values()]);
-    setMountainProgress(50, `Found ${withHikers.length} peaks — scanning routes…`);
     dbg(`Mountain peaks: ${withHikers.length} total across all cells`);
     return withHikers;
+}
+
+// Refetch stale cells from Overpass (through the worker). Runs after summits
+// have been detected from the cache, so a slow or failing Overpass never holds
+// up the results. Returns how many cells now hold more peaks than before.
+async function refreshStaleCells(cells, stale) {
+    overpassFailStreak = 0;
+    let fetchedCount = 0, grownCount = 0;
+    for (const [i, cellKey] of stale.entries()) {
+        if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) {
+            dbg(`Mountain peaks: Overpass keeps failing — skipping ${stale.length - i} remaining cell(s) until the next visit`);
+            break;
+        }
+        setMountainStatus(`Updating peaks from OpenStreetMap… region ${i + 1} of ${stale.length}`);
+        if (fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
+        const before = peakCellCache[cellKey]?.peaks?.length || 0;
+        const { south, west, north, east } = cells.get(cellKey);
+        const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
+        if (peaks.length > before) grownCount++;
+        fetchedCount++;
+        // Checkpoint save every 5 new fetches so progress isn't lost if the page closes
+        if (fetchedCount % 5 === 0) {
+            dbg(`Peak cache checkpoint: ${fetchedCount} new cells fetched — saving…`);
+            await savePeakCache();
+        }
+    }
+    if (fetchedCount > 0) await savePeakCache();
+    setMountainStatus('');
+    return grownCount;
 }
 
 // Hiker summits (/data/hiker-summits.json) stand in for official summits that
@@ -7206,11 +7225,8 @@ async function initMountainHunter() {
 
     mountainHunterRunning = true;
     try {
-        // fetchMountainPeaks is cache-first; new activities in already-fetched
-        // cells are cheap, and it only hits Overpass for genuinely new regions.
-        mountainPeaks = await fetchMountainPeaks(footActs);
-
-        if (!mountainPeaks.length) {
+        const plan = await planMountainCells(footActs);
+        if (!plan) {
             setMountainStatus('No named peaks found in your activity area.');
             return;
         }
@@ -7221,16 +7237,27 @@ async function initMountainHunter() {
             await loadSummitCache();
             await loadHiddenPeaks();
         }
-        setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
-        mountainVisits = await detectMountainSummits(mountainPeaks);
 
-        mountainHunterReady = true;
-        setMountainProgress(100, `Complete — ${mountainVisits.size} peak${mountainVisits.size !== 1 ? 's' : ''} summited`);
-        setTimeout(() => setMountainProgress(null), 2000);
-        setMountainStatus('');
-        renderMountainStats();
-        if (mountainMapInitialized) rebuildMountainMap();  // refresh markers if the map is open
-        dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
+        // Summits from the cached peaks first (expired copies included), so a
+        // slow or failing Overpass never holds them up or keeps them unsaved.
+        mountainPeaks = await peaksFromCache(plan.cells);
+        if (mountainPeaks.length) await scanMountainSummits(footActs);
+
+        // Then refresh stale cells in the background. A cell that gained peaks
+        // makes detectMountainSummits re-scan everything against them.
+        if (plan.stale.length) {
+            const grown = await refreshStaleCells(plan.cells, plan.stale);
+            if (grown > 0) {
+                dbg(`Mountain peaks: ${grown} cell(s) gained peaks from Overpass — re-scanning`);
+                mountainPeaks = await peaksFromCache(plan.cells);
+                await scanMountainSummits(footActs);
+            }
+        }
+        if (!mountainPeaks.length) {
+            setMountainStatus(plan.stale.length
+                ? 'Couldn’t load peaks from OpenStreetMap — they’ll load on a later visit.'
+                : 'No named peaks found in your activity area.');
+        }
     } catch (err) {
         setMountainProgress(null);
         setMountainStatus(`Error: ${err.message}`);
@@ -7238,6 +7265,19 @@ async function initMountainHunter() {
     } finally {
         mountainHunterRunning = false;
     }
+}
+
+async function scanMountainSummits(footActs) {
+    setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
+    mountainVisits = await detectMountainSummits(mountainPeaks);
+
+    mountainHunterReady = true;
+    setMountainProgress(100, `Complete — ${mountainVisits.size} peak${mountainVisits.size !== 1 ? 's' : ''} summited`);
+    setTimeout(() => setMountainProgress(null), 2000);
+    setMountainStatus('');
+    renderMountainStats();
+    if (mountainMapInitialized) rebuildMountainMap();  // refresh markers if the map is open
+    dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
 }
 
 // Rebuild the mountain map in place (preserving the user's pan/zoom) so newly
