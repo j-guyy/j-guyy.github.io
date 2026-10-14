@@ -603,12 +603,15 @@ function createFamilyFogOverlay(radiusKm) {
             this._svg.setAttribute('class', 'fog-of-war-svg');
             this._container.appendChild(this._svg);
             m.on('moveend zoomend resize', this._update, this);
+            // Scale with the map while it zooms (js/fluid-zoom.js); redrawn at the end.
+            this._follow = new L.ZoomFollower(this._container, { composite: true }).addTo(m);
             this._radiusKm = radiusKm;
             this._drivenSegments = drivenSegments;
             this._update();
         },
         onRemove: function (m) {
             m.off('moveend zoomend resize', this._update, this);
+            this._follow.remove();
             if (this._container && this._container.parentNode) {
                 this._container.parentNode.removeChild(this._container);
             }
@@ -636,6 +639,7 @@ function createFamilyFogOverlay(radiusKm) {
             svg.style.width = w + 'px';
             svg.style.height = h + 'px';
             L.DomUtil.setPosition(this._container, topLeft);
+            this._follow.drawn();
 
             const fogPins = getFogPins();
             let cutouts = '';
