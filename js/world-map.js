@@ -352,21 +352,64 @@ function interiorPoint(geometry) {
     return [(xs[0] + xs[1]) / 2, lat];
 }
 
-// Returns a lookup (lat, lng) → country feature or null, cached on a ~1 km grid.
+// Outlines are simplified (~1 km for regions, coarser for countries), so a pin
+// on a harbour or a run along the shore can land just offshore — Galway's pin
+// sits 200 m out in Galway Bay. A point no outline holds is tried again this
+// far inland (degrees, ~1 km then ~2.5 km, in eight directions).
+const COAST_SNAP = [0.01, 0.025].flatMap(d => [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [d, -d], [-d, d], [-d, -d]]);
+
+// Returns a lookup (lat, lng) → feature or null, cached on a ~1 km grid. A 1° ×
+// 1° index of feature bounding boxes keeps it cheap enough for every point of
+// every Strava route (the same trick as the Strava page's County Hunter).
 function makeCountryLocator(features) {
-    const boxed = features.map(f => ({ f, b: featureBBox(f.geometry) }));
+    const grid = new Map();
+    features.forEach(f => {
+        const b = featureBBox(f.geometry);
+        for (let lng = Math.floor(b.w); lng <= Math.floor(b.e); lng++) {
+            for (let lat = Math.floor(b.s); lat <= Math.floor(b.n); lat++) {
+                const key = `${lng},${lat}`;
+                if (!grid.has(key)) grid.set(key, []);
+                grid.get(key).push({ f, b });
+            }
+        }
+    });
+    function hitAt(lat, lng) {
+        const cell = grid.get(`${Math.floor(lng)},${Math.floor(lat)}`);
+        if (!cell) return null;
+        for (const { f, b } of cell) {
+            if (lat < b.s || lat > b.n || lng < b.w || lng > b.e) continue;
+            if (pointInGeometry(lng, lat, f.geometry)) return f;
+        }
+        return null;
+    }
     const cache = new Map();
     return function locate(lat, lng) {
         const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
         if (cache.has(key)) return cache.get(key);
-        let hit = null;
-        for (const { f, b } of boxed) {
-            if (lat < b.s || lat > b.n || lng < b.w || lng > b.e) continue;
-            if (pointInGeometry(lng, lat, f.geometry)) { hit = f; break; }
-        }
+        let hit = hitAt(lat, lng);
+        for (let i = 0; !hit && i < COAST_SNAP.length; i++) hit = hitAt(lat + COAST_SNAP[i][0], lng + COAST_SNAP[i][1]);
         cache.set(key, hit);
         return hit;
     };
+}
+
+// The ~1 km cells a route passes through, one point each — what the country and
+// region counts test, so a route counts everywhere it went, not just where it
+// started (a ride from Kyoto out to Lake Biwa counts Shiga too).
+function routeCells(points) {
+    const cells = new Map();
+    points.forEach(([lat, lng]) => {
+        const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+        if (!cells.has(key)) cells.set(key, [lat, lng]);
+    });
+    return [...cells.values()];
+}
+
+// The distinct features a route's cells fall in.
+function featuresAlong(cells, locate) {
+    const hit = new Set();
+    cells.forEach(([lat, lng]) => { const f = locate(lat, lng); if (f) hit.add(f); });
+    return hit;
 }
 
 // ── Footprint / fog canvas layer ──────────────────────────────────────────────
@@ -690,8 +733,8 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         isDark: true,
         detail: DETAIL_LEVELS.includes(wmStore(STORAGE.detail)) ? wmStore(STORAGE.detail) : 'lands',
         stravaRoutes: [],           // makeRoute() per Strava activity, once loaded
-        stravaStarts: [],           // [lat, lng] where each Strava activity starts
-        stravaByPart: new Map(),    // outline feature → Strava activity count
+        stravaCells: [],            // routeCells() per Strava activity
+        stravaByPart: new Map(),    // outline feature → Strava activities through it
     };
 
     // ── Layers ──
@@ -738,10 +781,12 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     CONTINENT_KEYS.forEach(k => worldData[k].forEach(c => listed.set(c.name, c)));
 
     // Subregions (filled in by loadRegions below).
-    const regionData = new Map();   // country name → { locate } once loaded
+    const regionData = new Map();   // country name → its region features, once loaded
+    let locateRegion = () => null;  // one index over every loaded country's regions
     const regionCovered = new Set();  // outline features the loaded regions cover
     const regionLoads = new Set();  // country names fetched or being fetched
     const placesByRegion = new Map();
+    const pinNamesByRegion = new Map();  // region feature → names of the pins in it
     const stravaByRegion = new Map();
 
     const isVisitedCountry = name => name === HOME_COUNTRY || !!(listed.get(name) || {}).visited;
@@ -891,40 +936,55 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     function countRegions() {
         placesByRegion.clear();
         stravaByRegion.clear();
-        const bump = (m, f) => { if (f) m.set(f, (m.get(f) || 0) + 1); };
-        regionData.forEach(({ locate: locateRegion }) => {
-            places.forEach(p => bump(placesByRegion, locateRegion(p.lat, p.lng)));
-            state.stravaStarts.forEach(([lat, lng]) => bump(stravaByRegion, locateRegion(lat, lng)));
+        pinNamesByRegion.clear();
+        const bump = (m, f) => m.set(f, (m.get(f) || 0) + 1);
+        places.forEach(p => {
+            const f = locateRegion(p.lat, p.lng);
+            if (!f) return;
+            bump(placesByRegion, f);
+            if (!pinNamesByRegion.has(f)) pinNamesByRegion.set(f, []);
+            pinNamesByRegion.get(f).push(p.name);
         });
+        state.stravaCells.forEach(cells => featuresAlong(cells, locateRegion).forEach(f => bump(stravaByRegion, f)));
+        renderComparison();
     }
 
+    // Fetches every wanted country's regions together, then indexes and counts
+    // once, rather than re-scanning every route as each file lands.
     function loadRegions() {
-        Object.entries(ADMIN1_FILES).forEach(([name, file]) => {
-            if (regionLoads.has(name)) return;
-            const parts = partsByCountry.get(name) || [];
-            if (!isVisitedCountry(name) && !parts.some(f => beenToPart(f))) return;
-            regionLoads.add(name);
-            fetch(`data/admin1/${file}.geojson`)
-                .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-                .then(geojson => {
-                    geojson.features.forEach(f => { f.properties.wmCountry = name; });
-                    const locateRegion = makeCountryLocator(geojson.features);
-                    regionData.set(name, { locate: locateRegion });
-                    parts.forEach(f => {
-                        const pt = interiorPoint(f.geometry);
-                        if (pt && locateRegion(pt[1], pt[0])) regionCovered.add(f);
-                    });
-                    countRegions();
-                    regionLayer.addData(geojson);
-                    restyleCountries();
-                    renderLegend();
-                })
-                .catch(err => {
-                    // Without its regions the country just keeps its lands view.
-                    console.warn(`Regions for ${name} unavailable:`, err);
-                    regionLoads.delete(name);
-                });
+        const wanted = Object.entries(ADMIN1_FILES).filter(([name]) => {
+            if (regionLoads.has(name)) return false;
+            return isVisitedCountry(name) || (partsByCountry.get(name) || []).some(f => beenToPart(f));
         });
+        if (!wanted.length) return;
+        wanted.forEach(([name]) => regionLoads.add(name));
+        Promise.all(wanted.map(([name, file]) => fetch(`data/admin1/${file}.geojson`)
+            .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+            .then(geojson => ({ name, geojson }))
+            .catch(err => {
+                // Without its regions the country just keeps its lands view.
+                console.warn(`Regions for ${name} unavailable:`, err);
+                regionLoads.delete(name);
+                return null;
+            })))
+            .then(loaded => {
+                loaded = loaded.filter(Boolean);
+                if (!loaded.length) return;
+                loaded.forEach(({ name, geojson }) => {
+                    geojson.features.forEach(f => { f.properties.wmCountry = name; });
+                    regionData.set(name, geojson.features);
+                    regionLayer.addData(geojson);
+                });
+                locateRegion = makeCountryLocator([...regionData.values()].flat());
+                loaded.forEach(({ name }) => (partsByCountry.get(name) || []).forEach(f => {
+                    const pt = interiorPoint(f.geometry);
+                    const hit = pt && locateRegion(pt[1], pt[0]);
+                    if (hit && hit.properties.wmCountry === name) regionCovered.add(f);
+                }));
+                countRegions();
+                restyleCountries();
+                renderLegend();
+            });
     }
 
     function updateRegionLayer() {
@@ -971,14 +1031,14 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
                 const points = decodeWorldPolyline(enc);
                 if (!points.length) return;
                 state.stravaRoutes.push(makeRoute(points));
-                state.stravaStarts.push(points[0]);
-                const f = locate(points[0][0], points[0][1]);
-                if (f) state.stravaByPart.set(f, (state.stravaByPart.get(f) || 0) + 1);
+                const cells = routeCells(points);
+                state.stravaCells.push(cells);
+                featuresAlong(cells, locate).forEach(f => state.stravaByPart.set(f, (state.stravaByPart.get(f) || 0) + 1));
             });
             stravaStatus = 'ready';
             stravaLayer.redraw();
             countRegions();
-            if (state.mode === 'countries' && state.detail === 'subregions') loadRegions();
+            if (compareWanted || (state.mode === 'countries' && state.detail === 'subregions')) loadRegions();
             restyleCountries();
             renderLegend();
             if (footprint && map.hasLayer(stravaLayer)) footprint.redraw();
@@ -986,6 +1046,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
             console.warn('Strava routes unavailable:', err);
             stravaStatus = 'error';
             map.removeLayer(stravaLayer);
+            renderComparison();
         }
         renderChips();
     }
@@ -1143,6 +1204,100 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         }
     }
     [radiusSlider, routeSlider].forEach(s => s && s.addEventListener('input', renderLegend));
+
+    // ── Pins vs Strava (temporary) ──
+    // Every country and region where the hand-kept data and Strava disagree:
+    // Strava has been there but nothing is marked, or something is marked but
+    // no Strava route goes there. "Marked" is countries.json for a country,
+    // and a pin (or, for US states, the dashboard's visited states) for a
+    // region. Strava routes and region boundaries load the first time the
+    // section scrolls into view, whatever the map is showing.
+    const compareSection = document.getElementById('wm-compare');
+    const compareEl = document.getElementById('wm-compare-body');
+    let compareWanted = false;
+    let compareRows = [];
+
+    function sumParts(name, counts) {
+        return (partsByCountry.get(name) || []).reduce((n, f) => n + (counts.get(f) || 0), 0);
+    }
+
+    function renderComparison() {
+        if (!compareEl || !compareWanted) return;
+        if (stravaStatus !== 'ready') {
+            compareEl.innerHTML = `<p class="wm-compare-note">${stravaStatus === 'error' ? 'Strava routes are unavailable, so there is nothing to compare.' : 'Loading Strava routes…'}</p>`;
+            return;
+        }
+        const stravaOnly = [], markedOnly = [];
+        partsByCountry.forEach((parts, name) => {
+            const strava = sumParts(name, state.stravaByPart);
+            const pins = sumParts(name, placesByPart);
+            const marked = isVisitedCountry(name) || (!listed.has(name) && pins > 0);
+            const row = { country: name, region: '', pins, strava, marked: marked ? (listed.has(name) || name === HOME_COUNTRY ? 'Marked visited' : '') : '',
+                          names: [], feature: parts.find(f => !f.properties.part) || parts[0] };
+            if (strava && !marked) stravaOnly.push(row);
+            else if (marked && !strava) markedOnly.push(row);
+        });
+        regionData.forEach((features, country) => features.forEach(f => {
+            const pins = placesByRegion.get(f) || 0;
+            const strava = stravaByRegion.get(f) || 0;
+            const onDashboard = country === HOME_COUNTRY && (f.properties.aliases || [f.properties.name]).some(a => visitedStates[a] === true);
+            const row = { country, region: f.properties.name, pins, strava, marked: onDashboard ? 'US dashboard' : '',
+                          names: pinNamesByRegion.get(f) || [], feature: f };
+            if (strava && !pins && !onDashboard) stravaOnly.push(row);
+            else if ((pins || onDashboard) && !strava) markedOnly.push(row);
+        }));
+        const byPlace = (a, b) => a.country.localeCompare(b.country) || a.region.localeCompare(b.region);
+        stravaOnly.sort(byPlace);
+        markedOnly.sort(byPlace);
+        compareRows = [...stravaOnly, ...markedOnly];
+
+        const pinText = r => {
+            const names = [...new Set(r.names)];  // a peak can be pinned by two lists
+            const list = names.slice(0, 3).map(escapeHtml).join(', ') + (names.length > 3 ? `, +${names.length - 3} more` : '');
+            return [r.marked, list || (r.pins && !r.region ? `${r.pins} pin${r.pins === 1 ? '' : 's'}` : '')].filter(Boolean).join(' · ') || '—';
+        };
+        let index = 0;
+        const table = (title, hint, rows) => `
+            <h3 class="wm-compare-title">${title} <span class="wm-compare-count">${rows.length}</span></h3>
+            <p class="wm-compare-note">${hint}</p>
+            ${rows.length ? `<div class="table-scroll-wrapper"><table class="travel-table wm-compare-table">
+                <thead><tr><th>Country</th><th>Region</th><th>Marked by</th><th>Strava activities</th></tr></thead>
+                <tbody>${rows.map(r => `<tr data-row="${index++}" tabindex="0" title="Show on the map">
+                    <td>${escapeHtml(r.country)}</td><td>${r.region ? escapeHtml(r.region) : '<em>whole country</em>'}</td>
+                    <td>${pinText(r)}</td><td>${r.strava.toLocaleString()}</td></tr>`).join('')}</tbody>
+            </table></div>` : '<p class="wm-compare-note">None.</p>'}`;
+        const loading = Object.keys(ADMIN1_FILES).some(n => regionLoads.has(n) && !regionData.has(n));
+        compareEl.innerHTML = (loading ? '<p class="wm-compare-note">Loading region boundaries…</p>' : '')
+            + table('Strava, but not marked', 'A Strava route goes here, but there is no pin and it isn\'t marked visited.', stravaOnly)
+            + table('Marked, but no Strava', 'Pinned or marked visited, but no Strava route goes here.', markedOnly);
+    }
+
+    function showComparedPlace(row) {
+        const b = featureBBox(row.feature.geometry);
+        map.fitBounds([[b.s, b.w], [b.n, b.e]], { maxZoom: 9 });
+        map.getContainer().scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (compareEl) {
+        compareEl.addEventListener('click', e => {
+            const tr = e.target.closest('tr[data-row]');
+            if (tr) showComparedPlace(compareRows[+tr.dataset.row]);
+        });
+        compareEl.addEventListener('keydown', e => {
+            const tr = e.target.closest('tr[data-row]');
+            if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showComparedPlace(compareRows[+tr.dataset.row]); }
+        });
+    }
+    if (compareSection && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (!entries.some(e => e.isIntersecting)) return;
+            observer.disconnect();
+            compareWanted = true;
+            renderComparison();
+            loadStrava();   // a no-op once loaded; otherwise loads even with the layer off
+            loadRegions();
+        }, { rootMargin: '200px' });
+        observer.observe(compareSection);
+    }
 
     // ── Initial state ──
     PLACE_CATEGORIES.forEach(c => { if (!hiddenLayers.has(c.id)) placeGroups[c.id].addTo(map); });

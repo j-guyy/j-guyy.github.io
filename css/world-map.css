@@ -166,3 +166,37 @@
     margin-top: 4px;
     opacity: 0.7;
 }
+
+/* Pins vs Strava (temporary comparison under the map). */
+.wm-compare-title {
+    margin: 22px 0 4px;
+    font-size: 1.1em;
+}
+
+.wm-compare-count {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0 8px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    font-size: var(--text-xs);
+    text-align: center;
+}
+
+.wm-compare-note {
+    color: var(--text-dim);
+    font-size: 0.9em;
+    margin: 0 0 10px;
+}
+
+.wm-compare-table tbody tr {
+    cursor: pointer;
+}
+
+.wm-compare-table tbody tr:hover,
+.wm-compare-table tbody tr:focus-visible {
+    background: var(--surface-2-hover);
+    outline: none;
+}
