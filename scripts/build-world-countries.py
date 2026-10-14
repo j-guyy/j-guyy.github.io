@@ -73,6 +73,29 @@ KEEP_WHOLE = {
     'Palestine', 'Russia', 'Antarctica',
 }
 
+# Enclaves whose Natural Earth outline is wrong, as ADMIN → (the country around
+# it, its real outer ring). The outline replaces Natural Earth's and is punched
+# out of the surrounding country in place of the old hole. Kept at 4 decimals
+# (~10 m): at PRECISION a half-square-kilometre country moves by up to 100 m.
+#   Vatican  Natural Earth's 1:50m outline sits ~1 km west of the real one, in
+#            the Gianicolo (its 1:10m one is just the basilica), so a walk into
+#            St Peter's Square counted as Italy. Ring from geoBoundaries
+#            (VAT ADM0, public domain), simplified to ~15 m.
+ENCLAVE_FIXES = {
+    'Vatican': ('Italy', [
+        (12.4555, 41.9075), (12.4532, 41.9067), (12.4513, 41.9063), (12.4513, 41.9065),
+        (12.4504, 41.9065), (12.4502, 41.9058), (12.4504, 41.9057), (12.4493, 41.9049),
+        (12.4491, 41.9051), (12.4487, 41.905), (12.4487, 41.9046), (12.4489, 41.9046),
+        (12.4485, 41.9035), (12.4482, 41.9036), (12.4478, 41.9033), (12.4477, 41.9029),
+        (12.4468, 41.9021), (12.4466, 41.9023), (12.4457, 41.9019), (12.4466, 41.9015),
+        (12.4467, 41.9017), (12.448, 41.901), (12.4478, 41.9008), (12.448, 41.9007),
+        (12.4487, 41.9009), (12.4507, 41.9007), (12.4507, 41.9005), (12.4516, 41.9004),
+        (12.454, 41.9003), (12.4543, 41.9009), (12.4565, 41.9013), (12.4572, 41.901),
+        (12.458, 41.9012), (12.4584, 41.9016), (12.4585, 41.9022), (12.4583, 41.9028),
+        (12.4576, 41.9032), (12.4577, 41.9058), (12.4558, 41.9063), (12.4555, 41.9075),
+    ]),
+}
+
 PRECISION = 3
 
 
@@ -120,6 +143,37 @@ def area(geom):
     return total
 
 
+def polygons(geom):
+    return geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']]
+
+
+def bbox(rings):
+    xs = [x for r in rings for x, _ in r]
+    ys = [y for r in rings for _, y in r]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def fix_enclave(parts, admin, host, outline):
+    """Swaps an enclave's outline for `outline` and moves the surrounding
+    country's hole for it (the one inside the old outline's box) to match."""
+    outline = [list(pt) for pt in outline]
+    old = [u for u in parts.get(admin, []) if u[2] is not None]
+    if not old or host not in parts:
+        sys.exit(f'ENCLAVE_FIXES: no outline for {admin} or {host}')
+    w, s, e, n = bbox([poly[0] for u in old for poly in polygons(u[2])])
+    inside = lambda b: b[0] >= w and b[1] >= s and b[2] <= e and b[3] <= n
+    subunit, props, _ = old[0]
+    parts[admin] = [(subunit, props, {'type': 'Polygon', 'coordinates': [outline]})]
+    for _, _, geom in parts[host]:
+        for poly in polygons(geom or {'type': 'Polygon', 'coordinates': []}):
+            holes = [h for h in poly[1:] if not inside(bbox([h]))]
+            if len(holes) < len(poly) - 1:
+                # Holes wind the other way round from outer rings.
+                poly[1:] = holes + [outline[::-1]]
+                return
+    sys.exit(f'ENCLAVE_FIXES: {host} has no hole for {admin}')
+
+
 def main():
     if len(sys.argv) > 2:
         subunits_src, countries_src = sys.argv[1:3]
@@ -147,6 +201,9 @@ def main():
         p = feat['properties']
         if p['ADMIN'] not in KEEP_WHOLE:
             parts.setdefault(p['ADMIN'], []).append((p['SUBUNIT'], p, geometry(feat['geometry'])))
+
+    for admin, (host, outline) in ENCLAVE_FIXES.items():
+        fix_enclave(parts, admin, host, outline)
 
     features = []
     for admin, units in parts.items():

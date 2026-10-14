@@ -358,13 +358,22 @@ function interiorPoint(geometry) {
 // far inland (degrees, ~1 km then ~2.5 km, in eight directions).
 const COAST_SNAP = [0.01, 0.025].flatMap(d => [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [d, -d], [-d, d], [-d, -d]]);
 
+// Countries smaller than this (degrees across) — the Vatican, Monaco, Nauru, …
+// — are about the size of a ~1 km cell, so whichever point of a route came
+// first in the cell would decide whether a route went in. Points near them are
+// kept by routeCells() and tested exactly, never through the cache.
+const FINE_SIZE = 0.1;
+
 // Returns a lookup (lat, lng) → feature or null, cached on a ~1 km grid. A 1° ×
 // 1° index of feature bounding boxes keeps it cheap enough for every point of
 // every Strava route (the same trick as the Strava page's County Hunter).
+// locate.near(lat, lng) says whether a point is in a fine feature's box.
 function makeCountryLocator(features) {
     const grid = new Map();
+    const fine = [];
     features.forEach(f => {
         const b = featureBBox(f.geometry);
+        if (b.e - b.w < FINE_SIZE && b.n - b.s < FINE_SIZE) fine.push({ f, b });
         for (let lng = Math.floor(b.w); lng <= Math.floor(b.e); lng++) {
             for (let lat = Math.floor(b.s); lat <= Math.floor(b.n); lat++) {
                 const key = `${lng},${lat}`;
@@ -373,33 +382,43 @@ function makeCountryLocator(features) {
             }
         }
     });
+    const fineFeatures = new Set(fine.map(({ f }) => f));
+    const inBox = (lat, lng, b) => lat >= b.s && lat <= b.n && lng >= b.w && lng <= b.e;
     function hitAt(lat, lng) {
         const cell = grid.get(`${Math.floor(lng)},${Math.floor(lat)}`);
         if (!cell) return null;
         for (const { f, b } of cell) {
-            if (lat < b.s || lat > b.n || lng < b.w || lng > b.e) continue;
-            if (pointInGeometry(lng, lat, f.geometry)) return f;
+            if (inBox(lat, lng, b) && pointInGeometry(lng, lat, f.geometry)) return f;
         }
         return null;
     }
     const cache = new Map();
-    return function locate(lat, lng) {
+    function locate(lat, lng) {
+        for (const { f, b } of fine) {
+            if (inBox(lat, lng, b) && pointInGeometry(lng, lat, f.geometry)) return f;
+        }
         const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
         if (cache.has(key)) return cache.get(key);
         let hit = hitAt(lat, lng);
         for (let i = 0; !hit && i < COAST_SNAP.length; i++) hit = hitAt(lat + COAST_SNAP[i][0], lng + COAST_SNAP[i][1]);
-        cache.set(key, hit);
+        // Snapping into a fine feature holds for this point, not its whole cell.
+        if (!fineFeatures.has(hit)) cache.set(key, hit);
         return hit;
-    };
+    }
+    locate.near = (lat, lng) => fine.some(({ b }) => inBox(lat, lng, b));
+    return locate;
 }
 
 // The ~1 km cells a route passes through, one point each — what the country and
 // region counts test, so a route counts everywhere it went, not just where it
-// started (a ride from Kyoto out to Lake Biwa counts Shiga too).
-function routeCells(points) {
+// started (a ride from Kyoto out to Lake Biwa counts Shiga too). Near a fine
+// feature (`near`, from a locator) the cells are ~10 m, so a walk into St
+// Peter's Square isn't lost among the rest of Rome.
+function routeCells(points, near = () => false) {
     const cells = new Map();
     points.forEach(([lat, lng]) => {
-        const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+        const digits = near(lat, lng) ? 4 : 2;
+        const key = `${lat.toFixed(digits)},${lng.toFixed(digits)}`;
         if (!cells.has(key)) cells.set(key, [lat, lng]);
     });
     return [...cells.values()];
@@ -1031,7 +1050,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
                 const points = decodeWorldPolyline(enc);
                 if (!points.length) return;
                 state.stravaRoutes.push(makeRoute(points));
-                const cells = routeCells(points);
+                const cells = routeCells(points, locate.near);
                 state.stravaCells.push(cells);
                 featuresAlong(cells, locate).forEach(f => state.stravaByPart.set(f, (state.stravaByPart.get(f) || 0) + 1));
             });
