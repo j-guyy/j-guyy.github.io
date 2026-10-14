@@ -5563,6 +5563,8 @@ const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
 let mountainVisits = new Map();  // peakId → [{actId, actName, actType, date}]
 let summitProcessedIds = new Set();  // activity IDs already scanned for summits
+let summitScannedCells = {};     // cellKey → peak count the processed activities were scanned against
+let mountainCellCounts = {};     // cellKey → peak count loaded this run
 let hiddenPeakIds = new Set();   // OSM peak IDs the user has marked as sub-peaks (filtered from displays)
 let mountainEditMode = false;    // when true, tables expose hide buttons + clickable peak names
 let nearMissPeaks = new Map();   // peakId → [{actId, actName, date, distance}] — within 100m but not summited
@@ -5654,6 +5656,7 @@ async function loadSummitCache() {
                 mountainVisits.set(Number(peakId), pvs);
             }
             summitProcessedIds = new Set(data.processedIds || []);
+            summitScannedCells = data.cells || {};
             dbg(`Summit cache: ${mountainVisits.size} peaks, ${summitProcessedIds.size} processed activities`);
             return true;
         }
@@ -5699,6 +5702,7 @@ async function saveSummitCache() {
             body: JSON.stringify({
                 visits,
                 processedIds: [...summitProcessedIds],
+                cells: summitScannedCells,
             }),
         });
         const data = await res.json();
@@ -5873,6 +5877,7 @@ async function fetchMountainPeaks(footActs) {
     const seenIds = new Set();
     let cellIdx = 0;
     let fetchedCount = 0;  // how many new cells we've fetched from Overpass
+    mountainCellCounts = {};
 
     for (const [cellKey, { south, west, north, east }] of cells) {
         cellIdx++;
@@ -5885,6 +5890,7 @@ async function fetchMountainPeaks(footActs) {
         if (!isCached && fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
 
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
+        mountainCellCounts[cellKey] = peaks.length;
         if (!isCached) {
             fetchedCount++;
             // Checkpoint save every 5 new fetches so progress isn't lost if the page closes
@@ -5902,24 +5908,27 @@ async function fetchMountainPeaks(footActs) {
     // Final save if we fetched anything new
     if (fetchedCount > 0) await savePeakCache();
 
-    // If we fetched any new cells, the previously-saved summit "processed" set
-    // is stale: those activities were scanned against fewer peaks. Force a full
-    // re-scan by clearing both the processed-ids set and the existing visit
-    // map (which we'll rebuild from scratch). Without this, peaks added later
-    // (e.g. via cell splitting or shrinking cell size) will never be summited
-    // because the activities passing over them are already marked "processed".
-    if (fetchedCount > 0 && summitProcessedIds.size > 0) {
-        dbg(`Mountain peaks: ${fetchedCount} new cells fetched — invalidating summit cache for full re-scan`);
-        summitProcessedIds.clear();
-        mountainVisits.clear();
-    }
-
     setMountainProgress(50, `Found ${allPeaks.length} peaks — scanning routes…`);
     dbg(`Mountain peaks: ${allPeaks.length} total across all cells`);
     return allPeaks;
 }
 
 async function detectMountainSummits(peaks) {
+    // A cell holding more peaks than the processed activities were scanned
+    // against (it failed or only partly loaded back then, or OSM gained peaks)
+    // makes the processed set stale: activities over its new peaks would never
+    // be re-checked. Force a full re-scan. This runs after loadSummitCache, so
+    // it compares against the saved scan rather than an empty set on page load;
+    // a summit cache saved before cell counts were recorded re-scans once.
+    const grown = Object.keys(mountainCellCounts)
+        .filter(key => mountainCellCounts[key] > (summitScannedCells[key] || 0));
+    if (grown.length && summitProcessedIds.size > 0) {
+        dbg(`Summit detection: ${grown.length} cell(s) gained peaks since the last scan (${grown.slice(0, 5).join('; ')}) — full re-scan`);
+        summitProcessedIds.clear();
+        mountainVisits.clear();
+    }
+    summitScannedCells = { ...mountainCellCounts };
+
     // Only scan activities not already processed
     const allActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.p);
     const acts = allActs.filter(a => !summitProcessedIds.has(a.i));
@@ -7116,6 +7125,7 @@ async function resetMountainData() {
     mountainPeaks = [];
     mountainVisits = new Map();
     summitProcessedIds = new Set();
+    summitScannedCells = {};
     mountainHunterReady = false;
     mountainMapInitialized = false;
     if (mountainMapInstance) { mountainMapInstance.remove(); mountainMapInstance = null; }
