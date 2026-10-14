@@ -930,6 +930,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     const regionCovered = new Set();  // outline features the loaded regions cover
     const regionLoads = new Set();  // country names fetched or being fetched
     const placesByRegion = new Map();
+    const pinNamesByRegion = new Map();  // region feature → names of the pins in it
     const stravaByRegion = new Map();
 
     const isVisitedCountry = name => name === HOME_COUNTRY || !!(listed.get(name) || {}).visited;
@@ -1079,9 +1080,17 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     function countRegions() {
         placesByRegion.clear();
         stravaByRegion.clear();
+        pinNamesByRegion.clear();
         const bump = (m, f) => m.set(f, (m.get(f) || 0) + 1);
-        places.forEach(p => { const f = locateRegion(p.lat, p.lng); if (f) bump(placesByRegion, f); });
+        places.forEach(p => {
+            const f = locateRegion(p.lat, p.lng);
+            if (!f) return;
+            bump(placesByRegion, f);
+            if (!pinNamesByRegion.has(f)) pinNamesByRegion.set(f, []);
+            pinNamesByRegion.get(f).push(p.name);
+        });
         state.stravaCells.forEach(cells => featuresAlong(cells, locateRegion).forEach(f => bump(stravaByRegion, f)));
+        renderComparison();
     }
 
     // Fetches every wanted country's regions together, then indexes and counts
@@ -1173,7 +1182,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
             stravaStatus = 'ready';
             stravaLayer.redraw();
             countRegions();
-            if (state.mode === 'countries' && state.detail === 'subregions') loadRegions();
+            if (compareWanted || (state.mode === 'countries' && state.detail === 'subregions')) loadRegions();
             restyleCountries();
             renderLegend();
             if (footprint && map.hasLayer(stravaLayer)) footprint.redraw();
@@ -1181,6 +1190,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
             console.warn('Strava routes unavailable:', err);
             stravaStatus = 'error';
             map.removeLayer(stravaLayer);
+            renderComparison();
         }
         renderChips();
     }
@@ -1338,6 +1348,100 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         }
     }
     [radiusSlider, routeSlider].forEach(s => s && s.addEventListener('input', renderLegend));
+
+    // ── Pins vs Strava (temporary) ──
+    // Every country and region where the hand-kept data and Strava disagree:
+    // Strava has been there but nothing is marked, or something is marked but
+    // no Strava route goes there. "Marked" is countries.json for a country,
+    // and a pin (or, for US states, the dashboard's visited states) for a
+    // region. Strava routes and region boundaries load the first time the
+    // section scrolls into view, whatever the map is showing.
+    const compareSection = document.getElementById('wm-compare');
+    const compareEl = document.getElementById('wm-compare-body');
+    let compareWanted = false;
+    let compareRows = [];
+
+    function sumParts(name, counts) {
+        return (partsByCountry.get(name) || []).reduce((n, f) => n + (counts.get(f) || 0), 0);
+    }
+
+    function renderComparison() {
+        if (!compareEl || !compareWanted) return;
+        if (stravaStatus !== 'ready') {
+            compareEl.innerHTML = `<p class="wm-compare-note">${stravaStatus === 'error' ? 'Strava routes are unavailable, so there is nothing to compare.' : 'Loading Strava routes…'}</p>`;
+            return;
+        }
+        const stravaOnly = [], markedOnly = [];
+        partsByCountry.forEach((parts, name) => {
+            const strava = sumParts(name, state.stravaByPart);
+            const pins = sumParts(name, placesByPart);
+            const marked = isVisitedCountry(name) || (!listed.has(name) && pins > 0);
+            const row = { country: name, region: '', pins, strava, marked: marked ? (listed.has(name) || name === HOME_COUNTRY ? 'Marked visited' : '') : '',
+                          names: [], feature: parts.find(f => !f.properties.part) || parts[0] };
+            if (strava && !marked) stravaOnly.push(row);
+            else if (marked && !strava) markedOnly.push(row);
+        });
+        regionData.forEach((features, country) => features.forEach(f => {
+            const pins = placesByRegion.get(f) || 0;
+            const strava = stravaByRegion.get(f) || 0;
+            const onDashboard = country === HOME_COUNTRY && (f.properties.aliases || [f.properties.name]).some(a => visitedStates[a] === true);
+            const row = { country, region: f.properties.name, pins, strava, marked: onDashboard ? 'US dashboard' : '',
+                          names: pinNamesByRegion.get(f) || [], feature: f };
+            if (strava && !pins && !onDashboard) stravaOnly.push(row);
+            else if ((pins || onDashboard) && !strava) markedOnly.push(row);
+        }));
+        const byPlace = (a, b) => a.country.localeCompare(b.country) || a.region.localeCompare(b.region);
+        stravaOnly.sort(byPlace);
+        markedOnly.sort(byPlace);
+        compareRows = [...stravaOnly, ...markedOnly];
+
+        const pinText = r => {
+            const names = [...new Set(r.names)];  // a peak can be pinned by two lists
+            const list = names.slice(0, 3).map(escapeHtml).join(', ') + (names.length > 3 ? `, +${names.length - 3} more` : '');
+            return [r.marked, list || (r.pins && !r.region ? `${r.pins} pin${r.pins === 1 ? '' : 's'}` : '')].filter(Boolean).join(' · ') || '—';
+        };
+        let index = 0;
+        const table = (title, hint, rows) => `
+            <h3 class="wm-compare-title">${title} <span class="wm-compare-count">${rows.length}</span></h3>
+            <p class="wm-compare-note">${hint}</p>
+            ${rows.length ? `<div class="table-scroll-wrapper"><table class="travel-table wm-compare-table">
+                <thead><tr><th>Country</th><th>Region</th><th>Marked by</th><th>Strava activities</th></tr></thead>
+                <tbody>${rows.map(r => `<tr data-row="${index++}" tabindex="0" title="Show on the map">
+                    <td>${escapeHtml(r.country)}</td><td>${r.region ? escapeHtml(r.region) : '<em>whole country</em>'}</td>
+                    <td>${pinText(r)}</td><td>${r.strava.toLocaleString()}</td></tr>`).join('')}</tbody>
+            </table></div>` : '<p class="wm-compare-note">None.</p>'}`;
+        const loading = Object.keys(ADMIN1_FILES).some(n => regionLoads.has(n) && !regionData.has(n));
+        compareEl.innerHTML = (loading ? '<p class="wm-compare-note">Loading region boundaries…</p>' : '')
+            + table('Strava, but not marked', 'A Strava route goes here, but there is no pin and it isn\'t marked visited.', stravaOnly)
+            + table('Marked, but no Strava', 'Pinned or marked visited, but no Strava route goes here.', markedOnly);
+    }
+
+    function showComparedPlace(row) {
+        const b = featureBBox(row.feature.geometry);
+        map.fitBounds([[b.s, b.w], [b.n, b.e]], { maxZoom: 9 });
+        map.getContainer().scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (compareEl) {
+        compareEl.addEventListener('click', e => {
+            const tr = e.target.closest('tr[data-row]');
+            if (tr) showComparedPlace(compareRows[+tr.dataset.row]);
+        });
+        compareEl.addEventListener('keydown', e => {
+            const tr = e.target.closest('tr[data-row]');
+            if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); showComparedPlace(compareRows[+tr.dataset.row]); }
+        });
+    }
+    if (compareSection && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (!entries.some(e => e.isIntersecting)) return;
+            observer.disconnect();
+            compareWanted = true;
+            renderComparison();
+            loadStrava();   // a no-op once loaded; otherwise loads even with the layer off
+            loadRegions();
+        }, { rootMargin: '200px' });
+        observer.observe(compareSection);
+    }
 
     // ── Initial state ──
     PLACE_CATEGORIES.forEach(c => { if (!hiddenLayers.has(c.id)) placeGroups[c.id].addTo(map); });
