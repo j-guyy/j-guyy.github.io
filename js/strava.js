@@ -5782,6 +5782,42 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
 // once, instead of each cell grinding through retries and 16 sub-cells.
 let overpassFailStreak = 0;
 const OVERPASS_GIVE_UP_STREAK = 6;
+// Overpass often refuses the worker (Cloudflare's shared egress IPs get rate
+// limited) while answering the browser fine, so a failed /peaks/fetch is
+// retried from the browser; once that works the rest of the refresh skips the
+// worker. Same query and output as the worker's /peaks/fetch.
+let peaksFromBrowser = false;
+
+function peakOverpassQuery(s, w, n, e) {
+    return `[out:json][timeout:50];(node["natural"="peak"]["ele"]["name"](${s},${w},${n},${e});node["natural"="volcano"]["ele"]["name"](${s},${w},${n},${e}););out body;`;
+}
+
+function peaksFromOverpass(elements) {
+    return (elements || [])
+        .filter(el => {
+            const v = parseFloat(el.tags?.ele);
+            const name = el.tags?.name || el.tags?.['name:en'] || '';
+            return !isNaN(v) && v > 0 && name !== '' && name !== 'Unnamed Peak';
+        })
+        .map(el => ({
+            id:   el.id,
+            name: el.tags.name || el.tags['name:en'],
+            lat:  el.lat,
+            lng:  el.lon,
+            ele:  parseFloat(el.tags.ele),
+        }));
+}
+
+async function fetchPeaksFromBrowser(cellKey, south, west, north, east) {
+    try {
+        const data = await fetchOverpass(peakOverpassQuery(south, west, north, east),
+            { label: `Mountain peaks cell ${cellKey}`, timeoutMs: 55000, rounds: 1 });
+        return peaksFromOverpass(data.elements);
+    } catch (err) {
+        dbg(`Mountain peaks cell ${cellKey}: browser Overpass failed too — ${err.message}`);
+        return null;
+    }
+}
 
 async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
     if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) return { peaks: [], complete: false };
@@ -5796,25 +5832,31 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
             await new Promise(r => setTimeout(r, wait));
         }
 
-        let res, data;
-        try {
-            res = await fetch(workerUrl);
-            data = await res.json();
-        } catch (err) {
-            dbg(`Mountain peaks cell ${cellKey}: worker error — ${err.message}`);
-            overpassFailStreak++;
-            continue;
+        const sub = depth > 0 ? ` (sub-cell d${depth})` : '';
+        if (!peaksFromBrowser) {
+            try {
+                const res = await fetch(workerUrl);
+                const data = await res.json();
+                if (res.ok && !data.failed) {
+                    overpassFailStreak = 0;
+                    dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks${sub}`);
+                    return { peaks: data.peaks, complete: true };
+                }
+                dbg(`Mountain peaks cell ${cellKey}: worker returned failure${data.errors ? ` (${data.errors.join('; ')})` : ''} — trying from the browser`);
+            } catch (err) {
+                dbg(`Mountain peaks cell ${cellKey}: worker error — ${err.message} — trying from the browser`);
+            }
         }
 
-        if (!res.ok || data.failed) {
-            dbg(`Mountain peaks cell ${cellKey}: worker returned failure — will retry`);
-            overpassFailStreak++;
-            continue;
+        const peaks = await fetchPeaksFromBrowser(cellKey, south, west, north, east);
+        if (peaks) {
+            overpassFailStreak = 0;
+            if (!peaksFromBrowser) dbg('Mountain peaks: Overpass answers the browser — skipping the worker for the rest of this refresh');
+            peaksFromBrowser = true;
+            dbg(`Mountain peaks cell ${cellKey}: ${peaks.length} peaks from the browser${sub}`);
+            return { peaks, complete: true };
         }
-
-        overpassFailStreak = 0;
-        dbg(`Mountain peaks cell ${cellKey}: ${data.peaks.length} peaks${depth > 0 ? ` (sub-cell d${depth})` : ''}`);
-        return { peaks: data.peaks, complete: true };
+        overpassFailStreak++;
     }
 
     // All retries failed. If we still have splitting headroom, recurse into 4 quadrants.
@@ -5915,6 +5957,7 @@ async function peaksFromCache(cells) {
 // up the results. Returns how many cells now hold more peaks than before.
 async function refreshStaleCells(cells, stale) {
     overpassFailStreak = 0;
+    peaksFromBrowser = false;
     let fetchedCount = 0, grownCount = 0;
     for (const [i, cellKey] of stale.entries()) {
         if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) {

@@ -721,7 +721,10 @@ async function handlePeaksFetch(url) {
     // Race every mirror in parallel — first success wins. Wall clock max is one
     // attempt's worth (~22s), well under Cloudflare's 30s limit, and we get the
     // benefit of any mirror responding fast without random-mirror bad luck.
-    const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"](${s},${w},${n},${e});node["natural"="volcano"]["ele"](${s},${w},${n},${e}););out body;`;
+    // Only named peaks: unnamed ones are dropped below anyway, and leaving them
+    // out keeps dense ranges (High Peaks, Lake District, Sawatch) within the
+    // timeout instead of failing the whole cell.
+    const query = `[out:json][timeout:20];(node["natural"="peak"]["ele"]["name"](${s},${w},${n},${e});node["natural"="volcano"]["ele"]["name"](${s},${w},${n},${e}););out body;`;
     const mirrors = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.private.coffee/api/interpreter',
@@ -737,7 +740,7 @@ async function handlePeaksFetch(url) {
         for (const e of err.errors || [err]) {
             console.log(`peaks/fetch ${cell}: ${e.message}`);
         }
-        return json({ peaks: [], failed: true });
+        return json({ peaks: [], failed: true, errors: (err.errors || [err]).map(e => e.message) });
     }
 
     const peaks = (winner.data.elements || [])
