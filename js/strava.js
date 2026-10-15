@@ -6688,7 +6688,8 @@ async function planMountainCells(acts) {
     // 2.5° (with 0.5° pad → 3.5° bbox query) keeps Overpass query work small
     // enough that even dense regions like Wyoming/Utah complete reliably.
     const cells = new Map(); // cellKey → {south, west, north, east}
-    const addCell = (pLat, pLng) => {
+    const climb = new Map(); // cellKey → most elevation gain of an activity there
+    const addCell = (pLat, pLng, gain) => {
         const lat = Math.floor(pLat / 2.5) * 2.5;
         const lng = Math.floor(pLng / 2.5) * 2.5;
         const key = `${lat},${lng}`;
@@ -6696,20 +6697,31 @@ async function planMountainCells(acts) {
             // Add 0.5° pad on each side so peaks on cell edges aren't missed
             cells.set(key, { south: lat - 0.5, west: lng - 0.5, north: lat + 3.0, east: lng + 3.0 });
         }
+        if (gain > (climb.get(key) || 0)) climb.set(key, gain);
     };
     for (const a of acts) {
-        addCell(a.l[0], a.l[1]);
+        const gain = a.e || 0;
+        addCell(a.l[0], a.l[1], gain);
         // The pad covers ~50 km past a cell's edge, so sampling the route is enough
         const points = a.p ? decodePolyline(a.p) : [];
-        for (let i = 0; i < points.length; i += 10) addCell(points[i][0], points[i][1]);
+        for (let i = 0; i < points.length; i += 10) addCell(points[i][0], points[i][1], gain);
     }
 
     await loadPeakCache();
-    // Cells with nothing or only part loaded go first, before routine refreshes
-    // of cells that already have their peaks.
-    const missing = key => { const c = peakCellCache[key]; return !c || c.failed || c.partial || c.v !== PEAK_CELL_VERSION ? 0 : 1; };
+    // Order: the cells where you've climbed most first, since that's where
+    // summits are — a refresh can take hours on a bad Overpass day, and city
+    // walks and flat roads rarely hold a summit. Only routine refreshes of cells
+    // already complete under PEAK_CELL_VERSION wait until the end; among cells
+    // that climbed alike, missing / failed / partial ones go first.
+    const tier = key => {
+        const c = peakCellCache[key];
+        if (!c || c.failed || c.partial) return 0;
+        return c.v !== PEAK_CELL_VERSION ? 1 : 2;
+    };
     const stale = [...cells.keys()].filter(key => !cellIsFresh(peakCellCache[key]))
-        .sort((a, b) => missing(a) - missing(b));
+        .sort((a, b) => ((tier(a) === 2) - (tier(b) === 2))
+            || ((climb.get(b) || 0) - (climb.get(a) || 0))
+            || (tier(a) - tier(b)));
     dbg(`Mountain peaks: ${cells.size} cells (${cells.size - stale.length} cached, ${stale.length} need Overpass) for ${acts.length} activities`);
     return { cells, stale };
 }
@@ -6750,7 +6762,7 @@ const RESCAN_INTERVAL_MS = 2 * 60 * 1000;
 // few heavy queries (requests then fail instantly), so instead of giving up the
 // refresh banks its summits, pauses until the limit clears and carries on. It
 // gives up for this visit only after OVERPASS_MAX_PAUSES pauses in a row.
-const OVERPASS_PAUSE_MS = 5 * 60 * 1000;
+const OVERPASS_PAUSE_MS = 2 * 60 * 1000;
 const OVERPASS_MAX_PAUSES = 6;
 // Gap between cells; longer once the browser is querying Overpass itself, which
 // is what gets rate limited (the worker's requests come from Cloudflare's IPs).
@@ -6845,6 +6857,18 @@ async function applyHikerSummits(peaks, cellBoxes) {
     return kept.concat(hikers.map(h => ({ id: h.id, name: h.name, lat: h.lat, lng: h.lng, ele: h.ele, hiker: true })));
 }
 
+// Let the page breathe during a long scan. setTimeout(0) is clamped to a second
+// or more in a hidden tab (once a minute after a few minutes hidden), which
+// turned a 10-second summit scan into hours; a MessageChannel message isn't
+// timer-throttled.
+function yieldToBrowser() {
+    return new Promise(resolve => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => { channel.port1.close(); resolve(); };
+        channel.port2.postMessage(null);
+    });
+}
+
 async function detectMountainSummits(peaks) {
     // A cell holding more peaks than the processed activities were scanned
     // against (it failed or only partly loaded back then, or OSM gained peaks)
@@ -6892,7 +6916,7 @@ async function detectMountainSummits(peaks) {
         if (i % 25 === 0) {
             const pct = 50 + (i / acts.length) * 50;   // second 50% = scanning routes
             setMountainProgress(pct, `Scanning routes… ${i} of ${acts.length}`);
-            await new Promise(r => setTimeout(r, 0));
+            await yieldToBrowser();
         }
         const act = acts[i];
         const points = decodePolyline(act.p);
