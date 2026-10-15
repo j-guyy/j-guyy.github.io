@@ -3533,6 +3533,10 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 // bursty, so once every mirror has failed it waits and goes round again
 // (`rounds`). A 200 whose remark reports a runtime error (query timeout, out
 // of memory) holds partial data, so it counts as a failure and is never cached.
+// The mirror that answered last goes first next time: when one mirror is down or
+// refusing (often for days), every query would otherwise wait on it first.
+let overpassPreferredMirror = 0;
+
 async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) {
     for (let round = 0; round < rounds; round++) {
         if (round > 0) {
@@ -3541,7 +3545,9 @@ async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) 
             onStatus?.(`OpenStreetMap is busy — retrying in ${wait / 1000}s…`);
             await new Promise(r => setTimeout(r, wait));
         }
-        for (const [i, mirror] of OVERPASS_MIRRORS.entries()) {
+        for (let i = 0; i < OVERPASS_MIRRORS.length; i++) {
+            const m = (overpassPreferredMirror + i) % OVERPASS_MIRRORS.length;
+            const mirror = OVERPASS_MIRRORS[m];
             if (i > 0 || round > 0) onStatus?.(`OpenStreetMap is busy — trying server ${i + 1} of ${OVERPASS_MIRRORS.length}…`);
             try {
                 const data = await fetchWithTimeout(mirror, {
@@ -3550,6 +3556,7 @@ async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) 
                     body: 'data=' + encodeURIComponent(query),
                 }, timeoutMs);
                 if (/runtime error/i.test(data.remark || '')) throw new Error(data.remark);
+                overpassPreferredMirror = m;
                 return data;
             } catch (e) {
                 dbg(`${label}: Overpass mirror ${mirror} failed (${e.message}), trying next…`);
@@ -5965,11 +5972,23 @@ async function peaksFromCache(cells) {
 
 // Refetch stale cells from Overpass (through the worker). Runs after summits
 // have been detected from the cache, so a slow or failing Overpass never holds
-// up the results. Returns how many cells now hold more peaks than before.
-async function refreshStaleCells(cells, stale) {
+// up the results. A full refresh can take an hour on a bad Overpass day, so
+// whenever cells have gained peaks it calls onGrown (re-scan + save summits)
+// right after a checkpoint save, at most every RESCAN_INTERVAL_MS, and once at
+// the end, instead of only when every cell is done.
+const RESCAN_INTERVAL_MS = 2 * 60 * 1000;
+
+async function refreshStaleCells(cells, stale, onGrown) {
     overpassFailStreak = 0;
     peaksFromBrowser = false;
-    let fetchedCount = 0, grownCount = 0;
+    let fetchedCount = 0, grownCount = 0, lastScan = Date.now();
+    const rescan = async () => {
+        if (!grownCount) return;
+        dbg(`Mountain peaks: ${grownCount} cell(s) gained peaks from Overpass — re-scanning`);
+        grownCount = 0;
+        await onGrown();
+        lastScan = Date.now();
+    };
     for (const [i, cellKey] of stale.entries()) {
         if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) {
             dbg(`Mountain peaks: Overpass keeps failing — skipping ${stale.length - i} remaining cell(s) until the next visit`);
@@ -5982,15 +6001,18 @@ async function refreshStaleCells(cells, stale) {
         const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
         if (peaks.length > before) grownCount++;
         fetchedCount++;
-        // Checkpoint save every 5 new fetches so progress isn't lost if the page closes
+        // Checkpoint save every 5 new fetches so progress isn't lost if the page
+        // closes. Summits are re-scanned only after a save, so /summits/peaks
+        // never reports a summit whose peak isn't in the saved cell cache yet.
         if (fetchedCount % 5 === 0) {
             dbg(`Peak cache checkpoint: ${fetchedCount} new cells fetched — saving…`);
             await savePeakCache();
+            if (Date.now() - lastScan >= RESCAN_INTERVAL_MS) await rescan();
         }
     }
     if (fetchedCount > 0) await savePeakCache();
+    await rescan();
     setMountainStatus('');
-    return grownCount;
 }
 
 // Hiker summits (/data/hiker-summits.json) stand in for official summits that
@@ -7300,12 +7322,10 @@ async function initMountainHunter() {
         // Then refresh stale cells in the background. A cell that gained peaks
         // makes detectMountainSummits re-scan everything against them.
         if (plan.stale.length) {
-            const grown = await refreshStaleCells(plan.cells, plan.stale);
-            if (grown > 0) {
-                dbg(`Mountain peaks: ${grown} cell(s) gained peaks from Overpass — re-scanning`);
+            await refreshStaleCells(plan.cells, plan.stale, async () => {
                 mountainPeaks = await peaksFromCache(plan.cells);
                 await scanMountainSummits(summitActs);
-            }
+            });
         }
         if (!mountainPeaks.length) {
             setMountainStatus(plan.stale.length
