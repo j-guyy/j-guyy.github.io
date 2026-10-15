@@ -5750,10 +5750,11 @@ async function savePeakCache() {
 // Only top-level cells are cached on the server. Sub-cells from splitting are
 // merged into the parent's cache entry, so we don't pollute the cache with
 // thousands of micro-cells that wouldn't be reused on reload.
-async function fetchPeaksForCell(cellKey, south, west, north, east) {
+async function fetchPeaksForCell(cellKey, south, west, north, east, retry = false) {
     const cached = peakCellCache[cellKey];
     if (cached) {
-        if (cached.failed && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
+        // `retry`: refresh's second try at a cell that failed minutes ago
+        if (cached.failed && !retry && Date.now() - cached.ts < MOUNTAIN_FAIL_CACHE_TTL) {
             dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
             return [];
         }
@@ -5977,6 +5978,16 @@ async function peaksFromCache(cells) {
 // right after a checkpoint save, at most every RESCAN_INTERVAL_MS, and once at
 // the end, instead of only when every cell is done.
 const RESCAN_INTERVAL_MS = 2 * 60 * 1000;
+// A run of failures is usually Overpass rate-limiting this connection after a
+// few heavy queries (requests then fail instantly), so instead of giving up the
+// refresh banks its summits, pauses until the limit clears and carries on. It
+// gives up for this visit only after OVERPASS_MAX_PAUSES pauses in a row.
+const OVERPASS_PAUSE_MS = 5 * 60 * 1000;
+const OVERPASS_MAX_PAUSES = 6;
+// Gap between cells; longer once the browser is querying Overpass itself, which
+// is what gets rate limited (the worker's requests come from Cloudflare's IPs).
+const CELL_GAP_MS = 2000;
+const CELL_GAP_BROWSER_MS = 5000;
 
 async function refreshStaleCells(cells, stale, onGrown) {
     overpassFailStreak = 0;
@@ -5989,17 +6000,38 @@ async function refreshStaleCells(cells, stale, onGrown) {
         await onGrown();
         lastScan = Date.now();
     };
-    for (const [i, cellKey] of stale.entries()) {
+    const queue = [...stale];
+    const requeued = new Set();
+    let pauses = 0;
+    for (let i = 0; i < queue.length; i++) {
+        const cellKey = queue[i];
         if (overpassFailStreak >= OVERPASS_GIVE_UP_STREAK) {
-            dbg(`Mountain peaks: Overpass keeps failing — skipping ${stale.length - i} remaining cell(s) until the next visit`);
-            break;
+            if (pauses >= OVERPASS_MAX_PAUSES) {
+                dbg(`Mountain peaks: Overpass kept failing through ${pauses} pauses — skipping ${queue.length - i} remaining cell(s) until the next visit`);
+                break;
+            }
+            pauses++;
+            await savePeakCache();
+            await rescan();
+            dbg(`Mountain peaks: Overpass keeps failing (likely rate limiting) — pausing ${OVERPASS_PAUSE_MS / 60000} min, then continuing (pause ${pauses} of ${OVERPASS_MAX_PAUSES})`);
+            setMountainStatus(`OpenStreetMap is rate-limiting — resuming in ${OVERPASS_PAUSE_MS / 60000} min (${queue.length - i} regions left)…`);
+            await new Promise(r => setTimeout(r, OVERPASS_PAUSE_MS));
+            overpassFailStreak = 0;
         }
-        setMountainStatus(`Updating peaks from OpenStreetMap… region ${i + 1} of ${stale.length}`);
-        if (fetchedCount > 0) await new Promise(r => setTimeout(r, 2000));
+        setMountainStatus(`Updating peaks from OpenStreetMap… region ${i + 1} of ${queue.length}`);
+        if (fetchedCount > 0) await new Promise(r => setTimeout(r, peaksFromBrowser ? CELL_GAP_BROWSER_MS : CELL_GAP_MS));
         const before = peakCellCache[cellKey]?.peaks?.length || 0;
         const { south, west, north, east } = cells.get(cellKey);
-        const peaks = await fetchPeaksForCell(cellKey, south, west, north, east);
+        const peaks = await fetchPeaksForCell(cellKey, south, west, north, east, requeued.has(cellKey));
         if (peaks.length > before) grownCount++;
+        if (overpassFailStreak === 0) pauses = 0;
+        // A cell that didn't fully load (often the one that hit the rate limit)
+        // gets one more try at the end of this refresh.
+        const entry = peakCellCache[cellKey];
+        if ((entry?.failed || entry?.partial) && !requeued.has(cellKey)) {
+            requeued.add(cellKey);
+            queue.push(cellKey);
+        }
         fetchedCount++;
         // Checkpoint save every 5 new fetches so progress isn't lost if the page
         // closes. Summits are re-scanned only after a save, so /summits/peaks
