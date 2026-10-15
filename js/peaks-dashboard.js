@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             lists[t] = results[i];
             sortState[t] = { col: 'elevation', dir: 'desc' };
         });
-        await Promise.all(types.map(t => useStaticCoords(t)));
+        await Promise.all(types.map(t => useStaticReference(t)));
     } catch (error) {
         console.error('Error loading peak data:', error);
         return;
@@ -60,22 +60,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     render();
 });
 
-// A seeded list keeps the coordinates it was seeded with, and nothing on the
-// page edits them, so a coordinate fixed in the /data file would never reach
-// the Strava matching. Coordinates are reference data: take them from the file.
-async function useStaticCoords(type) {
+// A seeded list keeps the coordinates and names it was seeded with, and
+// nothing on the page edits them, so a coordinate fixed in the /data file would
+// never reach the Strava matching, nor a renamed peak (Clingmans Dome → Kuwohi)
+// the table. Both are reference data: take them from the file. A list keyed by
+// name can't be renamed this way — its name is what the toggle matches.
+async function useStaticReference(type) {
     const list = lists[type];
     if (list.source !== 'cloudflare') return;
     const cfg = PEAK_LISTS[type];
     try {
         const res = await fetch(cfg.url);
         if (!res.ok) return;
-        const coords = new Map((await res.json()).map(item => [item[cfg.key], item.coords]));
+        const byKey = new Map((await res.json()).map(item => [item[cfg.key], item]));
         list.data.forEach(item => {
-            const c = coords.get(item[cfg.key]);
-            if (Array.isArray(c)) item.coords = c;
+            const ref = byKey.get(item[cfg.key]);
+            if (!ref) return;
+            if (Array.isArray(ref.coords)) item.coords = ref.coords;
+            if (cfg.key !== 'name' && ref.name) item.name = ref.name;
         });
-    } catch { /* keep the seeded coordinates */ }
+    } catch { /* keep the seeded coordinates and names */ }
 }
 
 function currentType() {
