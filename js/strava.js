@@ -5542,11 +5542,12 @@ function setTrailStatus(msg) {
 // proximity (≤300 m) against OSM natural=peak nodes fetched from Overpass.
 // Elevation gain stats come directly from the `e` field in slim activity data.
 
-// AlpineSki excluded — chairlift-assisted activities don't count as mountain sports
-const MOUNTAIN_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
-// Narrower set used only for deciding which geographic cells to query for peaks.
-// Runs and Walks happen globally (flat cities) — Hike/TrailRun/ski/mountaineering are the mountain-specific types.
-const MOUNTAIN_CELL_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
+// Every way up counts as a summit: on foot, on skis, or by bike (Mount Blue
+// Sky's road, a drive-up high point's lane). AlpineSki is excluded as
+// chairlift-assisted, VirtualRide because its track is a game world.
+const FOOT_ACTIVITY_TYPES = ['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing'];
+const SUMMIT_RIDE_TYPES = ['Ride', 'GravelRide', 'MountainBikeRide', 'EBikeRide', 'EMountainBikeRide'];
+const MOUNTAIN_ACTIVITY_TYPES = new Set([...FOOT_ACTIVITY_TYPES, ...SUMMIT_RIDE_TYPES]);
 const ELEVATION_ACTIVITY_TYPES = new Set(['Run', 'TrailRun', 'Hike', 'Walk', 'Snowshoe', 'BackcountrySki', 'NordicSki', 'Mountaineering', 'RockClimbing']);
 const SUMMIT_RADIUS_M = 50;
 // Hysteresis for lap counting: must be beyond this larger radius to be
@@ -5557,7 +5558,13 @@ const LAP_EXIT_RADIUS_M = 750;
 // are flagged as 'near misses' so the user can manually verify whether
 // imperfect OSM peak coordinates are hiding a real summit.
 const NEAR_MISS_RADIUS_M = 100;
-const MOUNTAIN_PEAK_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+// OSM peaks barely change; a long TTL keeps the weekly-ish refresh of every
+// cell from re-querying Overpass for areas it answered last month.
+const MOUNTAIN_PEAK_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
+// A complete cell load is stamped with this version. Cells saved before it
+// (7-day TTL, unmarked partial loads back-dated against it) count as stale
+// once, so a partly loaded cell can't pass for a fresh one under the new TTL.
+const PEAK_CELL_VERSION = 2;
 const MOUNTAIN_FAIL_CACHE_TTL = 60 * 60 * 1000;  // skip failed cells for 1 hour
 
 let mountainPeaks = [];          // [{id, name, lat, lng, ele}]  — from OSM
@@ -5743,7 +5750,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
             dbg(`Mountain peaks cell ${cellKey}: skipped (failed ${Math.round((Date.now() - cached.ts) / 60000)}m ago)`);
             return [];
         }
-        if (!cached.failed && Date.now() - cached.ts < MOUNTAIN_PEAK_CACHE_TTL) {
+        if (!cached.failed && cellIsFresh(cached)) {
             dbg(`Mountain peaks cell ${cellKey}: ${cached.peaks.length} cached`);
             return cached.peaks;
         }
@@ -5751,7 +5758,7 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
 
     const { peaks, complete } = await fetchPeaksRegion(cellKey, south, west, north, east, 0);
     if (complete) {
-        peakCellCache[cellKey] = { peaks, ts: Date.now() };
+        peakCellCache[cellKey] = { peaks, ts: Date.now(), v: PEAK_CELL_VERSION };
         return peaks;
     }
 
@@ -5759,16 +5766,16 @@ async function fetchPeaksForCell(cellKey, south, west, north, east) {
     // an expired copy is kept as is (wiping it would drop the cell's summits),
     // otherwise whatever loaded is kept. Either way ts is back-dated so the
     // cell is retried after MOUNTAIN_FAIL_CACHE_TTL, like a failed one.
+    // A partial load is merged with the cached copy (each may hold quadrants
+    // the other lacks) and marked partial so the next refresh fetches it first.
     const retryTs = Date.now() - MOUNTAIN_PEAK_CACHE_TTL + MOUNTAIN_FAIL_CACHE_TTL;
-    if (cached && !cached.failed && cached.peaks?.length) {
-        dbg(`Mountain peaks cell ${cellKey}: refresh failed — keeping ${cached.peaks.length} cached peaks until Overpass recovers`);
-        peakCellCache[cellKey] = { peaks: cached.peaks, ts: retryTs };
-        return cached.peaks;
-    }
-    if (peaks.length) {
-        dbg(`Mountain peaks cell ${cellKey}: only partly loaded (${peaks.length} peaks) — will retry in ${MOUNTAIN_FAIL_CACHE_TTL / 60000}m`);
-        peakCellCache[cellKey] = { peaks, ts: retryTs };
-        return peaks;
+    const cachedPeaks = (cached && !cached.failed && cached.peaks) || [];
+    if (cachedPeaks.length || peaks.length) {
+        const ids = new Set(cachedPeaks.map(p => p.id));
+        const merged = cachedPeaks.concat(peaks.filter(p => !ids.has(p.id)));
+        dbg(`Mountain peaks cell ${cellKey}: only partly loaded — keeping ${merged.length} peaks (${cachedPeaks.length} cached, ${merged.length - cachedPeaks.length} new) until Overpass recovers`);
+        peakCellCache[cellKey] = { peaks: merged, ts: retryTs, partial: true };
+        return merged;
     }
     peakCellCache[cellKey] = { peaks: [], ts: Date.now(), failed: true };
     return [];
@@ -5893,44 +5900,48 @@ async function fetchPeaksRegion(cellKey, south, west, north, east, depth) {
     return { peaks: merged, complete };
 }
 
-// Fetch peaks across all 5°×5° cells that contain Hike/TrailRun/ski activities.
-// Uses MOUNTAIN_CELL_TYPES (not all foot types) so flat city runs in 23 countries
-// don't cause cells to be created worldwide. Summit detection still runs on all
-// MOUNTAIN_ACTIVITY_TYPES — the cell set just controls which regions are queried.
-// Mountain Hunter's cells: unique 2.5° grid cells holding the start of a
-// mountain-type activity with real elevation gain. Returns null when there
-// are none. Loads the server peak cache, so the cache is current afterwards.
-async function planMountainCells(footActs) {
-    // Only Hike/TrailRun/ski activities with real elevation gain drive cell selection.
-    // The 100 m (≈330 ft) threshold drops flat-area hikes in lowland countries so
-    // we don't fire dozens of useless Overpass queries.
-    const cellActs = footActs.filter(a => MOUNTAIN_CELL_TYPES.has(a.t) && (a.e || 0) >= 100);
-    if (!cellActs.length) {
-        dbg('Mountain peaks: no mountain-type activities with ≥100 m gain — skipping Overpass');
-        return null;
-    }
+// Mountain Hunter's cells: the 2.5° grid cells any summit-type activity starts
+// in or passes through. Every activity counts, however flat (a drive-up high
+// point like Hoosier Hill is a short level walk) and however far it roams (a
+// ride can top out 60 km from its start); flat cells hold few named peaks, so
+// their queries are cheap, and the cache keeps them for a month. Returns null
+// when there are none. Loads the server peak cache, so it's current afterwards.
+async function planMountainCells(acts) {
+    if (!acts.length) return null;
 
     // 2.5° (with 0.5° pad → 3.5° bbox query) keeps Overpass query work small
     // enough that even dense regions like Wyoming/Utah complete reliably.
     const cells = new Map(); // cellKey → {south, west, north, east}
-    for (const a of cellActs) {
-        const lat = Math.floor(a.l[0] / 2.5) * 2.5;
-        const lng = Math.floor(a.l[1] / 2.5) * 2.5;
+    const addCell = (pLat, pLng) => {
+        const lat = Math.floor(pLat / 2.5) * 2.5;
+        const lng = Math.floor(pLng / 2.5) * 2.5;
         const key = `${lat},${lng}`;
         if (!cells.has(key)) {
             // Add 0.5° pad on each side so peaks on cell edges aren't missed
             cells.set(key, { south: lat - 0.5, west: lng - 0.5, north: lat + 3.0, east: lng + 3.0 });
         }
+    };
+    for (const a of acts) {
+        addCell(a.l[0], a.l[1]);
+        // The pad covers ~50 km past a cell's edge, so sampling the route is enough
+        const points = a.p ? decodePolyline(a.p) : [];
+        for (let i = 0; i < points.length; i += 10) addCell(points[i][0], points[i][1]);
     }
 
     await loadPeakCache();
-    const stale = [...cells.keys()].filter(key => !cellIsFresh(peakCellCache[key]));
-    dbg(`Mountain peaks: ${cells.size} cells (${cells.size - stale.length} cached, ${stale.length} need Overpass) for ${footActs.length} foot activities`);
+    // Cells with nothing or only part loaded go first, before routine refreshes
+    // of cells that already have their peaks.
+    const missing = key => { const c = peakCellCache[key]; return !c || c.failed || c.partial || c.v !== PEAK_CELL_VERSION ? 0 : 1; };
+    const stale = [...cells.keys()].filter(key => !cellIsFresh(peakCellCache[key]))
+        .sort((a, b) => missing(a) - missing(b));
+    dbg(`Mountain peaks: ${cells.size} cells (${cells.size - stale.length} cached, ${stale.length} need Overpass) for ${acts.length} activities`);
     return { cells, stale };
 }
 
 function cellIsFresh(c) {
-    return Boolean(c) && Date.now() - c.ts < (c.failed ? MOUNTAIN_FAIL_CACHE_TTL : MOUNTAIN_PEAK_CACHE_TTL);
+    if (!c) return false;
+    if (c.failed) return Date.now() - c.ts < MOUNTAIN_FAIL_CACHE_TTL;
+    return c.v === PEAK_CELL_VERSION && Date.now() - c.ts < MOUNTAIN_PEAK_CACHE_TTL;
 }
 
 // Every peak the cell cache holds for these cells — expired copies included,
@@ -7089,9 +7100,9 @@ function renderMountainMap() {
         clng  = vPeaks.reduce((s, p) => s + p.lng, 0) / vPeaks.length;
         czoom = 9;
     } else {
-        const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
-        clat  = footActs.reduce((s, a) => s + a.l[0], 0) / footActs.length;
-        clng  = footActs.reduce((s, a) => s + a.l[1], 0) / footActs.length;
+        const summitActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
+        clat  = summitActs.reduce((s, a) => s + a.l[0], 0) / summitActs.length;
+        clng  = summitActs.reduce((s, a) => s + a.l[1], 0) / summitActs.length;
         czoom = 8;
     }
 
@@ -7252,9 +7263,9 @@ async function initMountainHunter() {
         return;
     }
 
-    const footActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
-    if (!footActs.length) {
-        setMountainStatus('No hiking or running activities found.');
+    const summitActs = currentSlim.filter(a => MOUNTAIN_ACTIVITY_TYPES.has(a.t) && a.l);
+    if (!summitActs.length) {
+        setMountainStatus('No hikes, runs, walks or rides found.');
         return;
     }
 
@@ -7268,7 +7279,7 @@ async function initMountainHunter() {
 
     mountainHunterRunning = true;
     try {
-        const plan = await planMountainCells(footActs);
+        const plan = await planMountainCells(summitActs);
         if (!plan) {
             setMountainStatus('No named peaks found in your activity area.');
             return;
@@ -7284,7 +7295,7 @@ async function initMountainHunter() {
         // Summits from the cached peaks first (expired copies included), so a
         // slow or failing Overpass never holds them up or keeps them unsaved.
         mountainPeaks = await peaksFromCache(plan.cells);
-        if (mountainPeaks.length) await scanMountainSummits(footActs);
+        if (mountainPeaks.length) await scanMountainSummits(summitActs);
 
         // Then refresh stale cells in the background. A cell that gained peaks
         // makes detectMountainSummits re-scan everything against them.
@@ -7293,7 +7304,7 @@ async function initMountainHunter() {
             if (grown > 0) {
                 dbg(`Mountain peaks: ${grown} cell(s) gained peaks from Overpass — re-scanning`);
                 mountainPeaks = await peaksFromCache(plan.cells);
-                await scanMountainSummits(footActs);
+                await scanMountainSummits(summitActs);
             }
         }
         if (!mountainPeaks.length) {
@@ -7310,8 +7321,8 @@ async function initMountainHunter() {
     }
 }
 
-async function scanMountainSummits(footActs) {
-    setMountainStatus(`Scanning ${footActs.length} activities for summits…`);
+async function scanMountainSummits(summitActs) {
+    setMountainStatus(`Scanning ${summitActs.length} activities for summits…`);
     mountainVisits = await detectMountainSummits(mountainPeaks);
 
     mountainHunterReady = true;
