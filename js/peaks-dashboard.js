@@ -459,8 +459,9 @@ function renderComparison(type) {
     el.innerHTML = `
         <h3>Marked vs. Strava</h3>
         <p class="peaks-compare-note">Strava summits come from
-            <a href="strava.html#mountain">Mountain Hunter</a>: an activity that passes within 50&nbsp;m of
-            an OpenStreetMap summit. Activities count once Mountain Hunter has processed them on the Strava page.</p>
+            <a href="strava.html#mountain">Mountain Hunter</a>: a hike, run, walk, ski tour or bike ride that passes
+            within 50&nbsp;m of an OpenStreetMap summit (or a hiker summit, where the true one is closed). Activities count
+            once Mountain Hunter has processed them on the Strava page.</p>
         <div class="peaks-compare-stats">
             ${stat(marked.length, 'Marked')}
             ${stat(matches.size, 'On Strava')}
