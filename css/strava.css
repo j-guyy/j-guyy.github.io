@@ -725,6 +725,15 @@
     vertical-align: baseline;
 }
 
+.eco-ak {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.45);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 2px;
+}
+
 .eco-l4-row > td {
     white-space: normal !important;
     background: rgba(255,255,255,0.02);

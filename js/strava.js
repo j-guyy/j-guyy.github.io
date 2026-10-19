@@ -3219,11 +3219,16 @@ function setMetroStatus(msg) {
 
 // ── Ecoregion Hunter ──────────────────────────────────────────────────────────
 //
-// EPA Level IV ecoregions (lower 48 only) reached by any activity. A Level IV
-// is the unit of discovery; Level III progress is derived from it (every
-// Level IV code starts with its Level III code: "21a" → "21"). Boundaries are
-// the same TopoJSON as us-ecoregions.html, fetched with the TopoJSON decoder
-// and the shared ecoregion colours (js/eco-colors.js) on first open.
+// EPA ecoregions reached by any activity: Level IV in the lower 48, Level III
+// in Alaska (the EPA has no Level IV there; Hawaii has no data at all). A
+// Level IV is the unit of discovery; Level III progress is derived from it
+// (every Level IV code starts with its Level III code: "21a" → "21"). Each
+// Alaska region is its own single "Level IV" (code = its Level III code,
+// L3_ONLY: true; see scripts/build-ak-ecoregions.py), so it counts in both
+// tallies with no special cases. Boundaries are the same TopoJSON as
+// us-ecoregions.html plus data/ak-ecoregions.geojson, fetched with the
+// TopoJSON decoder and the shared ecoregion colours (js/eco-colors.js) on
+// first open.
 //
 // Detection walks every route point, filling gaps longer than ECO_STEP_DEG so
 // narrow regions between two summary-polyline points still count, rounds each
@@ -3231,18 +3236,27 @@ function setMetroStatus(msg) {
 // oldest-first, so the first activity to reach a region is its discovery.
 
 const ECO_TOPOJSON_URL = '/data/us-ecoregions.topojson';
+const ECO_AK_URL       = '/data/ak-ecoregions.geojson';
 const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
 const ECO_COLORS_JS    = '/js/eco-colors.js';
-const ECO_L4_TOTAL = 967;   // Level IV ecoregions in the file (worker SUMMARY_TOTALS mirrors these)
-const ECO_L3_TOTAL = 85;
-const ECO_L1_TOTAL = 10;
 // Bump when detection changes: a saved blob from another version is discarded
 // and every activity is scanned again.
 const ECO_DETECT_VERSION = 1;
 const ECO_CELL_PER_DEG = 1000;  // points rounded to 0.001° (~100 m) before lookup
-const ECO_CELL_ROW = 360001;    // numeric cell key = (lat + 90°) row × this + (lng + 180°) column
+// Numeric cell key = (lat + 90°) row × ECO_CELL_ROW + (lng + 360°) column. The
+// column offset is a full 360° because shifted Aleutian longitudes go below
+// -180° (see ECO_BOUNDS); the row width covers lng -360°…+360°.
+const ECO_CELL_ROW = 720001;
 const ECO_STEP_DEG = 0.002;     // fill gaps between route points every ~200 m
 const ECO_MAX_GAP_DEG = 1;      // …but not across GPS jumps this long
+// Areas with ecoregion data, [south, west, north, east]. The western
+// Aleutians cross the antimeridian, so the Alaska file writes them as
+// lng - 360 (Attu ≈ -187°) and route points east of 170°E are shifted to
+// match before lookup.
+const ECO_BOUNDS = [
+    [24, -125.5, 50, -66.5],   // lower 48
+    [51, -188, 72, -129.5],    // Alaska
+];
 const ECO_GOLD = '#FFD700';
 
 let ecoMap = null;
@@ -3251,7 +3265,8 @@ let ecoMapIsDark = true;
 let ecoGeoJsonLayer = null;
 let ecoFocusLayer = null;
 let ecoFeatures = [];            // decoded Level IV features (with geometry)
-let ecoL4Info = {};              // L4 code → { code, name, l3 }
+let ecoL4Info = {};              // L4 code → { code, name, l3, l3Only }
+let ecoTotals = { l4: 0, l3: 0, biomes: 0 };  // counted from the loaded boundaries
 let ecoL3Info = {};              // L3 code → { code, name, biome, l4s: [L4 codes] }
 let visitedEcoCodes = new Set();
 let ecoDiscoveries = {};         // L4 code → { actId, actName, date }
@@ -3307,13 +3322,15 @@ async function initEcoregionMap() {
     setEcoStatus('Loading ecoregion boundaries…');
     dbg('Ecoregion Hunter: loading TopoJSON + saved data…');
 
-    let topo, saved;
+    const fetchJson = url => fetch(url).then(r => {
+        if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+        return r.json();
+    });
+    let topo, alaska, saved;
     try {
-        [topo, saved] = await Promise.all([
-            fetch(ECO_TOPOJSON_URL).then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.json();
-            }),
+        [topo, alaska, saved] = await Promise.all([
+            fetchJson(ECO_TOPOJSON_URL),
+            fetchJson(ECO_AK_URL),
             // A worker without the endpoints yet (or offline) just means no saved
             // progress: detect from scratch and let the save fail quietly.
             fetch(`${WORKER_URL}/ecoregions/all`).then(r => (r.ok ? r.json() : null)).catch(() => null),
@@ -3331,7 +3348,7 @@ async function initEcoregionMap() {
     const geojson = topojson.feature(topo, topo.objects[objKey]);
     // A handful of features in the EPA file have no geometry; their codes all
     // have other polygons, so dropping them loses nothing.
-    geojson.features = geojson.features.filter(f => f.geometry);
+    geojson.features = geojson.features.filter(f => f.geometry).concat(alaska.features || []);
     ecoFeatures = geojson.features;
     buildEcoInfo(ecoFeatures);
 
@@ -3399,17 +3416,30 @@ function buildEcoInfo(features) {
     for (const f of features) {
         const p = f.properties;
         if (!ecoL4Info[p.US_L4CODE]) {
-            ecoL4Info[p.US_L4CODE] = { code: p.US_L4CODE, name: p.US_L4NAME, l3: p.US_L3CODE };
+            ecoL4Info[p.US_L4CODE] = { code: p.US_L4CODE, name: p.US_L4NAME, l3: p.US_L3CODE, l3Only: !!p.L3_ONLY };
         }
         let l3 = ecoL3Info[p.US_L3CODE];
         if (!l3) {
-            l3 = ecoL3Info[p.US_L3CODE] = { code: p.US_L3CODE, name: p.US_L3NAME, biome: ecoTitleCase(p.NA_L1NAME), l4s: [] };
+            l3 = ecoL3Info[p.US_L3CODE] = { code: p.US_L3CODE, name: p.US_L3NAME, biome: ecoTitleCase(p.NA_L1NAME), alaska: !!p.L3_ONLY, l4s: [] };
         }
         if (!l3.l4s.includes(p.US_L4CODE)) l3.l4s.push(p.US_L4CODE);
     }
     for (const l3 of Object.values(ecoL3Info)) {
         l3.l4s.sort((a, b) => ecoL4Index(a) - ecoL4Index(b));
     }
+    ecoTotals = {
+        l4: Object.keys(ecoL4Info).length,
+        l3: Object.keys(ecoL3Info).length,
+        biomes: new Set(Object.values(ecoL3Info).map(l3 => l3.biome)).size,
+    };
+}
+
+// A region's map / swatch colour: its Level IV shade, or for an Alaska region
+// (no Level IV) its Level III colour.
+function ecoRegionColor(code) {
+    const info = ecoL4Info[code];
+    if (!info) return ecoL3Color(ecoL3Of(code));
+    return info.l3Only ? ecoL3Color(info.l3) : ecoL4Color(code, info.l3);
 }
 
 // Visited Level IVs grouped by Level III.
@@ -3468,10 +3498,10 @@ async function detectEcoregionsAsync(activities, index) {
     // Map keeps insertion order, so cells come back oldest-activity-first.
     const firstAct = new Map();
     const addCell = (lat, lng, ai) => {
-        // Lower 48 bounds (the ecoregion data covers nothing outside them)
-        if (lat < 24 || lat > 50 || lng < -125.5 || lng > -66.5) return;
+        // Skip points outside the areas with ecoregion data
+        if (!ECO_BOUNDS.some(([s, w, n, e]) => lat >= s && lat <= n && lng >= w && lng <= e)) return;
         const key = (Math.round(lat * ECO_CELL_PER_DEG) + 90 * ECO_CELL_PER_DEG) * ECO_CELL_ROW
-                  + (Math.round(lng * ECO_CELL_PER_DEG) + 180 * ECO_CELL_PER_DEG);
+                  + (Math.round(lng * ECO_CELL_PER_DEG) + 360 * ECO_CELL_PER_DEG);
         if (!firstAct.has(key)) firstAct.set(key, ai);
     };
 
@@ -3482,7 +3512,8 @@ async function detectEcoregionsAsync(activities, index) {
         }
         const points = decodePolyline(activities[ai].p);
         let prevLat = null, prevLng = null;
-        for (const [lat, lng] of points) {
+        for (const [lat, rawLng] of points) {
+            const lng = rawLng > 170 ? rawLng - 360 : rawLng;  // western Aleutians (see ECO_BOUNDS)
             if (prevLat !== null) {
                 const dLat = lat - prevLat, dLng = lng - prevLng;
                 const span = Math.max(Math.abs(dLat), Math.abs(dLng));
@@ -3507,7 +3538,7 @@ async function detectEcoregionsAsync(activities, index) {
             await new Promise(r => setTimeout(r, 0));
         }
         const lat = (Math.floor(key / ECO_CELL_ROW) - 90 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
-        const lng = ((key % ECO_CELL_ROW) - 180 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
+        const lng = ((key % ECO_CELL_ROW) - 360 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
         let hit = null;
         if (last && ecoPolyContains(last, lat, lng)) {
             hit = last;
@@ -3530,7 +3561,7 @@ async function detectEcoregionsAsync(activities, index) {
 function ecoFeatureStyle(feature, completedL3) {
     const p = feature.properties;
     if (!visitedEcoCodes.has(p.US_L4CODE)) return faintPolyStyle(ecoMapIsDark);
-    const fill = ecoL4Color(p.US_L4CODE, p.US_L3CODE);
+    const fill = ecoRegionColor(p.US_L4CODE);
     return completedL3.has(p.US_L3CODE)
         ? { fillColor: fill, fillOpacity: 0.7, color: ECO_GOLD, weight: 1.2, opacity: 0.9 }
         : { fillColor: fill, fillOpacity: 0.6, color: fill, weight: 0.6, opacity: 0.9 };
@@ -3555,12 +3586,15 @@ function ecoPopupHtml(feature) {
                 : escapeEcoHtml(disc.actName)}</div>`
             : '<div class="activity-popup-date">Visited</div>')
         : '<div class="activity-popup-date" style="color:#888">Not yet visited</div>';
-    const tagColor = visited ? ecoL4Color(p.US_L4CODE, p.US_L3CODE) : '#aaa';
+    const tagColor = visited ? ecoRegionColor(p.US_L4CODE) : '#aaa';
+    const context = p.L3_ONLY
+        ? '<div class="activity-popup-date">Alaska — Level III only (no Level IV data)</div>'
+        : `<div class="activity-popup-date">${escapeEcoHtml(p.US_L3CODE)} ${escapeEcoHtml(p.US_L3NAME)} — ${visitedInL3} / ${l3 ? l3.l4s.length : '?'} visited</div>`;
     return `
         <div class="activity-popup-inner">
-            <div class="activity-popup-type" style="color:${tagColor}">${escapeEcoHtml(p.US_L4CODE)} · Level IV</div>
+            <div class="activity-popup-type" style="color:${tagColor}">${escapeEcoHtml(p.US_L4CODE)} · ${p.L3_ONLY ? 'Alaska Level III' : 'Level IV'}</div>
             <div class="activity-popup-name">${escapeEcoHtml(p.US_L4NAME)}</div>
-            <div class="activity-popup-date">${escapeEcoHtml(p.US_L3CODE)} ${escapeEcoHtml(p.US_L3NAME)} — ${visitedInL3} / ${l3 ? l3.l4s.length : '?'} visited</div>
+            ${context}
             ${status}
         </div>`;
 }
@@ -3583,14 +3617,14 @@ function renderEcoregionStats() {
     const l3Visited = Object.keys(byL3).filter(l3 => ecoL3Info[l3]).length;
     const l3Complete = ecoCompletedL3().size;
     const biomes = new Set(Object.keys(byL3).map(l3 => ecoL3Info[l3]?.biome).filter(Boolean)).size;
-    const pct = ((visitedEcoCodes.size / ECO_L4_TOTAL) * 100).toFixed(1);
+    const pct = ecoTotals.l4 ? ((visitedEcoCodes.size / ecoTotals.l4) * 100).toFixed(1) : '0.0';
     el.innerHTML = `
         <div class="county-stat-item">
-            <span class="county-stat-number">${visitedEcoCodes.size.toLocaleString()} / ${ECO_L4_TOTAL}</span>
+            <span class="county-stat-number">${visitedEcoCodes.size.toLocaleString()} / ${ecoTotals.l4.toLocaleString()}</span>
             <span class="county-stat-label">Level IV (${pct}%)</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${l3Visited} / ${ECO_L3_TOTAL}</span>
+            <span class="county-stat-number">${l3Visited} / ${ecoTotals.l3}</span>
             <span class="county-stat-label">Level III</span>
         </div>
         <div class="county-stat-item">
@@ -3598,7 +3632,7 @@ function renderEcoregionStats() {
             <span class="county-stat-label">Level III Complete</span>
         </div>
         <div class="county-stat-item">
-            <span class="county-stat-number">${biomes} / ${ECO_L1_TOTAL}</span>
+            <span class="county-stat-number">${biomes} / ${ecoTotals.biomes}</span>
             <span class="county-stat-label">Biomes</span>
         </div>`;
 }
@@ -3714,7 +3748,7 @@ function renderEcoL3Progress() {
         tr.className = 'state-row';
         tr.title = 'Show this region on the map and list its Level IV ecoregions';
         tr.innerHTML = `
-            <td><span class="eco-swatch" style="background:${ecoL3Color(r.code)}"></span>${open ? '▾' : '▸'} ${escapeEcoHtml(r.code)} ${escapeEcoHtml(r.name)}${complete ? ` <span style="color:${ECO_GOLD}">★</span>` : ''}</td>
+            <td><span class="eco-swatch" style="background:${ecoL3Color(r.code)}"></span>${open ? '▾' : '▸'} ${escapeEcoHtml(r.code)} ${escapeEcoHtml(r.name)}${r.alaska ? ' <span class="eco-ak">AK</span>' : ''}${complete ? ` <span style="color:${ECO_GOLD}">★</span>` : ''}</td>
             <td>${escapeEcoHtml(r.biome)}</td>
             <td style="text-align:center">${r.visited}</td>
             <td style="text-align:center">${r.total}</td>
@@ -3736,7 +3770,7 @@ function renderEcoL3Progress() {
             const chips = r.l4s.map(code => {
                 const info = ecoL4Info[code];
                 const done = visitedEcoCodes.has(code);
-                const style = done ? ` style="border-color:${ecoL4Color(code, r.code)}"` : '';
+                const style = done ? ` style="border-color:${ecoRegionColor(code)}"` : '';
                 return `<span class="eco-l4-chip${done ? ' visited' : ''}"${style}>${done ? '✓' : '○'} ${escapeEcoHtml(code)} ${escapeEcoHtml(info?.name)}</span>`;
             }).join('');
             detail.innerHTML = `<td colspan="5"><div class="eco-l4-chips">${chips}</div></td>`;
@@ -3797,7 +3831,7 @@ function renderRecentEcoregions() {
         const href = disc.actId ? `https://www.strava.com/activities/${encodeURIComponent(disc.actId)}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><span class="eco-swatch" style="background:${ecoL4Color(code, info.l3)}"></span>${escapeEcoHtml(code)} ${escapeEcoHtml(info.name)}</td>
+            <td><span class="eco-swatch" style="background:${ecoRegionColor(code)}"></span>${escapeEcoHtml(code)} ${escapeEcoHtml(info.name)}</td>
             <td>${escapeEcoHtml(l3?.name || info.l3)}</td>
             <td>${href
                 ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`

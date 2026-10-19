@@ -458,8 +458,10 @@ export default {
 //     trail: { … same … } | null }
 //
 // Totals mirror the constants in js/strava.js (county stats bar, FEDERAL_PARK_TOTAL,
-// STATE_PARK_TOTAL, METRO_TOTAL, ECO_L4_TOTAL / ECO_L3_TOTAL); keep them in step.
-const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 200, ecoL4: 967, ecoL3: 85 };
+// STATE_PARK_TOTAL, METRO_TOTAL); keep them in step. Ecoregion totals are
+// what the hunter counts from its boundary files: 967 lower-48 Level IV + 20
+// Alaska regions, and 85 + 20 Level III.
+const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 200, ecoL4: 987, ecoL3: 105 };
 
 // Browsers/CDNs may reuse a summary for a few minutes — the numbers only move
 // when someone opens a hunter and it saves new detections.
