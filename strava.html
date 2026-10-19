@@ -98,6 +98,19 @@
             </div>
         </div>
 
+        <!-- Ecoregion Hunter (EPA Level IV ecoregions, lower 48, lazy-loaded) -->
+        <div class="section" id="ecoregion">
+            <h2>Ecoregion Hunter <button class="cache-refresh-btn" id="ecoregion-toggle-btn" onclick="toggleEcoregionMap()">Show map</button></h2>
+            <div id="ecoregion-section" style="display:none">
+                <div id="ecoregion-stats-bar" class="county-stats-bar"></div>
+                <div id="ecoregion-map"></div>
+                <div id="ecoregion-legend" class="map-legend"></div>
+                <div id="ecoregion-l3-table"></div>
+                <div id="ecoregion-recent-table"></div>
+                <p id="ecoregion-status" class="no-location-note" style="margin-top:8px"></p>
+            </div>
+        </div>
+
         <!-- Tile Hunter (world, lazy-loaded) -->
         <div class="section" id="tile">
             <h2>Tile Hunter <button class="cache-refresh-btn" id="tile-toggle-btn" onclick="toggleTileMap()">Show map</button></h2>

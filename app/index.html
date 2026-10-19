@@ -51,6 +51,7 @@
                 <a class="home-card" href="#city"><span class="home-card-icon">🛣️</span><span class="home-card-name">City Hunter</span><em id="stat-city"></em></a>
                 <a class="home-card" href="#tile"><span class="home-card-icon">🔳</span><span class="home-card-name">Tile Hunter</span><em id="stat-tile"></em></a>
                 <a class="home-card" href="#park"><span class="home-card-icon">🏞️</span><span class="home-card-name">Park Hunter</span><em id="stat-park"></em></a>
+                <a class="home-card" href="#ecoregion"><span class="home-card-icon">🌿</span><span class="home-card-name">Ecoregion Hunter</span><em id="stat-ecoregion"></em></a>
                 <a class="home-card" href="#mountain"><span class="home-card-icon">⛰️</span><span class="home-card-name">Mountain Hunter</span><em id="stat-mountain"></em></a>
                 <a class="home-card" href="#pass"><span class="home-card-icon">🚵</span><span class="home-card-name">Pass Hunter</span><em id="stat-pass"></em></a>
                 <a class="home-card" href="#trail"><span class="home-card-icon">🥾</span><span class="home-card-name">Trail Hunter</span><em id="stat-trail"></em></a>
@@ -167,6 +168,27 @@
                     <div id="metro-comparison" class="app-detail"></div>
                     <div id="metro-recent-table" class="app-detail"></div>
                     <p id="metro-status" class="no-location-note" style="margin-top:8px"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ Ecoregion Hunter ============ -->
+        <div id="screen-ecoregion" class="app-screen" hidden>
+            <header class="app-screen-header">
+                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <h1>Ecoregion Hunter</h1>
+            </header>
+            <div class="section">
+                <div class="app-controls">
+                    <button class="cache-refresh-btn app-auto-toggle" id="ecoregion-toggle-btn" onclick="toggleEcoregionMap()">Show map</button>
+                </div>
+                <div id="ecoregion-section" style="display:none">
+                    <div id="ecoregion-stats-bar" class="county-stats-bar"></div>
+                    <div id="ecoregion-map"></div>
+                    <div id="ecoregion-legend" class="map-legend"></div>
+                    <div id="ecoregion-l3-table" class="app-detail"></div>
+                    <div id="ecoregion-recent-table" class="app-detail"></div>
+                    <p id="ecoregion-status" class="no-location-note" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>

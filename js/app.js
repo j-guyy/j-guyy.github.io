@@ -22,6 +22,7 @@ const SCREENS = {
     map: { open: () => ensureOpen('map-section', () => toggleMap()) },
     county: { open: () => ensureOpen('county-section', () => toggleCountyMap()) },
     park: { open: () => ensureOpen('park-section', () => toggleParkMap()) },
+    ecoregion: { open: () => ensureOpen('ecoregion-section', () => toggleEcoregionMap()) },
     metro: { open: () => ensureOpen('metro-section', () => toggleMetroMap()) },
     tile: { open: () => ensureOpen('tile-section', () => toggleTileMap()) },
     city: { open: () => ensureOpen('city-section', () => toggleCityMap()) },
@@ -81,6 +82,7 @@ const MAP_LAYERS = [
     { key: 'city',         label: 'City' },
     { key: 'tile',         label: 'Tile' },
     { key: 'park',         label: 'Park' },
+    { key: 'ecoregion',    label: 'Ecoregion' },
     { key: 'mountain',     label: 'Mountain' },
     { key: 'pass',         label: 'Pass' },
     { key: 'trail',        label: 'Trail' },
@@ -171,7 +173,7 @@ function pollHomeStats() {
     if (typeof fetchHunterSummary !== 'function') return;
     fetchHunterSummary().then(summary => {
         if (!summary) return;
-        ['tile', 'county', 'city', 'metro', 'park', 'mountain', 'pass', 'trail']
+        ['tile', 'county', 'city', 'metro', 'park', 'ecoregion', 'mountain', 'pass', 'trail']
             .forEach(key => setStat(`stat-${key}`, hunterStatText(key, summary)));
         // The pipeline's own count (above) wins once it lands.
         if (typeof currentTotal === 'undefined' || currentTotal === 0) {
