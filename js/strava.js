@@ -122,6 +122,7 @@ const HUNTER_SECTIONS = [
     { key: 'county',       name: 'County Hunter',   icon: '🇺🇸', panel: 'county-section',       open: () => toggleCountyMap(),    needsData: true },
     { key: 'park',         name: 'Park Hunter',     icon: '🏞️', panel: 'park-section',         open: () => toggleParkMap(),      needsData: true },
     { key: 'metro',        name: 'Metro Hunter',    icon: '🏙️', panel: 'metro-section',        open: () => toggleMetroMap(),     needsData: true },
+    { key: 'ecoregion',    name: 'Ecoregion Hunter', icon: '🌿', panel: 'ecoregion-section',   open: () => toggleEcoregionMap(), needsData: true },
     { key: 'tile',         name: 'Tile Hunter',     icon: '🔳', panel: 'tile-section',         open: () => toggleTileMap(),      needsData: true },
     { key: 'city',         name: 'City Hunter',     icon: '🛣️', panel: 'city-section',         open: () => toggleCityMap(),      needsData: true, blurb: 'Street completion' },
     { key: 'mountain',     name: 'Mountain Hunter', icon: '⛰️' },
@@ -172,6 +173,8 @@ function hunterStatText(key, s) {
             return s.park ? `${n(s.park.visited)} federal lands` : '';
         case 'metro':
             return s.metro ? `${n(s.metro.visited)} / ${n(s.metro.total)} metros` : '';
+        case 'ecoregion':
+            return s.ecoregion ? `${n(s.ecoregion.visited)} / ${n(s.ecoregion.total)} ecoregions` : '';
         case 'tile':
             if (!s.tile) return '';
             return `${n(s.tile.visited)} tiles` + (s.tile.maxSquare > 1 ? ` · ${s.tile.maxSquare}×${s.tile.maxSquare}` : '');
@@ -3214,6 +3217,652 @@ function setMetroStatus(msg) {
     if (el) el.textContent = msg;
 }
 
+// ── Ecoregion Hunter ──────────────────────────────────────────────────────────
+//
+// EPA Level IV ecoregions (lower 48 only) reached by any activity. A Level IV
+// is the unit of discovery; Level III progress is derived from it (every
+// Level IV code starts with its Level III code: "21a" → "21"). Boundaries are
+// the same TopoJSON as us-ecoregions.html, fetched with the TopoJSON decoder
+// and the shared ecoregion colours (js/eco-colors.js) on first open.
+//
+// Detection walks every route point, filling gaps longer than ECO_STEP_DEG so
+// narrow regions between two summary-polyline points still count, rounds each
+// point to ~100 m and locates every distinct cell once. Activities go
+// oldest-first, so the first activity to reach a region is its discovery.
+
+const ECO_TOPOJSON_URL = '/data/us-ecoregions.topojson';
+const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
+const ECO_COLORS_JS    = '/js/eco-colors.js';
+const ECO_L4_TOTAL = 967;   // Level IV ecoregions in the file (worker SUMMARY_TOTALS mirrors these)
+const ECO_L3_TOTAL = 85;
+const ECO_L1_TOTAL = 10;
+// Bump when detection changes: a saved blob from another version is discarded
+// and every activity is scanned again.
+const ECO_DETECT_VERSION = 1;
+const ECO_CELL_PER_DEG = 1000;  // points rounded to 0.001° (~100 m) before lookup
+const ECO_CELL_ROW = 360001;    // numeric cell key = (lat + 90°) row × this + (lng + 180°) column
+const ECO_STEP_DEG = 0.002;     // fill gaps between route points every ~200 m
+const ECO_MAX_GAP_DEG = 1;      // …but not across GPS jumps this long
+const ECO_GOLD = '#FFD700';
+
+let ecoMap = null;
+let ecoMapInitialized = false;
+let ecoMapIsDark = true;
+let ecoGeoJsonLayer = null;
+let ecoFocusLayer = null;
+let ecoFeatures = [];            // decoded Level IV features (with geometry)
+let ecoL4Info = {};              // L4 code → { code, name, l3 }
+let ecoL3Info = {};              // L3 code → { code, name, biome, l4s: [L4 codes] }
+let visitedEcoCodes = new Set();
+let ecoDiscoveries = {};         // L4 code → { actId, actName, date }
+let ecoProcessedIds = new Set();
+const ecoExpandedL3 = new Set(); // Level III rows opened in the progress table
+
+// Inject a <script> once and resolve when it has run.
+const scriptLoads = {};
+function loadScriptOnce(src) {
+    if (!scriptLoads[src]) {
+        scriptLoads[src] = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => { delete scriptLoads[src]; reject(new Error(`Failed to load ${src}`)); };
+            document.head.appendChild(s);
+        });
+    }
+    return scriptLoads[src];
+}
+
+function escapeEcoHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// "NORTH AMERICAN DESERTS" → "North American Deserts"
+function ecoTitleCase(s) {
+    return String(s || '').toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+}
+
+function ecoL3Of(l4Code) {
+    const m = /^\d+/.exec(String(l4Code || ''));
+    return m ? m[0] : '';
+}
+
+function toggleEcoregionMap() {
+    const section = document.getElementById('ecoregion-section');
+    const btn = document.getElementById('ecoregion-toggle-btn');
+    if (!section) return;
+    const opening = section.style.display === 'none';
+    section.style.display = opening ? 'block' : 'none';
+    if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
+    if (opening && !ecoMapInitialized) {
+        initEcoregionMap();
+    } else if (opening && ecoMap) {
+        setTimeout(() => ecoMap.invalidateSize(), 50);
+    }
+}
+
+async function initEcoregionMap() {
+    // Flag up front so a quick hide/show while loading doesn't start a second run.
+    ecoMapInitialized = true;
+    setEcoStatus('Loading ecoregion boundaries…');
+    dbg('Ecoregion Hunter: loading TopoJSON + saved data…');
+
+    let topo, saved;
+    try {
+        [topo, saved] = await Promise.all([
+            fetch(ECO_TOPOJSON_URL).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            }),
+            // A worker without the endpoints yet (or offline) just means no saved
+            // progress: detect from scratch and let the save fail quietly.
+            fetch(`${WORKER_URL}/ecoregions/all`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+            loadScriptOnce(ECO_TOPOJSON_LIB),
+            loadScriptOnce(ECO_COLORS_JS),
+        ]);
+    } catch (err) {
+        dbg(`Ecoregion Hunter load error: ${err.message}`);
+        setEcoStatus('Failed to load ecoregion data.');
+        ecoMapInitialized = false;
+        return;
+    }
+
+    const objKey = Object.keys(topo.objects)[0];
+    const geojson = topojson.feature(topo, topo.objects[objKey]);
+    // A handful of features in the EPA file have no geometry; their codes all
+    // have other polygons, so dropping them loses nothing.
+    geojson.features = geojson.features.filter(f => f.geometry);
+    ecoFeatures = geojson.features;
+    buildEcoInfo(ecoFeatures);
+
+    if (saved && saved.v === ECO_DETECT_VERSION) {
+        visitedEcoCodes = new Set((saved.codes || []).filter(c => ecoL4Info[c]));
+        ecoProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
+        ecoDiscoveries  = saved.discoveries || {};
+    } else {
+        if (saved && (saved.codes || []).length) dbg('Ecoregion Hunter: saved data is from another detection version — rescanning');
+        visitedEcoCodes = new Set();
+        ecoProcessedIds = new Set();
+        ecoDiscoveries  = {};
+    }
+    dbg(`Ecoregion cache: ${visitedEcoCodes.size} Level IV, ${ecoProcessedIds.size} processed activities`);
+
+    const unprocessed = currentSlim.filter(a => a.i && a.p && !ecoProcessedIds.has(a.i))
+        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+    dbg(`Ecoregion detection: ${unprocessed.length} new activities to process`);
+
+    if (unprocessed.length > 0) {
+        const polys = preprocessEcoregions(ecoFeatures);
+        const index = buildSpatialIndex(polys);
+        const { newCodes, newDiscoveries } = await detectEcoregionsAsync(unprocessed, index);
+        newCodes.forEach(c => visitedEcoCodes.add(c));
+        Object.assign(ecoDiscoveries, newDiscoveries);
+        unprocessed.forEach(a => ecoProcessedIds.add(a.i));
+        dbg(`Ecoregion detection done: +${newCodes.size} new (${visitedEcoCodes.size} total)`);
+        await saveEcoregionsToWorker();
+    }
+
+    ecoMap = L.map('ecoregion-map', {
+        tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    }).setView([38.5, -96], 4);
+
+    ecoMapIsDark = true;  // setupStravaBasemaps defaults to the dark basemap
+    setupStravaBasemaps(ecoMap, {
+        onThemeChange: (isDark) => { ecoMapIsDark = isDark; restyleEcoregions(); },
+    });
+    new LocationControl().addTo(ecoMap);
+
+    // Polygons and routes share one canvas: with two, the top canvas takes
+    // every click and the other layer's popups never open. Polygons go in
+    // first so routes draw (and hit-test) on top of them. Half a screen of
+    // padding keeps the ~5,800 polygons drawn while dragging (Leaflet's
+    // default 10% leaves the leading edge blank).
+    const renderer = L.canvas({ padding: 0.5 });
+    renderEcoregionMap(geojson, renderer);
+    setEcoStatus('Loading activity routes…');
+    await addPolylineOverlay(ecoMap, { interactive: true, renderer });
+
+    renderEcoregionStats();
+    renderEcoregionLegend();
+    renderEcoL3Progress();
+    renderRecentEcoregions();
+
+    setEcoStatus('');
+    dbg(`Ecoregion map rendered: ${visitedEcoCodes.size} visited`);
+}
+
+function buildEcoInfo(features) {
+    ecoL4Info = {};
+    ecoL3Info = {};
+    for (const f of features) {
+        const p = f.properties;
+        if (!ecoL4Info[p.US_L4CODE]) {
+            ecoL4Info[p.US_L4CODE] = { code: p.US_L4CODE, name: p.US_L4NAME, l3: p.US_L3CODE };
+        }
+        let l3 = ecoL3Info[p.US_L3CODE];
+        if (!l3) {
+            l3 = ecoL3Info[p.US_L3CODE] = { code: p.US_L3CODE, name: p.US_L3NAME, biome: ecoTitleCase(p.NA_L1NAME), l4s: [] };
+        }
+        if (!l3.l4s.includes(p.US_L4CODE)) l3.l4s.push(p.US_L4CODE);
+    }
+    for (const l3 of Object.values(ecoL3Info)) {
+        l3.l4s.sort((a, b) => ecoL4Index(a) - ecoL4Index(b));
+    }
+}
+
+// Visited Level IVs grouped by Level III.
+function ecoVisitedByL3() {
+    const byL3 = {};
+    for (const code of visitedEcoCodes) {
+        const l3 = ecoL3Of(code);
+        byL3[l3] = (byL3[l3] || 0) + 1;
+    }
+    return byL3;
+}
+
+function ecoCompletedL3() {
+    const byL3 = ecoVisitedByL3();
+    return new Set(Object.keys(byL3).filter(l3 => ecoL3Info[l3] && byL3[l3] >= ecoL3Info[l3].l4s.length));
+}
+
+// ── Ecoregion detection ───────────────────────────────────────────────────────
+
+// One entry per polygon part (outer ring + holes), each with its own bbox, so
+// a multi-part region far across the map doesn't widen the candidate lists.
+function preprocessEcoregions(features) {
+    const polys = [];
+    for (const f of features) {
+        const g = f.geometry;
+        const parts = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const rings of parts) {
+            if (!rings.length) continue;
+            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            for (const [lng, lat] of rings[0]) {
+                if (lng < minLng) minLng = lng;
+                if (lng > maxLng) maxLng = lng;
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+            }
+            polys.push({ code: f.properties.US_L4CODE, rings, bbox: { minLng, maxLng, minLat, maxLat } });
+        }
+    }
+    return polys;
+}
+
+// Point in an ecoregion polygon part, respecting holes (regions often sit
+// inside one another).
+function ecoPolyContains(poly, lat, lng) {
+    const b = poly.bbox;
+    if (lng < b.minLng || lng > b.maxLng || lat < b.minLat || lat > b.maxLat) return false;
+    if (!pointInRing(lat, lng, poly.rings[0])) return false;
+    for (let k = 1; k < poly.rings.length; k++) {
+        if (pointInRing(lat, lng, poly.rings[k])) return false;
+    }
+    return true;
+}
+
+async function detectEcoregionsAsync(activities, index) {
+    // Distinct ~100 m cells → index of the first (oldest) activity reaching it.
+    // Map keeps insertion order, so cells come back oldest-activity-first.
+    const firstAct = new Map();
+    const addCell = (lat, lng, ai) => {
+        // Lower 48 bounds (the ecoregion data covers nothing outside them)
+        if (lat < 24 || lat > 50 || lng < -125.5 || lng > -66.5) return;
+        const key = (Math.round(lat * ECO_CELL_PER_DEG) + 90 * ECO_CELL_PER_DEG) * ECO_CELL_ROW
+                  + (Math.round(lng * ECO_CELL_PER_DEG) + 180 * ECO_CELL_PER_DEG);
+        if (!firstAct.has(key)) firstAct.set(key, ai);
+    };
+
+    for (let ai = 0; ai < activities.length; ai++) {
+        if (ai % 50 === 0) {
+            setEcoStatus(`Reading routes… ${ai} / ${activities.length}`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const points = decodePolyline(activities[ai].p);
+        let prevLat = null, prevLng = null;
+        for (const [lat, lng] of points) {
+            if (prevLat !== null) {
+                const dLat = lat - prevLat, dLng = lng - prevLng;
+                const span = Math.max(Math.abs(dLat), Math.abs(dLng));
+                if (span > ECO_STEP_DEG && span < ECO_MAX_GAP_DEG) {
+                    const steps = Math.ceil(span / ECO_STEP_DEG);
+                    for (let s = 1; s < steps; s++) addCell(prevLat + dLat * s / steps, prevLng + dLng * s / steps, ai);
+                }
+            }
+            addCell(lat, lng, ai);
+            prevLat = lat;
+            prevLng = lng;
+        }
+    }
+
+    const newCodes = new Set();
+    const newDiscoveries = {};
+    let last = null;  // consecutive cells are usually in the same region — test it first
+    let n = 0;
+    for (const [key, ai] of firstAct) {
+        if (++n % 20000 === 0) {
+            setEcoStatus(`Locating ecoregions… ${Math.round((n / firstAct.size) * 100)}%`);
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const lat = (Math.floor(key / ECO_CELL_ROW) - 90 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
+        const lng = ((key % ECO_CELL_ROW) - 180 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
+        let hit = null;
+        if (last && ecoPolyContains(last, lat, lng)) {
+            hit = last;
+        } else {
+            const candidates = index[`${Math.floor(lng)},${Math.floor(lat)}`];
+            if (candidates) hit = candidates.find(p => ecoPolyContains(p, lat, lng)) || null;
+        }
+        if (!hit) continue;
+        last = hit;
+        if (visitedEcoCodes.has(hit.code) || newCodes.has(hit.code)) continue;
+        const act = activities[ai];
+        newCodes.add(hit.code);
+        newDiscoveries[hit.code] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
+    }
+    return { newCodes, newDiscoveries };
+}
+
+// ── Ecoregion rendering ───────────────────────────────────────────────────────
+
+function ecoFeatureStyle(feature, completedL3) {
+    const p = feature.properties;
+    if (!visitedEcoCodes.has(p.US_L4CODE)) return faintPolyStyle(ecoMapIsDark);
+    const fill = ecoL4Color(p.US_L4CODE, p.US_L3CODE);
+    return completedL3.has(p.US_L3CODE)
+        ? { fillColor: fill, fillOpacity: 0.7, color: ECO_GOLD, weight: 1.2, opacity: 0.9 }
+        : { fillColor: fill, fillOpacity: 0.6, color: fill, weight: 0.6, opacity: 0.9 };
+}
+
+function restyleEcoregions() {
+    if (!ecoGeoJsonLayer) return;
+    const completedL3 = ecoCompletedL3();
+    ecoGeoJsonLayer.setStyle(f => ecoFeatureStyle(f, completedL3));
+}
+
+function ecoPopupHtml(feature) {
+    const p = feature.properties;
+    const l3 = ecoL3Info[p.US_L3CODE];
+    const visitedInL3 = l3 ? l3.l4s.filter(c => visitedEcoCodes.has(c)).length : 0;
+    const disc = ecoDiscoveries[p.US_L4CODE];
+    const visited = visitedEcoCodes.has(p.US_L4CODE);
+    const status = visited
+        ? (disc
+            ? `<div class="activity-popup-date">First visited: ${escapeEcoHtml(disc.date ? formatActivityDate(disc.date) : '?')}<br>${disc.actId
+                ? `<a class="activity-popup-link" href="https://www.strava.com/activities/${encodeURIComponent(disc.actId)}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`
+                : escapeEcoHtml(disc.actName)}</div>`
+            : '<div class="activity-popup-date">Visited</div>')
+        : '<div class="activity-popup-date" style="color:#888">Not yet visited</div>';
+    const tagColor = visited ? ecoL4Color(p.US_L4CODE, p.US_L3CODE) : '#aaa';
+    return `
+        <div class="activity-popup-inner">
+            <div class="activity-popup-type" style="color:${tagColor}">${escapeEcoHtml(p.US_L4CODE)} · Level IV</div>
+            <div class="activity-popup-name">${escapeEcoHtml(p.US_L4NAME)}</div>
+            <div class="activity-popup-date">${escapeEcoHtml(p.US_L3CODE)} ${escapeEcoHtml(p.US_L3NAME)} — ${visitedInL3} / ${l3 ? l3.l4s.length : '?'} visited</div>
+            ${status}
+        </div>`;
+}
+
+function renderEcoregionMap(geojson, renderer) {
+    const completedL3 = ecoCompletedL3();
+    ecoGeoJsonLayer = L.geoJSON(geojson, {
+        renderer,
+        style: f => ecoFeatureStyle(f, completedL3),
+        onEachFeature: (feature, layer) => {
+            layer.bindPopup(() => ecoPopupHtml(feature), { className: 'activity-popup' });
+        },
+    }).addTo(ecoMap);
+}
+
+function renderEcoregionStats() {
+    const el = document.getElementById('ecoregion-stats-bar');
+    if (!el) return;
+    const byL3 = ecoVisitedByL3();
+    const l3Visited = Object.keys(byL3).filter(l3 => ecoL3Info[l3]).length;
+    const l3Complete = ecoCompletedL3().size;
+    const biomes = new Set(Object.keys(byL3).map(l3 => ecoL3Info[l3]?.biome).filter(Boolean)).size;
+    const pct = ((visitedEcoCodes.size / ECO_L4_TOTAL) * 100).toFixed(1);
+    el.innerHTML = `
+        <div class="county-stat-item">
+            <span class="county-stat-number">${visitedEcoCodes.size.toLocaleString()} / ${ECO_L4_TOTAL}</span>
+            <span class="county-stat-label">Level IV (${pct}%)</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${l3Visited} / ${ECO_L3_TOTAL}</span>
+            <span class="county-stat-label">Level III</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${l3Complete}</span>
+            <span class="county-stat-label">Level III Complete</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${biomes} / ${ECO_L1_TOTAL}</span>
+            <span class="county-stat-label">Biomes</span>
+        </div>`;
+}
+
+function renderEcoregionLegend() {
+    const el = document.getElementById('ecoregion-legend');
+    if (!el) return;
+    el.innerHTML = `
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:linear-gradient(135deg,#6fbf73,#d9a441,#5c8fd6)"></span>Visited (ecoregion colour)</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:transparent;border:2px solid ${ECO_GOLD}"></span>Level III complete</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35)"></span>Not yet visited</span>`;
+}
+
+// Fly to a Level III and outline it; the next pan / zoom / click clears it.
+function focusOnEcoL3(l3Code) {
+    if (!ecoMap) return;
+    clearEcoFocus();
+    const features = ecoFeatures.filter(f => f.properties.US_L3CODE === l3Code);
+    if (!features.length) return;
+    ecoFocusLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+        style: { color: '#00E5FF', weight: 2, fillOpacity: 0, opacity: 0.95 },
+        interactive: false,
+    }).addTo(ecoMap);
+    ecoMap.flyToBounds(ecoFocusLayer.getBounds(), { padding: [30, 30], duration: 0.8 });
+    ecoMap.once('moveend', () => {
+        ecoMap.on('dragstart', clearEcoFocus);
+        ecoMap.on('zoomstart', clearEcoFocus);
+        ecoMap.on('click', clearEcoFocus);
+    });
+    // On the website the map sits above the table — bring it into view.
+    const mapEl = document.getElementById('ecoregion-map');
+    if (mapEl && mapEl.getBoundingClientRect().bottom < 0) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearEcoFocus() {
+    if (!ecoFocusLayer || !ecoMap) return;
+    ecoMap.off('dragstart', clearEcoFocus);
+    ecoMap.off('zoomstart', clearEcoFocus);
+    ecoMap.off('click', clearEcoFocus);
+    ecoMap.removeLayer(ecoFocusLayer);
+    ecoFocusLayer = null;
+}
+
+// Sortable header row shared by the two ecoregion tables.
+function ecoTableHead(headers, sortState, rerender, ascCols) {
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    headers.forEach(({ label, col, center }) => {
+        const th = document.createElement('th');
+        const isActive = sortState.col === col;
+        th.classList.add('sortable');
+        if (isActive) th.classList.add('sort-active');
+        if (center) th.style.textAlign = 'center';
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.appendChild(document.createTextNode(label));
+        th.appendChild(indicator);
+        th.addEventListener('click', () => {
+            if (sortState.col === col) {
+                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.col = col;
+                sortState.dir = ascCols.includes(col) ? 'asc' : 'desc';
+            }
+            rerender();
+        });
+        tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    return thead;
+}
+
+const ecoL3SortState = { col: 'pct', dir: 'desc' };
+
+// Every Level III with its Level IV progress. Clicking a row focuses the map
+// on it and lists its Level IVs — visited and still to go.
+function renderEcoL3Progress() {
+    const el = document.getElementById('ecoregion-l3-table');
+    if (!el) return;
+    const byL3 = ecoVisitedByL3();
+    const rows = Object.values(ecoL3Info).map(l3 => {
+        const visited = byL3[l3.code] || 0;
+        return { ...l3, visited, total: l3.l4s.length, pct: visited / l3.l4s.length };
+    });
+    const dir = ecoL3SortState.dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+        switch (ecoL3SortState.col) {
+            case 'name':    return dir * a.name.localeCompare(b.name);
+            case 'biome':   return dir * a.biome.localeCompare(b.biome) || a.name.localeCompare(b.name);
+            case 'visited': return dir * (a.visited - b.visited) || a.name.localeCompare(b.name);
+            case 'total':   return dir * (a.total - b.total) || a.name.localeCompare(b.name);
+            case 'pct':     return dir * (a.pct - b.pct) || dir * (a.visited - b.visited) || a.name.localeCompare(b.name);
+            default:        return 0;
+        }
+    });
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    table.appendChild(ecoTableHead([
+        { label: 'Level III', col: 'name' },
+        { label: 'Biome', col: 'biome' },
+        { label: 'Visited', col: 'visited', center: true },
+        { label: 'Total', col: 'total', center: true },
+        { label: '%', col: 'pct', center: true },
+    ], ecoL3SortState, renderEcoL3Progress, ['name', 'biome']));
+
+    const tbody = document.createElement('tbody');
+    for (const r of rows) {
+        const complete = r.visited === r.total;
+        const open = ecoExpandedL3.has(r.code);
+        const tr = document.createElement('tr');
+        tr.className = 'state-row';
+        tr.title = 'Show this region on the map and list its Level IV ecoregions';
+        tr.innerHTML = `
+            <td><span class="eco-swatch" style="background:${ecoL3Color(r.code)}"></span>${open ? '▾' : '▸'} ${escapeEcoHtml(r.code)} ${escapeEcoHtml(r.name)}${complete ? ` <span style="color:${ECO_GOLD}">★</span>` : ''}</td>
+            <td>${escapeEcoHtml(r.biome)}</td>
+            <td style="text-align:center">${r.visited}</td>
+            <td style="text-align:center">${r.total}</td>
+            <td style="text-align:center">${(r.pct * 100).toFixed(0)}%</td>`;
+        tr.addEventListener('click', () => {
+            if (ecoExpandedL3.has(r.code)) {
+                ecoExpandedL3.delete(r.code);
+            } else {
+                ecoExpandedL3.add(r.code);
+                focusOnEcoL3(r.code);
+            }
+            renderEcoL3Progress();
+        });
+        tbody.appendChild(tr);
+
+        if (open) {
+            const detail = document.createElement('tr');
+            detail.className = 'eco-l4-row';
+            const chips = r.l4s.map(code => {
+                const info = ecoL4Info[code];
+                const done = visitedEcoCodes.has(code);
+                const style = done ? ` style="border-color:${ecoL4Color(code, r.code)}"` : '';
+                return `<span class="eco-l4-chip${done ? ' visited' : ''}"${style}>${done ? '✓' : '○'} ${escapeEcoHtml(code)} ${escapeEcoHtml(info?.name)}</span>`;
+            }).join('');
+            detail.innerHTML = `<td colspan="5"><div class="eco-l4-chips">${chips}</div></td>`;
+            tbody.appendChild(detail);
+        }
+    }
+    table.appendChild(tbody);
+
+    // 85 rows: starts collapsed, then keeps whatever state the user left it in.
+    const body = el.querySelector('.collapsible-body');
+    const wasOpen = body ? body.style.display !== 'none' : false;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    const l3Visited = rows.filter(r => r.visited > 0).length;
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Level III Progress (${l3Visited} / ${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+const ecoRecentSortState = { col: 'date', dir: 'desc' };
+
+function renderRecentEcoregions() {
+    const el = document.getElementById('ecoregion-recent-table');
+    if (!el) return;
+    let rows = Object.entries(ecoDiscoveries)
+        .filter(([code]) => ecoL4Info[code] && visitedEcoCodes.has(code))
+        .map(([code, disc]) => ({ code, disc, info: ecoL4Info[code], l3: ecoL3Info[ecoL4Info[code].l3] }));
+
+    const dir = ecoRecentSortState.dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+        switch (ecoRecentSortState.col) {
+            case 'name':     return dir * a.info.name.localeCompare(b.info.name);
+            case 'l3':       return dir * (a.l3?.name || '').localeCompare(b.l3?.name || '');
+            case 'activity': return dir * (a.disc.actName || '').localeCompare(b.disc.actName || '');
+            case 'date': {
+                const dateCmp = (a.disc.date || '').localeCompare(b.disc.date || '');
+                if (dateCmp !== 0) return dir * dateCmp;
+                return dir * ((a.disc.actId || 0) - (b.disc.actId || 0));
+            }
+            default: return 0;
+        }
+    });
+    rows = rows.slice(0, 25);
+    if (!rows.length) { el.innerHTML = ''; return; }
+
+    const table = document.createElement('table');
+    table.className = 'travel-table';
+    table.appendChild(ecoTableHead([
+        { label: 'Ecoregion', col: 'name' },
+        { label: 'Level III', col: 'l3' },
+        { label: 'Discovered By', col: 'activity' },
+        { label: 'Date', col: 'date' },
+    ], ecoRecentSortState, renderRecentEcoregions, ['name', 'l3']));
+
+    const tbody = document.createElement('tbody');
+    for (const { code, disc, info, l3 } of rows) {
+        const href = disc.actId ? `https://www.strava.com/activities/${encodeURIComponent(disc.actId)}` : null;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><span class="eco-swatch" style="background:${ecoL4Color(code, info.l3)}"></span>${escapeEcoHtml(code)} ${escapeEcoHtml(info.name)}</td>
+            <td>${escapeEcoHtml(l3?.name || info.l3)}</td>
+            <td>${href
+                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`
+                : escapeEcoHtml(disc.actName || '—')}</td>
+            <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const wasOpen = el.querySelector('.collapsible-body')?.style.display !== 'none';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    initScrollHint(wrapper);
+    el.innerHTML = '';
+    el.appendChild(makeCollapsible(`Recently Discovered (${rows.length})`, wrapper, { collapsed: !wasOpen }));
+}
+
+async function saveEcoregionsToWorker() {
+    try {
+        const res = await fetch(`${WORKER_URL}/ecoregions/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                v:            ECO_DETECT_VERSION,
+                codes:        [...visitedEcoCodes],
+                processedIds: [...ecoProcessedIds],
+                discoveries:  ecoDiscoveries,
+            }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        dbg(`Ecoregion data saved: ${data.ecoregions} Level IV`);
+    } catch (err) {
+        dbg(`Ecoregion save failed: ${err.message}`);
+    }
+}
+
+async function resetEcoregionData() {
+    if (!confirm('Clear all ecoregion detection data from the server? This will force a full re-detection on next Ecoregion Hunter open.')) return;
+    try {
+        await adminPost('/ecoregions/reset');
+        // Drop the map so the next open builds it (and re-detects) from scratch.
+        clearEcoFocus();
+        if (ecoMap) { ecoMap.remove(); ecoMap = null; }
+        ecoGeoJsonLayer = null;
+        ecoMapInitialized = false;
+        const section = document.getElementById('ecoregion-section');
+        const btn = document.getElementById('ecoregion-toggle-btn');
+        if (section) section.style.display = 'none';
+        if (btn) btn.textContent = 'Show map';
+        visitedEcoCodes.clear();
+        ecoProcessedIds.clear();
+        ecoDiscoveries = {};
+        dbg('Ecoregion data reset. Reopen Ecoregion Hunter to re-detect.');
+    } catch (err) {
+        dbg(`Ecoregion reset failed: ${err.message}`);
+    }
+}
+
+function setEcoStatus(msg) {
+    const el = document.getElementById('ecoregion-status');
+    if (el) el.textContent = msg;
+}
+
 // ── Map ───────────────────────────────────────────────────────────────────────
 
 const GROUP_COLORS = {
@@ -3250,14 +3899,17 @@ async function loadPolylines() {
 //   interactive — if true, adds popups + hover highlight (like Activity Map)
 //   filter      — (slim) => boolean; omit to draw every activity. Region maps
 //                 use it to draw only the routes inside the country on screen.
+//   renderer    — canvas renderer to draw into; omit for a new one. A map whose
+//                 other clickable layers are on canvas passes its own, since
+//                 only the topmost canvas receives clicks.
 // Returns the array of created polyline layers so callers can restyle them
 // later (e.g. swap a fixed white overlay to dark when the basemap goes light).
-async function addPolylineOverlay(targetMap, { color = null, interactive = false, filter = null } = {}) {
+async function addPolylineOverlay(targetMap, { color = null, interactive = false, filter = null, renderer = null } = {}) {
     let polylines;
     try { polylines = await loadPolylines(); }
     catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return []; }
 
-    const renderer = L.canvas();
+    renderer = renderer || L.canvas();
     const layers = [];
     polylines.forEach((encoded, i) => {
         if (!encoded) return;
@@ -8184,6 +8836,7 @@ function renderDebugPanel() {
             <div id="dbg-action-btns" style="display:none;gap:6px" onclick="event.stopPropagation()">
                 <button class="dbg-clear" onclick="resetGeoCache()" title="Clear geocoded location data — forces full re-geocode">Reset geo cache</button>
                 <button class="dbg-clear" onclick="resetCountyData()" title="Clear county detection results — forces full re-detection">Reset counties</button>
+                <button class="dbg-clear" onclick="resetEcoregionData()" title="Clear ecoregion detection results — forces full re-detection">Reset ecoregions</button>
                 <button class="dbg-clear" onclick="resetTileData()" title="Clear tile detection results — forces full re-detection">Reset tiles</button>
                 <button class="dbg-clear" onclick="resetCityData()" title="Clear city road cache from localStorage — forces fresh Overpass fetch">Reset city</button>
                 <button class="dbg-clear" onclick="resetTrailData()" title="Clear trail network cache from localStorage — forces fresh Overpass fetch">Reset trails</button>

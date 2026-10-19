@@ -272,6 +272,7 @@
 #county-map,
 #park-map,
 #metro-map,
+#ecoregion-map,
 .region-map {
     width: 100%;
     height: 520px;
@@ -710,6 +711,44 @@
 
 .state-row:hover {
     background-color: rgba(76,175,80,0.12);
+}
+
+/* Ecoregion Hunter: colour swatch beside a region name, and the Level IV
+   chips listed under an opened Level III row (visited ones bordered in the
+   region's own colour, remaining ones dimmed). */
+.eco-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: baseline;
+}
+
+.eco-l4-row > td {
+    white-space: normal !important;
+    background: rgba(255,255,255,0.02);
+}
+
+.eco-l4-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 0 4px;
+}
+
+.eco-l4-chip {
+    font-size: 0.78rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+}
+
+.eco-l4-chip.visited {
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.06);
 }
 
 /* Mountain Hunter map legend → clickable filter buttons */
@@ -1352,6 +1391,7 @@ a.cache-refresh-btn {
     #county-map,
     #park-map,
     #metro-map,
+    #ecoregion-map,
     #tile-map,
     #city-map,
     #trail-map,

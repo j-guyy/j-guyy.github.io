@@ -43,6 +43,7 @@ const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY       = 'strava_parks';
 const STATE_PARKS_KEY = 'strava_state_parks';
 const METRO_HUNTER_KEY = 'strava_metro_hunter';
+const ECOREGIONS_KEY  = 'strava_ecoregions';
 const PASSES_KEY      = 'strava_passes';
 const TILE_STATS_KEY = 'strava_tile_stats';   // { visited, maxCluster, maxSquare } saved with the tiles
 const PROGRESS_KEY   = 'strava_progress';     // City / Trail Hunter completion summaries
@@ -302,6 +303,28 @@ export default {
                 return json({ ok: true });
             }
 
+            // ── Ecoregion Hunter — EPA Level IV ecoregions ──
+            // Data: { v, codes: [L4 code], processedIds: [...], discoveries: { code: { actId, actName, date } } }
+
+            if (path === '/ecoregions/all') {
+                const data = await env.STRAVA_DATA.get(ECOREGIONS_KEY, 'json');
+                return json(data || { codes: [], processedIds: [], discoveries: {} });
+            }
+            if (path === '/ecoregions/save' && request.method === 'POST') {
+                const data = await request.json();
+                if (!data || !Array.isArray(data.codes) || !Array.isArray(data.processedIds)
+                    || typeof data.discoveries !== 'object' || data.discoveries === null) {
+                    return json({ error: 'Expected { codes: [], processedIds: [], discoveries: {} }' }, 400);
+                }
+                await env.STRAVA_DATA.put(ECOREGIONS_KEY, JSON.stringify(data));
+                return json({ ok: true, ecoregions: data.codes.length });
+            }
+            if (path === '/ecoregions/reset' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
+                await env.STRAVA_DATA.delete(ECOREGIONS_KEY);
+                return json({ ok: true });
+            }
+
             // ── Pass Hunter — Colorado mountain pass crossings (cycling) ──
             // Data: { ids: [...], processedIds: [...], discoveries: { passId: { actId, actName, date } } }
 
@@ -427,6 +450,7 @@ export default {
 //     county:   { visited, total },
 //     park:     { visited, total, stateParks, stateParksTotal },
 //     metro:    { visited, total },
+//     ecoregion: { visited, total, l3Visited, l3Total },
 //     tile:     { visited, maxCluster, maxSquare },
 //     mountain: { summited, summits },
 //     pass:     { climbed, total },
@@ -434,8 +458,8 @@ export default {
 //     trail: { … same … } | null }
 //
 // Totals mirror the constants in js/strava.js (county stats bar, FEDERAL_PARK_TOTAL,
-// STATE_PARK_TOTAL, METRO_TOTAL); keep them in step.
-const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 200 };
+// STATE_PARK_TOTAL, METRO_TOTAL, ECO_L4_TOTAL / ECO_L3_TOTAL); keep them in step.
+const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 200, ecoL4: 967, ecoL3: 85 };
 
 // Browsers/CDNs may reuse a summary for a few minutes — the numbers only move
 // when someone opens a hunter and it saves new detections.
@@ -443,7 +467,7 @@ const SUMMARY_CACHE_SECONDS = 300;
 
 async function handleSummary(env) {
     const kv = env.STRAVA_DATA;
-    const [activitiesText, counties, parks, stateParks, metros, tileStats, summits, hidden, passes, progress] =
+    const [activitiesText, counties, parks, stateParks, metros, tileStats, summits, hidden, passes, progress, ecoregions] =
         await Promise.all([
             kv.get(ACTIVITIES_KEY, 'text'),
             kv.get(COUNTIES_KEY, 'json'),
@@ -455,6 +479,7 @@ async function handleSummary(env) {
             kv.get(HIDDEN_PEAKS_KEY, 'json'),
             kv.get(PASSES_KEY, 'json'),
             kv.get(PROGRESS_KEY, 'json'),
+            kv.get(ECOREGIONS_KEY, 'json'),
         ]);
 
     // Each hunter is derived independently so one malformed blob can't blank
@@ -473,6 +498,7 @@ async function handleSummary(env) {
             stateParksTotal: SUMMARY_TOTALS.stateParks,
         } : null,
         metro: metros ? { visited: count(metros.ids), total: SUMMARY_TOTALS.metros } : null,
+        ecoregion: ecoregions ? safe(() => summarizeEcoregions(ecoregions.codes)) : null,
         tile: await safeAsync(() => summarizeTileStats(env, tileStats)),
         mountain: summits ? safe(() => summarizeSummits(summits, hidden)) : null,
         pass: passes ? {
@@ -484,6 +510,14 @@ async function handleSummary(env) {
     };
 
     return json(summary, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+// Every Level IV code starts with its Level III code ("21a" → "21"), so the
+// Level III count needs no boundary data.
+function summarizeEcoregions(codes) {
+    const l4 = Array.isArray(codes) ? codes.filter(c => typeof c === 'string') : [];
+    const l3 = new Set(l4.map(c => (/^\d+/.exec(c) || [''])[0]).filter(Boolean));
+    return { visited: l4.length, total: SUMMARY_TOTALS.ecoL4, l3Visited: l3.size, l3Total: SUMMARY_TOTALS.ecoL3 };
 }
 
 async function safeAsync(fn) {
@@ -992,7 +1026,7 @@ function handleSyncStream(env) {
 // against the freshly-synced activity names, keyed by activity id, and rewrite
 // the blob only if something changed. This couples the worker to the discovery
 // shapes the client writes:
-//   counties/parks/state-parks/metro-hunter/passes → { discoveries: { key: { actId, actName, … } } }
+//   counties/parks/state-parks/metro-hunter/ecoregions/passes → { discoveries: { key: { actId, actName, … } } }
 //   summits → { visits: { peakId: [ { actId, actName, … } ] } }
 async function refreshAttribution(env, nameById) {
     const apply = (entry) => {
@@ -1004,7 +1038,7 @@ async function refreshAttribution(env, nameById) {
         return false;
     };
 
-    const flatKeys = [COUNTIES_KEY, PARKS_KEY, STATE_PARKS_KEY, METRO_HUNTER_KEY, PASSES_KEY];
+    const flatKeys = [COUNTIES_KEY, PARKS_KEY, STATE_PARKS_KEY, METRO_HUNTER_KEY, ECOREGIONS_KEY, PASSES_KEY];
     for (const key of flatKeys) {
         const blob = await env.STRAVA_DATA.get(key, 'json');
         if (!blob || !blob.discoveries) continue;
