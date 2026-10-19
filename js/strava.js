@@ -3240,8 +3240,8 @@ const ECO_AK_URL       = '/data/ak-ecoregions.geojson';
 const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
 const ECO_COLORS_JS    = '/js/eco-colors.js';
 // Bump when detection changes: a saved blob from another version is discarded
-// and every activity is scanned again.
-const ECO_DETECT_VERSION = 1;
+// and every activity is scanned again. v2 records patches (see ecoPatchFirst).
+const ECO_DETECT_VERSION = 2;
 const ECO_CELL_PER_DEG = 1000;  // points rounded to 0.001° (~100 m) before lookup
 // Numeric cell key = (lat + 90°) row × ECO_CELL_ROW + (lng + 360°) column. The
 // column offset is a full 360° because shifted Aleutian longitudes go below
@@ -3264,12 +3264,19 @@ let ecoMapInitialized = false;
 let ecoMapIsDark = true;
 let ecoGeoJsonLayer = null;
 let ecoFocusLayer = null;
-let ecoFeatures = [];            // decoded Level IV features (with geometry)
+// One feature per patch: a single polygon of a region. Many regions are split
+// into separate pieces (58j Upper Montane/Alpine Zone is 84 summit areas), so
+// a region counts as visited once any piece is, but the map only fills the
+// pieces a route actually entered. A patch's id is its index here, which is
+// stable while the boundary files are unchanged (the saved blob records
+// patchCount and is discarded if it no longer matches).
+let ecoFeatures = [];
 let ecoL4Info = {};              // L4 code → { code, name, l3, l3Only }
-let ecoTotals = { l4: 0, l3: 0, biomes: 0 };  // counted from the loaded boundaries
+let ecoTotals = { l4: 0, l3: 0, biomes: 0, patches: 0 };  // counted from the loaded boundaries
 let ecoL3Info = {};              // L3 code → { code, name, biome, l4s: [L4 codes] }
 let visitedEcoCodes = new Set();
 let ecoDiscoveries = {};         // L4 code → { actId, actName, date }
+let ecoPatchFirst = new Map();   // patch id → id of the first activity that entered it
 let ecoProcessedIds = new Set();
 const ecoExpandedL3 = new Set(); // Level III rows opened in the progress table
 
@@ -3348,21 +3355,25 @@ async function initEcoregionMap() {
     const geojson = topojson.feature(topo, topo.objects[objKey]);
     // A handful of features in the EPA file have no geometry; their codes all
     // have other polygons, so dropping them loses nothing.
-    geojson.features = geojson.features.filter(f => f.geometry).concat(alaska.features || []);
-    ecoFeatures = geojson.features;
+    ecoFeatures = splitEcoPatches(geojson.features.filter(f => f.geometry).concat(alaska.features || []));
+    geojson.features = ecoFeatures;
     buildEcoInfo(ecoFeatures);
 
-    if (saved && saved.v === ECO_DETECT_VERSION) {
+    if (saved && saved.v === ECO_DETECT_VERSION && saved.patchCount === ecoFeatures.length) {
         visitedEcoCodes = new Set((saved.codes || []).filter(c => ecoL4Info[c]));
         ecoProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
         ecoDiscoveries  = saved.discoveries || {};
+        ecoPatchFirst   = new Map(Object.entries(saved.patches || {})
+            .map(([id, actId]) => [Number(id), actId])
+            .filter(([id]) => Number.isInteger(id) && id >= 0 && id < ecoFeatures.length));
     } else {
-        if (saved && (saved.codes || []).length) dbg('Ecoregion Hunter: saved data is from another detection version — rescanning');
+        if (saved && (saved.codes || []).length) dbg('Ecoregion Hunter: saved data is from another detection version or boundary set — rescanning');
         visitedEcoCodes = new Set();
         ecoProcessedIds = new Set();
         ecoDiscoveries  = {};
+        ecoPatchFirst   = new Map();
     }
-    dbg(`Ecoregion cache: ${visitedEcoCodes.size} Level IV, ${ecoProcessedIds.size} processed activities`);
+    dbg(`Ecoregion cache: ${visitedEcoCodes.size} Level IV, ${ecoPatchFirst.size} patches, ${ecoProcessedIds.size} processed activities`);
 
     const unprocessed = currentSlim.filter(a => a.i && a.p && !ecoProcessedIds.has(a.i))
         .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
@@ -3371,11 +3382,12 @@ async function initEcoregionMap() {
     if (unprocessed.length > 0) {
         const polys = preprocessEcoregions(ecoFeatures);
         const index = buildSpatialIndex(polys);
-        const { newCodes, newDiscoveries } = await detectEcoregionsAsync(unprocessed, index);
+        const { newCodes, newDiscoveries, newPatches } = await detectEcoregionsAsync(unprocessed, index);
         newCodes.forEach(c => visitedEcoCodes.add(c));
         Object.assign(ecoDiscoveries, newDiscoveries);
+        newPatches.forEach((actId, id) => ecoPatchFirst.set(id, actId));
         unprocessed.forEach(a => ecoProcessedIds.add(a.i));
-        dbg(`Ecoregion detection done: +${newCodes.size} new (${visitedEcoCodes.size} total)`);
+        dbg(`Ecoregion detection done: +${newCodes.size} new (${visitedEcoCodes.size} total), +${newPatches.size} patches (${ecoPatchFirst.size} total)`);
         await saveEcoregionsToWorker();
     }
 
@@ -3410,14 +3422,30 @@ async function initEcoregionMap() {
     dbg(`Ecoregion map rendered: ${visitedEcoCodes.size} visited`);
 }
 
+// One single-polygon feature per patch (the Alaska file has MultiPolygons),
+// each with its patch id as the GeoJSON feature id.
+function splitEcoPatches(features) {
+    const patches = [];
+    for (const f of features) {
+        const g = f.geometry;
+        const parts = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+        for (const rings of parts) {
+            if (!rings.length) continue;
+            patches.push({ type: 'Feature', id: patches.length, properties: f.properties, geometry: { type: 'Polygon', coordinates: rings } });
+        }
+    }
+    return patches;
+}
+
 function buildEcoInfo(features) {
     ecoL4Info = {};
     ecoL3Info = {};
     for (const f of features) {
         const p = f.properties;
         if (!ecoL4Info[p.US_L4CODE]) {
-            ecoL4Info[p.US_L4CODE] = { code: p.US_L4CODE, name: p.US_L4NAME, l3: p.US_L3CODE, l3Only: !!p.L3_ONLY };
+            ecoL4Info[p.US_L4CODE] = { code: p.US_L4CODE, name: p.US_L4NAME, l3: p.US_L3CODE, l3Only: !!p.L3_ONLY, patches: 0 };
         }
+        ecoL4Info[p.US_L4CODE].patches++;
         let l3 = ecoL3Info[p.US_L3CODE];
         if (!l3) {
             l3 = ecoL3Info[p.US_L3CODE] = { code: p.US_L3CODE, name: p.US_L3NAME, biome: ecoTitleCase(p.NA_L1NAME), alaska: !!p.L3_ONLY, l4s: [] };
@@ -3431,6 +3459,7 @@ function buildEcoInfo(features) {
         l4: Object.keys(ecoL4Info).length,
         l3: Object.keys(ecoL3Info).length,
         biomes: new Set(Object.values(ecoL3Info).map(l3 => l3.biome)).size,
+        patches: features.length,
     };
 }
 
@@ -3459,26 +3488,19 @@ function ecoCompletedL3() {
 
 // ── Ecoregion detection ───────────────────────────────────────────────────────
 
-// One entry per polygon part (outer ring + holes), each with its own bbox, so
-// a multi-part region far across the map doesn't widen the candidate lists.
-function preprocessEcoregions(features) {
-    const polys = [];
-    for (const f of features) {
-        const g = f.geometry;
-        const parts = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-        for (const rings of parts) {
-            if (!rings.length) continue;
-            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            for (const [lng, lat] of rings[0]) {
-                if (lng < minLng) minLng = lng;
-                if (lng > maxLng) maxLng = lng;
-                if (lat < minLat) minLat = lat;
-                if (lat > maxLat) maxLat = lat;
-            }
-            polys.push({ code: f.properties.US_L4CODE, rings, bbox: { minLng, maxLng, minLat, maxLat } });
+// One lookup entry per patch (outer ring + holes) with its own bbox.
+function preprocessEcoregions(patches) {
+    return patches.map(f => {
+        const rings = f.geometry.coordinates;
+        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+        for (const [lng, lat] of rings[0]) {
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
         }
-    }
-    return polys;
+        return { code: f.properties.US_L4CODE, patch: f.id, rings, bbox: { minLng, maxLng, minLat, maxLat } };
+    });
 }
 
 // Point in an ecoregion polygon part, respecting holes (regions often sit
@@ -3530,6 +3552,7 @@ async function detectEcoregionsAsync(activities, index) {
 
     const newCodes = new Set();
     const newDiscoveries = {};
+    const newPatches = new Map();  // patch id → first activity id
     let last = null;  // consecutive cells are usually in the same region — test it first
     let n = 0;
     for (const [key, ai] of firstAct) {
@@ -3548,20 +3571,27 @@ async function detectEcoregionsAsync(activities, index) {
         }
         if (!hit) continue;
         last = hit;
-        if (visitedEcoCodes.has(hit.code) || newCodes.has(hit.code)) continue;
         const act = activities[ai];
+        if (!ecoPatchFirst.has(hit.patch) && !newPatches.has(hit.patch)) newPatches.set(hit.patch, act.i);
+        if (visitedEcoCodes.has(hit.code) || newCodes.has(hit.code)) continue;
         newCodes.add(hit.code);
         newDiscoveries[hit.code] = { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' };
     }
-    return { newCodes, newDiscoveries };
+    return { newCodes, newDiscoveries, newPatches };
 }
 
 // ── Ecoregion rendering ───────────────────────────────────────────────────────
 
+// Patches you've been in are filled; other patches of a region you've reached
+// elsewhere get a dashed outline in the region's colour; untouched regions
+// stay faint.
 function ecoFeatureStyle(feature, completedL3) {
     const p = feature.properties;
     if (!visitedEcoCodes.has(p.US_L4CODE)) return faintPolyStyle(ecoMapIsDark);
     const fill = ecoRegionColor(p.US_L4CODE);
+    if (!ecoPatchFirst.has(feature.id)) {
+        return { fillColor: fill, fillOpacity: 0.08, color: fill, weight: 1, opacity: 0.9, dashArray: '3 3' };
+    }
     return completedL3.has(p.US_L3CODE)
         ? { fillColor: fill, fillOpacity: 0.7, color: ECO_GOLD, weight: 1.2, opacity: 0.9 }
         : { fillColor: fill, fillOpacity: 0.6, color: fill, weight: 0.6, opacity: 0.9 };
@@ -3573,19 +3603,59 @@ function restyleEcoregions() {
     ecoGeoJsonLayer.setStyle(f => ecoFeatureStyle(f, completedL3));
 }
 
+// Activity id → slim activity, rebuilt when the activity list is replaced.
+let ecoActIndex = { src: null, byId: new Map() };
+function ecoActivity(actId) {
+    if (ecoActIndex.src !== currentSlim) {
+        ecoActIndex = { src: currentSlim, byId: new Map(currentSlim.map(a => [a.i, a])) };
+    }
+    return ecoActIndex.byId.get(actId) || null;
+}
+
+// "Jul 4, 2020 · <link to activity>" for a popup line.
+function ecoActivityLine(actId, name, date) {
+    const label = escapeEcoHtml(name || 'Activity');
+    const link = actId
+        ? `<a class="activity-popup-link" href="https://www.strava.com/activities/${encodeURIComponent(actId)}" target="_blank" rel="noopener">${label}</a>`
+        : label;
+    return `${escapeEcoHtml(date ? formatActivityDate(date) : '?')} · ${link}`;
+}
+
+// Visited patches per region code.
+function ecoPatchesVisitedByCode() {
+    const byCode = {};
+    for (const id of ecoPatchFirst.keys()) {
+        const code = ecoFeatures[id]?.properties.US_L4CODE;
+        if (code) byCode[code] = (byCode[code] || 0) + 1;
+    }
+    return byCode;
+}
+
 function ecoPopupHtml(feature) {
     const p = feature.properties;
     const l3 = ecoL3Info[p.US_L3CODE];
     const visitedInL3 = l3 ? l3.l4s.filter(c => visitedEcoCodes.has(c)).length : 0;
     const disc = ecoDiscoveries[p.US_L4CODE];
     const visited = visitedEcoCodes.has(p.US_L4CODE);
-    const status = visited
-        ? (disc
-            ? `<div class="activity-popup-date">First visited: ${escapeEcoHtml(disc.date ? formatActivityDate(disc.date) : '?')}<br>${disc.actId
-                ? `<a class="activity-popup-link" href="https://www.strava.com/activities/${encodeURIComponent(disc.actId)}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`
-                : escapeEcoHtml(disc.actName)}</div>`
-            : '<div class="activity-popup-date">Visited</div>')
-        : '<div class="activity-popup-date" style="color:#888">Not yet visited</div>';
+    const patchActId = ecoPatchFirst.get(feature.id);
+    const regionLine = disc ? ecoActivityLine(disc.actId, disc.actName, disc.date) : '';
+    let status;
+    if (patchActId != null) {
+        const act = ecoActivity(patchActId);
+        const sameAsRegion = disc && disc.actId === patchActId;
+        status = `<div class="activity-popup-date">First visited: ${sameAsRegion ? regionLine : ecoActivityLine(patchActId, act?.n, act?.d)}</div>`
+            + (disc && !sameAsRegion ? `<div class="activity-popup-date">Region first reached: ${regionLine}</div>` : '');
+    } else if (visited) {
+        status = `<div class="activity-popup-date" style="color:#888">Not this patch yet — region reached elsewhere</div>`
+            + (regionLine ? `<div class="activity-popup-date">First: ${regionLine}</div>` : '');
+    } else {
+        status = '<div class="activity-popup-date" style="color:#888">Not yet visited</div>';
+    }
+    const patchTotal = ecoL4Info[p.US_L4CODE]?.patches || 1;
+    const patchLine = patchTotal > 1
+        ? `<div class="activity-popup-date">Patches: ${ecoPatchesVisitedByCode()[p.US_L4CODE] || 0} / ${patchTotal} visited</div>`
+        : '';
+    status = patchLine + status;
     const tagColor = visited ? ecoRegionColor(p.US_L4CODE) : '#aaa';
     const context = p.L3_ONLY
         ? '<div class="activity-popup-date">Alaska — Level III only (no Level IV data)</div>'
@@ -3634,6 +3704,10 @@ function renderEcoregionStats() {
         <div class="county-stat-item">
             <span class="county-stat-number">${biomes} / ${ecoTotals.biomes}</span>
             <span class="county-stat-label">Biomes</span>
+        </div>
+        <div class="county-stat-item">
+            <span class="county-stat-number">${ecoPatchFirst.size.toLocaleString()}</span>
+            <span class="county-stat-label">Patches / ${ecoTotals.patches.toLocaleString()}</span>
         </div>`;
 }
 
@@ -3642,6 +3716,7 @@ function renderEcoregionLegend() {
     if (!el) return;
     el.innerHTML = `
         <span class="map-legend-item"><span class="map-legend-dot" style="background:linear-gradient(135deg,#6fbf73,#d9a441,#5c8fd6)"></span>Visited (ecoregion colour)</span>
+        <span class="map-legend-item"><span class="map-legend-dot" style="background:transparent;border:2px dashed #6fbf73"></span>Visited region, other patch</span>
         <span class="map-legend-item"><span class="map-legend-dot" style="background:transparent;border:2px solid ${ECO_GOLD}"></span>Level III complete</span>
         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35)"></span>Not yet visited</span>`;
 }
@@ -3767,11 +3842,13 @@ function renderEcoL3Progress() {
         if (open) {
             const detail = document.createElement('tr');
             detail.className = 'eco-l4-row';
+            const patchesByCode = ecoPatchesVisitedByCode();
             const chips = r.l4s.map(code => {
                 const info = ecoL4Info[code];
                 const done = visitedEcoCodes.has(code);
                 const style = done ? ` style="border-color:${ecoRegionColor(code)}"` : '';
-                return `<span class="eco-l4-chip${done ? ' visited' : ''}"${style}>${done ? '✓' : '○'} ${escapeEcoHtml(code)} ${escapeEcoHtml(info?.name)}</span>`;
+                const pieces = info?.patches > 1 ? ` · ${patchesByCode[code] || 0}/${info.patches}` : '';
+                return `<span class="eco-l4-chip${done ? ' visited' : ''}"${style}>${done ? '✓' : '○'} ${escapeEcoHtml(code)} ${escapeEcoHtml(info?.name)}${pieces}</span>`;
             }).join('');
             detail.innerHTML = `<td colspan="5"><div class="eco-l4-chips">${chips}</div></td>`;
             tbody.appendChild(detail);
@@ -3857,6 +3934,8 @@ async function saveEcoregionsToWorker() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 v:            ECO_DETECT_VERSION,
+                patchCount:   ecoFeatures.length,
+                patches:      Object.fromEntries(ecoPatchFirst),
                 codes:        [...visitedEcoCodes],
                 processedIds: [...ecoProcessedIds],
                 discoveries:  ecoDiscoveries,
@@ -3885,6 +3964,7 @@ async function resetEcoregionData() {
         if (btn) btn.textContent = 'Show map';
         visitedEcoCodes.clear();
         ecoProcessedIds.clear();
+        ecoPatchFirst.clear();
         ecoDiscoveries = {};
         dbg('Ecoregion data reset. Reopen Ecoregion Hunter to re-detect.');
     } catch (err) {
