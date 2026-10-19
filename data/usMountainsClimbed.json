@@ -860,7 +860,7 @@
         "elevationFeet": 3213,
         "elevationMeters": 979,
         "latitude": 39.7861,
-        "longitude": -79.1347,
+        "longitude": -79.1764,
         "firstAscent": "2024-04-20"
     },
     {
@@ -985,8 +985,8 @@
         "state": "IN",
         "elevationFeet": 1257,
         "elevationMeters": 383,
-        "latitude": 39.9478,
-        "longitude": -84.8519,
+        "latitude": 40.0025,
+        "longitude": -84.8494,
         "firstAscent": "2024-07-26"
     },
     {
@@ -1067,8 +1067,8 @@
         "state": "NE",
         "elevationFeet": 5429,
         "elevationMeters": 1655,
-        "latitude": 41.0037,
-        "longitude": -104.0317,
+        "latitude": 41.0077,
+        "longitude": -104.0313,
         "firstAscent": "2024-09-28"
     },
     {
