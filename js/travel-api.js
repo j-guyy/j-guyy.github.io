@@ -7,10 +7,28 @@ const TRAVEL_PATHS = {
     countryHighpoints: 'country-highpoints',
 };
 
+// /data, resolved from this script so pages under /trip-reports/ find it too.
+const TRAVEL_DATA_URL = new URL('../data/', document.currentScript?.src || location.href);
+
 const TravelAPI = {
+    // The stored list keeps the names it was seeded with, and nothing edits
+    // them, so a peak renamed in the /data file (Clingmans Dome → Kuwohi)
+    // would never show. Names are reference data: take them from the file.
     async fetchHighPoints() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/highpoints`);
-        return res.json();
+        const points = await res.json();
+        if (!Array.isArray(points)) return points;
+        try {
+            const file = await fetch(new URL('highPoints.json', TRAVEL_DATA_URL));
+            if (file.ok) {
+                const names = new Map((await file.json()).map(p => [p.state, p.name]));
+                points.forEach(p => {
+                    const name = names.get(p.state);
+                    if (name) p.name = name;
+                });
+            }
+        } catch { /* keep the stored names */ }
+        return points;
     },
 
     async fetchMetros() {
