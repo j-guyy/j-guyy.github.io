@@ -3641,13 +3641,15 @@ function ecoPopupHtml(feature) {
     const regionLine = disc ? ecoActivityLine(disc.actId, disc.actName, disc.date) : '';
     let status;
     if (patchActId != null) {
+        // Both first visits, even when one activity did both: this patch, and
+        // the zone (this Level IV code anywhere).
         const act = ecoActivity(patchActId);
-        const sameAsRegion = disc && disc.actId === patchActId;
-        status = `<div class="activity-popup-date">First visited: ${sameAsRegion ? regionLine : ecoActivityLine(patchActId, act?.n, act?.d)}</div>`
-            + (disc && !sameAsRegion ? `<div class="activity-popup-date">Region first reached: ${regionLine}</div>` : '');
+        const patchLine = disc && disc.actId === patchActId ? regionLine : ecoActivityLine(patchActId, act?.n, act?.d);
+        status = `<div class="activity-popup-date">Patch first visited: ${patchLine}</div>`
+            + (regionLine ? `<div class="activity-popup-date">Zone first visited: ${regionLine}</div>` : '');
     } else if (visited) {
-        status = `<div class="activity-popup-date" style="color:#888">Not this patch yet — region reached elsewhere</div>`
-            + (regionLine ? `<div class="activity-popup-date">First: ${regionLine}</div>` : '');
+        status = `<div class="activity-popup-date" style="color:#888">Not this patch yet — zone reached elsewhere</div>`
+            + (regionLine ? `<div class="activity-popup-date">Zone first visited: ${regionLine}</div>` : '');
     } else {
         status = '<div class="activity-popup-date" style="color:#888">Not yet visited</div>';
     }
