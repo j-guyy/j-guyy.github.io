@@ -2,7 +2,7 @@
 //
 // KV-backed API for Strava activity data, geocoding cache, hunter features
 // (counties, tiles, peaks, summits), and travel tracking; D1-backed YouTube
-// Music song leaderboard.
+// Music song leaderboard; and an MCP server over all of it at /mcp.
 //
 // Deploy: wrangler deploy
 // Bindings: STRAVA_DATA (KV), STRAVA_KV (KV), MUSIC_DB (D1), CLIENT_ID,
@@ -79,12 +79,22 @@ const PEAK_LIST_KEYS = {
 
 export default {
     async fetch(request, env) {
+        const url = new URL(request.url);
+        const path = url.pathname;
+
+        // MCP clients connect from anywhere, so /mcp has its own CORS and
+        // method handling (see handleMcp).
+        if (path === '/mcp') {
+            try {
+                return await handleMcp(request, env);
+            } catch (err) {
+                return mcpJson(rpcError(null, -32603, err.message), 500);
+            }
+        }
+
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: CORS_HEADERS });
         }
-
-        const url = new URL(request.url);
-        const path = url.pathname;
 
         try {
             // ── Admin auth check ──
@@ -485,6 +495,10 @@ const SUMMARY_TOTALS = { counties: 3233, parks: 897, stateParks: 5895, metros: 2
 const SUMMARY_CACHE_SECONDS = 300;
 
 async function handleSummary(env) {
+    return json(await buildSummary(env), 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+async function buildSummary(env) {
     const kv = env.STRAVA_DATA;
     const [activitiesText, counties, parks, stateParks, metros, tileStats, summits, hidden, passes, progress, ecoregions] =
         await Promise.all([
@@ -506,7 +520,7 @@ async function handleSummary(env) {
     const safe = (fn) => { try { return fn(); } catch (e) { console.log(`summary: ${e.message}`); return null; } };
     const count = (arr) => (Array.isArray(arr) ? arr.length : 0);
 
-    const summary = {
+    return {
         generatedAt: Date.now(),
         activities: safe(() => summarizeActivities(activitiesText)),
         county: counties ? { visited: count(counties.fips), total: SUMMARY_TOTALS.counties } : null,
@@ -527,8 +541,6 @@ async function handleSummary(env) {
         city: safe(() => headlineProgress(progress?.city)),
         trail: safe(() => headlineProgress(progress?.trail)),
     };
-
-    return json(summary, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
 }
 
 // Every Level IV code starts with its Level III code ("21a" → "21"), so the
@@ -709,6 +721,11 @@ function summarizeSummits(summits, hidden) {
 // in summarizeSummits. A summited peak missing from the cell cache (its cell
 // was reset) has no coordinates and is skipped until Mountain Hunter refetches it.
 async function handleSummitedPeaks(env) {
+    const peaks = await listSummitedPeaks(env);
+    return json({ peaks }, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+async function listSummitedPeaks(env) {
     const [summits, peakCache, hidden] = await Promise.all([
         env.STRAVA_DATA.get(SUMMITS_KEY, 'json'),
         env.STRAVA_DATA.get(PEAKS_KEY, 'json'),
@@ -737,7 +754,7 @@ async function handleSummitedPeaks(env) {
             });
         }
     }
-    return json({ peaks }, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+    return peaks;
 }
 
 // ── Mountain Hunter — Overpass proxy ─────────────────────────────────────────
@@ -989,7 +1006,9 @@ async function syncActivities(env, onProgress) {
     for (const a of slim) {
         const prev = prevById.get(a.i);
         if (!prev) newActivities++;
-        else if (prev.n !== a.n || prev.e !== a.e || prev.t !== a.t) updated++;
+        // An activity stored before distance was (no `di`) isn't an edit.
+        else if (prev.n !== a.n || prev.e !== a.e || prev.t !== a.t ||
+            (prev.di !== undefined && prev.di !== a.di)) updated++;
     }
     const slimIds = new Set(slim.map(a => a.i));
     let removed = 0;
@@ -1227,6 +1246,7 @@ function slimActivities(activities) {
             i: a.id,
             e: a.total_elevation_gain ?? 0,
             m: a.moving_time ?? 0,   // seconds; feeds the dashboard's hours view
+            di: Math.round(a.distance ?? 0),   // metres; read by the MCP tools
         }));
 }
 
@@ -1349,8 +1369,12 @@ async function musicState(db) {
 }
 
 async function handleMusicLeaderboard(url, env) {
-    const db = await musicDb(env);
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit'), 10) || 100, 1), 500);
+    return json(await musicLeaderboard(env, limit), 200, { 'Cache-Control': 'public, max-age=300' });
+}
+
+async function musicLeaderboard(env, limit) {
+    const db = await musicDb(env);
     const [board, totals, lastSync] = await db.batch([
         db.prepare(`
             SELECT s.title, s.artists, COUNT(*) AS plays,
@@ -1362,12 +1386,12 @@ async function handleMusicLeaderboard(url, env) {
         db.prepare('SELECT COUNT(*) AS plays, COUNT(DISTINCT video_id) AS songs FROM plays'),
         db.prepare("SELECT value FROM sync_state WHERE key = 'last_sync'"),
     ]);
-    return json({
+    return {
         songs: board.results,
         total_plays: totals.results[0].plays,
         total_songs: totals.results[0].songs,
         last_sync: lastSync.results[0]?.value || null,
-    }, 200, { 'Cache-Control': 'public, max-age=300' });
+    };
 }
 
 async function handleMusicState(env) {
@@ -1432,6 +1456,879 @@ function chunked(arr, size) {
     for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
     return out;
 }
+
+// ── MCP server (/mcp) ────────────────────────────────────────────────────────
+//
+// A Model Context Protocol server over the data above, so an AI assistant
+// (a claude.ai custom connector, Claude Code, …) can answer questions about
+// the activities, hunters, peak lists and travel tracking. It speaks the
+// Streamable HTTP transport in its stateless form: each POST carries one
+// JSON-RPC message (or a batch) and gets plain JSON back. There are no
+// sessions and no server-sent events, so a GET answers 405. It is written by
+// hand rather than with the MCP SDK so the worker stays one dependency-free
+// file. Every tool is read-only and public, like the GET endpoints it mirrors.
+//
+// The hunters store ids only. data/hunter-names.json (scripts/
+// build-hunter-names.py) maps them to names; it and the peak list files are
+// fetched from the site and cached. Adding a tool: append it to MCP_TOOLS.
+
+const SITE_URL = 'https://j-guyy.github.io';
+
+// Newest first. A client asking for one of these gets it back; any other
+// version gets the newest, and the client decides whether it can use it.
+const MCP_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
+
+const MCP_SERVER_INFO = { name: 'j-guyy-adventures', title: 'j-guyy.github.io adventure trackers', version: '1.0.0' };
+
+const MCP_INSTRUCTIONS = `Data behind Justin Guyette's adventure site, ${SITE_URL}.
+- Activities are his Strava activities that have a GPS start point (indoor and manual entries aren't stored), refreshed nightly. Each has a sport type, date, distance, moving time, elevation gain and the country / state where it started. Strava links: https://www.strava.com/activities/<id>.
+- The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. The site recomputes them when the owner opens a hunter, so they can lag the newest activities by a few days.
+- The peak lists (Colorado 14ers, Adirondack 46ers, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
+- Distances come in km and mi, elevations in m and ft. Use the units the user uses.
+Start with get_overview for headline numbers.`;
+
+const MCP_CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version',
+};
+
+class McpRpcError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+}
+
+async function handleMcp(request, env) {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: MCP_CORS_HEADERS });
+    if (request.method !== 'POST') {
+        return new Response('Method Not Allowed', { status: 405, headers: { ...MCP_CORS_HEADERS, Allow: 'POST, OPTIONS' } });
+    }
+    let body;
+    try {
+        body = await request.json();
+    } catch {
+        return mcpJson(rpcError(null, -32700, 'Parse error'), 400);
+    }
+    const batch = Array.isArray(body);
+    const messages = batch ? body : [body];
+    if (!messages.length) return mcpJson(rpcError(null, -32600, 'Invalid Request'), 400);
+
+    const replies = [];
+    for (const msg of messages) {
+        const reply = await mcpDispatch(msg, env);
+        if (reply) replies.push(reply);
+    }
+    // Only notifications (and responses): nothing to answer.
+    if (!replies.length) return new Response(null, { status: 202, headers: MCP_CORS_HEADERS });
+    return mcpJson(batch ? replies : replies[0]);
+}
+
+async function mcpDispatch(msg, env) {
+    if (!msg || typeof msg !== 'object' || msg.jsonrpc !== '2.0') return rpcError(msg?.id ?? null, -32600, 'Invalid Request');
+    const { id, method } = msg;
+    if (typeof method !== 'string') return id === undefined ? rpcError(null, -32600, 'Invalid Request') : null;
+    if (id === undefined || id === null) return null;   // a notification, e.g. notifications/initialized
+    const params = msg.params || {};
+    try {
+        switch (method) {
+            case 'initialize': {
+                const asked = params.protocolVersion;
+                return rpcResult(id, {
+                    protocolVersion: MCP_PROTOCOL_VERSIONS.includes(asked) ? asked : MCP_PROTOCOL_VERSIONS[0],
+                    capabilities: { tools: { listChanged: false } },
+                    serverInfo: MCP_SERVER_INFO,
+                    instructions: MCP_INSTRUCTIONS,
+                });
+            }
+            case 'ping':
+                return rpcResult(id, {});
+            case 'tools/list':
+                return rpcResult(id, { tools: MCP_TOOLS.map(({ run, ...tool }) => tool) });
+            case 'tools/call':
+                return rpcResult(id, await mcpCallTool(params, env));
+            default:
+                return rpcError(id, -32601, `Method not found: ${method}`);
+        }
+    } catch (e) {
+        return rpcError(id, e instanceof McpRpcError ? e.code : -32603, e.message);
+    }
+}
+
+// A tool that fails returns isError with the reason (a bad argument, a
+// missing KV blob), so the model can see it and retry; only an unknown tool
+// is a protocol error.
+async function mcpCallTool(params, env) {
+    const tool = MCP_TOOLS.find(t => t.name === params.name);
+    if (!tool) throw new McpRpcError(-32602, `Unknown tool: ${params.name}`);
+    try {
+        const result = await tool.run(params.arguments || {}, env);
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+    } catch (e) {
+        return { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true };
+    }
+}
+
+function rpcResult(id, result) { return { jsonrpc: '2.0', id, result }; }
+function rpcError(id, code, message) { return { jsonrpc: '2.0', id, error: { code, message } }; }
+
+function mcpJson(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { ...MCP_CORS_HEADERS, 'Content-Type': 'application/json' },
+    });
+}
+
+// ── MCP — data access ──
+
+// Site files (names, peak lists) change only on a push, so each isolate keeps
+// them for an hour on top of Cloudflare's own cache.
+const SITE_CACHE_MS = 60 * 60 * 1000;
+const siteJsonCache = new Map();
+
+async function fetchSiteJson(path) {
+    const hit = siteJsonCache.get(path);
+    if (hit && Date.now() - hit.at < SITE_CACHE_MS) return hit.data;
+    const res = await fetch(`${SITE_URL}/${path}`, { cf: { cacheTtl: 3600, cacheEverything: true } });
+    if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+    const data = await res.json();
+    siteJsonCache.set(path, { at: Date.now(), data });
+    return data;
+}
+
+// Without the names file every tool still works and reports ids.
+async function hunterNames() {
+    try { return await fetchSiteJson('data/hunter-names.json'); } catch { return {}; }
+}
+
+async function loadActivities(env) {
+    const [stored, geo] = await Promise.all([
+        env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json'),
+        env.STRAVA_DATA.get(GEO_KEY, 'json'),
+    ]);
+    return { slim: stored?.slim || [], syncedAt: stored?.syncedAt || null, geo: geo || {} };
+}
+
+// Distance (`di`) was added to the stored activities after the rest; until
+// the next sync rewrites them, older ones have none.
+function distanceNote(slim) {
+    const missing = slim.filter(a => typeof a.di !== 'number').length;
+    return missing
+        ? { note: `${missing} of ${slim.length} activities have no distance stored yet, so distance totals and filters skip them; the next nightly Strava sync fills it in.` }
+        : {};
+}
+
+// The geocode cache is keyed by start point on a 0.01° grid (gridKey in
+// js/strava.js); a few old entries are on the 0.1° grid.
+function placeOf(geo, latlng) {
+    if (!Array.isArray(latlng)) return null;
+    const [lat, lng] = latlng;
+    return geo[`${lat.toFixed(2)},${lng.toFixed(2)}`] || geo[`${lat.toFixed(1)},${lng.toFixed(1)}`] || null;
+}
+
+// ── MCP — argument helpers ──
+// Bad arguments throw, and the message reaches the model (see mcpCallTool).
+
+function argStr(v) {
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function argEnum(v, allowed, name, fallback) {
+    if (v === undefined || v === null || v === '') return fallback;
+    if (!allowed.includes(v)) throw new Error(`${name} must be one of: ${allowed.join(', ')}`);
+    return v;
+}
+
+function argInt(v, name, fallback, min, max) {
+    if (v === undefined || v === null || v === '') return fallback;
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error(`${name} must be a number`);
+    return Math.min(Math.max(Math.round(n), min), max);
+}
+
+function argNum(v, name) {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error(`${name} must be a number`);
+    return n;
+}
+
+// YYYY, YYYY-MM or YYYY-MM-DD. Dates are compared as strings: `after` as is
+// (2024 sorts before 2024-01-01), `before` against the same-length prefix, so
+// before=2024 includes all of 2024.
+function argDate(v, name) {
+    const s = argStr(v);
+    if (s === null) return null;
+    if (!/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)) throw new Error(`${name} must be YYYY, YYYY-MM or YYYY-MM-DD`);
+    return s;
+}
+
+function onOrAfter(date, after) { return !after || String(date || '') >= after; }
+function onOrBefore(date, before) { return !before || String(date || '').slice(0, before.length) <= before; }
+
+// Case- and accent-insensitive text for matching.
+function fold(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+const round1 = (x) => Math.round(x * 10) / 10;
+const M_PER_MI = 1609.344;
+const FT_PER_M = 3.28084;
+
+function firstVisit(d) {
+    return d ? { date: d.date || null, activity: d.actName || null, activity_id: d.actId ?? null } : null;
+}
+
+// ── MCP — activities ──
+
+// Sport groups accepted by the sport filter, besides Strava's own types.
+// Mirrors GROUPS in js/strava.js, plus the mountain bike types.
+const SPORT_GROUPS = {
+    foot:    ['Run', 'TrailRun', 'VirtualRun', 'Hike', 'Walk', 'Snowshoe'],
+    running: ['Run', 'TrailRun', 'VirtualRun'],
+    bike:    ['Ride', 'GravelRide', 'MountainBikeRide', 'EMountainBikeRide', 'EBikeRide', 'VirtualRide', 'Handcycle', 'Velomobile'],
+    snow:    ['AlpineSki', 'BackcountrySki', 'NordicSki', 'Snowboard', 'Snowkite'],
+    water:   ['Swim', 'OpenWaterSwim', 'Kayaking', 'Rowing', 'Surfing', 'Windsurf', 'Kitesurf', 'Canoeing', 'StandUpPaddling', 'Sail'],
+};
+SPORT_GROUPS.cycling = SPORT_GROUPS.bike;
+
+// Nominatim's country names, as the geocode cache stores them.
+const COUNTRY_ALIASES = {
+    us: 'united states', usa: 'united states', 'united states of america': 'united states', america: 'united states',
+    uk: 'united kingdom', 'great britain': 'united kingdom', britain: 'united kingdom',
+};
+
+const ACTIVITY_FILTER_PROPS = {
+    sport: { type: 'string', description: 'Strava sport type (Run, TrailRun, Ride, GravelRide, Hike, Walk, AlpineSki, BackcountrySki, NordicSki, Swim, Kayaking, …) or a group: foot, running, bike (= cycling), snow, water. Comma-separate several.' },
+    after: { type: 'string', description: 'Only activities on or after this date: YYYY, YYYY-MM or YYYY-MM-DD.' },
+    before: { type: 'string', description: 'Only activities on or before this date: YYYY, YYYY-MM or YYYY-MM-DD (before=2024 includes all of 2024).' },
+    country: { type: 'string', description: 'Country the activity started in, e.g. "United States", "Spain", "UK".' },
+    region: { type: 'string', description: 'State / province / region it started in, e.g. "Colorado", "Catalonia".' },
+    name: { type: 'string', description: 'Text the activity title contains (case-insensitive).' },
+    min_distance_km: { type: 'number', description: 'Minimum distance in km (1 mi = 1.609 km).' },
+    max_distance_km: { type: 'number', description: 'Maximum distance in km.' },
+    min_elevation_gain_m: { type: 'number', description: 'Minimum elevation gain in metres (1000 ft = 305 m).' },
+};
+
+// Returns the matching slim activities, each with its start place as `place`.
+function filterActivities(slim, geo, args) {
+    let types = null;
+    const sport = argStr(args.sport);
+    if (sport) {
+        const known = new Map(slim.map(a => [a.t.toLowerCase(), a.t]));
+        types = new Set();
+        for (const token of sport.split(',').map(s => s.trim()).filter(Boolean)) {
+            const key = token.toLowerCase();
+            if (SPORT_GROUPS[key]) SPORT_GROUPS[key].forEach(t => types.add(t));
+            else if (known.has(key)) types.add(known.get(key));
+            else throw new Error(`Unknown sport "${token}". Groups: ${Object.keys(SPORT_GROUPS).join(', ')}. Types recorded: ${[...new Set(slim.map(a => a.t))].sort().join(', ')}`);
+        }
+    }
+    const after = argDate(args.after, 'after');
+    const before = argDate(args.before, 'before');
+    const countryArg = argStr(args.country) && fold(args.country);
+    const country = countryArg && (COUNTRY_ALIASES[countryArg] || countryArg);
+    const region = argStr(args.region) && fold(args.region);
+    const name = argStr(args.name) && fold(args.name);
+    const minKm = argNum(args.min_distance_km, 'min_distance_km');
+    const maxKm = argNum(args.max_distance_km, 'max_distance_km');
+    const minGain = argNum(args.min_elevation_gain_m, 'min_elevation_gain_m');
+
+    // An exact country name wins ("Niger" isn't "Nigeria"); otherwise a part
+    // of one ("Korea" → "South Korea").
+    const countryExact = country && Object.values(geo).some(g => fold(g?.c) === country);
+
+    const out = [];
+    for (const a of slim) {
+        if (types && !types.has(a.t)) continue;
+        if (!onOrAfter(a.d, after) || !onOrBefore(a.d, before)) continue;
+        if (name && !fold(a.n).includes(name)) continue;
+        if (minKm !== null && !(a.di >= minKm * 1000)) continue;
+        if (maxKm !== null && !(a.di <= maxKm * 1000)) continue;
+        if (minGain !== null && !((a.e || 0) >= minGain)) continue;
+        const place = placeOf(geo, a.l);
+        if (country && (countryExact ? fold(place?.c) !== country : !fold(place?.c).includes(country))) continue;
+        if (region && !fold(place?.s).includes(region)) continue;
+        out.push({ ...a, place });
+    }
+    return out;
+}
+
+function activityTotals(list) {
+    let metres = 0, seconds = 0, gain = 0, noDistance = 0;
+    for (const a of list) {
+        if (typeof a.di === 'number') metres += a.di; else noDistance++;
+        seconds += a.m || 0;
+        gain += a.e || 0;
+    }
+    const noneKnown = list.length > 0 && noDistance === list.length;
+    const totals = {
+        count: list.length,
+        distance_km: noneKnown ? null : round1(metres / 1000),
+        distance_mi: noneKnown ? null : round1(metres / M_PER_MI),
+        moving_hours: round1(seconds / 3600),
+        elevation_gain_m: Math.round(gain),
+        elevation_gain_ft: Math.round(gain * FT_PER_M),
+    };
+    // Activities stored before distance was (it fills in at the next sync).
+    if (noDistance) totals.without_distance = noDistance;
+    return totals;
+}
+
+function hoursMinutes(seconds) {
+    const m = Math.round((seconds || 0) / 60);
+    return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+}
+
+function activityOut(a) {
+    return {
+        id: a.i,
+        name: a.n,
+        date: a.d,
+        sport: a.t,
+        distance_km: typeof a.di === 'number' ? round1(a.di / 1000) : null,
+        distance_mi: typeof a.di === 'number' ? round1(a.di / M_PER_MI) : null,
+        moving_time: hoursMinutes(a.m),
+        elevation_gain_m: Math.round(a.e || 0),
+        elevation_gain_ft: Math.round((a.e || 0) * FT_PER_M),
+        ...(a.eh != null ? { high_point_m: Math.round(a.eh) } : {}),
+        country: a.place?.c || null,
+        region: a.place?.s || null,
+    };
+}
+
+const ACTIVITY_SORTS = {
+    date: a => a.d || '',
+    distance: a => a.di ?? -1,
+    elevation_gain: a => a.e || 0,
+    moving_time: a => a.m || 0,
+};
+
+async function mcpSearchActivities(args, env) {
+    const { slim, geo, syncedAt } = await loadActivities(env);
+    const sort = argEnum(args.sort, Object.keys(ACTIVITY_SORTS), 'sort', 'date');
+    const order = argEnum(args.order, ['desc', 'asc'], 'order', 'desc');
+    const limit = argInt(args.limit, 'limit', 20, 1, 100);
+    const matched = filterActivities(slim, geo, args);
+    const key = ACTIVITY_SORTS[sort];
+    const dir = order === 'asc' ? 1 : -1;
+    matched.sort((a, b) => {
+        const x = key(a), y = key(b);
+        return (x < y ? -1 : x > y ? 1 : 0) * dir;
+    });
+    return {
+        totals: activityTotals(matched),
+        showing: Math.min(limit, matched.length),
+        activities: matched.slice(0, limit).map(activityOut),
+        synced_at: syncedAt ? new Date(syncedAt).toISOString() : null,
+        ...distanceNote(slim),
+    };
+}
+
+const STAT_GROUPS = {
+    year:    a => (a.d || '').slice(0, 4) || 'unknown',
+    month:   a => (a.d || '').slice(0, 7) || 'unknown',
+    sport:   a => a.t,
+    country: a => a.place?.c || 'unknown',
+    region:  a => (a.place ? `${a.place.s || 'unknown'}, ${a.place.c}` : 'unknown'),
+    none:    () => 'all',
+};
+
+async function mcpActivityStats(args, env) {
+    const { slim, geo, syncedAt } = await loadActivities(env);
+    const groupBy = argEnum(args.group_by, Object.keys(STAT_GROUPS), 'group_by', 'year');
+    const matched = filterActivities(slim, geo, args);
+    const buckets = new Map();
+    for (const a of matched) {
+        const k = STAT_GROUPS[groupBy](a);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(a);
+    }
+    const groups = [...buckets].map(([key, list]) => {
+        const longest = list.reduce((best, a) => ((a.di ?? -1) > (best?.di ?? -1) ? a : best), null);
+        const biggestClimb = list.reduce((best, a) => ((a.e || 0) > (best?.e || 0) ? a : best), null);
+        return {
+            [groupBy]: key,
+            ...activityTotals(list),
+            longest: longest?.di ? { name: longest.n, date: longest.d, id: longest.i, distance_km: round1(longest.di / 1000) } : null,
+            biggest_climb: biggestClimb?.e ? { name: biggestClimb.n, date: biggestClimb.d, id: biggestClimb.i, elevation_gain_m: Math.round(biggestClimb.e) } : null,
+        };
+    });
+    // Time groups in order; the rest busiest first.
+    if (groupBy === 'year' || groupBy === 'month') groups.sort((a, b) => String(a[groupBy]).localeCompare(String(b[groupBy])));
+    else groups.sort((a, b) => b.count - a.count);
+    return {
+        totals: activityTotals(matched),
+        groups,
+        synced_at: syncedAt ? new Date(syncedAt).toISOString() : null,
+        ...distanceNote(slim),
+    };
+}
+
+// ── MCP — hunters ──
+
+// names: the hunter-names.json section; describe: [name, extra] → fields.
+const MCP_HUNTERS = {
+    county: {
+        kv: COUNTIES_KEY, ids: 'fips', names: 'counties', total: () => SUMMARY_TOTALS.counties,
+        describe: ([name, state]) => ({ name, state }),
+    },
+    national_park: {
+        kv: PARKS_KEY, ids: 'ids', names: 'parks', total: () => SUMMARY_TOTALS.parks,
+        describe: ([name, type]) => ({ name, type }),
+    },
+    state_park: {
+        kv: STATE_PARKS_KEY, ids: 'ids', names: 'stateParks', total: () => SUMMARY_TOTALS.stateParks,
+        describe: ([name, state]) => ({ name, state }),
+    },
+    metro: {
+        kv: METRO_HUNTER_KEY, ids: 'ids', names: 'metros', total: () => SUMMARY_TOTALS.metros,
+        describe: ([name, state, rank]) => ({ name, state, rank }),
+    },
+    ecoregion: {
+        kv: ECOREGIONS_KEY, ids: 'codes', names: 'ecoregions', total: () => SUMMARY_TOTALS.ecoL4,
+        describe: ([name, l3], names) => ({ name, level3: names.ecoL3?.[l3] ? `${l3} ${names.ecoL3[l3]}` : l3 }),
+    },
+    pass: {
+        kv: PASSES_KEY, ids: 'ids', names: 'passes', total: (blob) => (blob?.catalogIds || []).length || null,
+        describe: ([name, eleFt]) => ({ name, elevation_ft: eleFt ?? null }),
+    },
+};
+
+async function mcpGetHunter(args, env) {
+    const hunterKey = argEnum(args.hunter, Object.keys(MCP_HUNTERS), 'hunter');
+    if (!hunterKey) throw new Error(`hunter is required: ${Object.keys(MCP_HUNTERS).join(', ')}`);
+    const cfg = MCP_HUNTERS[hunterKey];
+    const status = argEnum(args.status, ['visited', 'unvisited'], 'status', 'visited');
+    const state = argStr(args.state)?.toUpperCase() || null;
+    const query = argStr(args.query) && fold(args.query);
+    const since = argDate(args.since, 'since');
+    const sort = argEnum(args.sort, ['recent', 'oldest', 'name'], 'sort', status === 'visited' ? 'recent' : 'name');
+    const limit = argInt(args.limit, 'limit', 50, 1, 500);
+
+    const [blob, names] = await Promise.all([env.STRAVA_DATA.get(cfg.kv, 'json'), hunterNames()]);
+    const table = names[cfg.names] || {};
+    const visited = new Set((blob?.[cfg.ids] || []).filter(Boolean));
+    const discoveries = blob?.discoveries || {};
+
+    if (status === 'unvisited' && !Object.keys(table).length) {
+        throw new Error('The names file (data/hunter-names.json) is unavailable, so unvisited items cannot be listed right now');
+    }
+    const ids = status === 'visited' ? [...visited] : Object.keys(table).filter(id => !visited.has(id));
+    let items = ids.map(id => {
+        const entry = table[id];
+        return {
+            id,
+            ...(entry ? cfg.describe(entry, names) : { name: id }),
+            ...(status === 'visited' ? { first_visit: firstVisit(discoveries[id]) } : {}),
+        };
+    });
+    if (state) items = items.filter(it => String(it.state || '').toUpperCase() === state);
+    if (query) items = items.filter(it => fold(it.name).includes(query) || fold(it.id).includes(query) || fold(it.level3).includes(query));
+    if (since) items = items.filter(it => onOrAfter(it.first_visit?.date, since));
+
+    const byDate = (a, b) => String(a.first_visit?.date || '').localeCompare(String(b.first_visit?.date || ''));
+    if (sort === 'name') items.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    else if (sort === 'oldest') items.sort(byDate);
+    else items.sort((a, b) => byDate(b, a));
+
+    return {
+        hunter: hunterKey,
+        visited: visited.size,
+        total: cfg.total(blob),
+        status,
+        matched: items.length,
+        showing: Math.min(limit, items.length),
+        items: items.slice(0, limit),
+        ...(blob ? {} : { note: 'This hunter has not been run on the site yet.' }),
+    };
+}
+
+// ── MCP — summits and peak lists ──
+
+function peakOut(p) {
+    return {
+        name: p.name,
+        elevation_m: p.ele != null ? Math.round(p.ele) : null,
+        elevation_ft: p.ele != null ? Math.round(p.ele * FT_PER_M) : null,
+        lat: p.lat,
+        lng: p.lng,
+        activities: p.activities,
+        first: firstVisit(p.first),
+        last: firstVisit(p.last),
+        osm_id: p.id,
+    };
+}
+
+async function mcpGetSummits(args, env) {
+    const query = argStr(args.query) && fold(args.query);
+    const minEle = argNum(args.min_elevation_m, 'min_elevation_m');
+    const since = argDate(args.since, 'since');
+    const sort = argEnum(args.sort, ['elevation', 'recent', 'first', 'count', 'name'], 'sort', 'elevation');
+    const limit = argInt(args.limit, 'limit', 50, 1, 300);
+
+    const all = await listSummitedPeaks(env);
+    let peaks = all;
+    if (query) peaks = peaks.filter(p => fold(p.name).includes(query));
+    if (minEle !== null) peaks = peaks.filter(p => (p.ele || 0) >= minEle);
+    if (since) peaks = peaks.filter(p => onOrAfter(p.last?.date, since));
+    const sorters = {
+        elevation: (a, b) => (b.ele || 0) - (a.ele || 0),
+        recent: (a, b) => String(b.last?.date).localeCompare(String(a.last?.date)),
+        first: (a, b) => String(a.first?.date).localeCompare(String(b.first?.date)),
+        count: (a, b) => b.activities - a.activities || (b.ele || 0) - (a.ele || 0),
+        name: (a, b) => String(a.name).localeCompare(String(b.name)),
+    };
+    peaks = [...peaks].sort(sorters[sort]);
+    return {
+        summited: all.length,
+        matched: peaks.length,
+        showing: Math.min(limit, peaks.length),
+        peaks: peaks.slice(0, limit).map(peakOut),
+    };
+}
+
+// Mirrors PEAK_LISTS in js/peaks-dashboard.js. type: the /travel KV type;
+// key: the field identifying an entry; done: its completion flag; unit: the
+// elevation unit in the file (feet unless noted).
+const MCP_PEAK_LISTS = {
+    colorado_14ers:          { type: 'colorado14ers',     file: 'data/colorado14ers.json',           key: 'name',    done: 'climbed' },
+    adirondack_46ers:        { type: 'adk46ers',          file: 'data/adirondack46ers.json',         key: 'name',    done: 'climbed' },
+    us_state_highpoints:     { type: 'highpoints',        file: 'data/highPoints.json',              key: 'state',   done: 'visited', region: 'state' },
+    british_isles_high_five: { type: 'britishIsles',      file: 'data/british-isles-high-five.json', key: 'name',    done: 'climbed', region: 'country', unit: 'm' },
+    country_highpoints:      { type: 'countryHighpoints', file: 'data/country-highpoints.json',      key: 'country', done: 'climbed', region: 'country' },
+};
+
+// Same rules as stravaMatches() in js/peaks-dashboard.js: a summited OSM peak
+// within 400 m of a list peak is that peak, or within 3 km when the names
+// agree; one summit confirms at most one list peak, name matches first.
+const STRAVA_NEAR_M = 400;
+const STRAVA_NAMED_M = 3000;
+const NAME_STOPWORDS = new Set(['mount', 'mt', 'mont', 'monte', 'mountain', 'pico', 'pic', 'peak',
+    'cerro', 'gora', 'volcan', 'nevado', 'the', 'de', 'del', 'la', 'jabal', 'jebel', 'hill', 'doi', 'bukit', 'puncak']);
+
+function haversineM(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180;
+    const dl = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function peakNameKeys(name) {
+    return String(name || '').split(/[\/();,]/)
+        .map(part => fold(part).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+            .filter(w => w && !NAME_STOPWORDS.has(w)).join(' '))
+        .filter(k => k.length >= 2);
+}
+
+function peakNamesAgree(a, b) {
+    const ka = peakNameKeys(a), kb = peakNameKeys(b);
+    return ka.some(x => kb.some(y => x === y ||
+        (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)))));
+}
+
+function matchPeakList(items, summited) {
+    const pairs = [];
+    for (const item of items) {
+        if (!Array.isArray(item.coords)) continue;
+        const [lng, lat] = item.coords;
+        for (const peak of summited) {
+            const d = haversineM(lat, lng, peak.lat, peak.lng);
+            if (d > STRAVA_NAMED_M) continue;
+            const named = peakNamesAgree(item.name, peak.name);
+            if (named || d <= STRAVA_NEAR_M) pairs.push({ item, peak, d, named });
+        }
+    }
+    pairs.sort((a, b) => (b.named - a.named) || (a.d - b.d));
+    const matches = new Map();
+    const used = new Set();
+    for (const { item, peak } of pairs) {
+        if (matches.has(item) || used.has(peak.id)) continue;
+        matches.set(item, peak);
+        used.add(peak.id);
+    }
+    return matches;
+}
+
+// The list as the Peaks dashboard shows it: KV once seeded, else the /data
+// file; coordinates (and, for lists not keyed by name, names) always from the
+// file, so a fixed coordinate or renamed peak shows up.
+async function loadPeakList(cfg, env) {
+    const [stored, file] = await Promise.all([
+        env.STRAVA_DATA.get(TRAVEL_KEYS[cfg.type], 'json'),
+        fetchSiteJson(cfg.file).catch(() => null),
+    ]);
+    if (!Array.isArray(stored) || !stored.length) {
+        if (!file) throw new Error('Peak list unavailable');
+        return file;
+    }
+    if (file) {
+        const byKey = new Map(file.map(item => [item[cfg.key], item]));
+        for (const item of stored) {
+            const ref = byKey.get(item[cfg.key]);
+            if (!ref) continue;
+            if (Array.isArray(ref.coords)) item.coords = ref.coords;
+            if (cfg.key !== 'name' && ref.name) item.name = ref.name;
+        }
+    }
+    return stored;
+}
+
+async function mcpGetPeakList(args, env) {
+    const listKey = argEnum(args.list, Object.keys(MCP_PEAK_LISTS), 'list');
+    if (!listKey) throw new Error(`list is required: ${Object.keys(MCP_PEAK_LISTS).join(', ')}`);
+    const cfg = MCP_PEAK_LISTS[listKey];
+    const status = argEnum(args.status, ['all', 'climbed', 'not_climbed'], 'status', 'all');
+
+    const [items, summited] = await Promise.all([loadPeakList(cfg, env), listSummitedPeaks(env)]);
+    const matches = matchPeakList(items, summited);
+    const rows = items.map(item => {
+        const peak = matches.get(item);
+        const ft = cfg.unit === 'm' ? Math.round(item.elevation * FT_PER_M) : item.elevation;
+        return {
+            name: item.name,
+            ...(cfg.region ? { [cfg.region]: item[cfg.region] } : {}),
+            ...(item.mainland ? { mainland: true } : {}),
+            elevation_ft: ft ?? null,
+            elevation_m: ft != null ? Math.round(ft / FT_PER_M) : null,
+            climbed: Boolean(item[cfg.done]),
+            strava_first_summit: peak ? firstVisit(peak.first) : null,
+        };
+    });
+    const climbed = rows.filter(r => r.climbed).length;
+    const confirmed = rows.filter(r => r.strava_first_summit).length;
+    const disagree = rows.filter(r => r.climbed !== Boolean(r.strava_first_summit)).length;
+    const shown = rows
+        .filter(r => status === 'all' || (status === 'climbed') === r.climbed)
+        .sort((a, b) => (b.elevation_ft || 0) - (a.elevation_ft || 0));
+    return {
+        list: listKey,
+        climbed,
+        total: rows.length,
+        strava_confirmed: confirmed,
+        // Rows where the hand-kept mark and Strava disagree: climbed before
+        // GPS recording, or a summit Strava found that the list misses.
+        disagreements: disagree,
+        peaks: shown,
+    };
+}
+
+// ── MCP — travel ──
+
+const CONTINENT_LISTS = {
+    northAmericanCountries: 'North America', southAmericanCountries: 'South America',
+    europeanCountries: 'Europe', asianCountries: 'Asia', africanCountries: 'Africa', oceaniaCountries: 'Oceania',
+};
+
+async function mcpGetTravel(args, env) {
+    const kind = argEnum(args.kind, ['countries', 'us_states', 'us_metros', 'national_parks'], 'kind');
+    if (!kind) throw new Error('kind is required: countries, us_states, us_metros, national_parks');
+    const status = argEnum(args.status, ['all', 'visited', 'unvisited'], 'status', 'visited');
+    const kv = env.STRAVA_DATA;
+
+    let items = [];
+    let byContinent = null;
+    if (kind === 'countries') {
+        const data = (await kv.get(TRAVEL_KEYS.countries, 'json')) || await fetchSiteJson('data/countries.json');
+        byContinent = {};
+        for (const [listKey, continent] of Object.entries(CONTINENT_LISTS)) {
+            const list = data[listKey] || [];
+            byContinent[continent] = { visited: list.filter(c => c.visited).length, total: list.length };
+            items.push(...list.map(c => ({ name: c.name, continent, visited: Boolean(c.visited) })));
+        }
+    } else if (kind === 'us_states') {
+        const data = (await kv.get(TRAVEL_KEYS.visitedStates, 'json')) || await fetchSiteJson('data/visitedStates.json');
+        items = Object.entries(data).map(([name, visited]) => ({ name, visited: Boolean(visited) }));
+    } else if (kind === 'us_metros') {
+        const data = (await kv.get(TRAVEL_KEYS.metros, 'json')) || await fetchSiteJson('data/metros.json');
+        items = data.map(m => ({ rank: m.rank, name: m.name, state: m.state, population: m.population, visited: Boolean(m.visited) }));
+    } else {
+        // Like TravelAPI.fetchNationalParks: parks added to the file since the
+        // list was seeded are appended with the file's flag.
+        const [stored, file] = await Promise.all([
+            kv.get(TRAVEL_KEYS.parks, 'json'),
+            fetchSiteJson('data/nationalParks.json').catch(() => []),
+        ]);
+        const parks = Array.isArray(stored) && stored.length ? stored : file;
+        const have = new Set(parks.map(p => p.name));
+        for (const p of file) if (!have.has(p.name)) parks.push(p);
+        items = parks.map(p => ({ name: p.name, state: p.state, visited: Boolean(p.visited) }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const visited = items.filter(i => i.visited).length;
+    const shown = status === 'all' ? items : items.filter(i => i.visited === (status === 'visited'));
+    return {
+        kind,
+        visited,
+        total: items.length,
+        ...(byContinent ? { by_continent: byContinent } : {}),
+        status,
+        items: status === 'all' ? shown : shown.map(({ visited: _, ...rest }) => rest),
+    };
+}
+
+// ── MCP — overview and music ──
+
+async function mcpGetOverview(args, env) {
+    const [summary, progress, { slim, syncedAt }] = await Promise.all([
+        buildSummary(env),
+        env.STRAVA_DATA.get(PROGRESS_KEY, 'json'),
+        loadActivities(env),
+    ]);
+    const bySport = {};
+    for (const a of slim) (bySport[a.t] ||= []).push(a);
+    const sports = Object.entries(bySport)
+        .map(([sport, list]) => ({ sport, ...activityTotals(list) }))
+        .sort((a, b) => b.count - a.count);
+    const dates = slim.map(a => a.d).filter(Boolean).sort();
+    // Every city / trail region computed so far, not just the latest.
+    const coverage = (group) => Object.values(group || {}).map(({ ts, ...v }) => v);
+    const { city, trail, generatedAt, activities, ...hunters } = summary;
+    return {
+        activities: {
+            with_gps: slim.length,
+            strava_total: activities?.total ?? null,
+            first: dates[0] || null,
+            latest: dates[dates.length - 1] || null,
+            synced_at: syncedAt ? new Date(syncedAt).toISOString() : null,
+            totals: activityTotals(slim),
+            by_sport: sports,
+            ...distanceNote(slim),
+        },
+        hunters,
+        city_coverage: coverage(progress?.city),
+        trail_coverage: coverage(progress?.trail),
+        site: `${SITE_URL}/strava.html`,
+    };
+}
+
+async function mcpGetTopSongs(args, env) {
+    return musicLeaderboard(env, argInt(args.limit, 'limit', 25, 1, 200));
+}
+
+// ── MCP — tool list ──
+
+const MCP_READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+
+const MCP_TOOLS = [
+    {
+        name: 'get_overview',
+        title: 'Overview',
+        description: 'Headline numbers: activity totals (overall and per sport), every hunter\'s progress (counties, national parks, state parks, metros, ecoregions, map tiles incl. max cluster / square, peaks summited, Colorado passes) and city / trail coverage. Start here.',
+        inputSchema: { type: 'object', properties: {} },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetOverview,
+    },
+    {
+        name: 'search_activities',
+        title: 'Search activities',
+        description: 'Find Strava activities by sport, date range, start country / region, title text, distance or climbing, sorted by date, distance, elevation gain or moving time. Returns totals over every match plus the top results.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                ...ACTIVITY_FILTER_PROPS,
+                sort: { type: 'string', enum: Object.keys(ACTIVITY_SORTS), description: 'Default date.' },
+                order: { type: 'string', enum: ['desc', 'asc'], description: 'Default desc (newest / biggest first).' },
+                limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Activities to return (default 20).' },
+            },
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpSearchActivities,
+    },
+    {
+        name: 'activity_stats',
+        title: 'Activity statistics',
+        description: 'Totals (count, distance, moving time, elevation gain, longest, biggest climb) grouped by year, month, sport, country or region, over activities matching the same filters as search_activities. E.g. running distance per year, or rides per country.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                group_by: { type: 'string', enum: Object.keys(STAT_GROUPS), description: 'Default year.' },
+                ...ACTIVITY_FILTER_PROPS,
+            },
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpActivityStats,
+    },
+    {
+        name: 'get_hunter',
+        title: 'Hunter progress',
+        description: 'Places a hunter has reached on GPS routes, each with the activity that first reached it — or, with status=unvisited, the ones still to go. Hunters: county (US counties), national_park (national parks, forests, wildlife refuges and other NPS / USFS / FWS lands), state_park, metro (200 largest US metros), ecoregion (EPA Level IV), pass (Colorado paved mountain passes, by bike).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                hunter: { type: 'string', enum: Object.keys(MCP_HUNTERS) },
+                status: { type: 'string', enum: ['visited', 'unvisited'], description: 'Default visited.' },
+                state: { type: 'string', description: 'Two-letter US state, e.g. CO (county, state_park, metro).' },
+                query: { type: 'string', description: 'Text the name contains (for ecoregions also the Level III name).' },
+                since: { type: 'string', description: 'Only first reached on or after this date (YYYY, YYYY-MM or YYYY-MM-DD).' },
+                sort: { type: 'string', enum: ['recent', 'oldest', 'name'], description: 'Default recent (visited) / name (unvisited).' },
+                limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Default 50.' },
+            },
+            required: ['hunter'],
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetHunter,
+    },
+    {
+        name: 'get_summits',
+        title: 'Summits',
+        description: 'Mountain summits reached on Strava activities (Mountain Hunter: named OpenStreetMap peaks within 50 m of a route), with elevation, how many activities reached each, and the first and latest visit. Use query to check a specific peak.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string', description: 'Text the peak name contains, e.g. "Longs".' },
+                min_elevation_m: { type: 'number', description: 'Minimum elevation in metres (14,000 ft = 4267 m).' },
+                since: { type: 'string', description: 'Only peaks visited on or after this date.' },
+                sort: { type: 'string', enum: ['elevation', 'recent', 'first', 'count', 'name'], description: 'Default elevation.' },
+                limit: { type: 'integer', minimum: 1, maximum: 300, description: 'Default 50.' },
+            },
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetSummits,
+    },
+    {
+        name: 'get_peak_list',
+        title: 'Peak list',
+        description: 'A peak-bagging list from the Peaks page: each peak\'s hand-kept climbed mark and the first Strava summit that confirms it (null when Strava has none — e.g. climbed before GPS recording).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                list: { type: 'string', enum: Object.keys(MCP_PEAK_LISTS) },
+                status: { type: 'string', enum: ['all', 'climbed', 'not_climbed'], description: 'Default all.' },
+            },
+            required: ['list'],
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetPeakList,
+    },
+    {
+        name: 'get_travel',
+        title: 'Travel lists',
+        description: 'Hand-kept travel tracking from the US and World dashboards: countries visited (by continent), US states, the 200 largest US metros, and US national parks.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                kind: { type: 'string', enum: ['countries', 'us_states', 'us_metros', 'national_parks'] },
+                status: { type: 'string', enum: ['all', 'visited', 'unvisited'], description: 'Default visited.' },
+            },
+            required: ['kind'],
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetTravel,
+    },
+    {
+        name: 'get_top_songs',
+        title: 'Top songs',
+        description: 'Most-played songs on YouTube Music, counted from the daily history sync.',
+        inputSchema: {
+            type: 'object',
+            properties: { limit: { type: 'integer', minimum: 1, maximum: 200, description: 'Default 25.' } },
+        },
+        annotations: MCP_READ_ONLY,
+        run: mcpGetTopSongs,
+    },
+];
 
 // ── Strava OAuth ─────────────────────────────────────────────────────────────
 
