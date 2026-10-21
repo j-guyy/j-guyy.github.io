@@ -43,6 +43,14 @@ USFWS_KEEP = ["National Wildlife Refuge", "National Fish Hatchery"]
 
 PAGE_SIZE = 1000
 
+# Units redesignated after the source data was published: old name → new name.
+# The id stays the one minted from the old name, because Park Hunter's saved
+# visits (worker KV) are keyed by it.
+REDESIGNATED = {
+    "Chiricahua National Monument": "Chiricahua National Park",  # 64th NP, 2026
+}
+ID_NAMES = {new: old for old, new in REDESIGNATED.items()}
+
 # ── HTTP helper ───────────────────────────────────────────────────────────────
 
 def fetch_json(url, retries=3):
@@ -185,6 +193,7 @@ def main():
         for feat in features:
             props = feat.get("properties") or {}
             unit  = (props.get("Unit_Name") or "").strip()
+            unit  = REDESIGNATED.get(unit, unit)
             if not unit:
                 skipped += 1
                 continue
@@ -215,7 +224,7 @@ def main():
         out_features.append({
             "type": "Feature",
             "properties": {
-                "id":     unit_id(abbr, unit_name),
+                "id":     unit_id(abbr, ID_NAMES.get(unit_name, unit_name)),
                 "name":   unit_name,
                 "agency": abbr,
                 "type":   infer_type(unit_name),
