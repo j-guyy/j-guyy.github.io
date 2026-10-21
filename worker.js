@@ -120,7 +120,17 @@ export default {
             }
             if (path === '/activities/sync' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
-                return handleSyncStream(env);
+                // The SyncRunner Durable Object runs the sync itself, so it
+                // keeps going after the page that asked for it closes. Without
+                // the binding (a dashboard paste), sync inside this request.
+                if (!env.SYNC_RUNNER) return handleSyncStream(env);
+                const join = url.searchParams.get('join') === '1';
+                return await callSyncRunner(env, join ? '/sync?join=1' : '/sync');
+            }
+            if (path === '/activities/sync/status') {
+                if (!isAdmin(request, env)) return unauthorized();
+                if (!env.SYNC_RUNNER) return json({ state: 'idle', running: false });
+                return await callSyncRunner(env, '/status');
             }
             if (path === '/activities/rebuild' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -432,6 +442,13 @@ export default {
     // (Workers → strava-worker → Settings → Triggers). Currently set to once
     // daily at 00:00 UTC: `0 0 * * *`.
     async scheduled(event, env, ctx) {
+        // Through the SyncRunner when bound, so the cron and a manual "Sync
+        // now" never run at the same time (a manual sync joins the cron's).
+        if (env.SYNC_RUNNER) {
+            ctx.waitUntil(callSyncRunner(env, '/start')
+                .catch(err => console.log(`scheduled sync failed to start: ${err.message}`)));
+            return;
+        }
         ctx.waitUntil(
             syncActivities(env)
                 .then(r => console.log(`scheduled sync: ${r.newActivities} new, ${r.updated} updated, ${r.removed} removed`))
@@ -1022,6 +1039,140 @@ function handleSyncStream(env) {
     return new Response(readable, {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/x-ndjson' },
     });
+}
+
+// ── Background sync runner (Durable Object) ──────────────────────────────────
+//
+// A manual "Sync now" used to run inside the page's request, so leaving the
+// page (or backgrounding the app) cancelled it part-way. The SyncRunner — one
+// instance, named 'strava-sync' — runs the sync from an alarm instead, which
+// lives on its own (up to 15 minutes) whoever is watching. Pages watch a run
+// over an NDJSON stream: POST /sync starts a run (or joins the one already
+// going) and streams {type:'progress', fetched} per Strava page, a
+// {type:'ping'} every few seconds, and finally {type:'done', …result} or
+// {type:'error'}. POST /sync?join=1 only joins: when nothing is running it
+// answers with one {type:'idle', status} line, so a page that comes back
+// after a run finished can pick up its result. The last run's status (no
+// activity list — that is in KV) is kept in the object's storage for
+// GET /status. Configured in wrangler.toml (binding SYNC_RUNNER + migration).
+
+const SYNC_PING_MS = 5000;
+
+async function callSyncRunner(env, path) {
+    const stub = env.SYNC_RUNNER.get(env.SYNC_RUNNER.idFromName('strava-sync'));
+    const res = await stub.fetch(`https://sync-runner${path}`, { method: 'POST' });
+    return new Response(res.body, {
+        status: res.status,
+        headers: { ...CORS_HEADERS, 'Content-Type': res.headers.get('Content-Type') || 'application/json' },
+    });
+}
+
+export class SyncRunner {
+    constructor(state, env) {
+        this.state = state;
+        this.env = env;
+        this.watchers = new Set(); // stream writers of the pages watching this run
+        this.running = false;      // true while alarm() is syncing
+        this.fetched = 0;          // activities fetched so far in this run
+    }
+
+    async getStatus() {
+        return (await this.state.storage.get('status')) || { state: 'idle' };
+    }
+
+    // A run is going, or about to (the alarm is set but hasn't fired yet).
+    async isRunning() {
+        return this.running || (await this.state.storage.getAlarm()) !== null;
+    }
+
+    async fetch(request) {
+        const url = new URL(request.url);
+        const running = await this.isRunning();
+        if (url.pathname === '/status') {
+            const status = await this.getStatus();
+            // Storage still saying 'running' with no run going means the run
+            // was cut off (e.g. a deploy reset the object mid-sync).
+            const state = !running && status.state === 'running' ? 'interrupted' : status.state;
+            return json({ ...status, state, running, fetched: running ? this.fetched : status.fetched });
+        }
+        if (url.pathname === '/start' || url.pathname === '/sync') {
+            if (!running) {
+                if (url.searchParams.get('join') === '1') {
+                    const status = await this.getStatus();
+                    const state = status.state === 'running' ? 'interrupted' : status.state;
+                    return ndjsonResponse(JSON.stringify({ type: 'idle', status: { ...status, state } }) + '\n');
+                }
+                const now = Date.now();
+                this.fetched = 0;
+                await this.state.storage.put('status', { state: 'running', startedAt: now, updatedAt: now, fetched: 0 });
+                await this.state.storage.setAlarm(now);
+            }
+            if (url.pathname === '/start') return json({ ok: true, joined: running });
+            return this.watch();
+        }
+        return json({ error: 'Not found' }, 404);
+    }
+
+    // A stream for one page; it starts with how far the run has got.
+    watch() {
+        const { readable, writable } = new TransformStream();
+        const writer = writable.getWriter();
+        this.watchers.add(writer);
+        this.send(writer, { type: 'progress', fetched: this.fetched });
+        return ndjsonResponse(readable);
+    }
+
+    send(writer, obj) {
+        // A page that went away fails the write; stop writing to it. The run
+        // itself carries on.
+        writer.write(new TextEncoder().encode(JSON.stringify(obj) + '\n'))
+            .catch(() => this.watchers.delete(writer));
+    }
+
+    broadcast(obj) {
+        for (const writer of this.watchers) this.send(writer, obj);
+    }
+
+    async alarm() {
+        if (this.running) return;
+        this.running = true;
+        const startedAt = (await this.getStatus()).startedAt || Date.now();
+        // Pings keep a watching page's stream visibly alive between pages, so
+        // the page can tell a quiet stream from a dead one.
+        const ping = setInterval(() => this.broadcast({ type: 'ping' }), SYNC_PING_MS);
+        try {
+            const result = await syncActivities(this.env, (fetched) => {
+                this.fetched = fetched;
+                this.broadcast({ type: 'progress', fetched });
+                this.state.storage.put('status', { state: 'running', startedAt, updatedAt: Date.now(), fetched })
+                    .catch(() => {});
+            });
+            const now = Date.now();
+            await this.state.storage.put('status', {
+                state: 'done', startedAt, updatedAt: now, finishedAt: now,
+                fetched: result.total, total: result.total, syncedAt: result.syncedAt,
+                newActivities: result.newActivities, updated: result.updated, removed: result.removed,
+            });
+            console.log(`sync: ${result.newActivities} new, ${result.updated} updated, ${result.removed} removed`);
+            this.broadcast({ type: 'done', ...result });
+        } catch (e) {
+            const now = Date.now();
+            await this.state.storage.put('status', {
+                state: 'error', startedAt, updatedAt: now, finishedAt: now, fetched: this.fetched, error: e.message,
+            }).catch(() => {});
+            console.log(`sync failed: ${e.message}`);
+            this.broadcast({ type: 'error', error: e.message });
+        } finally {
+            clearInterval(ping);
+            this.running = false;
+            for (const writer of this.watchers) writer.close().catch(() => {});
+            this.watchers.clear();
+        }
+    }
+}
+
+function ndjsonResponse(body) {
+    return new Response(body, { headers: { ...CORS_HEADERS, 'Content-Type': 'application/x-ndjson' } });
 }
 
 // Re-resolve the denormalized `actName` stored in each hunter's discovery blob
