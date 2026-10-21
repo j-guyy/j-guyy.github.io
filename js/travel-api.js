@@ -36,9 +36,22 @@ const TravelAPI = {
         return res.json();
     },
 
+    // The stored list only changes through toggles, so a park added to the
+    // /data file (a new designation, e.g. Chiricahua) is appended from it,
+    // with the file's visited flag, until the list is re-seeded.
     async fetchNationalParks() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/parks`);
-        return res.json();
+        const parks = await res.json();
+        if (!Array.isArray(parks) || !parks.length) return parks;
+        try {
+            const file = await fetch(new URL('nationalParks.json', TRAVEL_DATA_URL));
+            if (file.ok) {
+                const stored = new Set(parks.map(p => p.name));
+                (await file.json()).forEach(p => { if (!stored.has(p.name)) parks.push(p); });
+                parks.sort((a, b) => a.name.localeCompare(b.name));
+            }
+        } catch { /* keep the stored list */ }
+        return parks;
     },
 
     async fetchCountries() {

@@ -99,6 +99,15 @@
         "visited": false
     },
     {
+        "name": "Chiricahua",
+        "state": "AZ",
+        "coords": [
+            -109.3425,
+            32.0131
+        ],
+        "visited": true
+    },
+    {
         "name": "Congaree",
         "state": "SC",
         "coords": [
@@ -186,7 +195,7 @@
             -113.7870,
             48.7596
         ],
-        "visited": false
+        "visited": true
     },
     {
         "name": "Glacier Bay",
