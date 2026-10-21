@@ -30,6 +30,17 @@ binding = "MUSIC_DB"
 database_name = "music"
 database_id = "dbc5b954-373a-48d8-b445-52a0c2381758"
 
+# Runs a manual "Sync now" (and the cron sync) on its own, so it keeps going
+# after the page that started it closes. See SyncRunner in worker.js. The
+# migration creates the class once; never edit or remove an applied migration.
+[[durable_objects.bindings]]
+name = "SYNC_RUNNER"
+class_name = "SyncRunner"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncRunner"]
+
 # Cron trigger (Settings -> Triggers). Cloudflare crons run in UTC; this is
 # midnight UTC. Keep it identical to the dashboard's cron expression.
 [triggers]

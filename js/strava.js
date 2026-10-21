@@ -404,50 +404,56 @@ async function loadFromWorker() {
 }
 
 // Tell the worker to fetch all activities from Strava and merge them into KV.
-// The worker streams NDJSON: one {type:'progress', fetched} line per page so we
-// can drive a real progress bar, then a final {type:'done', …result}.
-async function syncWithWorker() {
+// The worker runs the sync on its own (its SyncRunner), so it carries on if this
+// page closes or the app is backgrounded; this page just watches it. The worker
+// streams NDJSON: one {type:'progress', fetched} line per page so we can drive a
+// real progress bar, {type:'ping'} keep-alives, then a final {type:'done', …}.
+// If the stream drops (network blip, app backgrounded, page hidden) we
+// reconnect with ?join=1, which re-attaches to the run still going — or, when
+// it finished meanwhile, answers {type:'idle', status} with its outcome.
+// `join` starts out re-attaching (a page that came back to a running sync).
+const SYNC_PENDING_KEY = 'strava_sync_pending'; // set while a sync this browser watched hasn't been seen to finish
+const SYNC_STALL_MS = 30000;   // no line for this long → treat the stream as dead and reconnect
+const SYNC_RECONNECTS = 6;     // reconnect attempts (only counted while the page is visible)
+let syncStreamAbort = null;    // aborts the current sync stream (on returning to the page)
+
+function syncError(message, fatal) {
+    return Object.assign(new Error(message), { fatal });
+}
+
+async function syncWithWorker({ join = false } = {}) {
     setStatus('Syncing new activities…');
-    dbg('POST /activities/sync — fetching from Strava…');
+    dbg(`POST /activities/sync${join ? ' (rejoin)' : ''} — fetching from Strava…`);
     const t0 = Date.now();
-    const res = await adminPost('/activities/sync');
-    if (!res.ok) throw new Error(`Sync error: ${res.status}`);
+    try {
+        if (!localStorage.getItem(SYNC_PENDING_KEY)) localStorage.setItem(SYNC_PENDING_KEY, String(Date.now()));
+    } catch { /* storage blocked */ }
 
     // Estimate total pages from the activity count we already have, so the bar
     // advances meaningfully as each 200-activity page lands.
     const estTotal = currentTotal || 0;
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
     let data = null;
-
-    const handleLine = (line) => {
-        line = line.trim();
-        if (!line) return;
-        let msg;
-        try { msg = JSON.parse(line); } catch { return; }
-        if (msg.type === 'progress') {
-            updateSyncProgress(msg.fetched, estTotal);
-        } else if (msg.type === 'done') {
-            data = msg;
-        } else if (msg.type === 'error') {
-            throw new Error(msg.error || 'sync failed');
-        }
-    };
-
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let nl;
-        while ((nl = buf.indexOf('\n')) >= 0) {
-            handleLine(buf.slice(0, nl));
-            buf = buf.slice(nl + 1);
+    for (let attempt = 0; ; ) {
+        try {
+            const outcome = await streamSync(join, estTotal);
+            data = outcome.type === 'done' ? outcome : await syncResultFromStatus(outcome.status);
+            break;
+        } catch (err) {
+            if (err.fatal) {
+                try { localStorage.removeItem(SYNC_PENDING_KEY); } catch { /* ignore */ }
+                throw err;
+            }
+            join = true; // from here on, re-attach rather than start another run
+            if (err.resumed) { dbg('Page visible again — reconnecting to the sync'); continue; }
+            if (attempt >= SYNC_RECONNECTS) throw err;
+            dbg(`Sync connection lost (${err.message}) — reconnecting…`);
+            await whenPageVisible();
+            await new Promise(r => setTimeout(r, Math.min(16000, 1000 * 2 ** attempt)));
+            if (document.visibilityState === 'visible') attempt++;
         }
     }
-    if (buf) handleLine(buf); // trailing line without a newline, just in case
-    if (!data) throw new Error('sync ended without a result');
+    try { localStorage.removeItem(SYNC_PENDING_KEY); } catch { /* ignore */ }
 
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
     dbg(`Sync complete in ${elapsed}s`, {
@@ -463,6 +469,149 @@ async function syncWithWorker() {
     lastSyncResult = formatSyncResult(data);
     setStatus(lastSyncResult);
     return data;
+}
+
+// One connection to the sync stream. Resolves with the 'done' message, or
+// {type:'idle', status} when a join finds nothing running. Throws a `fatal`
+// error for a failure that reconnecting can't fix (auth, the sync itself
+// failing), and a non-fatal one when the connection drops or stalls.
+async function streamSync(join, estTotal) {
+    const ctrl = new AbortController();
+    syncStreamAbort = ctrl;
+    let stallTimer = null;
+    const armStall = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => ctrl.abort(syncError('no response from the sync', false)), SYNC_STALL_MS);
+    };
+    try {
+        armStall();
+        let res;
+        try {
+            res = await fetch(`${WORKER_URL}/activities/sync${join ? '?join=1' : ''}`, {
+                method: 'POST', headers: { ...adminHeaders() }, signal: ctrl.signal,
+            });
+        } catch (err) {
+            throw ctrl.signal.aborted && ctrl.signal.reason instanceof Error ? ctrl.signal.reason : err;
+        }
+        if (!res.ok) throw syncError(`Sync error: ${res.status}`, res.status < 500);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        let result = null;
+        const handleLine = (line) => {
+            line = line.trim();
+            if (!line) return;
+            let msg;
+            try { msg = JSON.parse(line); } catch { return; }
+            if (msg.type === 'progress') {
+                updateSyncProgress(msg.fetched, estTotal);
+            } else if (msg.type === 'done' || msg.type === 'idle') {
+                result = msg;
+            } else if (msg.type === 'error') {
+                throw syncError(msg.error || 'sync failed', true);
+            }
+        };
+        while (true) {
+            let chunk;
+            try {
+                chunk = await reader.read();
+            } catch (err) {
+                throw ctrl.signal.aborted && ctrl.signal.reason instanceof Error ? ctrl.signal.reason : err;
+            }
+            if (chunk.done) break;
+            armStall();
+            buf += decoder.decode(chunk.value, { stream: true });
+            let nl;
+            while ((nl = buf.indexOf('\n')) >= 0) {
+                handleLine(buf.slice(0, nl));
+                buf = buf.slice(nl + 1);
+            }
+        }
+        if (buf) handleLine(buf); // trailing line without a newline, just in case
+        if (!result) throw syncError('sync stream ended early', false);
+        return result;
+    } finally {
+        clearTimeout(stallTimer);
+        if (syncStreamAbort === ctrl) syncStreamAbort = null;
+    }
+}
+
+// A join found no sync running: the run finished (or failed) while this page
+// wasn't watching. Report its outcome and fetch the activities it stored.
+async function syncResultFromStatus(status) {
+    if (status?.state === 'error') throw syncError(status.error || 'sync failed', true);
+    if (status?.state !== 'done') throw syncError('sync was interrupted — tap Sync now to run it again', true);
+    const tallies = { newActivities: status.newActivities, updated: status.updated, removed: status.removed };
+    if (lastSyncedAt && status.syncedAt && lastSyncedAt >= status.syncedAt) {
+        // This page already shows what the run stored.
+        return { ...tallies, unchanged: true };
+    }
+    // KV can lag a few seconds behind the run that just wrote it.
+    let fresh = null;
+    for (let i = 0; i < 6; i++) {
+        fresh = await loadFromWorker();
+        if (!status.syncedAt || (fresh.syncedAt || 0) >= status.syncedAt) break;
+        await new Promise(r => setTimeout(r, 5000));
+    }
+    return { ...fresh, ...tallies };
+}
+
+function whenPageVisible() {
+    if (document.visibilityState === 'visible') return Promise.resolve();
+    return new Promise(resolve => {
+        const onChange = () => {
+            if (document.visibilityState !== 'visible') return;
+            document.removeEventListener('visibilitychange', onChange);
+            resolve();
+        };
+        document.addEventListener('visibilitychange', onChange);
+    });
+}
+
+// Coming back to the page (or the app) while a sync stream is open: the stream
+// may have died silently while the page was frozen, so reconnect straight away
+// rather than wait for the stall timeout. Rejoining is cheap and idempotent.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && syncStreamAbort) {
+        syncStreamAbort.abort(Object.assign(syncError('page resumed', false), { resumed: true }));
+    }
+});
+
+// The worker's view of the background sync: { running, state, fetched, … },
+// or null when it can't say (logged out, network, a worker without it).
+async function fetchSyncStatus() {
+    if (!isLoggedIn()) return null;
+    try {
+        const res = await fetch(`${WORKER_URL}/activities/sync/status`, { headers: { ...adminHeaders() } });
+        return res.ok ? await res.json() : null;
+    } catch {
+        return null;
+    }
+}
+
+// On page load: a sync started earlier (here, in the app, or by the cron) may
+// still be running — show its progress bar and follow it. And a sync this
+// browser was watching when it left may have finished meanwhile — pick up its
+// result. `loaded` is the initial pipeline run.
+async function resumeBackgroundSync(loaded) {
+    if (!isLoggedIn()) return;
+    let pendingSince = 0;
+    try { pendingSince = Number(localStorage.getItem(SYNC_PENDING_KEY)) || 0; } catch { /* ignore */ }
+    const status = await fetchSyncStatus();
+    if (!status) return;
+    if (status.running) {
+        dbg(`A sync is already running (${status.fetched || 0} fetched) — following it`);
+        runManualSync({ join: true, after: loaded, fetched: status.fetched || 0 });
+    } else if (pendingSince) {
+        // Only report the worker's last run if it's the one we were watching
+        // (allowing for clock skew); otherwise the flag is stale.
+        if (status.startedAt && status.startedAt >= pendingSince - 10 * 60 * 1000) {
+            runManualSync({ join: true, after: loaded });
+        } else {
+            try { localStorage.removeItem(SYNC_PENDING_KEY); } catch { /* ignore */ }
+        }
+    }
 }
 
 // Human-readable one-liner for the post-sync summary shown in the controls bar.
@@ -9021,31 +9170,40 @@ function setCacheInfo(gpsCount, total, syncedAt) {
         ${controls}
         ${extra}
     `;
-    document.getElementById('refresh-btn')?.addEventListener('click', runManualSync);
+    document.getElementById('refresh-btn')?.addEventListener('click', () => runManualSync());
 }
 
 // Manual force-sync wrapper that drives the button's in-flight state so the user
-// gets visual feedback (the full refresh takes several seconds).
-async function runManualSync() {
-    if (syncing) return;
+// gets visual feedback (the full refresh takes several seconds). With `join` it
+// follows a sync that is already running instead of starting one; `after` is a
+// promise to wait for first (the initial load), with the bar already showing.
+let syncTask = null;
+function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
+    if (syncTask) return syncTask;
     syncing = true;
-    syncProgress = { fetched: 0, pct: 0 };
+    syncProgress = { fetched, pct: 0 };
     lastSyncResult = null;
-    refreshAdminUI(); // repaint the button as "Syncing…" with an empty progress bar
-    try {
-        await runPipeline(true);
-    } finally {
-        syncing = false;
-        syncProgress = null;
-        refreshAdminUI(); // back to "Sync now", showing the result line + "Synced just now"
-        // Clear the transient result line after a few seconds.
-        if (lastSyncResult) {
-            const shown = lastSyncResult;
-            setTimeout(() => {
-                if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
-            }, 8000);
+    refreshAdminUI(); // repaint the button as "Syncing…" with the progress bar
+    syncTask = (async () => {
+        try {
+            if (after) await after;
+            if (fetched) updateSyncProgress(fetched, currentTotal || 0);
+            await runPipeline(true, { join });
+        } finally {
+            syncing = false;
+            syncProgress = null;
+            syncTask = null;
+            refreshAdminUI(); // back to "Sync now", showing the result line + "Synced just now"
+            // Clear the transient result line after a few seconds.
+            if (lastSyncResult) {
+                const shown = lastSyncResult;
+                setTimeout(() => {
+                    if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
+                }, 8000);
+            }
         }
-    }
+    })();
+    return syncTask;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -9201,42 +9359,29 @@ function refreshOpenMapHunters() {
 
 let pipelineRunning = false;  // prevent concurrent pipeline runs
 
-async function runPipeline(forceSync = false) {
+// `join` (with forceSync): follow a sync that is already running rather than
+// start one, and skip the initial load — the page has just loaded.
+async function runPipeline(forceSync = false, { join = false } = {}) {
     if (pipelineRunning) {
         dbg(`Pipeline skipped — already running (requested ${forceSync ? 'force-sync' : 'load'})`);
         return;
     }
     pipelineRunning = true;
     try {
-        dbg(`Pipeline start — mode: ${forceSync ? 'force-sync' : 'load'}`);
-
-        // Fetch activities + geo cache from the server in parallel
-        const [activityData, geoCache] = await Promise.all([
-            loadFromWorker(),
-            loadGeoCache()
-        ]);
-
-        let { slim, total, syncedAt } = activityData;
-        let cache = geoCache;
-
-        // First-ever load: KV is empty. Automatic syncs run server-side on a
-        // cron trigger, but if there's truly nothing cached and an admin is
-        // logged in, kick off an initial sync so the page isn't blank.
-        if (slim.length === 0 && total === 0 && isLoggedIn()) {
-            setStatus('No data yet — running initial sync…');
-            dbg('KV empty — triggering initial sync');
-            ({ slim, total, syncedAt } = await syncWithWorker());
-        }
-
-        // Render with current cached data immediately
-        cache = await geocodeAndRender(slim, total, syncedAt, cache);
+        dbg(`Pipeline start — mode: ${forceSync ? (join ? 'join sync' : 'force-sync') : 'load'}`);
+        let cache = currentCache;
+        if (!join) cache = await loadAndRender();
 
         // Routine syncs are now handled server-side by the worker's cron trigger,
         // so the page no longer auto-syncs on load. Only a manual force-sync (the
         // admin "Sync now" button) hits Strava from here.
         if (forceSync) {
             dbg('Syncing with Strava (manual)…');
-            const result = await syncWithWorker();
+            const result = await syncWithWorker({ join });
+            if (result.unchanged) {
+                dbg('Sync had already finished and this page shows its result');
+                return;
+            }
             // A full-refresh sync returns authoritative data, so always re-render:
             // edits (renames, corrected elevation) and deletions change the data
             // even when there are zero brand-new activities. The shared polyline
@@ -9253,10 +9398,36 @@ async function runPipeline(forceSync = false) {
     } catch (err) {
         dbg(`ERROR: ${err.message}`);
         setStatus('Error: ' + err.message);
+        // The loader is gone once the page has rendered, so put a failed sync
+        // where the button is.
+        if (forceSync) lastSyncResult = `Sync failed: ${err.message}`;
         console.error(err);
     } finally {
         pipelineRunning = false;
     }
+}
+
+// Fetch activities + geo cache from the server and render them; returns the
+// geo cache.
+async function loadAndRender() {
+    const [activityData, geoCache] = await Promise.all([
+        loadFromWorker(),
+        loadGeoCache()
+    ]);
+
+    let { slim, total, syncedAt } = activityData;
+
+    // First-ever load: KV is empty. Automatic syncs run server-side on a
+    // cron trigger, but if there's truly nothing cached and an admin is
+    // logged in, kick off an initial sync so the page isn't blank.
+    if (slim.length === 0 && total === 0 && isLoggedIn()) {
+        setStatus('No data yet — running initial sync…');
+        dbg('KV empty — triggering initial sync');
+        ({ slim, total, syncedAt } = await syncWithWorker());
+    }
+
+    // Render with current cached data immediately
+    return geocodeAndRender(slim, total, syncedAt, geoCache);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9264,5 +9435,5 @@ document.addEventListener('DOMContentLoaded', () => {
     applyAdminVisibility();
     renderOverview();
     openSectionFromHash();
-    runPipeline(false);
+    resumeBackgroundSync(runPipeline(false));
 });
