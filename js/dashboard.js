@@ -406,7 +406,7 @@ function updateTable(tableType) {
                 <td class="col-name">${item.name}</td>
                 <td class="col-progress">
                     <span class="state-progress" title="${item.progress}% of this state's list done">
-                        <span class="state-progress-bar"><span style="width:${item.progress}%"></span></span>
+                        <span class="state-progress-fill" style="width:${item.progress}%"></span>
                         <span class="state-progress-pct">${item.progress}%</span>
                     </span>
                 </td>

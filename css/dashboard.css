@@ -340,32 +340,35 @@
     display: none;
 }
 
-/* States table: per-state progress bar + percentage */
+/* States table: per-state progress bar with the percentage inside it */
 .state-progress {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-}
-
-.state-progress-bar {
-    width: 80px;
-    height: 6px;
-    border-radius: 3px;
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    width: 96px;
+    height: 20px;
+    border-radius: 10px;
     background: var(--surface-2-hover);
     overflow: hidden;
 }
 
-.state-progress-bar > span {
-    display: block;
-    height: 100%;
+.state-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
     background: var(--primary-color);
 }
 
 .state-progress-pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    min-width: 3.2em;
-    text-align: right;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /* Responsive adjustments */
@@ -550,13 +553,14 @@
         display: none;
     }
 
-    /* Just the percentage on a phone, so all six State columns fit. */
-    .state-progress-bar {
-        display: none;
+    /* A narrower bar on a phone, so all six State columns fit. */
+    .state-progress {
+        width: 38px;
+        height: 18px;
     }
 
     .state-progress-pct {
-        min-width: 0;
+        font-size: 0.72em;
     }
 
     .th-long {
