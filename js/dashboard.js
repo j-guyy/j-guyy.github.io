@@ -232,19 +232,13 @@ function downloadCsv(headers, rows, filename) {
     URL.revokeObjectURL(link.href);
 }
 
-// Edits save the whole list the page holds rather than asking the worker to
-// flip one item. The worker's /travel/toggle reads the stored list, flips the
-// item and writes it back, and Workers KV can serve that read from a cache up
-// to a minute old, so a second toggle soon after the first could write back a
-// list without it and silently undo it. Saving the page's own list, one save
-// at a time and in order, leaves the last write holding every edit.
+// Edits save the whole list (TravelAPI.saveList explains why).
 const TRAVEL_LISTS = {
     visitedStates: () => visitedStates,
     highpoints: () => highPoints,
     metros: () => metros,
     parks: () => nationalParks
 };
-let saveQueue = Promise.resolve();
 
 function handleToggle(tableType, item) {
     const password = TravelAdmin.getPassword();
@@ -261,8 +255,7 @@ function handleToggle(tableType, item) {
 
     // Show the change at once; undo it if the save fails.
     flip();
-    saveQueue = saveQueue
-        .then(() => TravelAPI.seed(type, TRAVEL_LISTS[type](), password))
+    TravelAPI.saveList(type, TRAVEL_LISTS[type], password)
         .catch(err => {
             flip();
             alert('Save failed: ' + err.message);
