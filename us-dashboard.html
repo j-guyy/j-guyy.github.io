@@ -17,8 +17,8 @@
     <meta name="twitter:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
     <link rel="stylesheet" href="css/base.css?v=20261022">
     <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/dashboard.css?v=20261022l">
+    <link rel="stylesheet" href="css/map.css?v=20261022m">
+    <link rel="stylesheet" href="css/dashboard.css?v=20261022m">
     <link rel="stylesheet" href="css/responsive.css">
 </head>
 
@@ -50,6 +50,7 @@
                 <select id="table-selector">
                     <option value="states">States</option>
                     <option value="highpoints">High Points</option>
+                    <option value="capitals">Capitals</option>
                     <option value="metros">Metros</option>
                     <option value="parks">National Parks</option>
                 </select>
@@ -63,7 +64,7 @@
         <!-- Built by js/map.js the first time the Map view is opened. -->
         <div class="section" id="map-view" hidden>
             <h2>Interactive Map</h2>
-            <p class="map-description">Map of my current progress on all metros, high points, and national parks</p>
+            <p class="map-description">Map of my current progress on all metros, high points, state capitals, and national parks</p>
             <div class="map-legend-container">
                 <div class="map-container">
                     <div id="combined-map"></div>
@@ -74,15 +75,16 @@
                 <button id="toggle-metros">Hide Top 100 Metros</button>
                 <button id="toggle-additional-metros">Hide Additional Metros</button>
                 <button id="toggle-highpoints">Hide High Points</button>
+                <button id="toggle-capitals">Hide Capitals</button>
                 <button id="toggle-parks">Hide National Parks</button>
             </div>
         </div>
     </div>
 
-    <script src="js/travel-api.js?v=20261022h"></script>
+    <script src="js/travel-api.js?v=20261022m"></script>
     <script src="js/view-switch.js?v=20261022"></script>
-    <script src="js/map.js?v=20261022"></script>
-    <script src="js/dashboard.js?v=20261022l"></script>
+    <script src="js/map.js?v=20261022m"></script>
+    <script src="js/dashboard.js?v=20261022m"></script>
     <script src="js/navbar-component.js?v=20261022b"></script>
 </body>
 

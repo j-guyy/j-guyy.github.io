@@ -1,5 +1,5 @@
 // US map view of us-dashboard.html. js/dashboard.js owns the data (metros,
-// highPoints, nationalParks, visitedStates) and calls USMap.render() the first
+// highPoints, nationalParks, visitedStates, capitals) and calls USMap.render() the first
 // time the Map view is opened, and again after an edit changes the data.
 // d3 + topojson are loaded on demand so the Tables view never downloads them.
 
@@ -158,6 +158,20 @@ function createCombinedMap() {
                     handleClick(d, 'park');
                 });
 
+            // Add state capitals (stars)
+            svg.selectAll(".capital-star")
+                .data(capitals.filter(d => projection(d.coords)))
+                .enter().append("path")
+                .attr("class", d => `capital-star ${d.visited ? 'visited' : 'not-visited'}`)
+                .attr("d", d3.symbol().type(d3.symbolStar).size(90))
+                .attr("transform", d => `translate(${projection(d.coords).join(', ')})`)
+                .on("mouseover", function (event, d) {
+                    handleMouseOver(this, event, d, tooltip, 'capital');
+                })
+                .on("mouseout", function () {
+                    handleMouseOut(this, tooltip, 'capital');
+                });
+
             createLegend();
         })
         .catch(function (error) {
@@ -170,6 +184,8 @@ function handleMouseOver(element, event, d, tooltip, type) {
     // Handle element scaling/size changes (unchanged)
     if (type === 'highpoint') {
         d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(200));
+    } else if (type === 'capital') {
+        d3.select(element).attr("d", d3.symbol().type(d3.symbolStar).size(180));
     } else if (type === 'park') {
         d3.select(element)
             .attr("width", 15)
@@ -191,6 +207,8 @@ function handleMouseOver(element, event, d, tooltip, type) {
         ? `<strong>${d.name}, ${d.state}</strong><br/>${d.visited ? 'Visited' : 'Not Visited'}`
         : type === 'highpoint'
             ? `<strong>${d.name}, ${d.state}</strong><br/>${d.elevation} ft<br/>${d.visited ? 'Summited' : 'Not Summited'}`
+            : type === 'capital'
+            ? `<strong>${d.name}, ${d.state}</strong><br/>State capital<br/>${d.visited ? 'Visited' : 'Not Visited'}`
             : `<strong>${d.name} NP</strong><br/>${d.state}<br/>${d.visited ? 'Visited' : 'Not Visited'}`;
 
     tooltip.html(tooltipContent);
@@ -231,6 +249,8 @@ function handleMouseOut(element, tooltip, type) {
     if (type === 'metro') {
     } else if (type === 'highpoint') {
         d3.select(element).attr("d", d3.symbol().type(d3.symbolTriangle).size(100));
+    } else if (type === 'capital') {
+        d3.select(element).attr("d", d3.symbol().type(d3.symbolStar).size(90));
     } else if (type === 'park') {
         d3.select(element)
             .attr("width", 10)
@@ -256,14 +276,17 @@ function handleClick(d, type) {
 function createLegend() {
     const legend = d3.select("#map-legend")
         .append("svg")
+        .attr("class", "us-map-legend")
         .attr("width", 180)
-        .attr("height", 200);
+        .attr("height", 205);
 
     const legendData = [
         { shape: "circle", color: "#4CAF50", label: "Metro - Visited", category: "Metro" },
         { shape: "circle", color: "#f44336", label: "Metro - Not Visited", category: "Metro" },
         { shape: "triangle", color: "#4CAF50", label: "High Point - Summited", category: "High Point" },
         { shape: "triangle", color: "#f44336", label: "High Point - Not Summited", category: "High Point" },
+        { shape: "star", color: "#4CAF50", label: "Capital - Visited", category: "Capital" },
+        { shape: "star", color: "#f44336", label: "Capital - Not Visited", category: "Capital" },
         { shape: "square", color: "#4CAF50", label: "National Park - Visited", category: "National Park" },
         { shape: "square", color: "#f44336", label: "National Park - Not Visited", category: "National Park" }
     ];
@@ -289,6 +312,11 @@ function createLegend() {
                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(50))
                 .attr("transform", "translate(8, 8)")
                 .style("fill", d.color);
+        } else if (d.shape === "star") {
+            g.append("path")
+                .attr("d", d3.symbol().type(d3.symbolStar).size(60))
+                .attr("transform", "translate(8, 8)")
+                .style("fill", d.color);
         } else if (d.shape === "square") {
             g.append("rect")
                 .attr("x", 3)
@@ -312,6 +340,7 @@ const MAP_CATEGORIES = [
     { selector: '.city-dot.top-100', button: 'toggle-metros', label: 'Top 100 Metros', visible: true },
     { selector: '.city-dot.top-200', button: 'toggle-additional-metros', label: 'Additional Metros', visible: false },
     { selector: '.high-point-triangle', button: 'toggle-highpoints', label: 'High Points', visible: true },
+    { selector: '.capital-star', button: 'toggle-capitals', label: 'Capitals', visible: true },
     { selector: '.national-park-square', button: 'toggle-parks', label: 'National Parks', visible: true }
 ];
 

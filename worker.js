@@ -69,6 +69,7 @@ const TRAVEL_KEYS = {
     colorado14ers: 'travel_colorado14ers',
     britishIsles:  'travel_british_isles',
     countryHighpoints: 'travel_country_highpoints',
+    capitals:      'travel_capitals',
 };
 
 // Peak lists (Peaks dashboard): type → the field /travel/toggle matches `key`
@@ -126,6 +127,7 @@ export default {
             if (path === '/travel/colorado14ers')     return await handleTravelGet(env, 'colorado14ers');
             if (path === '/travel/british-isles')     return await handleTravelGet(env, 'britishIsles');
             if (path === '/travel/country-highpoints') return await handleTravelGet(env, 'countryHighpoints');
+            if (path === '/travel/capitals')          return await handleTravelGet(env, 'capitals');
 
             if (path === '/travel/toggle' && request.method === 'POST') {
                 return await handleTravelToggle(request, env);
@@ -912,7 +914,7 @@ async function handleTravelToggle(request, env) {
             item.visited = !item.visited;
             toggled = true;
         }
-    } else if (type === 'highpoints') {
+    } else if (type === 'highpoints' || type === 'capitals') {
         const item = data.find(p => p.state === key);
         if (item) {
             item.visited = !item.visited;
@@ -2149,8 +2151,8 @@ const CONTINENT_LISTS = {
 };
 
 async function mcpGetTravel(args, env) {
-    const kind = argEnum(args.kind, ['countries', 'us_states', 'us_metros', 'national_parks'], 'kind');
-    if (!kind) throw new Error('kind is required: countries, us_states, us_metros, national_parks');
+    const kind = argEnum(args.kind, ['countries', 'us_states', 'us_metros', 'us_capitals', 'national_parks'], 'kind');
+    if (!kind) throw new Error('kind is required: countries, us_states, us_metros, us_capitals, national_parks');
     const status = argEnum(args.status, ['all', 'visited', 'unvisited'], 'status', 'visited');
     const kv = env.STRAVA_DATA;
 
@@ -2170,6 +2172,16 @@ async function mcpGetTravel(args, env) {
     } else if (kind === 'us_metros') {
         const data = (await kv.get(TRAVEL_KEYS.metros, 'json')) || await fetchSiteJson('data/metros.json');
         items = data.map(m => ({ rank: m.rank, name: m.name, state: m.state, population: m.population, visited: Boolean(m.visited) }));
+    } else if (kind === 'us_capitals') {
+        // Like TravelAPI.fetchCapitals: names come from the file, and the
+        // file's flags stand in until the list is first saved.
+        const [stored, file] = await Promise.all([
+            kv.get(TRAVEL_KEYS.capitals, 'json'),
+            fetchSiteJson('data/stateCapitals.json'),
+        ]);
+        const done = Array.isArray(stored) && stored.length
+            ? new Map(stored.map(c => [c.state, Boolean(c.visited)])) : null;
+        items = file.map(c => ({ name: c.name, state: c.state, visited: done ? Boolean(done.get(c.state)) : Boolean(c.visited) }));
     } else {
         // Like TravelAPI.fetchNationalParks: parks added to the file since the
         // list was seeded are appended with the file's flag.
@@ -2333,11 +2345,11 @@ const MCP_TOOLS = [
     {
         name: 'get_travel',
         title: 'Travel lists',
-        description: 'Hand-kept travel tracking from the US and World dashboards: countries visited (by continent), US states, the 200 largest US metros, and US national parks.',
+        description: 'Hand-kept travel tracking from the US and World dashboards: countries visited (by continent), US states, the 200 largest US metros, US state capitals, and US national parks.',
         inputSchema: {
             type: 'object',
             properties: {
-                kind: { type: 'string', enum: ['countries', 'us_states', 'us_metros', 'national_parks'] },
+                kind: { type: 'string', enum: ['countries', 'us_states', 'us_metros', 'us_capitals', 'national_parks'] },
                 status: { type: 'string', enum: ['all', 'visited', 'unvisited'], description: 'Default visited.' },
             },
             required: ['kind'],

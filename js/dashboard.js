@@ -1,4 +1,4 @@
-let metros, highPoints, nationalParks, visitedStates;
+let metros, highPoints, nationalParks, visitedStates, capitals;
 // County Hunter's visited county FIPS codes (strava.html); null until loaded
 // or if the worker can't be reached, which leaves the Counties column blank.
 let visitedCountyFips = null;
@@ -8,6 +8,7 @@ let refreshOwnerUI = () => {};
 const sortState = {
     states:     { col: 'name',      dir: 'asc'  },
     highpoints: { col: 'elevation', dir: 'desc' },
+    capitals:   { col: 'stateName', dir: 'asc'  },
     metros:     { col: 'rank',      dir: 'asc'  },
     parks:      { col: 'name',      dir: 'asc'  }
 };
@@ -17,13 +18,18 @@ document.addEventListener('DOMContentLoaded', function () {
         TravelAPI.fetchMetros(),
         TravelAPI.fetchHighPoints(),
         TravelAPI.fetchNationalParks(),
-        TravelAPI.fetchVisitedStates()
+        TravelAPI.fetchVisitedStates(),
+        TravelAPI.fetchCapitals()
     ])
-        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
+        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData, capitalsData]) => {
             metros = metrosData;
             highPoints = highPointsData;
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
+            capitals = capitalsData;
+            // Full state names, so the Capitals table sorts like the States table.
+            const names = Object.fromEntries(Object.entries(STATE_ABBRS).map(([n, a]) => [a, n]));
+            capitals.forEach(c => { c.stateName = names[c.state] || c.state; });
             displayTravelSummary();
             updateTable(currentTable());
             setupEditMode();
@@ -34,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([dataReady, TravelAPI.fetchVisitedCounties()])
         .then(([, fips]) => {
             visitedCountyFips = fips;
-            if (currentTable() === 'states') updateTable('states');
+            if (currentTable() === 'states' || currentTable() === 'capitals') updateTable(currentTable());
         })
         .catch(err => console.warn('County data unavailable:', err));
     setupUSViewSwitch(dataReady);
@@ -52,7 +58,7 @@ function currentTable() {
 // One row per state, rolled up from the other lists: the state itself, its
 // metros (each counted once, in its main city's state, as the Metros table
 // lists it, so Boston counts for MA but not NH), its
-// national parks and its high point. Progress is the share of those items done.
+// national parks, its high point and its capital. Progress is the share of those items done.
 const STATE_ABBRS = {
     Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
     Colorado: 'CO', Connecticut: 'CT', Delaware: 'DE', Florida: 'FL', Georgia: 'GA',
@@ -87,7 +93,7 @@ function buildStateRows() {
         rows[abbr] = {
             name, abbr, visited: Boolean(visitedStates[name]),
             metrosVisited: 0, metrosTotal: 0, parksVisited: 0, parksTotal: 0,
-            highPoint: null, hpVisited: false,
+            highPoint: null, hpVisited: false, capital: null, capVisited: false,
             countiesVisited: 0, countiesTotal: 0, countyPct: null
         };
     });
@@ -119,9 +125,15 @@ function buildStateRows() {
         r.highPoint = h;
         r.hpVisited = Boolean(h.visited);
     });
+    capitals.forEach(c => {
+        const r = rows[c.state];
+        if (!r) return;
+        r.capital = c;
+        r.capVisited = Boolean(c.visited);
+    });
     return Object.values(rows).map(r => {
-        const total = 1 + r.metrosTotal + r.parksTotal + (r.highPoint ? 1 : 0);
-        const done = (r.visited ? 1 : 0) + r.metrosVisited + r.parksVisited + (r.hpVisited ? 1 : 0);
+        const total = 1 + r.metrosTotal + r.parksTotal + (r.highPoint ? 1 : 0) + (r.capital ? 1 : 0);
+        const done = (r.visited ? 1 : 0) + r.metrosVisited + r.parksVisited + (r.hpVisited ? 1 : 0) + (r.capVisited ? 1 : 0);
         r.progress = Math.round((done / total) * 100);
         if (visitedCountyFips) r.countyPct = Math.round((r.countiesVisited / r.countiesTotal) * 100);
         return r;
@@ -149,12 +161,19 @@ function coreBreakdown(r) {
     lines.push(`Top 100 metros: ${r.metrosTotal ? `${r.metrosVisited}/${r.metrosTotal}` : 'none'}`);
     lines.push(`National parks: ${r.parksTotal ? `${r.parksVisited}/${r.parksTotal}` : 'none'}`);
     if (r.highPoint) lines.push(`High point (${r.highPoint.name}): ${r.hpVisited ? 'summited' : 'not yet'}`);
+    if (r.capital) lines.push(`Capital (${r.capital.name}): ${r.capVisited ? 'visited' : 'not yet'}`);
     return lines.join('\n');
 }
 
 // "3/5", or a dash for a state with none on the list.
 function fraction(done, total) {
     return total ? `${done}/${total}` : '—';
+}
+
+// A capital not checked off whose county Strava activities reach (County
+// Hunter): maybe visited without being marked. Only a hint; the owner decides.
+function stravaHint(capital) {
+    return !capital.visited && Boolean(visitedCountyFips) && visitedCountyFips.includes(capital.fips);
 }
 
 function setupUSViewSwitch(dataReady) {
@@ -194,13 +213,15 @@ function setupCsvExport() {
 
         if (tableType === 'states') {
             headers = ['State', 'Abbreviation', 'Status', 'Top 100 Metros Visited', 'Top 100 Metros Total',
-                'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Core Progress (%)',
+                'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Capital', 'Capital Status',
+                'Core Progress (%)',
                 'Counties Visited', 'Counties Total', 'County Progress (%)'];
             const sorted = sortTableData(buildStateRows(), col, dir, tableType);
             rows = sorted.map(r => [
                 r.name, r.abbr, r.visited ? 'Visited' : 'Not Visited',
                 r.metrosVisited, r.metrosTotal, r.parksVisited, r.parksTotal,
                 r.highPoint ? r.highPoint.name : '', r.hpVisited ? 'Summited' : 'Not Summited',
+                r.capital ? r.capital.name : '', r.capVisited ? 'Visited' : 'Not Visited',
                 r.progress,
                 visitedCountyFips ? r.countiesVisited : '', r.countiesTotal,
                 r.countyPct == null ? '' : r.countyPct
@@ -213,6 +234,14 @@ function setupCsvExport() {
                 i + 1, item.name, item.state, item.elevation, item.visited ? 'Summited' : 'Not Summited'
             ]);
             filename = 'high-points.csv';
+        } else if (tableType === 'capitals') {
+            headers = ['Capital', 'State', 'County', 'Status', 'Strava Reaches County'];
+            const sorted = sortTableData(capitals, col, dir, tableType);
+            rows = sorted.map(item => [
+                item.name, item.stateName, item.county, item.visited ? 'Visited' : 'Not Visited',
+                visitedCountyFips ? (visitedCountyFips.includes(item.fips) ? 'Yes' : 'No') : ''
+            ]);
+            filename = 'state-capitals.csv';
         } else if (tableType === 'metros') {
             headers = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
             const sorted = sortTableData(metros, col, dir, tableType);
@@ -254,6 +283,7 @@ function downloadCsv(headers, rows, filename) {
 const TRAVEL_LISTS = {
     visitedStates: () => visitedStates,
     highpoints: () => highPoints,
+    capitals: () => capitals,
     metros: () => metros,
     parks: () => nationalParks
 };
@@ -298,6 +328,8 @@ function displayTravelSummary() {
     const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
     const parkCount = nationalParks.filter(park => park.visited).length;
     const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
+    const capitalCount = capitals.filter(c => c.visited).length;
+    const capitalPercentage = ((capitalCount / 50) * 100).toFixed(0);
 
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
@@ -309,7 +341,7 @@ function displayTravelSummary() {
                 </div>
                 <span class="stat-label">States Visited</span>
             </div>
-            <div class="other-stats other-stats-trio">
+            <div class="other-stats other-stats-quad">
                 <div class="summary-stat">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>
@@ -325,6 +357,14 @@ function displayTravelSummary() {
                         <span class="stat-percentage">(${highPointPercentage}%)</span>
                     </div>
                     <span class="stat-label">High Points Summited</span>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-number-container">
+                        <span class="stat-number">${capitalCount}</span>
+                        <span class="stat-total">/50</span>
+                        <span class="stat-percentage">(${capitalPercentage}%)</span>
+                    </div>
+                    <span class="stat-label">State Capitals Visited</span>
                 </div>
                 <div class="summary-stat">
                     <div class="stat-number-container">
@@ -389,10 +429,10 @@ function updateTable(tableType) {
     if (tableType === 'states') {
         // [full, phone] labels keep the row on a phone screen, where the
         // Metros and Parks columns (col-detail) are hidden; Core still counts them.
-        tableHeaders = ['State', 'Core', 'Counties', 'Metros', 'Parks', ['High Point', 'HP'], 'Status'];
-        sortKeys     = ['name', 'progress', 'countyPct', 'metrosVisited', 'parksVisited', 'hpVisited', 'visited'];
-        colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status'];
-        headerTitles = [null, 'The state, its top-100 metros, national parks and high point',
+        tableHeaders = ['State', 'Core', 'Counties', 'Metros', 'Parks', ['High Point', 'HP'], ['Capital', 'Cap'], ['Status', '✓']];
+        sortKeys     = ['name', 'progress', 'countyPct', 'metrosVisited', 'parksVisited', 'hpVisited', 'capVisited', 'visited'];
+        colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status', 'col-status'];
+        headerTitles = [null, 'The state, its top-100 metros, national parks, high point and capital',
             'Counties reached by Strava activities (County Hunter)', 'Top 100 metros'];
         rawData      = buildStateRows();
     } else if (tableType === 'highpoints') {
@@ -400,6 +440,11 @@ function updateTable(tableType) {
         sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
         colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
         rawData      = highPoints;
+    } else if (tableType === 'capitals') {
+        tableHeaders = ['Capital', 'State', 'Status'];
+        sortKeys     = ['name', 'stateName', 'visited'];
+        colClasses   = ['col-name', '', 'col-status'];
+        rawData      = capitals;
     } else if (tableType === 'metros') {
         tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
         sortKeys     = ['rank', 'metro_name', 'state', 'population', 'visited'];
@@ -447,7 +492,7 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'progress' || key === 'countyPct' ||
+                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'capVisited' || key === 'progress' || key === 'countyPct' ||
                     key === 'metrosVisited' || key === 'parksVisited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
@@ -472,6 +517,7 @@ function updateTable(tableType) {
         if (tableType === 'states') {
             const hp = item.highPoint;
             const hpTitle = hp ? `${hp.name} (${hp.elevation.toLocaleString()} ft)` : '';
+            const cap = item.capital;
             row.innerHTML = `
                 <td class="col-name">${withFlag(`us-${item.abbr.toLowerCase()}`, item.name)}</td>
                 <td class="col-progress">${progressBar(item.progress, coreBreakdown(item))}</td>
@@ -479,6 +525,7 @@ function updateTable(tableType) {
                 <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal)}</td>
                 <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal)}</td>
                 <td class="col-status ${hp && editMode ? 'status-toggle' : ''}" data-toggle="hp" title="${hpTitle}">${hp ? (item.hpVisited ? '✅' : '⬜') : '—'}</td>
+                <td class="col-status ${cap && editMode ? 'status-toggle' : ''}" data-toggle="cap" title="${cap ? cap.name : ''}">${cap ? (item.capVisited ? '✅' : '⬜') : '—'}</td>
                 <td class="col-status ${statusClass}" data-toggle="state">${statusIcon}</td>
             `;
         } else if (tableType === 'highpoints') {
@@ -487,6 +534,15 @@ function updateTable(tableType) {
                 <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
                 <td class="col-num">${item.elevation.toLocaleString()}</td>
+                <td class="col-status ${statusClass}">${statusIcon}</td>
+            `;
+        } else if (tableType === 'capitals') {
+            const hint = stravaHint(item)
+                ? ` <span class="strava-hint" title="Strava activities reach ${item.county} County: check whether you were in ${item.name}">check Strava</span>`
+                : '';
+            row.innerHTML = `
+                <td class="col-name">${item.name}${hint}</td>
+                <td>${withFlag(`us-${item.state.toLowerCase()}`, item.stateName)}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'metros') {
@@ -506,10 +562,13 @@ function updateTable(tableType) {
         }
 
         if (editMode && tableType === 'states') {
-            // Both the state and its high point toggle right from the row.
+            // The state, its high point and its capital all toggle right from the row.
             row.querySelector('[data-toggle="state"]').addEventListener('click', () => handleToggle('states', item));
             if (item.highPoint) {
                 row.querySelector('[data-toggle="hp"]').addEventListener('click', () => handleToggle('highpoints', item.highPoint));
+            }
+            if (item.capital) {
+                row.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleToggle('capitals', item.capital));
             }
         } else if (editMode) {
             const statusCell = row.querySelector('.status-toggle');
