@@ -4465,6 +4465,48 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 // refusing (often for days), every query would otherwise wait on it first.
 let overpassPreferredMirror = 0;
 
+// A mirror that goes silent MIRROR_BENCH_AFTER times in a row (times out or
+// can't be reached, as opposed to answering with an error) is skipped for
+// MIRROR_BENCH_MS, then gets one probe. Without this, a mirror that never
+// answers costs a full timeout on every query that falls through to it: in one
+// 4.5-hour peak refresh two of the three mirrors timed out 94 times each (55 s
+// apiece, ~3 h) and never answered once, while every success came from the
+// first. A mirror answering 502 / 429 is up but busy, so that resets its count,
+// as does a mirror that answered within MIRROR_TRUST_MS. The last mirror still
+// in play is never benched, so a query always has somewhere to go. Remembered
+// in localStorage so the next visit starts informed.
+const MIRROR_BENCH_AFTER = 3;
+const MIRROR_BENCH_MS = 30 * 60 * 1000;
+const MIRROR_TRUST_MS = 6 * 60 * 60 * 1000;
+const MIRROR_HEALTH_KEY = 'overpass_mirror_health';
+let overpassMirrorHealth = (() => {
+    try { return JSON.parse(localStorage.getItem(MIRROR_HEALTH_KEY)) || {}; } catch { return {}; }
+})();
+
+function mirrorBenched(mirror, now = Date.now()) {
+    return (overpassMirrorHealth[mirror]?.benchedUntil || 0) > now;
+}
+
+// outcome: 'ok' (data), 'busy' (an HTTP error or runtime-error remark), 'silent'
+function recordMirrorResult(mirror, outcome) {
+    const now = Date.now();
+    const h = overpassMirrorHealth[mirror] || { silent: 0, benchedUntil: 0, lastOk: 0 };
+    if (outcome === 'ok') h.lastOk = now;
+    if (outcome !== 'silent' || now - (h.lastOk || 0) < MIRROR_TRUST_MS) {
+        h.silent = 0;
+        h.benchedUntil = 0;
+    } else {
+        h.silent = (h.silent || 0) + 1;
+        const othersInPlay = OVERPASS_MIRRORS.some(m => m !== mirror && !mirrorBenched(m, now));
+        if (h.silent >= MIRROR_BENCH_AFTER && othersInPlay) {
+            h.benchedUntil = now + MIRROR_BENCH_MS;
+            dbg(`Overpass mirror ${mirror}: no answer ${h.silent} times in a row — skipping it for ${MIRROR_BENCH_MS / 60000} min`);
+        }
+    }
+    overpassMirrorHealth[mirror] = h;
+    try { localStorage.setItem(MIRROR_HEALTH_KEY, JSON.stringify(overpassMirrorHealth)); } catch {}
+}
+
 async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) {
     for (let round = 0; round < rounds; round++) {
         if (round > 0) {
@@ -4473,21 +4515,26 @@ async function fetchOverpass(query, { label, timeoutMs, rounds = 2, onStatus }) 
             onStatus?.(`OpenStreetMap is busy — retrying in ${wait / 1000}s…`);
             await new Promise(r => setTimeout(r, wait));
         }
-        for (let i = 0; i < OVERPASS_MIRRORS.length; i++) {
-            const m = (overpassPreferredMirror + i) % OVERPASS_MIRRORS.length;
+        const order = OVERPASS_MIRRORS.map((_, i) => (overpassPreferredMirror + i) % OVERPASS_MIRRORS.length);
+        const live = order.filter(m => !mirrorBenched(OVERPASS_MIRRORS[m]));
+        const tries = live.length ? live : order;
+        for (let i = 0; i < tries.length; i++) {
+            const m = tries[i];
             const mirror = OVERPASS_MIRRORS[m];
-            if (i > 0 || round > 0) onStatus?.(`OpenStreetMap is busy — trying server ${i + 1} of ${OVERPASS_MIRRORS.length}…`);
+            if (i > 0 || round > 0) onStatus?.(`OpenStreetMap is busy — trying server ${i + 1} of ${tries.length}…`);
             try {
                 const data = await fetchWithTimeout(mirror, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: 'data=' + encodeURIComponent(query),
                 }, timeoutMs);
-                if (/runtime error/i.test(data.remark || '')) throw new Error(data.remark);
+                if (/runtime error/i.test(data.remark || '')) throw Object.assign(new Error(data.remark), { answered: true });
                 overpassPreferredMirror = m;
+                recordMirrorResult(mirror, 'ok');
                 return data;
             } catch (e) {
-                dbg(`${label}: Overpass mirror ${mirror} failed (${e.message}), trying next…`);
+                recordMirrorResult(mirror, e.answered || /^HTTP \d/.test(e.message) ? 'busy' : 'silent');
+                dbg(`${label}: Overpass mirror ${mirror} failed (${e.message})${i + 1 < tries.length ? ', trying next…' : ''}`);
             }
         }
     }
