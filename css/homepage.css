@@ -1,12 +1,26 @@
 /* Rotating background photos: a fixed layer behind the page, so it works
    whether the window or <body> is the scroll container. Two layers crossfade;
-   js/homepage.js swaps them. */
+   js/homepage.js swaps them.
+
+   Sized to the *largest* viewport (lvh: browser toolbars hidden) rather than
+   inset: 0. On phones the address bar slides away on scroll down and back on
+   scroll up; with inset: 0 the layer resized with it every frame and
+   `background-size: cover` re-scaled the photo, which made it jump. A fixed
+   lvh height never changes, so the photo stays put and the toolbar just
+   covers or uncovers its bottom edge. translateZ(0) keeps it on its own GPU
+   layer so scrolling never repaints it. */
 .home-bg {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
     z-index: 0;
     background-color: var(--bg-color, #000);
     pointer-events: none;
+    transform: translateZ(0);
+    contain: strict;
 }
 
 .home-bg-layer {
@@ -551,6 +565,33 @@ a.home-card:focus-visible,
 
     .home-hunters-text {
         font-size: 0.95rem;
+    }
+}
+
+/* Touch screens: no frosted-glass blur on the hero and cards. Every scrolled
+   frame had to re-blur the photo behind each card, which is what made
+   scrolling stutter on phones; slightly darker cards keep the text readable. */
+@media (hover: none) {
+    .home-page .content,
+    .nav-button,
+    .home-card {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .home-page .content {
+        background-color: rgba(0, 0, 0, 0.68);
+    }
+
+    .home-card {
+        background: rgba(0, 0, 0, 0.72);
+    }
+
+    /* Same for the bar once it turns solid after scrolling. */
+    .home-page .navbar:not(.navbar-at-top) {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(10, 13, 11, 0.94);
     }
 }
 
