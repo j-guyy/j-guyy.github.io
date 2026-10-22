@@ -291,6 +291,42 @@
     white-space: nowrap;
 }
 
+/* Column headers with a shorter phone label ("High Point" → "HP") */
+.th-short {
+    display: none;
+}
+
+/* States table: per-state progress bar with the percentage inside it */
+.state-progress {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    width: 96px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--surface-2-hover);
+    overflow: hidden;
+}
+
+.state-progress-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--primary-color);
+}
+
+.state-progress-pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .summary-stats-container {
@@ -471,6 +507,24 @@
 @media (max-width: 600px) {
     .travel-table--fit .col-rank {
         display: none;
+    }
+
+    /* A narrower bar on a phone, so all six State columns fit. */
+    .state-progress {
+        width: 38px;
+        height: 18px;
+    }
+
+    .state-progress-pct {
+        font-size: 0.72em;
+    }
+
+    .th-long {
+        display: none;
+    }
+
+    .th-short {
+        display: inline;
     }
 }
 

@@ -73,7 +73,7 @@ let worldMapStale = false;    // an Edit Mode toggle since the map last drew
 
 function setupWorldViewSwitch(dataReady) {
     setupViewSwitch({
-        titles: { tables: 'World Travel Dashboard — Justin Guyette', map: 'World Travel Map — Justin Guyette' },
+        titles: { tables: 'World Travel — Justin Guyette', map: 'World Travel Map — Justin Guyette' },
         onShow: view => {
             if (view !== 'map') return;
             if (pendingMapBuild) { pendingMapBuild(); pendingMapBuild = null; }
