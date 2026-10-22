@@ -16,15 +16,6 @@ const PEAK_LISTS = {
     countryHighpoints: { label: 'Country High Points',     url: 'data/country-highpoints.json',     csv: 'country-highpoints.csv',       key: 'country', done: 'climbed', region: 'country', regionLabel: 'Country' },
 };
 
-// A summited OSM peak this close to a list peak is that peak. Further out
-// (list coordinates are rougher than OSM's, especially abroad) it only counts
-// when the names agree; OSM names are often in local script, so distance has
-// to carry the match on its own for those.
-const STRAVA_NEAR_M = 400;
-const STRAVA_NAMED_M = 3000;
-const NAME_STOPWORDS = new Set(['mount', 'mt', 'mont', 'monte', 'mountain', 'pico', 'pic', 'peak',
-    'cerro', 'gora', 'volcan', 'nevado', 'the', 'de', 'del', 'la', 'jabal', 'jebel', 'hill', 'doi', 'bukit', 'puncak']);
-
 const lists = {};          // type → { data, source, reason }
 const sortState = {};      // type → { col, dir }
 let summitedPeaks = null;  // from /summits/peaks; null while loading
@@ -116,62 +107,15 @@ function stravaLink(visit) {
     return `<a href="https://www.strava.com/activities/${encodeURIComponent(visit.actId)}" target="_blank" rel="noopener" title="${esc(visit.actName)}">${esc(visit.date || 'Strava')}</a>`;
 }
 
-function haversineM(lat1, lng1, lat2, lng2) {
-    const R = 6371000;
-    const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
-    const dφ = (lat2 - lat1) * Math.PI / 180;
-    const dλ = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(a));
-}
-
-// "Mount Stanley (Margherita Peak)" / "Corrán Tuathail / Carrauntoohil" →
-// ['stanley', 'margherita'] / ['corran tuathail', 'carrauntoohil']
-function nameKeys(name) {
-    return String(name || '').split(/[\/();,]/)
-        .map(part => part.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-            .replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
-            .filter(w => w && !NAME_STOPWORDS.has(w)).join(' '))
-        .filter(k => k.length >= 2);
-}
-
-function namesAgree(a, b) {
-    const ka = nameKeys(a), kb = nameKeys(b);
-    return ka.some(x => kb.some(y => x === y ||
-        (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)))));
-}
-
 // ── Strava matching ─────────────────────────────────────────────────────────
 
 const matchCache = new Map();  // type → Map(item → { peak, distance })
 
-// One summited peak confirms at most one list peak, so two list peaks a few
-// hundred metres apart (North Maroon / Maroon) can't both claim one summit.
-// Name-confirmed pairs are assigned first, then the closest.
+// Strava matching itself lives in js/peak-match.js (shared with the trip reports).
 function stravaMatches(type) {
     if (!summitedPeaks) return null;
-    if (matchCache.has(type)) return matchCache.get(type);
-    const pairs = [];
-    lists[type].data.forEach(item => {
-        if (!Array.isArray(item.coords)) return;
-        const [lng, lat] = item.coords;
-        summitedPeaks.forEach(peak => {
-            const d = haversineM(lat, lng, peak.lat, peak.lng);
-            if (d > STRAVA_NAMED_M) return;
-            const named = namesAgree(item.name, peak.name);
-            if (named || d <= STRAVA_NEAR_M) pairs.push({ item, peak, d, named });
-        });
-    });
-    pairs.sort((a, b) => (b.named - a.named) || (a.d - b.d));
-    const matches = new Map();
-    const usedPeaks = new Set();
-    pairs.forEach(({ item, peak, d }) => {
-        if (matches.has(item) || usedPeaks.has(peak.id)) return;
-        matches.set(item, { peak, distance: Math.round(d) });
-        usedPeaks.add(peak.id);
-    });
-    matchCache.set(type, matches);
-    return matches;
+    if (!matchCache.has(type)) matchCache.set(type, PeakMatch.match(lists[type].data, summitedPeaks));
+    return matchCache.get(type);
 }
 
 // ── Owner controls ──────────────────────────────────────────────────────────
