@@ -3,6 +3,7 @@ let editMode = false;
 let refreshOwnerUI = () => {};
 
 const sortState = {
+    states:     { col: 'name',      dir: 'asc'  },
     highpoints: { col: 'elevation', dir: 'desc' },
     metros:     { col: 'rank',      dir: 'asc'  },
     parks:      { col: 'name',      dir: 'asc'  }
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
             nationalParks = nationalParksData;
             visitedStates = visitedStatesData;
             displayTravelSummary();
-            updateTable('highpoints');
+            updateTable(currentTable());
             setupEditMode();
             setupCsvExport();
         });
@@ -32,6 +33,69 @@ document.addEventListener('DOMContentLoaded', function () {
 // Tables | Map switch (js/view-switch.js). The map is only built the first
 // time it is shown, and rebuilt after an edit.
 let mapStale = true;
+
+function currentTable() {
+    return document.getElementById('table-selector').value;
+}
+
+// ── States table ────────────────────────────────────────────────────────────
+// One row per state, rolled up from the other lists: the state itself, its
+// metros (every state a metro spans counts it, so NYC counts for NJ too), its
+// national parks and its high point. Progress is the share of those items done.
+const STATE_ABBRS = {
+    Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
+    Colorado: 'CO', Connecticut: 'CT', Delaware: 'DE', Florida: 'FL', Georgia: 'GA',
+    Hawaii: 'HI', Idaho: 'ID', Illinois: 'IL', Indiana: 'IN', Iowa: 'IA',
+    Kansas: 'KS', Kentucky: 'KY', Louisiana: 'LA', Maine: 'ME', Maryland: 'MD',
+    Massachusetts: 'MA', Michigan: 'MI', Minnesota: 'MN', Mississippi: 'MS', Missouri: 'MO',
+    Montana: 'MT', Nebraska: 'NE', Nevada: 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+    'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', Ohio: 'OH',
+    Oklahoma: 'OK', Oregon: 'OR', Pennsylvania: 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+    'South Dakota': 'SD', Tennessee: 'TN', Texas: 'TX', Utah: 'UT', Vermont: 'VT',
+    Virginia: 'VA', Washington: 'WA', 'West Virginia': 'WV', Wisconsin: 'WI', Wyoming: 'WY'
+};
+
+function buildStateRows() {
+    const rows = {};
+    Object.entries(STATE_ABBRS).forEach(([name, abbr]) => {
+        rows[abbr] = {
+            name, abbr, visited: Boolean(visitedStates[name]),
+            metrosVisited: 0, metrosTotal: 0, parksVisited: 0, parksTotal: 0,
+            highPoint: null, hpVisited: false
+        };
+    });
+    metros.forEach(m => {
+        new Set(String(m.metro_state || m.state).split('-')).forEach(abbr => {
+            const r = rows[abbr];
+            if (!r) return; // DC, Puerto Rico
+            r.metrosTotal++;
+            if (m.visited) r.metrosVisited++;
+        });
+    });
+    nationalParks.forEach(p => {
+        const r = rows[p.state];
+        if (!r) return; // American Samoa, Virgin Islands
+        r.parksTotal++;
+        if (p.visited) r.parksVisited++;
+    });
+    highPoints.forEach(h => {
+        const r = rows[h.state];
+        if (!r) return;
+        r.highPoint = h;
+        r.hpVisited = Boolean(h.visited);
+    });
+    return Object.values(rows).map(r => {
+        const total = 1 + r.metrosTotal + r.parksTotal + (r.highPoint ? 1 : 0);
+        const done = (r.visited ? 1 : 0) + r.metrosVisited + r.parksVisited + (r.hpVisited ? 1 : 0);
+        r.progress = Math.round((done / total) * 100);
+        return r;
+    });
+}
+
+// "3/5", or a dash for a state with none on the list.
+function fraction(done, total) {
+    return total ? `${done}/${total}` : '—';
+}
 
 function setupUSViewSwitch(dataReady) {
     setupViewSwitch({
@@ -68,7 +132,18 @@ function setupCsvExport() {
         const { col, dir } = sortState[tableType];
         let rows, headers, filename;
 
-        if (tableType === 'highpoints') {
+        if (tableType === 'states') {
+            headers = ['State', 'Abbreviation', 'Status', 'Metros Visited', 'Metros Total',
+                'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Progress (%)'];
+            const sorted = sortTableData(buildStateRows(), col, dir, tableType);
+            rows = sorted.map(r => [
+                r.name, r.abbr, r.visited ? 'Visited' : 'Not Visited',
+                r.metrosVisited, r.metrosTotal, r.parksVisited, r.parksTotal,
+                r.highPoint ? r.highPoint.name : '', r.hpVisited ? 'Summited' : 'Not Summited',
+                r.progress
+            ]);
+            filename = 'states.csv';
+        } else if (tableType === 'highpoints') {
             headers = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
             const sorted = sortTableData(highPoints, col, dir, tableType);
             rows = sorted.map((item, i) => [
@@ -117,7 +192,10 @@ async function handleToggle(tableType, item) {
     if (!password) return;
 
     let type, key;
-    if (tableType === 'highpoints') {
+    if (tableType === 'states') {
+        type = 'visitedStates';
+        key = item.name;
+    } else if (tableType === 'highpoints') {
         type = 'highpoints';
         key = item.state;
     } else if (tableType === 'metros') {
@@ -130,10 +208,11 @@ async function handleToggle(tableType, item) {
 
     try {
         await TravelAPI.toggleVisited(type, key, password);
-        item.visited = !item.visited;
+        if (tableType === 'states') visitedStates[key] = !visitedStates[key];
+        else item.visited = !item.visited;
         displayTravelSummary();
         mapStale = true;
-        updateTable(tableType);
+        updateTable(currentTable());
     } catch (err) {
         alert('Toggle failed: ' + err.message);
         if (err.message.includes('Invalid password')) {
@@ -241,7 +320,13 @@ function updateTable(tableType) {
 
     let tableHeaders, sortKeys, colClasses, rawData;
 
-    if (tableType === 'highpoints') {
+    if (tableType === 'states') {
+        // [full, phone] labels: the short ones keep all six columns on a phone.
+        tableHeaders = ['State', ['Progress', '%'], 'Metros', 'Parks', ['High Point', 'HP'], 'Status'];
+        sortKeys     = ['name', 'progress', 'metrosVisited', 'parksVisited', 'hpVisited', 'visited'];
+        colClasses   = ['col-name', 'col-progress', 'col-num', 'col-num', 'col-status', 'col-status'];
+        rawData      = buildStateRows();
+    } else if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
         sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
         colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
@@ -278,7 +363,13 @@ function updateTable(tableType) {
         indicator.className = 'sort-indicator';
         indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
 
-        th.appendChild(document.createTextNode(header));
+        if (Array.isArray(header)) {
+            th.title = header[0];
+            th.insertAdjacentHTML('beforeend',
+                `<span class="th-long">${header[0]}</span><span class="th-short">${header[1]}</span>`);
+        } else {
+            th.appendChild(document.createTextNode(header));
+        }
         th.appendChild(indicator);
 
         th.addEventListener('click', () => {
@@ -286,7 +377,8 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'visited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
+                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'progress' ||
+                    key === 'metrosVisited' || key === 'parksVisited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
             updateTable(tableType);
@@ -307,7 +399,23 @@ function updateTable(tableType) {
         const statusIcon = item.visited ? '✅' : '⬜';
         const statusClass = editMode ? 'status-toggle' : '';
 
-        if (tableType === 'highpoints') {
+        if (tableType === 'states') {
+            const hp = item.highPoint;
+            const hpTitle = hp ? `${hp.name} (${hp.elevation.toLocaleString()} ft)` : '';
+            row.innerHTML = `
+                <td class="col-name">${item.name}</td>
+                <td class="col-progress">
+                    <span class="state-progress" title="${item.progress}% of this state's list done">
+                        <span class="state-progress-bar"><span style="width:${item.progress}%"></span></span>
+                        <span class="state-progress-pct">${item.progress}%</span>
+                    </span>
+                </td>
+                <td class="col-num">${fraction(item.metrosVisited, item.metrosTotal)}</td>
+                <td class="col-num">${fraction(item.parksVisited, item.parksTotal)}</td>
+                <td class="col-status ${hp && editMode ? 'status-toggle' : ''}" data-toggle="hp" title="${hpTitle}">${hp ? (item.hpVisited ? '✅' : '⬜') : '—'}</td>
+                <td class="col-status ${statusClass}" data-toggle="state">${statusIcon}</td>
+            `;
+        } else if (tableType === 'highpoints') {
             row.innerHTML = `
                 <td class="col-rank">${index + 1}</td>
                 <td class="col-name">${item.name}</td>
@@ -331,7 +439,13 @@ function updateTable(tableType) {
             `;
         }
 
-        if (editMode) {
+        if (editMode && tableType === 'states') {
+            // Both the state and its high point toggle right from the row.
+            row.querySelector('[data-toggle="state"]').addEventListener('click', () => handleToggle('states', item));
+            if (item.highPoint) {
+                row.querySelector('[data-toggle="hp"]').addEventListener('click', () => handleToggle('highpoints', item.highPoint));
+            }
+        } else if (editMode) {
             const statusCell = row.querySelector('.status-toggle');
             statusCell.addEventListener('click', () => handleToggle(tableType, item));
         }
