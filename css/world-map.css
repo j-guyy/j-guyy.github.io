@@ -200,3 +200,26 @@
     background: var(--surface-2-hover);
     outline: none;
 }
+
+/* "Still to visit" bucket list markers */
+.todo-marker {
+    background: none;
+    border: none;
+}
+
+.todo-marker-inner {
+    font-size: 14px;
+    font-weight: 700;
+    color: #FF5252;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+}
+
+.todo-marker:hover .todo-marker-inner {
+    transform: scale(1.2);
+}

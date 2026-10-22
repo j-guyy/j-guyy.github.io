@@ -7,6 +7,8 @@
 //     data/world-countries.geojson (built by scripts/build-world-countries.py)
 //   • places    — every visited/climbed point from the travel data files,
 //     drawn as markers in toggleable category layers
+//     (plus a "Still to visit" layer of bucket list places not yet visited,
+//     from js/bucket-lists.js, which counts for nothing else)
 //   • routes    — driven highway segments, plus every Strava route, fetched
 //     lazily from the worker's /polylines/all (the same store strava.html uses)
 //
@@ -31,6 +33,9 @@ const PLACE_CATEGORIES = [
     { id: 'highpoints', label: 'Country high points', symbol: '▲', color: '#9C27B0', cls: 'high-point-marker', size: 14, z: 1000 },
     { id: 'mountains',  label: 'Mountains',           symbol: '▲', color: '#FF9800', cls: 'mountain-marker',   size: 14, z: 900 },
     { id: 'parks',      label: 'Parks & landmarks',   symbol: '◆', color: '#00897B', cls: 'park-marker',       size: 14, z: 800 },
+    // Bucket list places not yet visited (js/bucket-lists.js). Off until
+    // switched on, and never counted as being somewhere (fills, footprint).
+    { id: 'todo',       label: 'Still to visit',      symbol: '○', color: '#FF5252', cls: 'todo-marker',       size: 14, z: -100, defaultOff: true },
 ];
 const STRAVA_LAYER = { id: 'strava', label: 'Strava routes', symbol: '〰', color: '#FC4C02' };
 
@@ -57,7 +62,7 @@ const ADMIN1_FILES = {
     'United Kingdom': 'uk',
 };
 
-const STORAGE = { mode: 'world_map_mode', detail: 'world_map_detail', layers: 'world_map_layers_off', radius: 'world_map_radius', route: 'world_map_route_radius' };
+const STORAGE = { mode: 'world_map_mode', detail: 'world_map_detail', layers: 'world_map_layers_off', layersOn: 'world_map_layers_on', radius: 'world_map_radius', route: 'world_map_route_radius' };
 
 function wmStore(key, value) {
     try {
@@ -92,16 +97,18 @@ function initWorldMap(worldData) {
         fetch('data/interstateHighways.json').then(response => response.json()),
         fetch('data/highways.json').then(response => response.json()),
         fetch('data/world-countries.geojson').then(response => response.json()),
+        loadBucketLists().catch(err => { console.warn('Bucket lists unavailable:', err); return null; }),
         // Fills Alaska / Hawaii. The worker (what the dashboards edit) is the
         // source of truth; the bundled JSON only covers it being unreachable.
         TravelAPI.fetchVisitedStates()
             .catch(() => fetch('data/visitedStates.json').then(response => response.json()))
             .catch(() => ({}))
     ])
-        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, visitedStates]) =>
+        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, bucketLists, visitedStates]) =>
             createWorldMap('world-map', {
                 worldData, countriesGeojson, visitedStates,
                 places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
+                todoPlaces: collectTodoPlaces(bucketLists),
                 drivenSegments: collectDrivenSegments(interstateData, highwaysData),
             }));
 }
@@ -178,6 +185,24 @@ function collectPlaces(d) {
     d.skiResortsData.filter(r => r.visited).forEach(r => add('parks', r.coords[1], r.coords[0], r.name, row('Type', 'Ski Resort')));
 
     return places;
+}
+
+// Bucket list places not visited yet, one marker per spot listing every list
+// it's on.
+function collectTodoPlaces(bucketLists) {
+    if (!bucketLists) return [];
+    const byKey = new Map();
+    BUCKET_LISTS.forEach(({ id, label }) => bucketLists.lists[id].rows.forEach(r => {
+        if (r.visited || !Number.isFinite(r.lat) || !Number.isFinite(r.lng)) return;
+        const key = `${r.lat.toFixed(2)},${r.lng.toFixed(2)}`;
+        let place = byKey.get(key);
+        if (!place) {
+            place = { lat: r.lat, lng: r.lng, name: r.name, cat: 'todo', details: [`<p><strong>Country:</strong> ${escapeHtml(r.country)}</p>`] };
+            byKey.set(key, place);
+        }
+        place.details.push(`<p><em>${escapeHtml(label)}</em></p>`);
+    }));
+    return [...byKey.values()];
 }
 
 // Driven interstate / highway segments as [[lat, lng], …] waypoint lists.
@@ -660,7 +685,7 @@ const RoutesLayer = CanvasOverlay.extend({
 
 // ── The map ───────────────────────────────────────────────────────────────────
 
-function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, places, drivenSegments }) {
+function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, places, todoPlaces = [], drivenSegments }) {
     const container = document.getElementById(mapId);
     // The furthest out the map may zoom: where the world (256·2^z px tall)
     // still fills the map's height, so there's never grey above the Arctic or
@@ -986,7 +1011,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         popupAnchor: [0, -c.size / 2],
     })]));
     const placeCounts = {};
-    places.forEach(p => {
+    places.concat(todoPlaces).forEach(p => {
         placeCounts[p.cat] = (placeCounts[p.cat] || 0) + 1;
         L.marker([p.lat, p.lng], { icon: icons[p.cat], zIndexOffset: catById[p.cat].z, title: p.name })
             .bindPopup(`<div class="${p.cat === 'cities' || p.cat === 'parks' ? 'city-popup' : 'high-point-popup'}"><h3>${escapeHtml(p.name)}</h3>${p.details.join('')}</div>`)
@@ -1119,7 +1144,12 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
             });
         });
 
+    // Layers are remembered as switched off, except defaultOff ones, which
+    // are remembered as switched on.
+    const shownLayers = new Set((wmStore(STORAGE.layersOn) || '').split(',').filter(Boolean));
     const hiddenLayers = new Set((wmStore(STORAGE.layers) || '').split(',').filter(Boolean));
+    PLACE_CATEGORIES.forEach(c => { if (c.defaultOff) hiddenLayers[shownLayers.has(c.id) ? 'delete' : 'add'](c.id); });
+    const defaultOff = new Set(PLACE_CATEGORIES.filter(c => c.defaultOff).map(c => c.id));
     const layerFor = id => id === STRAVA_LAYER.id ? stravaLayer : placeGroups[id];
 
     function renderChips() {
@@ -1152,7 +1182,12 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         // a choice, or it would stay off after the worker recovers.
         if (!(id === STRAVA_LAYER.id && stravaStatus === 'error')) {
             if (e.type === 'layeradd') hiddenLayers.delete(id); else hiddenLayers.add(id);
-            wmStore(STORAGE.layers, [...hiddenLayers].join(','));
+            if (defaultOff.has(id)) {
+                if (e.type === 'layeradd') shownLayers.add(id); else shownLayers.delete(id);
+                wmStore(STORAGE.layersOn, [...shownLayers].join(','));
+            } else {
+                wmStore(STORAGE.layers, [...hiddenLayers].filter(l => !defaultOff.has(l)).join(','));
+            }
         }
         if (id === STRAVA_LAYER.id) {
             if (e.type === 'layeradd') loadStrava();

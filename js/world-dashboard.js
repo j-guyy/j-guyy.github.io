@@ -8,8 +8,17 @@ const sortState = {
     europe:       { col: 'population', dir: 'desc' },
     asia:         { col: 'population', dir: 'desc' },
     africa:       { col: 'population', dir: 'desc' },
-    oceania:      { col: 'population', dir: 'desc' }
+    oceania:      { col: 'population', dir: 'desc' },
+    // Bucket lists (js/bucket-lists.js)
+    forbes100:           { col: 'rank', dir: 'asc' },
+    sevenWonders:        { col: 'name', dir: 'asc' },
+    sevenNaturalWonders: { col: 'name', dir: 'asc' },
+    wonderNominees:      { col: 'name', dir: 'asc' }
 };
+
+// Forbes 100 / Seven Wonders lists, once loaded (js/bucket-lists.js).
+let bucketLists = null;
+const isBucketList = type => BUCKET_LISTS.some(l => l.id === type);
 
 const continentMap = {
     northAmerica: 'northAmericanCountries',
@@ -36,6 +45,14 @@ document.addEventListener('DOMContentLoaded', function () {
             setupCsvExport();
         });
     dataReady.catch(error => console.error('Error loading the JSON file:', error));
+    loadBucketLists()
+        .then(b => {
+            bucketLists = b;
+            displayBucketSummary();
+            const selected = document.getElementById('table-selector').value;
+            if (isBucketList(selected) && worldData) updateTable(selected);
+        })
+        .catch(error => console.error('Error loading the bucket lists:', error));
     setupWorldViewSwitch(dataReady);
 });
 
@@ -48,7 +65,7 @@ const WORLD_MAP_SCRIPTS = [
     'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
     'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
     'js/map-controls.js?v=20261022',
-    'js/world-map.js?v=20261022'
+    'js/world-map.js?v=20261022b'
 ];
 let worldMap = null;          // { map, refresh } once built
 let worldMapLoading = null;
@@ -111,6 +128,16 @@ function setupCsvExport() {
     document.getElementById('export-csv-btn').addEventListener('click', () => {
         const continentType = document.getElementById('table-selector').value;
         const { col, dir } = sortState[continentType];
+        if (isBucketList(continentType)) {
+            if (!bucketLists) return;
+            const rows = sortBucketRows(bucketLists.lists[continentType].rows, col, dir);
+            const withRank = continentType === 'forbes100';
+            const headers = (withRank ? ['Rank'] : []).concat(['Name', 'Country', 'Status']);
+            downloadCsv(headers, rows.map(r => (withRank ? [r.rank] : []).concat(
+                [r.name, r.country, r.visited ? 'Visited' : 'Not Visited'])),
+                continentType.replace(/([A-Z0-9]+)/g, '-$1').toLowerCase() + '.csv');
+            return;
+        }
         const rawData = worldData[continentMap[continentType]];
         const sorted = sortTableData(rawData, col, dir);
 
@@ -292,9 +319,59 @@ function sortTableData(data, col, dir) {
     });
 }
 
+// Bucket list progress cards, under the continents.
+function displayBucketSummary() {
+    const container = document.getElementById('bucket-summary');
+    if (!container || !bucketLists) return;
+    const cards = BUCKET_LISTS.map(l => {
+        const rows = bucketLists.lists[l.id].rows;
+        const done = rows.filter(r => r.visited).length;
+        const complete = done === rows.length;
+        return `
+            <button type="button" class="summary-stat bucket-card${complete ? ' completed-quest' : ''}" data-list="${l.id}" title="Show the ${l.label} table">
+                <div class="stat-number-container">
+                    <span class="stat-number">${done}</span>
+                    <span class="stat-total">/${rows.length}</span>
+                    <span class="stat-percentage">(${((done / rows.length) * 100).toFixed(0)}%)</span>
+                    ${complete ? '<span class="completion-check">✅</span>' : ''}
+                </div>
+                <span class="stat-label">${l.label}</span>
+            </button>`;
+    }).join('');
+    container.innerHTML = `
+        <h3 class="bucket-summary-title">Bucket Lists</h3>
+        <div class="summary-stats-container">
+            <div class="other-stats other-stats-quad">${cards}</div>
+        </div>`;
+    container.querySelectorAll('.bucket-card').forEach(card => card.addEventListener('click', () => {
+        const selector = document.getElementById('table-selector');
+        selector.value = card.dataset.list;
+        if (worldData) updateTable(card.dataset.list);
+        if (document.getElementById('tables-view').hidden) {
+            document.querySelector('.view-switch-option[data-view="tables"]').click();
+        }
+        document.getElementById('tables-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+}
+
+function sortBucketRows(rows, col, dir) {
+    return [...rows].sort((a, b) => {
+        let aVal = a[col], bVal = b[col];
+        if (typeof aVal === 'boolean') { aVal = aVal ? 1 : 0; bVal = bVal ? 1 : 0; }
+        const primary = typeof aVal === 'string'
+            ? aVal.localeCompare(bVal) * (dir === 'asc' ? 1 : -1)
+            : (dir === 'asc' ? aVal - bVal : bVal - aVal);
+        return primary || a.name.localeCompare(b.name);
+    });
+}
+
 function updateTable(continentType) {
     const tableContainer = document.getElementById('travel-table-container');
     tableContainer.innerHTML = '';
+    if (isBucketList(continentType)) {
+        updateBucketTable(continentType, tableContainer);
+        return;
+    }
 
     const table = document.createElement('table');
     table.className = 'travel-table travel-table--fit';
@@ -368,6 +445,71 @@ function updateTable(continentType) {
 
     table.appendChild(tbody);
 
+    appendScrollableTable(tableContainer, table);
+}
+
+// A bucket list's table. Its visited flags live in data files (or follow the
+// US metros), so Edit Mode has nothing to toggle here.
+function updateBucketTable(listId, tableContainer) {
+    if (!bucketLists) {
+        tableContainer.innerHTML = '<p class="map-description">Loading…</p>';
+        return;
+    }
+    const withRank = listId === 'forbes100';
+    const columns = (withRank ? [{ label: '#', key: 'rank', cls: 'col-num' }] : []).concat([
+        { label: listId === 'forbes100' ? 'City' : 'Name', key: 'name', cls: 'col-name' },
+        { label: 'Country', key: 'country', cls: 'col-name' },
+        { label: 'Status', key: 'visited', cls: 'col-status' },
+    ]);
+    const { col, dir } = sortState[listId];
+    const rows = sortBucketRows(bucketLists.lists[listId].rows, col, dir);
+
+    const table = document.createElement('table');
+    table.className = 'travel-table travel-table--fit';
+    const headerRow = document.createElement('tr');
+    columns.forEach(c => {
+        const th = document.createElement('th');
+        const isActive = col === c.key;
+        th.classList.add('sortable', c.cls);
+        if (isActive) th.classList.add('sort-active');
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+        th.append(document.createTextNode(c.label), indicator);
+        th.addEventListener('click', () => {
+            sortState[listId] = col === c.key
+                ? { col, dir: dir === 'asc' ? 'desc' : 'asc' }
+                : { col: c.key, dir: c.key === 'visited' ? 'desc' : 'asc' };
+            updateTable(listId);
+        });
+        headerRow.appendChild(th);
+    });
+    const thead = document.createElement('thead');
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = r.visited ? 'visited' : 'not-visited';
+        const cells = (withRank ? [[r.rank, 'col-num']] : []).concat([
+            [r.note ? `${r.name} (${r.note})` : r.name, 'col-name'],
+            [r.country, 'col-name'],
+            [r.visited ? '✅' : '⬜', 'col-status'],
+        ]);
+        cells.forEach(([text, cls]) => {
+            const td = document.createElement('td');
+            td.className = cls;
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    appendScrollableTable(tableContainer, table);
+}
+
+function appendScrollableTable(tableContainer, table) {
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);

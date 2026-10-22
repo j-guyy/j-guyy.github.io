@@ -767,3 +767,22 @@ Controls Styling */
 .badge-dot.live {
     background-color: #4CAF50;
 }
+/* World Travel: bucket list cards (js/world-dashboard.js displayBucketSummary) */
+.bucket-summary-title {
+    margin: 24px 0 12px;
+    text-align: center;
+}
+
+.bucket-card {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    width: 100%;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.bucket-card:hover,
+.bucket-card:focus-visible {
+    background-color: var(--accent-soft);
+    border-color: var(--accent-border);
+}
