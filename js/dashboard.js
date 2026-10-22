@@ -232,40 +232,39 @@ function downloadCsv(headers, rows, filename) {
     URL.revokeObjectURL(link.href);
 }
 
-async function handleToggle(tableType, item) {
+// Edits save the whole list (TravelAPI.saveList explains why).
+const TRAVEL_LISTS = {
+    visitedStates: () => visitedStates,
+    highpoints: () => highPoints,
+    metros: () => metros,
+    parks: () => nationalParks
+};
+
+function handleToggle(tableType, item) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
 
-    let type, key;
-    if (tableType === 'states') {
-        type = 'visitedStates';
-        key = item.name;
-    } else if (tableType === 'highpoints') {
-        type = 'highpoints';
-        key = item.state;
-    } else if (tableType === 'metros') {
-        type = 'metros';
-        key = String(item.rank);
-    } else if (tableType === 'parks') {
-        type = 'parks';
-        key = item.name;
-    }
-
-    try {
-        await TravelAPI.toggleVisited(type, key, password);
-        if (tableType === 'states') visitedStates[key] = !visitedStates[key];
+    const type = tableType === 'states' ? 'visitedStates' : tableType;
+    const flip = () => {
+        if (tableType === 'states') visitedStates[item.name] = !visitedStates[item.name];
         else item.visited = !item.visited;
         displayTravelSummary();
         mapStale = true;
         updateTable(currentTable());
-    } catch (err) {
-        alert('Toggle failed: ' + err.message);
-        if (err.message.includes('Invalid password')) {
-            TravelAdmin.logout();
-            refreshOwnerUI();
-            setEditMode(false);
-        }
-    }
+    };
+
+    // Show the change at once; undo it if the save fails.
+    flip();
+    TravelAPI.saveList(type, TRAVEL_LISTS[type], password)
+        .catch(err => {
+            flip();
+            alert('Save failed: ' + err.message);
+            if (err.message.includes('Invalid password')) {
+                TravelAdmin.logout();
+                refreshOwnerUI();
+                setEditMode(false);
+            }
+        });
 }
 
 function displayTravelSummary() {

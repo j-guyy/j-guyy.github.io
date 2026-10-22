@@ -18,6 +18,7 @@ const sortState = {
 
 // Forbes 100 / Seven Wonders lists, once loaded (js/bucket-lists.js).
 let bucketLists = null;
+let storedCountries = null; // countries as loaded, before live populations
 const isBucketList = type => BUCKET_LISTS.some(l => l.id === type);
 
 const continentMap = {
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
         .then(data => {
             worldData = data;
+            storedCountries = JSON.parse(JSON.stringify(data));
             displayWorldTravelSummary();
             renderPopulationSourceBadge();
             updateTable('northAmerica');
@@ -168,24 +170,41 @@ function downloadCsv(headers, rows, filename) {
     URL.revokeObjectURL(link.href);
 }
 
-async function handleToggle(continentType, country) {
+// Edits save the whole list (TravelAPI.saveList explains why): the stored
+// list as loaded, with the page's visited flags. Not worldData itself, whose
+// populations the REST Countries API may have replaced on screen.
+function countriesToSave() {
+    const data = JSON.parse(JSON.stringify(storedCountries));
+    Object.values(continentMap).forEach(key => {
+        const visited = new Map((worldData[key] || []).map(c => [c.name, c.visited]));
+        (data[key] || []).forEach(c => { if (visited.has(c.name)) c.visited = visited.get(c.name); });
+    });
+    return data;
+}
+
+function handleToggle(continentType, country) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
 
-    try {
-        await TravelAPI.toggleVisited('countries', country.name, password, continentType);
+    const flip = () => {
         country.visited = !country.visited;
         displayWorldTravelSummary();
         worldMapStale = true;
-        updateTable(continentType);
-    } catch (err) {
-        alert('Toggle failed: ' + err.message);
-        if (err.message.includes('Invalid password')) {
-            TravelAdmin.logout();
-            refreshOwnerUI();
-            setEditMode(false);
-        }
-    }
+        updateTable(document.getElementById('table-selector').value);
+    };
+
+    // Show the change at once; undo it if the save fails.
+    flip();
+    TravelAPI.saveList('countries', countriesToSave, password)
+        .catch(err => {
+            flip();
+            alert('Save failed: ' + err.message);
+            if (err.message.includes('Invalid password')) {
+                TravelAdmin.logout();
+                refreshOwnerUI();
+                setEditMode(false);
+            }
+        });
 }
 
 function displayWorldTravelSummary() {

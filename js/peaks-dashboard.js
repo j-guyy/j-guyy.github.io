@@ -5,7 +5,7 @@
 // where the hand-kept list and Strava disagree, the step before the lists are
 // ticked off from Strava directly.
 
-// key: the field /travel/toggle identifies an entry by; done: the completion
+// key: the field that identifies an entry (matching, the worker's MCP tools); done: the completion
 // flag (state highpoints are shared with the US dashboard, which uses
 // `visited`); unit: the elevation unit stored in the file (shown in feet).
 const PEAK_LISTS = {
@@ -171,35 +171,41 @@ function downloadCsv(headers, rows, filename) {
     URL.revokeObjectURL(link.href);
 }
 
-// A list that isn't in Cloudflare yet is seeded from the static copy the page
-// is showing before its first edit, so the edit lands on top of it.
-async function ensureSeeded(type, password) {
-    const list = lists[type];
-    if (list.source === 'cloudflare') return;
-    if (list.reason !== 'unseeded') throw new Error('Cloudflare is unreachable — reload and try again');
-    await TravelAPI.seed(type, list.data, password);
-    list.source = 'cloudflare';
-    delete list.reason;
-}
-
-async function handleToggle(type, item) {
+// Edits save the whole list the page shows (TravelAPI.saveList explains why),
+// so a list that isn't in Cloudflare yet is seeded by its first edit. A list
+// shown from the static copy because Cloudflare was unreachable isn't saved:
+// it could overwrite edits the page never loaded.
+function handleToggle(type, item) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
     const cfg = PEAK_LISTS[type];
+    const list = lists[type];
+    if (list.source !== 'cloudflare' && list.reason !== 'unseeded') {
+        alert('Cloudflare is unreachable — reload and try again');
+        return;
+    }
 
-    try {
-        await ensureSeeded(type, password);
-        await TravelAPI.toggleVisited(type, item[cfg.key], password);
+    const flip = () => {
         item[cfg.done] = !item[cfg.done];
         render();
-    } catch (err) {
-        alert('Toggle failed: ' + err.message);
-        if (err.message.includes('Invalid password')) {
-            TravelAdmin.logout();
-            refreshOwnerUI();
-            setEditMode(false);
-        }
-    }
+    };
+
+    // Show the change at once; undo it if the save fails.
+    flip();
+    TravelAPI.saveList(type, () => list.data, password)
+        .then(() => {
+            list.source = 'cloudflare';
+            delete list.reason;
+        })
+        .catch(err => {
+            flip();
+            alert('Save failed: ' + err.message);
+            if (err.message.includes('Invalid password')) {
+                TravelAdmin.logout();
+                refreshOwnerUI();
+                setEditMode(false);
+            }
+        });
 }
 
 // ── Rendering ───────────────────────────────────────────────────────────────

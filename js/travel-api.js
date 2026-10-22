@@ -129,6 +129,21 @@ const TravelAPI = {
         return data;
     },
 
+    // Edit Mode saves. /travel/toggle reads the stored list, flips one item and
+    // writes the list back, and Workers KV can answer that read from a cache
+    // up to a minute old, so a toggle soon after another could write back a
+    // list without the first edit and silently undo it. Pages save their whole
+    // list instead, through this queue: one save at a time, in order, each
+    // taking the list as it is when its turn comes (getData), so the last
+    // write holds every edit.
+    _saveQueue: Promise.resolve(),
+
+    saveList(type, getData, password) {
+        const run = this._saveQueue.then(() => this.seed(type, getData(), password));
+        this._saveQueue = run.catch(() => {});
+        return run;
+    },
+
     async seed(type, data, password) {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/seed`, {
             method: 'POST',
