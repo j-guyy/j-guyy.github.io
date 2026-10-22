@@ -478,6 +478,28 @@
         padding-left: 10px;
     }
 
+    /* Tick columns sit tight: the States table has three (HP, Cap, Status). */
+    .travel-table--fit th.col-status,
+    .travel-table--fit td.col-status {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    /* On a 360px phone every column needs to give a little for the States
+       table's six to fit. */
+    @media (max-width: 400px) {
+        .travel-table--fit th,
+        .travel-table--fit td {
+            padding-left: 3px;
+            padding-right: 3px;
+        }
+
+        .travel-table--fit th.col-name,
+        .travel-table--fit td.col-name {
+            padding-left: 8px;
+        }
+    }
+
     /* Headers wrap too ("Elevation (ft)" over two lines), or a four-column
        table like Peaks overflows a 360px phone and cuts off Status. */
     .travel-table.travel-table--fit th,
@@ -886,4 +908,20 @@ Controls Styling */
     .travel-table img.flag {
         display: none;
     }
+}
+
+/* Capitals table: a capital not checked off whose county Strava activities
+   reach, a prompt to check whether it was visited. */
+.strava-hint {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid #fc4c02;
+    border-radius: 999px;
+    color: #fc4c02;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: help;
 }

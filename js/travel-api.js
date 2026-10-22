@@ -31,6 +31,23 @@ const TravelAPI = {
         return points;
     },
 
+    // State capitals: names, coordinates and counties always come from the
+    // /data file; the stored list (once the first edit saves it) only says
+    // which are visited. Until then the file's flags stand in (pre-checked
+    // from visited metros named after their capital).
+    async fetchCapitals() {
+        const file = await fetch(new URL('stateCapitals.json', TRAVEL_DATA_URL)).then(r => r.json());
+        try {
+            const res = await fetch(`${TRAVEL_WORKER_URL}/travel/capitals`);
+            const stored = res.ok ? await res.json() : null;
+            if (Array.isArray(stored) && stored.length) {
+                const done = new Map(stored.map(c => [c.state, Boolean(c.visited)]));
+                file.forEach(c => { if (done.has(c.state)) c.visited = done.get(c.state); });
+            }
+        } catch { /* worker unreachable: keep the file's flags */ }
+        return file;
+    },
+
     async fetchMetros() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/metros`);
         return res.json();

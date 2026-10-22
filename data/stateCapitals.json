@@ -1,0 +1,552 @@
+[
+  {
+    "state": "AL",
+    "name": "Montgomery",
+    "coords": [
+      -86.3006,
+      32.3777
+    ],
+    "county": "Montgomery",
+    "fips": "01101",
+    "visited": false
+  },
+  {
+    "state": "AK",
+    "name": "Juneau",
+    "coords": [
+      -134.4197,
+      58.3019
+    ],
+    "county": "Juneau",
+    "fips": "02110",
+    "visited": false
+  },
+  {
+    "state": "AZ",
+    "name": "Phoenix",
+    "coords": [
+      -112.074,
+      33.4484
+    ],
+    "county": "Maricopa",
+    "fips": "04013",
+    "visited": true
+  },
+  {
+    "state": "AR",
+    "name": "Little Rock",
+    "coords": [
+      -92.2896,
+      34.7465
+    ],
+    "county": "Pulaski",
+    "fips": "05119",
+    "visited": true
+  },
+  {
+    "state": "CA",
+    "name": "Sacramento",
+    "coords": [
+      -121.4944,
+      38.5816
+    ],
+    "county": "Sacramento",
+    "fips": "06067",
+    "visited": false
+  },
+  {
+    "state": "CO",
+    "name": "Denver",
+    "coords": [
+      -104.9903,
+      39.7392
+    ],
+    "county": "Denver",
+    "fips": "08031",
+    "visited": true
+  },
+  {
+    "state": "CT",
+    "name": "Hartford",
+    "coords": [
+      -72.6734,
+      41.7658
+    ],
+    "county": "Hartford",
+    "fips": "09003",
+    "visited": true
+  },
+  {
+    "state": "DE",
+    "name": "Dover",
+    "coords": [
+      -75.5244,
+      39.1582
+    ],
+    "county": "Kent",
+    "fips": "10001",
+    "visited": false
+  },
+  {
+    "state": "FL",
+    "name": "Tallahassee",
+    "coords": [
+      -84.2807,
+      30.4383
+    ],
+    "county": "Leon",
+    "fips": "12073",
+    "visited": false
+  },
+  {
+    "state": "GA",
+    "name": "Atlanta",
+    "coords": [
+      -84.388,
+      33.749
+    ],
+    "county": "Fulton",
+    "fips": "13121",
+    "visited": true
+  },
+  {
+    "state": "HI",
+    "name": "Honolulu",
+    "coords": [
+      -157.8583,
+      21.3069
+    ],
+    "county": "Honolulu",
+    "fips": "15003",
+    "visited": true
+  },
+  {
+    "state": "ID",
+    "name": "Boise",
+    "coords": [
+      -116.2023,
+      43.615
+    ],
+    "county": "Ada",
+    "fips": "16001",
+    "visited": true
+  },
+  {
+    "state": "IL",
+    "name": "Springfield",
+    "coords": [
+      -89.6501,
+      39.7817
+    ],
+    "county": "Sangamon",
+    "fips": "17167",
+    "visited": false
+  },
+  {
+    "state": "IN",
+    "name": "Indianapolis",
+    "coords": [
+      -86.1581,
+      39.7684
+    ],
+    "county": "Marion",
+    "fips": "18097",
+    "visited": true
+  },
+  {
+    "state": "IA",
+    "name": "Des Moines",
+    "coords": [
+      -93.625,
+      41.5868
+    ],
+    "county": "Polk",
+    "fips": "19153",
+    "visited": true
+  },
+  {
+    "state": "KS",
+    "name": "Topeka",
+    "coords": [
+      -95.6752,
+      39.0473
+    ],
+    "county": "Shawnee",
+    "fips": "20177",
+    "visited": false
+  },
+  {
+    "state": "KY",
+    "name": "Frankfort",
+    "coords": [
+      -84.8733,
+      38.2009
+    ],
+    "county": "Franklin",
+    "fips": "21073",
+    "visited": false
+  },
+  {
+    "state": "LA",
+    "name": "Baton Rouge",
+    "coords": [
+      -91.1871,
+      30.4515
+    ],
+    "county": "East Baton Rouge",
+    "fips": "22033",
+    "visited": true
+  },
+  {
+    "state": "ME",
+    "name": "Augusta",
+    "coords": [
+      -69.7795,
+      44.3106
+    ],
+    "county": "Kennebec",
+    "fips": "23011",
+    "visited": false
+  },
+  {
+    "state": "MD",
+    "name": "Annapolis",
+    "coords": [
+      -76.4922,
+      38.9784
+    ],
+    "county": "Anne Arundel",
+    "fips": "24003",
+    "visited": false
+  },
+  {
+    "state": "MA",
+    "name": "Boston",
+    "coords": [
+      -71.0589,
+      42.3601
+    ],
+    "county": "Suffolk",
+    "fips": "25025",
+    "visited": true
+  },
+  {
+    "state": "MI",
+    "name": "Lansing",
+    "coords": [
+      -84.5555,
+      42.7325
+    ],
+    "county": "Ingham",
+    "fips": "26065",
+    "visited": false
+  },
+  {
+    "state": "MN",
+    "name": "Saint Paul",
+    "coords": [
+      -93.09,
+      44.9537
+    ],
+    "county": "Ramsey",
+    "fips": "27123",
+    "visited": true
+  },
+  {
+    "state": "MS",
+    "name": "Jackson",
+    "coords": [
+      -90.1848,
+      32.2988
+    ],
+    "county": "Hinds",
+    "fips": "28049",
+    "visited": false
+  },
+  {
+    "state": "MO",
+    "name": "Jefferson City",
+    "coords": [
+      -92.1735,
+      38.5767
+    ],
+    "county": "Cole",
+    "fips": "29051",
+    "visited": false
+  },
+  {
+    "state": "MT",
+    "name": "Helena",
+    "coords": [
+      -112.0391,
+      46.5891
+    ],
+    "county": "Lewis and Clark",
+    "fips": "30049",
+    "visited": false
+  },
+  {
+    "state": "NE",
+    "name": "Lincoln",
+    "coords": [
+      -96.7026,
+      40.8136
+    ],
+    "county": "Lancaster",
+    "fips": "31109",
+    "visited": true
+  },
+  {
+    "state": "NV",
+    "name": "Carson City",
+    "coords": [
+      -119.7674,
+      39.1638
+    ],
+    "county": "Carson City",
+    "fips": "32510",
+    "visited": false
+  },
+  {
+    "state": "NH",
+    "name": "Concord",
+    "coords": [
+      -71.5376,
+      43.2081
+    ],
+    "county": "Merrimack",
+    "fips": "33013",
+    "visited": false
+  },
+  {
+    "state": "NJ",
+    "name": "Trenton",
+    "coords": [
+      -74.7597,
+      40.2206
+    ],
+    "county": "Mercer",
+    "fips": "34021",
+    "visited": false
+  },
+  {
+    "state": "NM",
+    "name": "Santa Fe",
+    "coords": [
+      -105.9378,
+      35.687
+    ],
+    "county": "Santa Fe",
+    "fips": "35049",
+    "visited": false
+  },
+  {
+    "state": "NY",
+    "name": "Albany",
+    "coords": [
+      -73.7562,
+      42.6526
+    ],
+    "county": "Albany",
+    "fips": "36001",
+    "visited": true
+  },
+  {
+    "state": "NC",
+    "name": "Raleigh",
+    "coords": [
+      -78.6382,
+      35.7796
+    ],
+    "county": "Wake",
+    "fips": "37183",
+    "visited": true
+  },
+  {
+    "state": "ND",
+    "name": "Bismarck",
+    "coords": [
+      -100.7837,
+      46.8083
+    ],
+    "county": "Burleigh",
+    "fips": "38015",
+    "visited": false
+  },
+  {
+    "state": "OH",
+    "name": "Columbus",
+    "coords": [
+      -82.9988,
+      39.9612
+    ],
+    "county": "Franklin",
+    "fips": "39049",
+    "visited": true
+  },
+  {
+    "state": "OK",
+    "name": "Oklahoma City",
+    "coords": [
+      -97.5164,
+      35.4676
+    ],
+    "county": "Oklahoma",
+    "fips": "40109",
+    "visited": true
+  },
+  {
+    "state": "OR",
+    "name": "Salem",
+    "coords": [
+      -123.0351,
+      44.9429
+    ],
+    "county": "Marion",
+    "fips": "41047",
+    "visited": true
+  },
+  {
+    "state": "PA",
+    "name": "Harrisburg",
+    "coords": [
+      -76.8867,
+      40.2732
+    ],
+    "county": "Dauphin",
+    "fips": "42043",
+    "visited": true
+  },
+  {
+    "state": "RI",
+    "name": "Providence",
+    "coords": [
+      -71.4128,
+      41.824
+    ],
+    "county": "Providence",
+    "fips": "44007",
+    "visited": false
+  },
+  {
+    "state": "SC",
+    "name": "Columbia",
+    "coords": [
+      -81.0348,
+      34.0007
+    ],
+    "county": "Richland",
+    "fips": "45079",
+    "visited": true
+  },
+  {
+    "state": "SD",
+    "name": "Pierre",
+    "coords": [
+      -100.351,
+      44.3683
+    ],
+    "county": "Hughes",
+    "fips": "46065",
+    "visited": false
+  },
+  {
+    "state": "TN",
+    "name": "Nashville",
+    "coords": [
+      -86.7816,
+      36.1627
+    ],
+    "county": "Davidson",
+    "fips": "47037",
+    "visited": true
+  },
+  {
+    "state": "TX",
+    "name": "Austin",
+    "coords": [
+      -97.7431,
+      30.2672
+    ],
+    "county": "Travis",
+    "fips": "48453",
+    "visited": true
+  },
+  {
+    "state": "UT",
+    "name": "Salt Lake City",
+    "coords": [
+      -111.891,
+      40.7608
+    ],
+    "county": "Salt Lake",
+    "fips": "49035",
+    "visited": true
+  },
+  {
+    "state": "VT",
+    "name": "Montpelier",
+    "coords": [
+      -72.5754,
+      44.2601
+    ],
+    "county": "Washington",
+    "fips": "50023",
+    "visited": false
+  },
+  {
+    "state": "VA",
+    "name": "Richmond",
+    "coords": [
+      -77.436,
+      37.5407
+    ],
+    "county": "Richmond",
+    "fips": "51760",
+    "visited": true
+  },
+  {
+    "state": "WA",
+    "name": "Olympia",
+    "coords": [
+      -122.9007,
+      47.0379
+    ],
+    "county": "Thurston",
+    "fips": "53067",
+    "visited": true
+  },
+  {
+    "state": "WV",
+    "name": "Charleston",
+    "coords": [
+      -81.6326,
+      38.3498
+    ],
+    "county": "Kanawha",
+    "fips": "54039",
+    "visited": false
+  },
+  {
+    "state": "WI",
+    "name": "Madison",
+    "coords": [
+      -89.4012,
+      43.0731
+    ],
+    "county": "Dane",
+    "fips": "55025",
+    "visited": true
+  },
+  {
+    "state": "WY",
+    "name": "Cheyenne",
+    "coords": [
+      -104.8202,
+      41.14
+    ],
+    "county": "Laramie",
+    "fips": "56021",
+    "visited": false
+  }
+]
