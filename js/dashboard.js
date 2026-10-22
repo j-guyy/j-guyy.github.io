@@ -26,47 +26,22 @@ document.addEventListener('DOMContentLoaded', function () {
             setupCsvExport();
         });
     dataReady.catch(error => console.error('Error loading the JSON files:', error));
-    setupViewSwitch(dataReady);
+    setupUSViewSwitch(dataReady);
 });
 
-// Tables | Map switch: both views live on this page. The hash (#map) picks the
-// view so links and reloads land on the right one; flipping replaces the
-// history entry rather than adding one, so Back leaves the page. The map is
-// only built the first time it is shown, and rebuilt after an edit.
+// Tables | Map switch (js/view-switch.js). The map is only built the first
+// time it is shown, and rebuilt after an edit.
 let mapStale = true;
 
-function setupViewSwitch(dataReady) {
-    const options = document.querySelectorAll('.view-switch-option[data-view]');
-    const tablesView = document.getElementById('tables-view');
-    const mapView = document.getElementById('map-view');
-
-    function show(view) {
-        const isMap = view === 'map';
-        tablesView.hidden = isMap;
-        mapView.hidden = !isMap;
-        options.forEach(o => {
-            if (o.dataset.view === view) o.setAttribute('aria-current', 'page');
-            else o.removeAttribute('aria-current');
-        });
-        document.title = (isMap ? 'US Travel Map' : 'US Travel Dashboard') + ' — Justin Guyette';
-        if (isMap && mapStale) {
+function setupUSViewSwitch(dataReady) {
+    setupViewSwitch({
+        titles: { tables: 'US Travel Dashboard — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
+        onShow: view => {
+            if (view !== 'map' || !mapStale) return;
             mapStale = false;
             dataReady.then(() => USMap.render()).catch(() => { mapStale = true; });
         }
-    }
-
-    const fromHash = () => (location.hash === '#map' ? 'map' : 'tables');
-
-    options.forEach(o => o.addEventListener('click', e => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // new tab etc.
-        e.preventDefault();
-        const view = o.dataset.view;
-        history.replaceState(null, '', view === 'map' ? '#map' : location.pathname + location.search);
-        show(view);
-    }));
-    // A link to #map from elsewhere on the site while already on this page.
-    window.addEventListener('hashchange', () => show(fromHash()));
-    show(fromHash());
+    });
 }
 
 function setupEditMode() {

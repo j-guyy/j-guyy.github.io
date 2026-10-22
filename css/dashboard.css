@@ -312,6 +312,7 @@
 
 .travel-table tr.visited {
     background-color: rgba(76, 175, 80, 0.14);
+    cursor: auto;  /* map.css's map-marker `.visited` rule is on these pages too */
 }
 
 .travel-table tr.visited:hover {

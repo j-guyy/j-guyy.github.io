@@ -1,4 +1,6 @@
-// World Travel Map (world-map.html).
+// World Travel Map: the Map view of world-dashboard.html. js/world-dashboard.js
+// loads Leaflet and this file the first time that view is opened, then calls
+// initWorldMap() with the countries data it already has.
 //
 // One map of everywhere I've been, from three sources:
 //   • countries — data/countries.json (via TravelAPI) fills the outlines in
@@ -69,12 +71,11 @@ function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-
-    Promise.all([
-        loadCountriesWithPopulation(null, function (updatedData) {
-            displayWorldTravelSummary(updatedData);
-        }),
+// Fetches the map's own data and builds it. worldData is the dashboard's
+// countries data (shared, so Edit Mode toggles reach the map through refresh()).
+// Resolves to createWorldMap()'s { map, refresh }.
+function initWorldMap(worldData) {
+    return Promise.all([
         fetch('data/worldCities.json').then(response => response.json()),
         TravelAPI.fetchMetros(),
         fetch('data/worldMountains.json').then(response => response.json()),
@@ -97,67 +98,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => fetch('data/visitedStates.json').then(response => response.json()))
             .catch(() => ({}))
     ])
-        .then(([worldData, citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, visitedStates]) => {
-            displayWorldTravelSummary(worldData);
+        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, visitedStates]) =>
             createWorldMap('world-map', {
                 worldData, countriesGeojson, visitedStates,
                 places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
                 drivenSegments: collectDrivenSegments(interstateData, highwaysData),
-            });
-        })
-        .catch(error => console.error('Error loading data:', error));
-
-});
-
-function displayWorldTravelSummary(worldData) {
-    const summaryContainer = document.getElementById('travel-summary');
-    if (!summaryContainer) return;
-
-    const continents = [
-        { key: 'northAmericanCountries', label: 'North America' },
-        { key: 'southAmericanCountries', label: 'South America' },
-        { key: 'europeanCountries', label: 'Europe' },
-        { key: 'asianCountries', label: 'Asia' },
-        { key: 'africanCountries', label: 'Africa' },
-        { key: 'oceaniaCountries', label: 'Oceania' }
-    ];
-
-    let totalCountries = 0;
-    let totalVisited = 0;
-    const stats = continents.map(c => {
-        const countries = worldData[c.key];
-        const visited = countries.filter(x => x.visited).length;
-        totalCountries += countries.length;
-        totalVisited += visited;
-        return { label: c.label, visited, total: countries.length, pct: ((visited / countries.length) * 100).toFixed(0) };
-    });
-
-    const totalPct = ((totalVisited / totalCountries) * 100).toFixed(0);
-
-    summaryContainer.innerHTML = `
-        <div class="summary-stats-container">
-            <div class="summary-stat world-summary">
-                <div class="stat-number-container">
-                    <span class="stat-number">${totalVisited}</span>
-                    <span class="stat-total">/${totalCountries}</span>
-                    <span class="stat-percentage">(${totalPct}%)</span>
-                </div>
-                <span class="stat-label">Countries Visited</span>
-            </div>
-            <div class="other-stats">
-                ${stats.map(s => `
-                    <div class="summary-stat">
-                        <div class="stat-number-container">
-                            <span class="stat-number">${s.visited}</span>
-                            <span class="stat-total">/${s.total}</span>
-                            <span class="stat-percentage">(${s.pct}%)</span>
-                        </div>
-                        <span class="stat-label">${s.label}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
+            }));
 }
 
 // ── Data → places / routes ────────────────────────────────────────────────────
@@ -797,7 +743,11 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         partsByCountry.get(name).push(f);
     });
     const listed = new Map();
-    CONTINENT_KEYS.forEach(k => worldData[k].forEach(c => listed.set(c.name, c)));
+    const indexCountries = data => {
+        listed.clear();
+        CONTINENT_KEYS.forEach(k => data[k].forEach(c => listed.set(c.name, c)));
+    };
+    indexCountries(worldData);
 
     // Subregions (filled in by loadRegions below).
     const regionData = new Map();   // country name → its region features, once loaded
@@ -880,7 +830,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
                 <h3>${flagEmoji(iso)} ${escapeHtml(part || name)}</h3>
                 <div class="wm-popup-status wm-status-${status}">${statusText}</div>
                 ${lines.map(l => `<p>${l}</p>`).join('')}
-                ${entry ? '<p><a href="world-dashboard.html">See all countries →</a></p>' : ''}
+                ${entry ? '<p><a href="#tables">See all countries →</a></p>' : ''}
             </div>`;
     }
 
@@ -1335,4 +1285,13 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     setDetail(state.detail);
     setMode(state.mode);
     renderChips();
+
+    // After an Edit Mode change on the Tables view: re-read visited countries.
+    function refresh(data) {
+        indexCountries(data);
+        restyleCountries();
+        if (state.detail === 'subregions') loadRegions();
+        if (compareWanted) renderComparison();
+    }
+    return { map, refresh };
 }
