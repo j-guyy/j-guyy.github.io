@@ -22,7 +22,7 @@ class NavbarComponent extends HTMLElement {
                             <a href="#" class="dropbtn">US Travel <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
                                 <a href="${basePath}us-dashboard.html">Dashboard</a>
-                                <a href="${basePath}us-map.html">Map</a>
+                                <a href="${basePath}us-dashboard.html#map">Map</a>
                             </div>
                         </li>
                         <li class="dropdown">

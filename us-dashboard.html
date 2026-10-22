@@ -17,6 +17,7 @@
     <meta name="twitter:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/map.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
 </head>
@@ -32,14 +33,19 @@
             <h1>US Travel Dashboard</h1>
         </div>
 
+        <!-- Tables and Map are two views of this one page; js/dashboard.js
+             flips between them (#map in the URL opens the map). -->
         <nav class="view-switch" aria-label="Choose view">
-            <a href="us-dashboard.html" class="view-switch-option" aria-current="page">Tables</a>
-            <a href="us-map.html" class="view-switch-option">Map</a>
+            <a href="#tables" class="view-switch-option" data-view="tables" aria-current="page">Tables</a>
+            <a href="#map" class="view-switch-option" data-view="map">Map</a>
         </nav>
 
         <div class="section">
             <h2>Progress Report</h2>
             <div id="travel-summary"></div>
+        </div>
+
+        <div class="section" id="tables-view">
             <div class="table-controls">
                 <select id="table-selector">
                     <option value="highpoints">High Points</option>
@@ -52,9 +58,28 @@
             </div>
             <div id="travel-table-container"></div>
         </div>
+
+        <!-- Built by js/map.js the first time the Map view is opened. -->
+        <div class="section" id="map-view" hidden>
+            <h2>Interactive Map</h2>
+            <p class="map-description">Map of my current progress on all metros, high points, and national parks</p>
+            <div class="map-legend-container">
+                <div class="map-container">
+                    <div id="combined-map"></div>
+                </div>
+                <div id="map-legend"></div>
+            </div>
+            <div class="map-controls">
+                <button id="toggle-metros">Hide Top 100 Metros</button>
+                <button id="toggle-additional-metros">Hide Additional Metros</button>
+                <button id="toggle-highpoints">Hide High Points</button>
+                <button id="toggle-parks">Hide National Parks</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/travel-api.js"></script>
+    <script src="js/map.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>
