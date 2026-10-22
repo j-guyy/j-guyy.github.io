@@ -98,7 +98,10 @@ function buildStateRows() {
             if (state) rows[state[0]].countiesVisited++;
         });
     }
+    // Only the top 100 metros, the real goal (ranks 101-200 stay in the
+    // Metros table and on the map).
     metros.forEach(m => {
+        if (m.rank > 100) return;
         const r = rows[m.state];
         if (!r) return; // DC, Puerto Rico
         r.metrosTotal++;
@@ -132,6 +135,15 @@ function progressBar(pct, title) {
                 <span class="state-progress-fill" style="width:${pct}%"></span>
                 <span class="state-progress-pct">${pct}%</span>
             </span>`;
+}
+
+// The Core bar's tooltip: each part of the score, done vs total.
+function coreBreakdown(r) {
+    const lines = [`Core: ${r.progress}%`, `State visited: ${r.visited ? 'yes' : 'no'}`];
+    lines.push(`Top 100 metros: ${r.metrosTotal ? `${r.metrosVisited}/${r.metrosTotal}` : 'none'}`);
+    lines.push(`National parks: ${r.parksTotal ? `${r.parksVisited}/${r.parksTotal}` : 'none'}`);
+    if (r.highPoint) lines.push(`High point (${r.highPoint.name}): ${r.hpVisited ? 'summited' : 'not yet'}`);
+    return lines.join('\n');
 }
 
 // "3/5", or a dash for a state with none on the list.
@@ -175,7 +187,7 @@ function setupCsvExport() {
         let rows, headers, filename;
 
         if (tableType === 'states') {
-            headers = ['State', 'Abbreviation', 'Status', 'Metros Visited', 'Metros Total',
+            headers = ['State', 'Abbreviation', 'Status', 'Top 100 Metros Visited', 'Top 100 Metros Total',
                 'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Core Progress (%)',
                 'Counties Visited', 'Counties Total', 'County Progress (%)'];
             const sorted = sortTableData(buildStateRows(), col, dir, tableType);
@@ -374,8 +386,8 @@ function updateTable(tableType) {
         tableHeaders = ['State', 'Core', 'Counties', 'Metros', 'Parks', ['High Point', 'HP'], 'Status'];
         sortKeys     = ['name', 'progress', 'countyPct', 'metrosVisited', 'parksVisited', 'hpVisited', 'visited'];
         colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status'];
-        headerTitles = [null, 'The state, its metros, national parks and high point',
-            'Counties reached by Strava activities (County Hunter)'];
+        headerTitles = [null, 'The state, its top-100 metros, national parks and high point',
+            'Counties reached by Strava activities (County Hunter)', 'Top 100 metros'];
         rawData      = buildStateRows();
     } else if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
@@ -456,7 +468,7 @@ function updateTable(tableType) {
             const hpTitle = hp ? `${hp.name} (${hp.elevation.toLocaleString()} ft)` : '';
             row.innerHTML = `
                 <td class="col-name">${item.name}</td>
-                <td class="col-progress">${progressBar(item.progress, `${item.progress}% of the state, its metros, parks and high point`)}</td>
+                <td class="col-progress">${progressBar(item.progress, coreBreakdown(item))}</td>
                 <td class="col-progress">${progressBar(item.countyPct, `${item.countiesVisited} of ${item.countiesTotal} counties (from Strava)`)}</td>
                 <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal)}</td>
                 <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal)}</td>
