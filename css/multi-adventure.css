@@ -214,3 +214,14 @@
         gap: 10px;
     }
 }
+
+/* This file loads after responsive.css, so its page heroes' fixed 60px top
+   margin and 35vh height beat the compact phone hero there, leaving an empty
+   band under the menu bar. Restore it. */
+@media (max-width: 768px) {
+    .content > .hero {
+        height: auto;
+        min-height: 0;
+        margin-top: 0;
+    }
+}

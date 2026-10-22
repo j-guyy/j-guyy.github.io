@@ -465,6 +465,13 @@
         padding-left: 10px;
     }
 
+    /* Headers wrap too ("Elevation (ft)" over two lines), or a four-column
+       table like Peaks overflows a 360px phone and cuts off Status. */
+    .travel-table.travel-table--fit th,
+    .travel-table.travel-table--fit th.sortable {
+        white-space: normal;
+    }
+
     /* Wide count tables (Strava country/region tables) scroll sideways; keep
        their first (name) column pinned so each row stays identifiable. The
        cell needs an opaque background to cover columns sliding under it —
@@ -489,6 +496,7 @@
     .table-controls {
         flex-wrap: wrap;
         gap: 6px;
+        padding: 0 12px;
     }
 
     .table-controls #table-selector {
