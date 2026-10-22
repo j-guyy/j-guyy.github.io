@@ -1305,7 +1305,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     function showComparedPlace(row) {
         const b = featureBBox(row.feature.geometry);
         map.fitBounds([[b.s, b.w], [b.n, b.e]], { maxZoom: 9 });
-        map.getContainer().scrollIntoView({ behavior: 'smooth', block: 'center' });
+        map.getContainer().scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     }
     if (compareEl) {
         compareEl.addEventListener('click', e => {

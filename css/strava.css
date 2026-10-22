@@ -105,7 +105,7 @@
     padding: 3px 10px;
     cursor: pointer;
     font-size: var(--text-xs);
-    transition: all 0.2s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     white-space: nowrap;
 }
 
@@ -135,7 +135,7 @@
     width: 0;
     background: var(--primary-color);
     border-radius: 2px;
-    transition: width 0.3s ease;
+    transition: width 0.4s var(--ease-out);
 }
 
 .sync-result {
@@ -261,10 +261,27 @@
     font-size: 0.65rem;
     opacity: 0.7;
     flex-shrink: 0;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.collapsible-section.is-open > .collapsible-header .collapsible-arrow {
+    transform: rotate(90deg);
 }
 
 .collapsible-body {
     padding-top: 8px;
+}
+
+.collapsible-body.is-opening {
+    animation: ui-fade-in var(--dur) var(--ease-out);
+}
+
+/* A hunter's "Show map" panel fades in when it opens. These panels are only
+   ever toggled by the user (display: none → block restarts the animation),
+   never rebuilt, so this can't flash during a data refresh. Opacity only: a
+   transform here would shift the Leaflet map while it measures itself. */
+.strava-page:not(.app-page) .section > [id$="-section"] {
+    animation: ui-fade-in var(--dur-slow) var(--ease-out);
 }
 
 /* ── County Hunter / Park Hunter / Metro Hunter ─ */
@@ -394,7 +411,7 @@
     background: var(--primary-color);
     border-radius: 2px;
     width: var(--mh-progress, 0%);
-    transition: width 0.3s ease;
+    transition: width 0.4s var(--ease-out);
 }
 
 #mountain-progress-label {
@@ -880,7 +897,7 @@
     cursor: pointer;
     font-size: 0.78rem;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .metric-toggle-btn + .metric-toggle-btn {
@@ -904,7 +921,7 @@
     padding: 3px 10px;
     cursor: pointer;
     font-size: var(--text-xs);
-    transition: all 0.2s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     white-space: nowrap;
 }
 
@@ -961,7 +978,7 @@
     padding: 3px 10px;
     cursor: pointer;
     font-size: var(--text-xs);
-    transition: all 0.2s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     white-space: nowrap;
 }
 

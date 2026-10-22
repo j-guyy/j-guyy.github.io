@@ -25,6 +25,48 @@
     --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     --text-sm: 0.875rem;   /* 14px — secondary copy */
     --text-xs: 0.8125rem;  /* 13px — floor for labels/captions */
+
+    /* ── Motion ───────────────────────────────────────────────────────────
+       One easing family for the whole site so things move alike: --ease-out
+       for anything appearing or reacting to the pointer (fast start, long
+       soft landing), --ease-in-out for things moving between two resting
+       places. Hover/press feedback uses --dur-fast, small UI changes --dur,
+       entrances --dur-slow. Keep distances small (a few px) and avoid
+       bounces, pulses and big scale-ups. */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --dur-fast: 150ms;
+    --dur: 220ms;
+    --dur-slow: 450ms;
+}
+
+/* Shared entrance keyframes. Both only define the starting frame, so the
+   element ends on its own styles (a later :hover transform still works). */
+@keyframes ui-fade-in {
+    from { opacity: 0; }
+}
+
+@keyframes ui-rise-in {
+    from { opacity: 0; transform: translateY(8px); }
+}
+
+/* Visitors who ask their OS for less motion get instant state changes and no
+   looping animation anywhere on the site. Entrance animations still finish on
+   their final frame, so nothing is left hidden. */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+    }
 }
 
 /* The window (document) is the page's scroll container. html/body must not get
@@ -70,7 +112,7 @@ button {
     color: var(--text-color);
     border: none;
     border-radius: 5px;
-    transition: background-color 0.3s ease;
+    transition: background-color var(--dur) var(--ease-out);
 }
 
 button:hover {
@@ -91,7 +133,7 @@ button:hover {
     padding: 8px 16px;
     border: 1px solid var(--primary-color);
     border-radius: 5px;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
     display: inline-block;
 }
 
@@ -123,7 +165,7 @@ button:hover {
     font-weight: 600;
     text-align: center;
     text-decoration: none;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
 }
 
 .view-switch-option:hover {

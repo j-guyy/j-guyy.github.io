@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     body.style.transition = 'background-image 0.5s ease-in-out';
     if (contentBox) {
         contentBox.style.opacity = '0';
-        contentBox.style.transform = 'scale(0.9)';
+        contentBox.style.transform = 'scale(0.98)';
     }
 
     function getRandomNumber() {
@@ -124,15 +124,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 rootMargin: isMobile ? "0px 0px 100px 0px" : "0px 0px -100px 0px"
             };
 
-            const appearOnScroll = new IntersectionObserver(function (entries, appearOnScroll) {
+            // Reveal each section once: fading back out on the way up makes
+            // the page flicker as you scroll around it.
+            const appearOnScroll = new IntersectionObserver(function (entries, observer) {
                 entries.forEach(entry => {
-                    if (!entry.isIntersecting) {
-                        entry.target.classList.add('fade-out');
-                        entry.target.classList.remove('is-visible');
-                    } else {
-                        entry.target.classList.remove('fade-out');
-                        entry.target.classList.add('is-visible');
-                    }
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.remove('fade-out');
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
                 });
             }, appearOptions);
 

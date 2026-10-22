@@ -55,29 +55,25 @@
     background-size: cover;
     background-position: center;
     border-radius: 10px;
-    transition: all 0.3s ease-in-out;
-    transform: scale(0.8);
-    opacity: 1;
+    transition: transform var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out);
 }
 
-.info .image:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+@media (hover: hover) {
+    .info .image:hover {
+        transform: scale(1.015);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    }
 }
 
-.info.active .image {
-    transform: scale(1);
-    opacity: 1;
-}
-
+/* Sections rise in once as they scroll into view (js/script.js). */
 .fade-in-section {
     opacity: 1;
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
 }
 
 .fade-in-section.fade-out {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
 }
 
 .fade-in-section.is-visible {

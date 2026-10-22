@@ -34,12 +34,14 @@
     height: auto;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
-.image-gallery img:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+    .image-gallery img:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+    }
 }
 
 /* 3D Map */
@@ -221,7 +223,8 @@
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.1), transparent);
-    animation: shimmer 3s infinite;
+    /* One soft sweep when the page opens, not a loop */
+    animation: shimmer 2.4s var(--ease-in-out) 0.4s 1 both;
 }
 
 @keyframes shimmer {
@@ -274,19 +277,6 @@
     justify-content: center;
     border: 2px solid rgba(76, 175, 80, 0.5);
     box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.05);
-    }
 }
 
 /* Climb Data Section */
@@ -307,11 +297,6 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: transform 0.2s ease;
-}
-
-.stat-item:hover {
-    transform: translateY(-2px);
 }
 
 .stat-label {
