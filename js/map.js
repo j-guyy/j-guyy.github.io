@@ -1,77 +1,56 @@
-let metros, highPoints, nationalParks, visitedStates;
+// US map view of us-dashboard.html. js/dashboard.js owns the data (metros,
+// highPoints, nationalParks, visitedStates) and calls USMap.render() the first
+// time the Map view is opened, and again after an edit changes the data.
+// d3 + topojson are loaded on demand so the Tables view never downloads them.
 
-document.addEventListener('DOMContentLoaded', function () {
-    Promise.all([
-        TravelAPI.fetchMetros(),
-        TravelAPI.fetchHighPoints(),
-        TravelAPI.fetchNationalParks(),
-        TravelAPI.fetchVisitedStates()
-    ])
-        .then(([metrosData, highPointsData, nationalParksData, visitedStatesData]) => {
-            metros = metrosData;
-            highPoints = highPointsData;
-            nationalParks = nationalParksData;
-            visitedStates = visitedStatesData;
-            displayTravelSummary();
-            createCombinedMap();
+const USMap = (() => {
+    const SCRIPTS = [
+        'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js'
+    ];
+    let libs = null;
+    let controlsReady = false;
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const el = document.createElement('script');
+            el.src = src;
+            el.onload = resolve;
+            el.onerror = () => reject(new Error('Failed to load ' + src));
+            document.head.appendChild(el);
+        });
+    }
+
+    function loadLibs() {
+        // In order: topojson doesn't need d3, but keep it simple and predictable.
+        if (!libs) {
+            libs = SCRIPTS.reduce((p, src) => p.then(() => loadScript(src)), Promise.resolve())
+                .catch(err => { libs = null; throw err; });
+        }
+        return libs;
+    }
+
+    async function render() {
+        const mapEl = document.getElementById('combined-map');
+        try {
+            await loadLibs();
+        } catch (err) {
+            console.error(err);
+            mapEl.textContent = 'Error loading map. Please try again later.';
+            return;
+        }
+        mapEl.innerHTML = '';
+        document.getElementById('map-legend').innerHTML = '';
+        await createCombinedMap();
+        if (!controlsReady) {
             setupToggleButtons();
-        })
-        .catch(error => console.error('Error loading the JSON files:', error));
-});
+            controlsReady = true;
+        }
+        applyCategoryVisibility();
+    }
 
-function displayTravelSummary() {
-    const summaryContainer = document.getElementById('travel-summary');
-    if (!summaryContainer) return;
-
-    const stateCount = Object.values(visitedStates).filter(v => v).length;
-    const statePercentage = ((stateCount / 50) * 100).toFixed(0);
-    const top100Metros = metros.filter(c => c.rank <= 100);
-    const metroCount = top100Metros.filter(c => c.visited).length;
-    const metroPercentage = ((metroCount / 100) * 100).toFixed(0);
-    const highPointCount = highPoints.filter(p => p.visited).length;
-    const highPointPercentage = ((highPointCount / 50) * 100).toFixed(0);
-    const parkCount = nationalParks.filter(p => p.visited).length;
-    const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
-
-    summaryContainer.innerHTML = `
-        <div class="summary-stats-container">
-            <div class="summary-stat states-summary">
-                <div class="stat-number-container">
-                    <span class="stat-number">${stateCount}</span>
-                    <span class="stat-total">/50</span>
-                    <span class="stat-percentage">(${statePercentage}%)</span>
-                </div>
-                <span class="stat-label">States Visited</span>
-            </div>
-            <div class="other-stats other-stats-trio">
-                <div class="summary-stat">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${metroCount}</span>
-                        <span class="stat-total">/100</span>
-                        <span class="stat-percentage">(${metroPercentage}%)</span>
-                    </div>
-                    <span class="stat-label">Largest Metros Visited</span>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${highPointCount}</span>
-                        <span class="stat-total">/50</span>
-                        <span class="stat-percentage">(${highPointPercentage}%)</span>
-                    </div>
-                    <span class="stat-label">High Points Summited</span>
-                </div>
-                <div class="summary-stat">
-                    <div class="stat-number-container">
-                        <span class="stat-number">${parkCount}</span>
-                        <span class="stat-total">/${nationalParks.length}</span>
-                        <span class="stat-percentage">(${parkPercentage}%)</span>
-                    </div>
-                    <span class="stat-label">National Parks Visited</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
+    return { render };
+})();
 
 function createCombinedMap() {
     const width = 960;
@@ -96,7 +75,7 @@ function createCombinedMap() {
         .style("pointer-events", "none");
 
     // Load US map data
-    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
+    return d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
         .then(function (us) {
             svg.append("g")
                 .selectAll("path")
@@ -122,7 +101,6 @@ function createCombinedMap() {
                     const projected = projection(d.coords);
                     return projected ? projected[1] : 0;
                 })
-                .style("display", d => d.rank <= 100 ? null : 'none') // Hide additional metros by default
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'metro');
                 })
@@ -329,34 +307,33 @@ function createLegend() {
     });
 }
 
-function setupToggleButtons() {
-    document.getElementById('toggle-metros').addEventListener('click', () => toggleCategory('city-dot.top-100', 'toggle-metros', 'Top 100 Metros'));
-    document.getElementById('toggle-additional-metros').addEventListener('click', () => toggleCategory('city-dot.top-200', 'toggle-additional-metros', 'Additional Metros'));
-    document.getElementById('toggle-highpoints').addEventListener('click', () => toggleCategory('high-point-triangle', 'toggle-highpoints', 'High Points'));
-    document.getElementById('toggle-parks').addEventListener('click', () => toggleCategory('national-park-square', 'toggle-parks', 'National Parks'));
+// Which marker categories are shown; survives a re-render after an edit.
+const MAP_CATEGORIES = [
+    { selector: '.city-dot.top-100', button: 'toggle-metros', label: 'Top 100 Metros', visible: true },
+    { selector: '.city-dot.top-200', button: 'toggle-additional-metros', label: 'Additional Metros', visible: false },
+    { selector: '.high-point-triangle', button: 'toggle-highpoints', label: 'High Points', visible: true },
+    { selector: '.national-park-square', button: 'toggle-parks', label: 'National Parks', visible: true }
+];
 
-    // Set initial state for additional metros button
-    updateButtonState(document.getElementById('toggle-additional-metros'), false, 'Additional Metros');
+function setupToggleButtons() {
+    MAP_CATEGORIES.forEach(cat => {
+        document.getElementById(cat.button).addEventListener('click', () => {
+            cat.visible = !cat.visible;
+            applyCategoryVisibility();
+        });
+    });
 }
 
-function toggleCategory(className, buttonId, categoryName) {
-    const elements = document.querySelectorAll(`.${className}`);
-    const button = document.getElementById(buttonId);
-    const isVisible = window.getComputedStyle(elements[0]).display !== 'none';
-
-    elements.forEach(element => {
-        element.style.display = isVisible ? 'none' : '';
+function applyCategoryVisibility() {
+    MAP_CATEGORIES.forEach(cat => {
+        document.querySelectorAll(`#combined-map ${cat.selector}`).forEach(el => {
+            el.style.display = cat.visible ? '' : 'none';
+        });
+        updateButtonState(document.getElementById(cat.button), cat.visible, cat.label);
     });
-
-    updateButtonState(button, !isVisible, categoryName);
 }
 
 function updateButtonState(button, isVisible, categoryName) {
-    if (isVisible) {
-        button.classList.remove('inactive');
-        button.textContent = `Hide ${categoryName}`;
-    } else {
-        button.classList.add('inactive');
-        button.textContent = `Show ${categoryName}`;
-    }
+    button.classList.toggle('inactive', !isVisible);
+    button.textContent = `${isVisible ? 'Hide' : 'Show'} ${categoryName}`;
 }

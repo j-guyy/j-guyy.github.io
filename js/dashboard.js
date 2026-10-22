@@ -9,7 +9,7 @@ const sortState = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
-    Promise.all([
+    const dataReady = Promise.all([
         TravelAPI.fetchMetros(),
         TravelAPI.fetchHighPoints(),
         TravelAPI.fetchNationalParks(),
@@ -24,9 +24,50 @@ document.addEventListener('DOMContentLoaded', function () {
             updateTable('highpoints');
             setupEditMode();
             setupCsvExport();
-        })
-        .catch(error => console.error('Error loading the JSON files:', error));
+        });
+    dataReady.catch(error => console.error('Error loading the JSON files:', error));
+    setupViewSwitch(dataReady);
 });
+
+// Tables | Map switch: both views live on this page. The hash (#map) picks the
+// view so links and reloads land on the right one; flipping replaces the
+// history entry rather than adding one, so Back leaves the page. The map is
+// only built the first time it is shown, and rebuilt after an edit.
+let mapStale = true;
+
+function setupViewSwitch(dataReady) {
+    const options = document.querySelectorAll('.view-switch-option[data-view]');
+    const tablesView = document.getElementById('tables-view');
+    const mapView = document.getElementById('map-view');
+
+    function show(view) {
+        const isMap = view === 'map';
+        tablesView.hidden = isMap;
+        mapView.hidden = !isMap;
+        options.forEach(o => {
+            if (o.dataset.view === view) o.setAttribute('aria-current', 'page');
+            else o.removeAttribute('aria-current');
+        });
+        document.title = (isMap ? 'US Travel Map' : 'US Travel Dashboard') + ' — Justin Guyette';
+        if (isMap && mapStale) {
+            mapStale = false;
+            dataReady.then(() => USMap.render()).catch(() => { mapStale = true; });
+        }
+    }
+
+    const fromHash = () => (location.hash === '#map' ? 'map' : 'tables');
+
+    options.forEach(o => o.addEventListener('click', e => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // new tab etc.
+        e.preventDefault();
+        const view = o.dataset.view;
+        history.replaceState(null, '', view === 'map' ? '#map' : location.pathname + location.search);
+        show(view);
+    }));
+    // A link to #map from elsewhere on the site while already on this page.
+    window.addEventListener('hashchange', () => show(fromHash()));
+    show(fromHash());
+}
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
@@ -116,6 +157,7 @@ async function handleToggle(tableType, item) {
         await TravelAPI.toggleVisited(type, key, password);
         item.visited = !item.visited;
         displayTravelSummary();
+        mapStale = true;
         updateTable(tableType);
     } catch (err) {
         alert('Toggle failed: ' + err.message);

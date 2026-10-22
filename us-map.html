@@ -4,57 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Map - My Travels</title>
+    <title>US Travel Map — Justin Guyette</title>
+    <!-- The US map is now the Map view of the US dashboard page. -->
+    <link rel="canonical" href="https://j-guyy.github.io/us-dashboard.html">
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url=us-dashboard.html#map">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/responsive.css">
 </head>
 
 <body class="page">
-    <div class="parallax-background"></div>
-    <div class="parallax-overlay"></div>
-
-    <nav-bar></nav-bar>
-
     <div class="content">
-        <div class="hero">
-            <h1>US Travel Map</h1>
-        </div>
-
-        <nav class="view-switch" aria-label="Choose view">
-            <a href="us-dashboard.html" class="view-switch-option">Tables</a>
-            <a href="us-map.html" class="view-switch-option" aria-current="page">Map</a>
-        </nav>
-
         <div class="section">
-            <div id="travel-summary"></div>
-        </div>
-
-        <div class="section">
-            <h2>Interactive Map</h2>
-            <p class="map-description">Map of my current progress on all metros, high points, and national parks</p>
-            <div class="map-legend-container">
-                <div class="map-container">
-                    <div id="combined-map"></div>
-                </div>
-                <div id="map-legend"></div>
-            </div>
-            <div class="map-controls">
-                <button id="toggle-metros">Hide Top 100 Metros</button>
-                <button id="toggle-additional-metros">Hide Additional Metros</button>
-                <button id="toggle-highpoints">Hide High Points</button>
-                <button id="toggle-parks">Hide National Parks</button>
-            </div>
+            <h2>US Travel Map</h2>
+            <p class="description">The map has moved to the US dashboard. <a href="us-dashboard.html#map">Continue &rarr;</a></p>
         </div>
     </div>
-
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-    <script src="js/travel-api.js"></script>
-    <script src="js/map.js"></script>
-    <script src="js/navbar-component.js"></script>
+    <script>location.replace('us-dashboard.html#map');</script>
 </body>
 
 </html>

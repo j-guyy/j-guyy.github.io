@@ -100,7 +100,7 @@ button:hover {
     color: var(--text-color);
 }
 
-/* Tables | Map switch between a dashboard and its map page (US, World).
+/* Tables | Map switch between a dashboard and its map (US: one page, two views; World: two pages).
    Sits right under the hero on both pages so it stays put when you flip. */
 .view-switch {
     display: flex;
@@ -112,6 +112,11 @@ button:hover {
     border-radius: 999px;
     background: var(--surface);
     box-shadow: var(--shadow);
+}
+
+/* The view the switch isn't showing. Beats responsive.css's `.section { display: flex }`. */
+.section[hidden] {
+    display: none;
 }
 
 .view-switch-option {
