@@ -40,7 +40,8 @@ function currentTable() {
 
 // ── States table ────────────────────────────────────────────────────────────
 // One row per state, rolled up from the other lists: the state itself, its
-// metros (every state a metro spans counts it, so NYC counts for NJ too), its
+// metros (each counted once, in its main city's state, as the Metros table
+// lists it, so Boston counts for MA but not NH), its
 // national parks and its high point. Progress is the share of those items done.
 const STATE_ABBRS = {
     Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
@@ -65,12 +66,10 @@ function buildStateRows() {
         };
     });
     metros.forEach(m => {
-        new Set(String(m.metro_state || m.state).split('-')).forEach(abbr => {
-            const r = rows[abbr];
-            if (!r) return; // DC, Puerto Rico
-            r.metrosTotal++;
-            if (m.visited) r.metrosVisited++;
-        });
+        const r = rows[m.state];
+        if (!r) return; // DC, Puerto Rico
+        r.metrosTotal++;
+        if (m.visited) r.metrosVisited++;
     });
     nationalParks.forEach(p => {
         const r = rows[p.state];
