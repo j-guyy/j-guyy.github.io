@@ -305,7 +305,7 @@ function openDetail(id, panToMap) {
 
     if (panToMap) {
         flyToRange(range);
-        document.getElementById('ranges-map').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('ranges-map').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     }
 }
 

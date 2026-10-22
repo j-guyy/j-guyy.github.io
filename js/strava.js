@@ -1118,9 +1118,12 @@ function makeCollapsible(title, contentEl, { collapsed = true, onOpen = null } =
     const header = document.createElement('div');
     header.className = 'collapsible-header';
 
+    // One arrow that CSS turns a quarter when open (.is-open), so it rotates
+    // rather than swapping glyphs.
     const arrow = document.createElement('span');
     arrow.className = 'collapsible-arrow';
-    arrow.textContent = collapsed ? '▶' : '▼';
+    arrow.textContent = '▶';
+    wrap.classList.toggle('is-open', !collapsed);
 
     header.appendChild(arrow);
     header.appendChild(document.createTextNode(' ' + title));
@@ -1133,9 +1136,17 @@ function makeCollapsible(title, contentEl, { collapsed = true, onOpen = null } =
     header.addEventListener('click', () => {
         const opening = body.style.display === 'none';
         body.style.display = opening ? 'block' : 'none';
-        arrow.textContent = opening ? '▼' : '▶';
+        wrap.classList.toggle('is-open', opening);
+        // Fade in only on a click: bodies are rebuilt whenever data refreshes,
+        // and an always-on animation would flash on every re-render.
+        if (opening) {
+            body.classList.remove('is-opening');
+            void body.offsetWidth; // restart the animation on a quick re-open
+            body.classList.add('is-opening');
+        }
         if (opening && onOpen) onOpen();
     });
+    body.addEventListener('animationend', () => body.classList.remove('is-opening'));
 
     wrap.appendChild(header);
     wrap.appendChild(body);
@@ -3890,7 +3901,7 @@ function focusOnEcoL3(l3Code) {
     });
     // On the website the map sits above the table — bring it into view.
     const mapEl = document.getElementById('ecoregion-map');
-    if (mapEl && mapEl.getBoundingClientRect().bottom < 0) mapEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (mapEl && mapEl.getBoundingClientRect().bottom < 0) mapEl.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
 }
 
 function clearEcoFocus() {

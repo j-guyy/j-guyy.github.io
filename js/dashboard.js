@@ -9,7 +9,7 @@ const sortState = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
-    Promise.all([
+    const dataReady = Promise.all([
         TravelAPI.fetchMetros(),
         TravelAPI.fetchHighPoints(),
         TravelAPI.fetchNationalParks(),
@@ -24,9 +24,25 @@ document.addEventListener('DOMContentLoaded', function () {
             updateTable('highpoints');
             setupEditMode();
             setupCsvExport();
-        })
-        .catch(error => console.error('Error loading the JSON files:', error));
+        });
+    dataReady.catch(error => console.error('Error loading the JSON files:', error));
+    setupUSViewSwitch(dataReady);
 });
+
+// Tables | Map switch (js/view-switch.js). The map is only built the first
+// time it is shown, and rebuilt after an edit.
+let mapStale = true;
+
+function setupUSViewSwitch(dataReady) {
+    setupViewSwitch({
+        titles: { tables: 'US Travel Dashboard — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
+        onShow: view => {
+            if (view !== 'map' || !mapStale) return;
+            mapStale = false;
+            dataReady.then(() => USMap.render()).catch(() => { mapStale = true; });
+        }
+    });
+}
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
@@ -116,6 +132,7 @@ async function handleToggle(tableType, item) {
         await TravelAPI.toggleVisited(type, key, password);
         item.visited = !item.visited;
         displayTravelSummary();
+        mapStale = true;
         updateTable(tableType);
     } catch (err) {
         alert('Toggle failed: ' + err.message);

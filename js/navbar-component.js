@@ -18,20 +18,8 @@ class NavbarComponent extends HTMLElement {
                     </button>
                     <ul class="nav-menu">
                         <li><a href="${basePath}index.html">Home</a></li>
-                        <li class="dropdown">
-                            <a href="#" class="dropbtn">US Travel <span class="mobile-plus-icon">▾</span></a>
-                            <div class="dropdown-content">
-                                <a href="${basePath}us-dashboard.html">Dashboard</a>
-                                <a href="${basePath}us-map.html">Map</a>
-                            </div>
-                        </li>
-                        <li class="dropdown">
-                            <a href="#" class="dropbtn">World Travel <span class="mobile-plus-icon">▾</span></a>
-                            <div class="dropdown-content">
-                                <a href="${basePath}world-dashboard.html">Dashboard</a>
-                                <a href="${basePath}world-map.html">Map</a>
-                            </div>
-                        </li>
+                        <li><a href="${basePath}us-dashboard.html">US Travel</a></li>
+                        <li><a href="${basePath}world-dashboard.html">World Travel</a></li>
                         <li class="dropdown">
                             <a href="#" class="dropbtn">Adventures <span class="mobile-plus-icon">▾</span></a>
                             <div class="dropdown-content">
@@ -66,11 +54,15 @@ class NavbarComponent extends HTMLElement {
 
     initializeNavigation() {
         // Add active class to current page
+        // A link without a #fragment also matches its page's other views
+        // (us-dashboard.html#map is still US Travel).
         const currentLocation = location.href;
+        const currentPage = currentLocation.split('#')[0];
         const menuItems = this.querySelectorAll('.nav-menu a');
 
         menuItems.forEach(link => {
-            if (link.href === currentLocation) {
+            const samePage = !link.getAttribute('href').includes('#') && link.href === currentPage;
+            if (link.href === currentLocation || samePage) {
                 link.classList.add('active');
 
                 // If active link is in dropdown, add active state to parent

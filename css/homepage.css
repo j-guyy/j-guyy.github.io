@@ -1,12 +1,26 @@
 /* Rotating background photos: a fixed layer behind the page, so it works
    whether the window or <body> is the scroll container. Two layers crossfade;
-   js/homepage.js swaps them. */
+   js/homepage.js swaps them.
+
+   Sized to the *largest* viewport (lvh: browser toolbars hidden) rather than
+   inset: 0. On phones the address bar slides away on scroll down and back on
+   scroll up; with inset: 0 the layer resized with it every frame and
+   `background-size: cover` re-scaled the photo, which made it jump. A fixed
+   lvh height never changes, so the photo stays put and the toolbar just
+   covers or uncovers its bottom edge. translateZ(0) keeps it on its own GPU
+   layer so scrolling never repaints it. */
 .home-bg {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
     z-index: 0;
     background-color: var(--bg-color, #000);
     pointer-events: none;
+    transform: translateZ(0);
+    contain: strict;
 }
 
 .home-bg-layer {
@@ -16,7 +30,7 @@
     background-position: center;
     background-repeat: no-repeat;
     opacity: 0;
-    transition: opacity 1.2s ease-in-out;
+    transition: opacity 1.2s var(--ease-in-out);
 }
 
 .home-bg-layer.is-visible {
@@ -70,9 +84,8 @@
 
 .home-page .content h1 span {
     display: inline-block;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 2s forwards;
+    /* Each word rises a few px into place, staggered by js/homepage.js. */
+    animation: home-rise 0.9s var(--ease-out) both;
 }
 
 .subtitle-container {
@@ -83,29 +96,23 @@
 }
 
 .home-page .content .subtitle {
-    opacity: 0;
     font-size: 1.2em;
     color: #f0f0f0;
     margin: 20px 0 0 0;
     letter-spacing: 3px;
-    animation: fadeIn 2s forwards;
-    animation-delay: 1s;
+    animation: ui-fade-in 0.9s var(--ease-out) 0.5s both;
     display: block;
     max-width: fit-content;
     margin-left: auto;
     margin-right: auto;
 }
 
-@keyframes fadeInUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeIn {
-    to {
-        opacity: 1;
+/* Only the starting frame is given, so each element settles on its own styles.
+   (Named home-* so they can't collide with keyframes in the other sheets.) */
+@keyframes home-rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
     }
 }
 
@@ -118,11 +125,8 @@
     width: 100%;
     max-width: 600px;
     box-sizing: border-box;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 1s forwards;
-    animation-delay: 1s;
-    /* Appear after text animation completes */
+    /* Follows the title in while its last words are still settling */
+    animation: home-rise 0.8s var(--ease-out) 0.7s both;
 }
 
 .nav-button {
@@ -136,7 +140,10 @@
     font-size: 1rem;
     letter-spacing: 1px;
     text-transform: uppercase;
-    transition: all 0.3s ease;
+    transition: background-color var(--dur) var(--ease-out),
+        transform var(--dur) var(--ease-out),
+        box-shadow var(--dur) var(--ease-out),
+        border-color var(--dur) var(--ease-out);
     border: 2px solid transparent;
     backdrop-filter: blur(5px);
     box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
@@ -172,9 +179,7 @@
     letter-spacing: 3px;
     text-transform: uppercase;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
-    opacity: 0;
-    animation: homeCueIn 1s forwards;
-    animation-delay: 2s;
+    animation: ui-fade-in 0.8s var(--ease-out) 1.3s both;
 }
 
 .scroll-cue:hover,
@@ -189,23 +194,16 @@
     border-bottom: 2px solid currentColor;
     transform: rotate(45deg);
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
-    animation: homeCueBob 2.4s ease-in-out infinite;
-    animation-delay: 3s;
+    animation: home-cue-bob 2.8s var(--ease-in-out) 2.2s infinite;
 }
 
-@keyframes homeCueIn {
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes homeCueBob {
+@keyframes home-cue-bob {
     0%, 100% {
         transform: translateY(0) rotate(45deg);
     }
 
     50% {
-        transform: translateY(5px) rotate(45deg);
+        transform: translateY(4px) rotate(45deg);
     }
 }
 
@@ -269,7 +267,7 @@
 }
 
 a.home-card {
-    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
 a.home-card:hover,
@@ -567,6 +565,33 @@ a.home-card:focus-visible,
 
     .home-hunters-text {
         font-size: 0.95rem;
+    }
+}
+
+/* Touch screens: no frosted-glass blur on the hero and cards. Every scrolled
+   frame had to re-blur the photo behind each card, which is what made
+   scrolling stutter on phones; slightly darker cards keep the text readable. */
+@media (hover: none) {
+    .home-page .content,
+    .nav-button,
+    .home-card {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .home-page .content {
+        background-color: rgba(0, 0, 0, 0.68);
+    }
+
+    .home-card {
+        background: rgba(0, 0, 0, 0.72);
+    }
+
+    /* Same for the bar once it turns solid after scrolling. */
+    .home-page .navbar:not(.navbar-at-top) {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background-color: rgba(10, 13, 11, 0.94);
     }
 }
 

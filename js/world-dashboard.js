@@ -21,7 +21,7 @@ const continentMap = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
-    loadCountriesWithPopulation(null, function (updatedData) {
+    const dataReady = loadCountriesWithPopulation(null, function (updatedData) {
         worldData = updatedData;
         displayWorldTravelSummary();
         renderPopulationSourceBadge();
@@ -34,9 +34,59 @@ document.addEventListener('DOMContentLoaded', function () {
             updateTable('northAmerica');
             setupEditMode();
             setupCsvExport();
-        })
-        .catch(error => console.error('Error loading the JSON file:', error));
+        });
+    dataReady.catch(error => console.error('Error loading the JSON file:', error));
+    setupWorldViewSwitch(dataReady);
 });
+
+// Map view (js/view-switch.js). Leaflet, its plugins and js/world-map.js load
+// the first time the map is shown, so the Tables view never downloads them.
+const WORLD_MAP_SCRIPTS = [
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    'js/fluid-zoom.js?v=20261022',
+    'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
+    'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
+    'js/map-controls.js?v=20261022',
+    'js/world-map.js?v=20261022'
+];
+let worldMap = null;          // { map, refresh } once built
+let worldMapLoading = null;
+let worldMapStale = false;    // an Edit Mode toggle since the map last drew
+
+function setupWorldViewSwitch(dataReady) {
+    setupViewSwitch({
+        titles: { tables: 'World Travel Dashboard — Justin Guyette', map: 'World Travel Map — Justin Guyette' },
+        onShow: view => {
+            if (view !== 'map') return;
+            if (pendingMapBuild) { pendingMapBuild(); pendingMapBuild = null; }
+            showWorldMap(dataReady);
+        }
+    });
+}
+
+function showWorldMap(dataReady) {
+    if (worldMap) {
+        worldMap.map.invalidateSize();  // the page may have resized while hidden
+        if (worldMapStale) { worldMapStale = false; worldMap.refresh(worldData); }
+        return;
+    }
+    if (worldMapLoading) return;
+    const mapEl = document.getElementById('world-map');
+    worldMapLoading = dataReady
+        .then(() => loadScriptsInOrder(WORLD_MAP_SCRIPTS))
+        // Build it only while it's on screen, so Leaflet measures a real size.
+        .then(() => document.getElementById('map-view').hidden
+            ? new Promise(resolve => { pendingMapBuild = resolve; })
+            : null)
+        .then(() => initWorldMap(worldData))
+        .then(m => { worldMap = m; worldMapStale = false; })
+        .catch(err => {
+            console.error('Error loading the map:', err);
+            worldMapLoading = null;
+            mapEl.textContent = 'Error loading map. Please try again later.';
+        });
+}
+let pendingMapBuild = null;
 
 function setupEditMode() {
     const btn = document.getElementById('edit-mode-btn');
@@ -98,6 +148,7 @@ async function handleToggle(continentType, country) {
         await TravelAPI.toggleVisited('countries', country.name, password, continentType);
         country.visited = !country.visited;
         displayWorldTravelSummary();
+        worldMapStale = true;
         updateTable(continentType);
     } catch (err) {
         alert('Toggle failed: ' + err.message);
