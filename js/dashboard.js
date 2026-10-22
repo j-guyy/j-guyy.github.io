@@ -137,6 +137,12 @@ function progressBar(pct, title) {
             </span>`;
 }
 
+// A name with a small flag before it (images/flags/, built by
+// scripts/build-flags.mjs). The pair stays together when a long name wraps.
+function withFlag(code, name) {
+    return `<span class="flag-name"><img class="flag" src="images/flags/${code}.png" alt="" width="21" height="14" loading="lazy"><span>${name}</span></span>`;
+}
+
 // The Core bar's tooltip: each part of the score, done vs total.
 function coreBreakdown(r) {
     const lines = [`Core: ${r.progress}%`, `State visited: ${r.visited ? 'yes' : 'no'}`];
@@ -467,7 +473,7 @@ function updateTable(tableType) {
             const hp = item.highPoint;
             const hpTitle = hp ? `${hp.name} (${hp.elevation.toLocaleString()} ft)` : '';
             row.innerHTML = `
-                <td class="col-name">${item.name}</td>
+                <td class="col-name">${withFlag(`us-${item.abbr.toLowerCase()}`, item.name)}</td>
                 <td class="col-progress">${progressBar(item.progress, coreBreakdown(item))}</td>
                 <td class="col-progress">${progressBar(item.countyPct, `${item.countiesVisited} of ${item.countiesTotal} counties (from Strava)`)}</td>
                 <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal)}</td>

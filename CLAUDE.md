@@ -82,6 +82,7 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 | `/data/admin1/` | Per-country first-level region boundaries (generated) for the Strava regional breakdown maps and the World Travel Map's Subregions view — every visited country has one |
 | `/trip-reports/` | Individual HTML trip report pages |
 | `/images/` | Photos organized by category (`/hiking`, `/cycling`) |
+| `/images/flags/` | Small flag PNGs for the States and country tables (`us-<postal>.png`, `<iso>.png`), built by `node scripts/build-flags.mjs` from the flag-icons and us-state-flags npm packages, which also writes `data/country-flags.json` (country name → code). Re-run it when a country is added to `countries.json` |
 | `/css/` | Stylesheets |
 | `/js/` | JavaScript files |
 
