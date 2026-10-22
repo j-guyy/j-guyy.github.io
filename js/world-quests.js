@@ -26,7 +26,10 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function displayQuestSummary() {
+    // side-quests.html has this container; the older world-quests.html doesn't,
+    // and throwing here used to stop both maps from being drawn at all.
     const summaryContainer = document.getElementById('world-quest-summary');
+    if (!summaryContainer) return;
 
     // Forbes statistics
     const completedCities = getCompletedForbesCities();

@@ -54,8 +54,11 @@ class MountainRangeMapper {
             ...this.mountainRanges.southern
         ];
 
+        const rangeBounds = L.latLngBounds([]);
         allRanges.forEach(range => {
             const color = this.getRegionColor(range);
+            if (range.polygon) rangeBounds.extend(range.polygon);
+            else if (range.lat != null) rangeBounds.extend([range.lat, range.lng]);
 
             if (range.polygon) {
                 // Create polygon for mountain range
@@ -85,6 +88,11 @@ class MountainRangeMapper {
             }
         });
 
+        // The fixed zoom-4 view is wider than a phone screen; zoom out until
+        // every range fits (a desktop-width map already shows them all).
+        if (rangeBounds.isValid() && !map.getBounds().contains(rangeBounds)) {
+            map.fitBounds(rangeBounds, { padding: [10, 10] });
+        }
     }
 
     getRegionColor(range) {

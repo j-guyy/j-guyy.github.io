@@ -482,6 +482,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/fluid-zoom.js"></script>
+    <script src="js/map-fixes.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
     <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
     <script>
@@ -522,13 +523,11 @@
                 fullscreenControl: true
             }).setView([39.8283, -98.5795], 4);
 
-            map.on('fullscreenchange', () => {
-                if (map.isFullscreen()) {
-                    map.gestureHandling.disable();
-                } else {
-                    map.gestureHandling.enable();
-                }
-            });
+            // On a phone, zoom 4 is wider than the screen and cuts off both
+            // coasts; zoom out until the lower 48 fit. (Two-finger lock in
+            // fullscreen is handled for every map by js/map-fixes.js.)
+            const lower48 = L.latLngBounds([24.5, -124.8], [49.4, -66.9]);
+            if (!map.getBounds().contains(lower48)) map.fitBounds(lower48);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'

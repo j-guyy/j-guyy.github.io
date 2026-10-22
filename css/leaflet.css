@@ -87,25 +87,26 @@
         display: none;
     }
 
-    /* Show legend in fullscreen, but compact */
-    .leaflet-fullscreen-on .info.legend {
+    /* Show legend in fullscreen, but compact (.leaflet-is-fullscreen comes from
+       js/map-fixes.js; the plugin only marks its button) */
+    .leaflet-is-fullscreen .info.legend {
         display: block;
         font-size: 10px;
         padding: 6px 10px;
         line-height: 1.6;
     }
 
-    .leaflet-fullscreen-on .info.legend .legend-swatch {
+    .leaflet-is-fullscreen .info.legend .legend-swatch {
         width: 10px;
         height: 10px;
     }
 
-    .leaflet-fullscreen-on .info.legend .legend-symbol {
+    .leaflet-is-fullscreen .info.legend .legend-symbol {
         font-size: 11px;
         width: 10px;
     }
 
-    .leaflet-fullscreen-on .info.legend div {
+    .leaflet-is-fullscreen .info.legend div {
         gap: 6px;
         margin-bottom: 1px;
     }
