@@ -64,6 +64,13 @@ const TravelAPI = {
         return res.json();
     },
 
+    // County Hunter's visited counties (strava.html): an array of county FIPS codes.
+    async fetchVisitedCounties() {
+        const res = await fetch(`${TRAVEL_WORKER_URL}/counties/all`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return (await res.json()).fips || [];
+    },
+
     async fetchAdk46ers() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/adk46ers`);
         return res.json();

@@ -327,6 +327,11 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
+/* Empty bar cell (county data not loaded) */
+.state-progress-none {
+    color: var(--text-dim);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .summary-stats-container {
@@ -509,9 +514,9 @@
         display: none;
     }
 
-    /* A narrower bar on a phone, so all six State columns fit. */
+    /* A narrower bar on a phone, so the State row fits the screen. */
     .state-progress {
-        width: 38px;
+        width: 52px;
         height: 18px;
     }
 
@@ -520,6 +525,11 @@
     }
 
     .th-long {
+        display: none;
+    }
+
+    /* Detail columns the phone drops (States: Metros, Parks). */
+    .travel-table--fit .col-detail {
         display: none;
     }
 

@@ -1,4 +1,7 @@
 let metros, highPoints, nationalParks, visitedStates;
+// County Hunter's visited county FIPS codes (strava.html); null until loaded
+// or if the worker can't be reached, which leaves the Counties column blank.
+let visitedCountyFips = null;
 let editMode = false;
 let refreshOwnerUI = () => {};
 
@@ -27,6 +30,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setupCsvExport();
         });
     dataReady.catch(error => console.error('Error loading the JSON files:', error));
+    // Counties load alongside, without holding up the table.
+    Promise.all([dataReady, TravelAPI.fetchVisitedCounties()])
+        .then(([, fips]) => {
+            visitedCountyFips = fips;
+            if (currentTable() === 'states') updateTable('states');
+        })
+        .catch(err => console.warn('County data unavailable:', err));
     setupUSViewSwitch(dataReady);
 });
 
@@ -56,15 +66,38 @@ const STATE_ABBRS = {
     Virginia: 'VA', Washington: 'WA', 'West Virginia': 'WV', Wisconsin: 'WI', Wyoming: 'WY'
 };
 
+// State FIPS code → [abbreviation, county count], the same counties County
+// Hunter counts (data/counties-us.json, which keeps Connecticut's 8 counties).
+const STATE_COUNTIES = {
+    '01': ['AL', 67], '02': ['AK', 29], '04': ['AZ', 15], '05': ['AR', 75], '06': ['CA', 58],
+    '08': ['CO', 64], '09': ['CT', 8], '10': ['DE', 3], '12': ['FL', 67], '13': ['GA', 159],
+    '15': ['HI', 5], '16': ['ID', 44], '17': ['IL', 102], '18': ['IN', 92], '19': ['IA', 99],
+    '20': ['KS', 105], '21': ['KY', 120], '22': ['LA', 64], '23': ['ME', 16], '24': ['MD', 24],
+    '25': ['MA', 14], '26': ['MI', 83], '27': ['MN', 87], '28': ['MS', 82], '29': ['MO', 115],
+    '30': ['MT', 56], '31': ['NE', 93], '32': ['NV', 17], '33': ['NH', 10], '34': ['NJ', 21],
+    '35': ['NM', 33], '36': ['NY', 62], '37': ['NC', 100], '38': ['ND', 53], '39': ['OH', 88],
+    '40': ['OK', 77], '41': ['OR', 36], '42': ['PA', 67], '44': ['RI', 5], '45': ['SC', 46],
+    '46': ['SD', 66], '47': ['TN', 95], '48': ['TX', 254], '49': ['UT', 29], '50': ['VT', 14],
+    '51': ['VA', 133], '53': ['WA', 39], '54': ['WV', 55], '55': ['WI', 72], '56': ['WY', 23]
+};
+
 function buildStateRows() {
     const rows = {};
     Object.entries(STATE_ABBRS).forEach(([name, abbr]) => {
         rows[abbr] = {
             name, abbr, visited: Boolean(visitedStates[name]),
             metrosVisited: 0, metrosTotal: 0, parksVisited: 0, parksTotal: 0,
-            highPoint: null, hpVisited: false
+            highPoint: null, hpVisited: false,
+            countiesVisited: 0, countiesTotal: 0, countyPct: null
         };
     });
+    Object.values(STATE_COUNTIES).forEach(([abbr, total]) => { rows[abbr].countiesTotal = total; });
+    if (visitedCountyFips) {
+        new Set(visitedCountyFips).forEach(fips => {
+            const state = STATE_COUNTIES[String(fips).slice(0, 2)];
+            if (state) rows[state[0]].countiesVisited++;
+        });
+    }
     metros.forEach(m => {
         const r = rows[m.state];
         if (!r) return; // DC, Puerto Rico
@@ -87,8 +120,18 @@ function buildStateRows() {
         const total = 1 + r.metrosTotal + r.parksTotal + (r.highPoint ? 1 : 0);
         const done = (r.visited ? 1 : 0) + r.metrosVisited + r.parksVisited + (r.hpVisited ? 1 : 0);
         r.progress = Math.round((done / total) * 100);
+        if (visitedCountyFips) r.countyPct = Math.round((r.countiesVisited / r.countiesTotal) * 100);
         return r;
     });
+}
+
+// A bar with its percentage inside, or a dash when there's no number yet.
+function progressBar(pct, title) {
+    if (pct == null) return '<span class="state-progress-none">—</span>';
+    return `<span class="state-progress" title="${title}">
+                <span class="state-progress-fill" style="width:${pct}%"></span>
+                <span class="state-progress-pct">${pct}%</span>
+            </span>`;
 }
 
 // "3/5", or a dash for a state with none on the list.
@@ -133,13 +176,16 @@ function setupCsvExport() {
 
         if (tableType === 'states') {
             headers = ['State', 'Abbreviation', 'Status', 'Metros Visited', 'Metros Total',
-                'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Progress (%)'];
+                'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Core Progress (%)',
+                'Counties Visited', 'Counties Total', 'County Progress (%)'];
             const sorted = sortTableData(buildStateRows(), col, dir, tableType);
             rows = sorted.map(r => [
                 r.name, r.abbr, r.visited ? 'Visited' : 'Not Visited',
                 r.metrosVisited, r.metrosTotal, r.parksVisited, r.parksTotal,
                 r.highPoint ? r.highPoint.name : '', r.hpVisited ? 'Summited' : 'Not Summited',
-                r.progress
+                r.progress,
+                visitedCountyFips ? r.countiesVisited : '', r.countiesTotal,
+                r.countyPct == null ? '' : r.countyPct
             ]);
             filename = 'states.csv';
         } else if (tableType === 'highpoints') {
@@ -294,6 +340,10 @@ function sortTableData(data, col, dir, tableType) {
             bVal = parseInt(String(bVal).replace(/,/g, ''), 10) || 0;
         }
 
+        // No number yet (counties still loading) sorts below every number.
+        if (aVal == null) aVal = -1;
+        if (bVal == null) bVal = -1;
+
         if (typeof aVal === 'boolean') {
             aVal = aVal ? 1 : 0;
             bVal = bVal ? 1 : 0;
@@ -317,13 +367,16 @@ function updateTable(tableType) {
     // (Rank hidden, names wrap), so the Status column stays on screen.
     table.className = 'travel-table travel-table--fit';
 
-    let tableHeaders, sortKeys, colClasses, rawData;
+    let tableHeaders, sortKeys, colClasses, rawData, headerTitles = [];
 
     if (tableType === 'states') {
-        // [full, phone] labels: the short ones keep all six columns on a phone.
-        tableHeaders = ['State', ['Progress', '%'], 'Metros', 'Parks', ['High Point', 'HP'], 'Status'];
-        sortKeys     = ['name', 'progress', 'metrosVisited', 'parksVisited', 'hpVisited', 'visited'];
-        colClasses   = ['col-name', 'col-progress', 'col-num', 'col-num', 'col-status', 'col-status'];
+        // [full, phone] labels keep the row on a phone screen, where the
+        // Metros and Parks columns (col-detail) are hidden; Core still counts them.
+        tableHeaders = ['State', 'Core', 'Counties', 'Metros', 'Parks', ['High Point', 'HP'], 'Status'];
+        sortKeys     = ['name', 'progress', 'countyPct', 'metrosVisited', 'parksVisited', 'hpVisited', 'visited'];
+        colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status'];
+        headerTitles = [null, 'The state, its metros, national parks and high point',
+            'Counties reached by Strava activities (County Hunter)'];
         rawData      = buildStateRows();
     } else if (tableType === 'highpoints') {
         tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
@@ -355,7 +408,8 @@ function updateTable(tableType) {
         const isActive = col === key;
 
         th.classList.add('sortable');
-        if (colClasses[i]) th.classList.add(colClasses[i]);
+        if (colClasses[i]) th.classList.add(...colClasses[i].split(' '));
+        if (headerTitles[i]) th.title = headerTitles[i];
         if (isActive) th.classList.add('sort-active');
 
         const indicator = document.createElement('span');
@@ -376,7 +430,7 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'progress' ||
+                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'progress' || key === 'countyPct' ||
                     key === 'metrosVisited' || key === 'parksVisited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
@@ -403,14 +457,10 @@ function updateTable(tableType) {
             const hpTitle = hp ? `${hp.name} (${hp.elevation.toLocaleString()} ft)` : '';
             row.innerHTML = `
                 <td class="col-name">${item.name}</td>
-                <td class="col-progress">
-                    <span class="state-progress" title="${item.progress}% of this state's list done">
-                        <span class="state-progress-fill" style="width:${item.progress}%"></span>
-                        <span class="state-progress-pct">${item.progress}%</span>
-                    </span>
-                </td>
-                <td class="col-num">${fraction(item.metrosVisited, item.metrosTotal)}</td>
-                <td class="col-num">${fraction(item.parksVisited, item.parksTotal)}</td>
+                <td class="col-progress">${progressBar(item.progress, `${item.progress}% of the state, its metros, parks and high point`)}</td>
+                <td class="col-progress">${progressBar(item.countyPct, `${item.countiesVisited} of ${item.countiesTotal} counties (from Strava)`)}</td>
+                <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal)}</td>
+                <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal)}</td>
                 <td class="col-status ${hp && editMode ? 'status-toggle' : ''}" data-toggle="hp" title="${hpTitle}">${hp ? (item.hpVisited ? '✅' : '⬜') : '—'}</td>
                 <td class="col-status ${statusClass}" data-toggle="state">${statusIcon}</td>
             `;
