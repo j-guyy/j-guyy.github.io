@@ -18,5 +18,15 @@
         "replacesIds": [],
         "replacesNames": ["Mauna Kea", "Mauna a Wākea"],
         "note": "Where the summit hike tops out (4,200 m). The summit cone, Puʻu Wēkiu, is about 250 m further on and is a sacred site visitors are asked not to climb."
+    },
+    {
+        "id": -3,
+        "name": "Mount Fuji",
+        "lat": 35.3659,
+        "lng": 138.7324,
+        "ele": 3725,
+        "replacesIds": [714354378],
+        "replacesNames": [],
+        "note": "Top of the Yoshida route at Kusushi Shrine, on the crater rim. Kengamine (剣ヶ峰), the true 3,776 m summit, is about 700 m round the rim and still counts on its own; this replaces only OSM's 富士山 node in the middle of the crater, which no trail reaches."
     }
 ]
