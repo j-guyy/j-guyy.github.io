@@ -27,7 +27,7 @@
 .navbar-brand a {
     color: var(--primary-color);
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: color var(--dur) var(--ease-out);
 }
 
 .navbar-brand a:hover {
@@ -50,7 +50,7 @@
     height: 3px;
     background-color: var(--text-color);
     margin: 3px 0;
-    transition: 0.3s;
+    transition: transform var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
     border-radius: 2px;
 }
 
@@ -87,7 +87,7 @@
     padding: 0.5rem 0.8rem;
     /* Reduced padding */
     display: block;
-    transition: all 0.3s ease;
+    transition: color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
     font-size: 0.95rem;
     /* Slightly smaller font size */
     cursor: pointer;
@@ -124,7 +124,7 @@
     text-decoration: none;
     display: block;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
     font-size: 0.9rem;
 }
 
@@ -133,11 +133,6 @@
         background-color: var(--primary-color);
         color: white;
     }
-}
-
-.dropdown:hover .dropdown-content {
-    display: block;
-    animation: fadeIn 0.3s ease;
 }
 
 .dropdown::after {
@@ -149,13 +144,39 @@
     left: 0;
 }
 
-/* Only apply hover effect on non-touch devices */
-@media (hover: hover) {
-
-    .dropdown:hover .dropdown-content,
-    .dropdown:hover::after+.dropdown-content {
+/* Desktop menus fade and drop a few px into place, and fade back out when the
+   pointer leaves (display can't be transitioned, so they stay laid out and use
+   visibility; its delay keeps them visible until the fade-out ends). Open on
+   hover, or while .active (a click or the keyboard, see navbar-component.js).
+   Phones use the accordion in the max-width: 768px block below. */
+@media (min-width: 769px) {
+    .dropdown-content {
         display: block;
-        animation: fadeIn 0.3s ease;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translate(-50%, -6px);
+        transition: opacity var(--dur) var(--ease-out),
+            transform var(--dur) var(--ease-out),
+            visibility 0s linear var(--dur);
+    }
+
+    .dropdown.active .dropdown-content {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+        transition-delay: 0s;
+    }
+}
+
+@media (min-width: 769px) and (hover: hover) {
+    .dropdown:hover .dropdown-content {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+        transition-delay: 0s;
     }
 }
 
@@ -167,19 +188,6 @@
 /* Show tools dropdown when body has show-tools class */
 body.show-tools .tools-dropdown {
     display: inline-block;
-}
-
-/* Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px) translateX(-50%);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) translateX(-50%);
-    }
 }
 
 /* Active state */
@@ -356,7 +364,7 @@ body {
         margin-left: 0.3rem;
         vertical-align: middle;
         opacity: 0.6;
-        transition: transform 0.3s ease, opacity 0.3s ease;
+        transition: transform var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
     }
 
     .dropdown:hover .mobile-plus-icon,
@@ -435,7 +443,12 @@ body {
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
         text-align: left;
-        transition: 0.3s;
+        /* Drops a few px into place as it fades in; visibility waits for the
+           fade-out before hiding it. */
+        transform: translateY(-6px);
+        transition: opacity var(--dur) var(--ease-out),
+            transform var(--dur) var(--ease-out),
+            visibility 0s linear var(--dur);
         box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
         padding: 0.25rem 0 0.5rem;
         border-bottom: 1px solid var(--border);
@@ -452,6 +465,8 @@ body {
     .nav-menu.nav-menu-active {
         opacity: 1;
         visibility: visible;
+        transform: none;
+        transition-delay: 0s;
         pointer-events: auto;
         touch-action: auto;
     }
@@ -512,7 +527,7 @@ body {
         padding: 0;
         max-height: 0;
         overflow: hidden;
-        transition: max-height 0.3s ease-in-out;
+        transition: max-height 0.3s var(--ease-out);
         border-left: none;
         display: block !important;
         left: auto !important;

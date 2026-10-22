@@ -269,7 +269,7 @@ class FeaturedAdventuresPage {
     filterByCategory(categoryName) {
         const categorySection = document.querySelector(`[data-category="${categoryName}"]`);
         if (categorySection) {
-            categorySection.scrollIntoView({ behavior: 'smooth' });
+            categorySection.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         }
     }
 

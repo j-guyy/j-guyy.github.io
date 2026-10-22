@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Stagger the title words' entrance animation
     const letters = document.querySelectorAll('.content h1 span');
     letters.forEach((letter, index) => {
-        letter.style.animationDelay = `${index * 0.1}s`;
+        letter.style.animationDelay = `${index * 0.08}s`;
     });
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');

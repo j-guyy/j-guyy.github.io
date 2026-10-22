@@ -81,19 +81,6 @@
         }
     }
 
-    /* Animation fix for mobile dropdowns */
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px) translateX(-50%);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) translateX(-50%);
-        }
-    }
-
     /* General adjustments */
     h1 {
         font-size: 2em;
@@ -149,18 +136,7 @@
         width: auto;
         position: static;
         transform: none;
-        animation: fadeInMobile 2s forwards;
-        animation-delay: 1s;
-    }
-
-    @keyframes fadeInMobile {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
+        animation: ui-fade-in 0.9s var(--ease-out) 0.5s both;
     }
 
     /* Navigation buttons mobile adjustments */
