@@ -39,6 +39,17 @@ const COUNTIES_KEY   = 'strava_counties';
 const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
 const HIDDEN_PEAKS_KEY = 'strava_hidden_peaks';
+const PEAKS_META_KEY = 'strava_peaks_meta';   // { cells } of the last peak cache save
+// Any visitor's page saves the Mountain Hunter caches, and a page whose load
+// failed would save an almost empty copy over them (on 2026-10-22 one wiped
+// 166 peak cells). A page only ever adds cells and summits, so a save holding
+// far fewer than the stored copy is refused (409); /peaks/reset and
+// /summits/reset clear the way for a deliberate fresh start.
+const SHRINK_GUARD_RATIO = 0.9;
+const SHRINK_GUARD_MIN = 10;
+function shrinksTooMuch(stored, incoming) {
+    return stored >= SHRINK_GUARD_MIN && incoming < stored * SHRINK_GUARD_RATIO;
+}
 const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY       = 'strava_parks';
 const STATE_PARKS_KEY = 'strava_state_parks';
@@ -241,17 +252,28 @@ export default {
             // Data: { cells: { "lat,lng": { peaks: [...], ts, failed? } } }
 
             if (path === '/peaks/all') {
-                const data = await env.STRAVA_DATA.get(PEAKS_KEY, 'json');
-                return json(data || { cells: {} });
+                // Passed through as stored: the blob holds ~190k peaks, and
+                // parsing + re-serializing it costs the worker time and memory.
+                const text = await env.STRAVA_DATA.get(PEAKS_KEY);
+                return new Response(text || '{"cells":{}}', {
+                    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+                });
             }
             if (path === '/peaks/save' && request.method === 'POST') {
                 const data = await request.json();
+                const cells = Object.keys(data.cells || {}).length;
+                const meta = await env.STRAVA_DATA.get(PEAKS_META_KEY, 'json');
+                if (shrinksTooMuch(meta?.cells || 0, cells)) {
+                    return json({ ok: false, error: `refused: ${cells} cells would replace ${meta.cells}` }, 409);
+                }
                 await env.STRAVA_DATA.put(PEAKS_KEY, JSON.stringify(data));
-                return json({ ok: true, cells: Object.keys(data.cells || {}).length });
+                await env.STRAVA_DATA.put(PEAKS_META_KEY, JSON.stringify({ cells }));
+                return json({ ok: true, cells });
             }
             if (path === '/peaks/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
                 await env.STRAVA_DATA.delete(PEAKS_KEY);
+                await env.STRAVA_DATA.delete(PEAKS_META_KEY);
                 return json({ ok: true });
             }
 
@@ -372,6 +394,12 @@ export default {
             }
             if (path === '/summits/save' && request.method === 'POST') {
                 const data = await request.json();
+                const stored = await env.STRAVA_DATA.get(SUMMITS_KEY, 'json');
+                const before = Object.keys(stored?.visits || {}).length;
+                const after = Object.keys(data.visits || {}).length;
+                if (shrinksTooMuch(before, after)) {
+                    return json({ ok: false, error: `refused: ${after} summited peaks would replace ${before}` }, 409);
+                }
                 await env.STRAVA_DATA.put(SUMMITS_KEY, JSON.stringify(data));
                 return json({ ok: true, peaks: Object.keys(data.visits || {}).length });
             }

@@ -6620,19 +6620,31 @@ function toggleMountainMap() {
 // page loads are instant.
 
 let peakCellCache = {};  // cellKey → { peaks: [...], ts }
+// Whether peakCellCache / the summit cache hold what the server has. A page that
+// couldn't load them must never save, or its near-empty copy replaces the
+// server's (one such save wiped 166 peak cells); the worker refuses such saves too.
+let peakCacheLoaded = false;
+let summitCacheLoaded = false;
 
 async function loadPeakCache() {
-    try {
-        const res = await fetch(`${WORKER_URL}/peaks/all`);
-        if (res.ok) {
-            const data = await res.json();
-            peakCellCache = data.cells || {};
-            dbg(`Peak cache: ${Object.keys(peakCellCache).length} cells from server`);
-            return;
+    for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt) await new Promise(r => setTimeout(r, 3000));
+        try {
+            const res = await fetch(`${WORKER_URL}/peaks/all`);
+            if (res.ok) {
+                const data = await res.json();
+                peakCellCache = data.cells || {};
+                peakCacheLoaded = true;
+                dbg(`Peak cache: ${Object.keys(peakCellCache).length} cells from server`);
+                return;
+            }
+            dbg(`Peak cache: server answered HTTP ${res.status}`);
+        } catch (err) {
+            dbg(`Peak cache: load failed — ${err.message}`);
         }
-    } catch {}
-    dbg('Peak cache: server unavailable — starting empty');
-    peakCellCache = {};
+    }
+    dbg('Peak cache: server unavailable — starting empty, and not saving this visit');
+    if (!peakCacheLoaded) peakCellCache = {};
 }
 
 async function loadSummitCache() {
@@ -6648,11 +6660,12 @@ async function loadSummitCache() {
             summitProcessedIds = new Set(data.processedIds || []);
             summitScannedCells = data.cells || {};
             summitScannedHikers = data.hikers || [];
+            summitCacheLoaded = true;
             dbg(`Summit cache: ${mountainVisits.size} peaks, ${summitProcessedIds.size} processed activities`);
             return true;
         }
     } catch {}
-    dbg('Summit cache: server unavailable — starting empty');
+    dbg('Summit cache: server unavailable — starting empty, and not saving this visit');
     return false;
 }
 
@@ -6681,6 +6694,10 @@ async function saveHiddenPeaks() {
 }
 
 async function saveSummitCache() {
+    if (!summitCacheLoaded) {
+        dbg('Summit cache: not saved — it never loaded from the server this visit');
+        return;
+    }
     try {
         // Convert Map to plain object for JSON serialization
         const visits = {};
@@ -6701,6 +6718,7 @@ async function saveSummitCache() {
             }),
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         dbg(`Summit cache saved (${data.peaks} peaks)`);
     } catch (err) {
         dbg(`Warning: failed to save summit cache — ${err.message}`);
@@ -6708,6 +6726,10 @@ async function saveSummitCache() {
 }
 
 async function savePeakCache() {
+    if (!peakCacheLoaded) {
+        dbg('Peak cache: not saved — it never loaded from the server this visit');
+        return;
+    }
     try {
         const res = await fetch(`${WORKER_URL}/peaks/save`, {
             method: 'POST',
@@ -6715,6 +6737,7 @@ async function savePeakCache() {
             body: JSON.stringify({ cells: peakCellCache }),
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         dbg(`Peak cache saved to server (${data.cells} cells)`);
     } catch (err) {
         dbg(`Warning: failed to save peak cache — ${err.message}`);
@@ -8291,6 +8314,8 @@ async function resetMountainData() {
     }
     keys.forEach(k => localStorage.removeItem(k));
     peakCellCache = {};
+    peakCacheLoaded = true;     // a deliberate fresh start may be saved
+    summitCacheLoaded = true;
     mountainPeaks = [];
     mountainVisits = new Map();
     summitProcessedIds = new Set();
