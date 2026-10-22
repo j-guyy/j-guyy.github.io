@@ -506,8 +506,10 @@
         padding: 0 5px;
     }
 
+    /* Three stats share a phone row; trimming the side padding keeps a
+       value like "18,491 ft" on one line. */
     .stat-item {
-        padding: 12px;
+        padding: 12px 6px;
     }
 
     .stat-label {

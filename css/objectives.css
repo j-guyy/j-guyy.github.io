@@ -28,6 +28,7 @@
 
 /* Spotlight section styling */
 .spotlight_section {
+    box-sizing: border-box;
     width: 90%;
     max-width: 1600px;
     margin: 40px auto;

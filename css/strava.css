@@ -1316,6 +1316,31 @@ a.cache-refresh-btn {
         padding-right: 12px;
     }
 
+    /* The summary sits in a centred flex column, so without a width it shrank
+       to its content (a narrow strip of tiles) under a tall empty gap. */
+    #strava-summary {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 4px auto 12px;
+        padding: 0;
+    }
+
+    #strava-summary .summary-stats-container {
+        margin-top: 0;
+    }
+
+    /* Small controls are hard to hit on a phone: give them a ~32px target. */
+    .cache-refresh-btn {
+        min-height: 32px;
+        padding: 6px 12px;
+    }
+
+    a.cache-refresh-btn {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+    }
+
     /* Summary stats grid — 3 columns instead of auto-fill 140px (gives 2 on mobile) */
     .strava-group-stats {
         grid-template-columns: repeat(3, 1fr) !important;
@@ -1355,7 +1380,8 @@ a.cache-refresh-btn {
     /* Select dropdowns in headings */
     .city-select {
         font-size: 0.8rem;
-        padding: 3px 6px;
+        padding: 6px 8px;
+        min-height: 32px;
         max-width: 160px;
     }
 
@@ -1453,17 +1479,22 @@ a.cache-refresh-btn {
     }
 
     .county-stats-bar {
-        gap: 10px;
+        gap: 12px 10px;
+    }
+
+    /* Stats share the row in equal columns (three across, or two for a
+       four-stat bar) instead of wrapping into a ragged, half-centred stack. */
+    .county-stats-bar > .county-stat-item {
+        flex: 1 1 calc(50% - 10px);
+        min-width: 0;
+    }
+
+    .county-stats-bar:not(:has(> :nth-child(4 of .county-stat-item))) > .county-stat-item {
+        flex-basis: calc(33.333% - 10px);
     }
 
     .county-stat-number {
         font-size: 1.15rem;
-    }
-
-    /* Stack Tile Hunter stats bar vertically */
-    #tile-stats-bar {
-        flex-direction: column;
-        gap: 12px;
     }
 
     #tile-stats-bar .stats-bar-actions {

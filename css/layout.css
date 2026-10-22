@@ -391,18 +391,44 @@ body {
         transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
     }
 
+    /* A backdrop-filter on the bar makes it the backdrop root for the menu
+       sheet inside it, so the sheet's own blur and near-opaque fill rendered
+       see-through and the page showed behind the links. While the menu is
+       open the bar goes solid instead. */
+    .navbar:has(.nav-menu-active) {
+        background-color: rgba(10, 13, 11, 0.97);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
     .navbar.navbar-hidden {
         transform: translateY(-100%);
     }
 
     /* Over the homepage's full-screen photo, stay see-through until the page
        scrolls. */
+    /* Fully clear, not a dark fade: the old 0.45 gradient read as a
+       half-transparent band, and it repeated under the 1px bottom border as a
+       hard dark line. A soft shadow keeps the menu icon and "JG" readable
+       over bright sky instead. */
     .home-page .navbar.navbar-at-top {
         background-color: transparent;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+        background-image: none;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         border-bottom-color: transparent;
+    }
+
+    .home-page .navbar.navbar-at-top .hamburger,
+    .home-page .navbar.navbar-at-top .navbar-brand a {
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+    }
+
+    /* With the menu open the bar matches the solid sheet below it, even at
+       the top of the homepage. */
+    .home-page .navbar.navbar-at-top:has(.nav-menu-active) {
+        background-color: rgba(10, 13, 11, 0.97);
+        border-bottom-color: var(--border);
     }
 
     .navbar-container {
@@ -413,8 +439,15 @@ body {
 
     .navbar-brand {
         order: 2;
-        padding-right: 0.5rem;
         font-size: 1.2rem;
+    }
+
+    .navbar-brand a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
     }
 
     .hamburger {
@@ -439,6 +472,13 @@ body {
         max-height: calc(100vh - 48px);
         max-height: calc(100dvh - 48px);
         flex-direction: column;
+        /* The desktop bar wraps; the phone sheet must not, or opening more
+           than one dropdown spills the extra items into a second column off
+           the right edge. Items keep their height and the sheet scrolls. */
+        flex-wrap: nowrap;
+        /* Centred content that outgrows a scroll box overflows off the top
+           too, where it can't be scrolled to (Home ended up under the bar). */
+        justify-content: flex-start;
         background-color: rgba(10, 13, 11, 0.97);
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
@@ -475,6 +515,7 @@ body {
         margin: 0;
         width: 100%;
         display: block;
+        flex-shrink: 0;
     }
 
     /* Make dropdown list items flex containers for accordion effect */

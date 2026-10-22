@@ -248,7 +248,11 @@ function renderTable() {
     });
 
     table.appendChild(tbody);
-    container.appendChild(table);
+    // Scroll sideways inside the card on a phone rather than being cut off.
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll-wrapper';
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
 }
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
