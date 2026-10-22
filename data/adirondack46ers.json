@@ -222,7 +222,7 @@
             -74.011800,
             44.127600
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "Allen Mountain",
@@ -240,7 +240,7 @@
             -73.870400,
             44.182300
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "Esther Mountain",
@@ -321,7 +321,7 @@
             -73.860100,
             44.218700
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "South Dix",
@@ -339,7 +339,7 @@
             -73.853800,
             44.212400
         ],
-        "climbed": false
+        "climbed": true
     },
     {
         "name": "Mount Colvin",
