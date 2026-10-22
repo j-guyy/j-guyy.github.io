@@ -35,7 +35,7 @@ let mapStale = true;
 
 function setupUSViewSwitch(dataReady) {
     setupViewSwitch({
-        titles: { tables: 'US Travel Dashboard — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
+        titles: { tables: 'US Travel — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
         onShow: view => {
             if (view !== 'map' || !mapStale) return;
             mapStale = false;
