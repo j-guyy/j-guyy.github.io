@@ -407,12 +407,28 @@ body {
 
     /* Over the homepage's full-screen photo, stay see-through until the page
        scrolls. */
+    /* Fully clear, not a dark fade: the old 0.45 gradient read as a
+       half-transparent band, and it repeated under the 1px bottom border as a
+       hard dark line. A soft shadow keeps the menu icon and "JG" readable
+       over bright sky instead. */
     .home-page .navbar.navbar-at-top {
         background-color: transparent;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+        background-image: none;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         border-bottom-color: transparent;
+    }
+
+    .home-page .navbar.navbar-at-top .hamburger,
+    .home-page .navbar.navbar-at-top .navbar-brand a {
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+    }
+
+    /* With the menu open the bar matches the solid sheet below it, even at
+       the top of the homepage. */
+    .home-page .navbar.navbar-at-top:has(.nav-menu-active) {
+        background-color: rgba(10, 13, 11, 0.97);
+        border-bottom-color: var(--border);
     }
 
     .navbar-container {
