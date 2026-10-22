@@ -9075,6 +9075,13 @@ function statshuntersFullscreen() {
     wrap.requestFullscreen?.();
 }
 
+// iPhone Safari can't fullscreen an element (only videos), so there the button
+// would do nothing; hide it rather than leave a dead control.
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('statshunters-fullscreen-btn');
+    if (btn && !document.documentElement.requestFullscreen) btn.style.display = 'none';
+});
+
 function setStatshuntersStatus(msg) {
     const el = document.getElementById('statshunters-status');
     if (el) el.textContent = msg;
