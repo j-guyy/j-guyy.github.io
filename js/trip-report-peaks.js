@@ -1,8 +1,11 @@
 // Shared progress + peak-card sync for the ADK 46ers and CO 14ers trip
 // reports. Fetches live climbed state from the worker (KV) and re-homes the
 // hardcoded peak cards so every climbed peak sits in the Summited section,
-// even if its card has no date/note yet.
+// even if its card has no date/note yet. Summited cards then take their date
+// from the Strava activity the Peaks dashboard matches the peak to; a card
+// Strava has no summit for keeps its hand-written date.
 function initPeakTripReport(type, fallbackUrl) {
+    const stravaDates = loadStravaDates(fallbackUrl);
     TravelAPI.fetchPeaksWithFallback(type, fallbackUrl)
         .then(data => {
             const climbed = data.filter(p => p.climbed).length;
@@ -64,5 +67,44 @@ function initPeakTripReport(type, fallbackUrl) {
                     divider.style.display = empty ? 'none' : '';
                 }
             });
+
+            // After the re-homing, so newly climbed cards get a date too
+            stravaDates.then(applyStravaDates);
         });
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+// Map(peak name → "July 2026") from each peak's first Strava summit, matched
+// as on the Peaks dashboard (coordinates from the static file, like there).
+async function loadStravaDates(fallbackUrl) {
+    const dateByName = new Map();
+    try {
+        const [items, summited] = await Promise.all([
+            fetch(fallbackUrl).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
+            TravelAPI.fetchSummitedPeaks(),
+        ]);
+        PeakMatch.match(items, summited).forEach(({ peak }, item) => {
+            const m = /^(\d{4})-(\d{2})/.exec(peak.first?.date || '');
+            if (m) dateByName.set(item.name, `${MONTHS[+m[2] - 1]} ${m[1]}`);
+        });
+    } catch (err) {
+        console.warn('Strava summit dates unavailable:', err);
+    }
+    return dateByName;
+}
+
+function applyStravaDates(dateByName) {
+    document.querySelectorAll('#summited-grid .peak-card').forEach(card => {
+        const date = dateByName.get(card.querySelector('h3')?.textContent.trim());
+        if (!date) return;
+        let el = card.querySelector('.peak-date');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'peak-date';
+            (card.querySelector('.peak-elevation') || card.querySelector('.peak-card-header')).after(el);
+        }
+        el.textContent = date;
+    });
 }
