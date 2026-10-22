@@ -4,99 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quests</title>
+    <title>Quests — Justin Guyette</title>
+    <!-- The quests (Forbes 100 cities, Seven Wonders) are now bucket lists on
+         the World Travel page; the peak lists are on the Peaks page. -->
+    <link rel="canonical" href="https://j-guyy.github.io/world-dashboard.html">
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url=world-dashboard.html">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/leaflet.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" />
-    <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css'
-        rel='stylesheet' />
 </head>
 
 <body class="page">
-    <div class="parallax-background"></div>
-    <div class="parallax-overlay"></div>
-
-    <nav-bar></nav-bar>
-
     <div class="content">
-        <div class="hero">
-            <h1>Quests</h1>
-        </div>
-
-        <!-- Progress Summary Cards -->
         <div class="section">
-            <h2>Progress Summary</h2>
-            <div id="world-quest-summary"></div>
-        </div>
-
-        <div class="section">
-            <h2>Forbes 100 Cities</h2>
-            <p>The world's top 100 cities for business and travel according to Forbes</p>
-            <div id="forbes-cities-map" class="map-container"></div>
-        </div>
-
-        <div class="section">
-            <h2>Seven Wonders Map</h2>
-            <p>Explore the Seven Wonders of the World, Seven Natural Wonders, and all nominees</p>
-            <div class="map-controls">
-                <div class="toggle-group">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="toggle-seven-wonders" checked>
-                        <span class="toggle-text">Seven Wonders of the World</span>
-                    </label>
-                    <label class="toggle-label">
-                        <input type="checkbox" id="toggle-natural-wonders" checked>
-                        <span class="toggle-text">Seven Natural Wonders</span>
-                    </label>
-                    <label class="toggle-label">
-                        <input type="checkbox" id="toggle-wonder-nominees">
-                        <span class="toggle-text">Natural Wonder Nominees</span>
-                    </label>
-                </div>
-            </div>
-            <div id="wonders-map" class="map-container"></div>
-        </div>
-
-        <div class="section">
-            <h2>Peak Quests</h2>
-            <div class="cross-nav">
-                <a href="peaks-dashboard.html" class="cross-nav-link">Check off peaks →</a>
-            </div>
-            <div id="us-quest-summary"></div>
-            <p>Detailed trip reports and interactive maps for each peak-bagging challenge:</p>
-            <div class="quest-links">
-                <a href="trip-reports/colorado-14ers.html" class="quest-link">
-                    <span class="quest-link-title">Colorado 14ers</span>
-                    <span class="quest-link-sub">58 peaks above 14,000 ft</span>
-                    <span class="quest-link-arrow">→</span>
-                </a>
-                <a href="trip-reports/adirondack-46ers.html" class="quest-link">
-                    <span class="quest-link-title">Adirondack 46ers</span>
-                    <span class="quest-link-sub">46 New York high peaks</span>
-                    <span class="quest-link-arrow">→</span>
-                </a>
-                <a href="trip-reports/british-isles-high-five.html" class="quest-link">
-                    <span class="quest-link-title">British Isles High Five</span>
-                    <span class="quest-link-sub">Highest peak in each country</span>
-                    <span class="quest-link-arrow">→</span>
-                </a>
-            </div>
+            <h2>Quests</h2>
+            <p class="description">The Forbes 100 cities and Seven Wonders lists have moved to <a href="world-dashboard.html">World Travel</a>, and the peak lists to <a href="peaks-dashboard.html">Peaks</a>.</p>
         </div>
     </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="js/fluid-zoom.js"></script>
-    <script src="js/map-fixes.js"></script>
-    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
-    <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
-    <script src="js/travel-api.js"></script>
-    <script src="js/us-quests.js"></script>
-    <script src="js/world-quests.js"></script>
-    <script src="js/navbar-component.js"></script>
+    <script>location.replace('world-dashboard.html');</script>
 </body>
 
 </html>
