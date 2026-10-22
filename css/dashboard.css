@@ -327,6 +327,26 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
+/* Small flag before a state / country name (images/flags/); a long name
+   wraps beside its flag rather than under it. */
+.flag-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.travel-table img.flag {
+    flex: none;
+    width: 21px;
+    height: 14px;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.travel-table tr.not-visited img.flag {
+    opacity: 0.6;
+}
+
 /* Empty bar cell (county data not loaded) */
 .state-progress-none {
     color: var(--text-dim);
@@ -526,6 +546,16 @@
 
     .th-long {
         display: none;
+    }
+
+    /* A smaller flag on a phone, so a long name ("Massachusetts") fits. */
+    .flag-name {
+        gap: 5px;
+    }
+
+    .travel-table img.flag {
+        width: 18px;
+        height: 12px;
     }
 
     /* Detail columns the phone drops (States: Metros, Parks). */
@@ -849,4 +879,11 @@ Controls Styling */
 .bucket-card:focus-visible {
     background-color: var(--accent-soft);
     border-color: var(--accent-border);
+}
+
+/* No room for flags on the narrowest phones (320px). */
+@media (max-width: 340px) {
+    .travel-table img.flag {
+        display: none;
+    }
 }

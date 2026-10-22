@@ -18,7 +18,10 @@ const sortState = {
 
 // Forbes 100 / Seven Wonders lists, once loaded (js/bucket-lists.js).
 let bucketLists = null;
-let storedCountries = null; // countries as loaded, before live populations
+let storedCountries = null;
+// Country name → flag image code (data/country-flags.json, built with the
+// images by scripts/build-flags.mjs). Rows render without flags until loaded.
+let countryFlags = {}; // countries as loaded, before live populations
 const isBucketList = type => BUCKET_LISTS.some(l => l.id === type);
 
 const continentMap = {
@@ -47,6 +50,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setupCsvExport();
         });
     dataReady.catch(error => console.error('Error loading the JSON file:', error));
+    Promise.all([dataReady, fetch('data/country-flags.json').then(r => r.json())])
+        .then(([, flags]) => {
+            countryFlags = flags;
+            const type = document.getElementById('table-selector').value;
+            if (!isBucketList(type)) updateTable(type);
+        })
+        .catch(err => console.warn('Flags unavailable:', err));
     loadBucketLists()
         .then(b => {
             bucketLists = b;
@@ -448,8 +458,9 @@ function updateTable(continentType) {
         const statusIcon = country.visited ? '✅' : '⬜';
         const statusClass = editMode ? 'status-toggle' : '';
 
+        const flag = countryFlags[country.name];
         row.innerHTML = `
-            <td class="col-name">${country.name}</td>
+            <td class="col-name">${flag ? `<span class="flag-name"><img class="flag" src="images/flags/${flag}.png" alt="" width="21" height="14" loading="lazy"><span>${country.name}</span></span>` : country.name}</td>
             <td class="col-num">${country.population.toLocaleString()}</td>
             <td class="col-status ${statusClass}">${statusIcon}</td>
         `;
