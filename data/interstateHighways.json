@@ -114800,13 +114800,13 @@
                         -87.6449
                     ],
                     "to": [
-                        43.0183,
-                        -87.9165
+                        42.1658,
+                        -87.8115
                     ],
-                    "description": "Chicago to Milwaukee",
-                    "miles": 86,
+                    "description": "Chicago to Deerfield",
+                    "miles": 24,
                     "fromCity": "Chicago",
-                    "toCity": "Milwaukee",
+                    "toCity": "Deerfield",
                     "states": [],
                     "waypoints": [
                         [
@@ -114913,6 +114913,28 @@
                             42.155,
                             -87.8005
                         ],
+                        [
+                            42.1658,
+                            -87.8115
+                        ]
+                    ],
+                    "drivenBy": []
+                },
+                {
+                    "from": [
+                        42.1658,
+                        -87.8115
+                    ],
+                    "to": [
+                        43.0183,
+                        -87.9165
+                    ],
+                    "description": "Deerfield to Milwaukee",
+                    "miles": 62,
+                    "fromCity": "Deerfield",
+                    "toCity": "Milwaukee",
+                    "states": [],
+                    "waypoints": [
                         [
                             42.1658,
                             -87.8115
@@ -115058,7 +115080,9 @@
                             -87.9165
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -153981,7 +154005,9 @@
                             -87.9526
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -154027,7 +154053,9 @@
                             -87.9339
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -155054,7 +155082,9 @@
                             -87.9232
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 },
                 {
                     "from": [
@@ -161976,7 +162006,9 @@
                             -87.8741
                         ]
                     ],
-                    "drivenBy": []
+                    "drivenBy": [
+                        "person1"
+                    ]
                 }
             ]
         },
