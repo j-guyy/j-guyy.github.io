@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Globe — Justin Guyette</title>
+    <meta name="description" content="Concept: everywhere on the World Travel page, on a 3D globe.">
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="css/base.css?v=20261022">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/map.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/world-map.css?v=20261022">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+    <link rel="stylesheet" href="css/globe.css?v=20261023">
+</head>
+
+<body class="page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <!-- Concept page, not linked from the navbar. Same data as the World Travel
+         map (world-dashboard.html#map), drawn on a MapLibre globe by js/globe.js. -->
+    <div class="content">
+        <div class="hero">
+            <h1>World Globe</h1>
+        </div>
+
+        <div class="section">
+            <p class="map-description">A concept: everything on the <a href="world-dashboard.html#map">World Travel map</a> on a 3D globe. Drag to spin, pinch or scroll to zoom, right-drag or two-finger drag to tilt, and turn on 3D terrain to see the mountains.</p>
+            <div class="globe-stats" id="globe-stats"></div>
+            <div class="map-view-toggle">
+                <div class="view-mode-selector" role="group" aria-label="Basemap">
+                    <button class="view-mode-btn active" data-basemap="none" aria-pressed="true">Plain</button>
+                    <button class="view-mode-btn" data-basemap="dark" aria-pressed="false">Dark</button>
+                    <button class="view-mode-btn" data-basemap="satellite" aria-pressed="false">Satellite</button>
+                </div>
+                <div class="view-mode-selector" role="group" aria-label="Globe options">
+                    <button class="view-mode-btn active" id="globe-raise" aria-pressed="true" title="Lift visited countries off the globe">Raised</button>
+                    <button class="view-mode-btn" id="globe-spin" aria-pressed="false" title="Slowly turn the globe">Spin</button>
+                </div>
+            </div>
+            <div class="wm-layer-chips" id="globe-chips" role="group" aria-label="Globe layers"></div>
+            <div class="globe-wrap">
+                <div id="globe"></div>
+                <div class="globe-loading" id="globe-loading">Loading the globe…</div>
+            </div>
+            <div class="globe-legend" id="globe-legend"></div>
+        </div>
+    </div>
+
+    <script src="js/travel-api.js?v=20261022h"></script>
+    <script src="js/bucket-lists.js?v=20261022"></script>
+    <!-- js/world-map.js holds the World Travel map's data helpers (collectPlaces,
+         the country locator, polyline decoding). Its Leaflet canvas layers are
+         declared at load time with L.Layer.extend, so without Leaflet on the
+         page a one-line stand-in lets the file load; nothing here draws them. -->
+    <script>window.L = window.L || { Layer: { extend() { return this; } } };</script>
+    <script src="js/world-map.js?v=20261022b"></script>
+    <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+    <script src="js/globe.js?v=20261023"></script>
+    <script src="js/navbar-component.js?v=20261022b"></script>
+</body>
+
+</html>
