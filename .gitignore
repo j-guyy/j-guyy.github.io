@@ -19,3 +19,5 @@ browser.json
 ytmusic-auth.json
 
 __pycache__/
+scripts/.osrm-cache/
+scripts/snap-highways-report.json
