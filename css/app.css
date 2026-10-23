@@ -113,6 +113,10 @@
     padding: 0 16px;
 }
 
+.travel-grid {
+    padding-top: 20px;
+}
+
 .home-grid:last-of-type {
     padding-bottom: 24px; /* safe area is covered by .app-content's tab-bar padding */
 }
@@ -862,7 +866,7 @@
     height: max(320px, calc(var(--app-view-h) - 102px));
 }
 
-/* ══ Map mode (the Map tab) ════════════════════════════════════════════════
+/* ══ Map mode (the Activity Map's layers) ════════════════════════════════════════════════
    js/app.js shows a hunter's own screen as a map layer by adding
    .app-map-mode to <body> (routes #map, #map/county, …). Same DOM and same
    Leaflet instance as the hunter screen; this block only strips the screen

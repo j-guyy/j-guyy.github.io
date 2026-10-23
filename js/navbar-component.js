@@ -4,6 +4,14 @@ class NavbarComponent extends HTMLElement {
         // Get the base path from attribute, default to empty string
         const basePath = this.getAttribute('base-path') || '';
 
+        // Opened from the phone app (/app/): a slim back bar replaces the
+        // site menu, so Peaks / US Travel / World Travel feel like app screens.
+        if (NavbarComponent.isAppMode()) {
+            this.appMode = true;
+            this.renderAppBar();
+            return;
+        }
+
         // Organized navigation structure with logical groupings
         this.innerHTML = `
             <nav class="navbar">
@@ -47,8 +55,69 @@ class NavbarComponent extends HTMLElement {
     }
 
     connectedCallback() {
+        if (this.appMode) {
+            this.initializeScrollBehavior();
+            return;
+        }
         // Initialize navigation functionality when component is added to DOM
         this.initializeNavigation();
+    }
+
+    // App mode: the page was opened from the app's Home grid (`?app=1`, kept
+    // for the rest of the tab's session so in-page navigation keeps it), or
+    // it is running inside the Android app's WebView (Capacitor).
+    static isAppMode() {
+        try {
+            if (new URLSearchParams(location.search).has('app')) {
+                sessionStorage.setItem('jg_app_mode', '1');
+                return true;
+            }
+            if (sessionStorage.getItem('jg_app_mode') === '1') return true;
+        } catch { /* storage blocked: fall through */ }
+        return Boolean(window.Capacitor?.isNativePlatform?.());
+    }
+
+    // Back chevron + page title, styled like the app's own screen headers.
+    // Back walks history (to the app's Travel tab, or wherever it came from); a page
+    // opened with nothing behind it goes to the app instead.
+    renderAppBar() {
+        const title = (document.title || '').split(/\s+[-|–—]\s+/)[0].trim();
+        this.innerHTML = `
+            <nav class="navbar navbar-app">
+                <div class="navbar-container">
+                    <a class="navbar-app-back" href="/app/#travel" aria-label="Back">
+                        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                    <h1 class="navbar-app-title"></h1>
+                </div>
+            </nav>
+        `;
+        this.querySelector('.navbar-app-title').textContent = title;
+        this.querySelector('.navbar-app-back').addEventListener('click', e => {
+            const cameFromSite = document.referrer && new URL(document.referrer).origin === location.origin;
+            if (cameFromSite && history.length > 1) {
+                e.preventDefault();
+                history.back();
+            }
+        });
+        document.body.classList.add('app-mode');
+        if (!document.getElementById('navbar-app-style')) {
+            const style = document.createElement('style');
+            style.id = 'navbar-app-style';
+            style.textContent = `
+                .navbar.navbar-app { height: 48px; padding: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top);
+                    background: rgba(10, 13, 11, 0.82); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                    transition: transform 0.25s ease; }
+                .navbar.navbar-app .navbar-container { height: 100%; justify-content: flex-start; gap: 8px; padding: 0 12px 0 6px; max-width: none; }
+                .navbar-app-back { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+                    color: #eef2ef; background: rgba(255, 255, 255, 0.06); -webkit-tap-highlight-color: transparent; }
+                .navbar-app-back:active { background: rgba(255, 255, 255, 0.14); }
+                .navbar-app-title { margin: 0; font-size: 1.05rem; font-weight: 650; color: #eef2ef;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                body.app-mode .content { padding-top: calc(48px + env(safe-area-inset-top)); }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     initializeNavigation() {
