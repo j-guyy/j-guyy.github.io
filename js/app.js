@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildMapSwitcher();
     showScreen(currentRoute());
     pollHomeStats();
+    loadTravelStats();
 });
 
 // ── Home grid quick stats ────────────────────────────────────────────────────
@@ -180,6 +181,29 @@ function pollHomeStats() {
             setStat('stat-dashboard', hunterStatText('dashboard', summary));
         }
     });
+}
+
+// Travel & Peaks cards open full site pages; their headline numbers come from
+// the same worker lists those pages read. Each is independent, so one failing
+// read just leaves its card blank.
+const TRAVEL_WORKER = 'https://strava-worker.justinguyette.workers.dev';
+function loadTravelStats() {
+    const get = path => fetch(`${TRAVEL_WORKER}/travel/${path}`).then(r => (r.ok ? r.json() : null));
+    get('visited-states').then(states => {
+        if (!states) return;
+        const done = Object.values(states).filter(Boolean).length;
+        setStat('stat-us-travel', `${done} / ${Object.keys(states).length} states`);
+    }).catch(() => {});
+    get('countries').then(lists => {
+        if (!lists) return;
+        const done = Object.values(lists).flat().filter(c => c && c.visited).length;
+        setStat('stat-world-travel', `${done} countries`);
+    }).catch(() => {});
+    get('highpoints').then(points => {
+        if (!Array.isArray(points)) return;
+        const done = points.filter(p => p.visited).length;
+        setStat('stat-peaks', `${done} / ${points.length} high points`);
+    }).catch(() => {});
 }
 
 // Empty text leaves the card's existing placeholder alone.
