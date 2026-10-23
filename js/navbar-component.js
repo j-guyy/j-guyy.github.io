@@ -55,10 +55,9 @@ class NavbarComponent extends HTMLElement {
     }
 
     connectedCallback() {
-        if (this.appMode) {
-            this.initializeScrollBehavior();
-            return;
-        }
+        // The app bar stays put, like the app's own screen headers: sliding it
+        // away would leave the page showing through under the status bar.
+        if (this.appMode) return;
         // Initialize navigation functionality when component is added to DOM
         this.initializeNavigation();
     }
@@ -101,14 +100,21 @@ class NavbarComponent extends HTMLElement {
             }
         });
         document.body.classList.add('app-mode');
+        // The Android app draws the page edge to edge, under the status bar.
+        // Without viewport-fit=cover the WebView reports no safe-area inset,
+        // so the bar sat under the clock and battery icons.
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport && !/viewport-fit/.test(viewport.content)) {
+            viewport.content += ', viewport-fit=cover';
+        }
         if (!document.getElementById('navbar-app-style')) {
             const style = document.createElement('style');
             style.id = 'navbar-app-style';
             style.textContent = `
-                .navbar.navbar-app { height: 48px; padding: 0; box-sizing: border-box; padding-top: env(safe-area-inset-top);
-                    background: rgba(10, 13, 11, 0.82); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                .navbar.navbar-app { height: calc(48px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 0 0; box-sizing: border-box; transform: none;
+                    background: rgba(10, 13, 11, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
                     transition: transform 0.25s ease; }
-                .navbar.navbar-app .navbar-container { height: 100%; justify-content: flex-start; gap: 8px; padding: 0 12px 0 6px; max-width: none; }
+                .navbar.navbar-app .navbar-container { height: 48px; justify-content: flex-start; gap: 8px; padding: 0 12px 0 6px; max-width: none; }
                 .navbar-app-back { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
                     color: #eef2ef; background: rgba(255, 255, 255, 0.06); -webkit-tap-highlight-color: transparent; }
                 .navbar-app-back:active { background: rgba(255, 255, 255, 0.14); }

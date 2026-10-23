@@ -193,18 +193,24 @@ function loadTravelStats() {
     get('visited-states').then(states => {
         if (!states) return;
         const done = Object.values(states).filter(Boolean).length;
-        setStat('stat-us-travel', `${done} / ${Object.keys(states).length} states`);
+        setTravelStat('us-travel', `${done} / ${Object.keys(states).length} states`);
     }).catch(() => {});
     get('countries').then(lists => {
         if (!lists) return;
         const done = Object.values(lists).flat().filter(c => c && c.visited).length;
-        setStat('stat-world-travel', `${done} countries`);
+        setTravelStat('world-travel', `${done} countries`);
     }).catch(() => {});
     get('highpoints').then(points => {
         if (!Array.isArray(points)) return;
         const done = points.filter(p => p.visited).length;
-        setStat('stat-peaks', `${done} / ${points.length} high points`);
+        setTravelStat('peaks', `${done} / ${points.length} high points`);
     }).catch(() => {});
+}
+
+// Travel cards appear on both Home and the Travel tab, so they're keyed by
+// data-stat rather than an id.
+function setTravelStat(key, text) {
+    document.querySelectorAll(`[data-stat="${key}"]`).forEach(el => { el.textContent = text; });
 }
 
 // Empty text leaves the card's existing placeholder alone.
