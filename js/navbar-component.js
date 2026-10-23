@@ -78,14 +78,14 @@ class NavbarComponent extends HTMLElement {
     }
 
     // Back chevron + page title, styled like the app's own screen headers.
-    // Back walks history (to the app's Home, or wherever it came from); a page
+    // Back walks history (to the app's Travel tab, or wherever it came from); a page
     // opened with nothing behind it goes to the app instead.
     renderAppBar() {
         const title = (document.title || '').split(/\s+[-|–—]\s+/)[0].trim();
         this.innerHTML = `
             <nav class="navbar navbar-app">
                 <div class="navbar-container">
-                    <a class="navbar-app-back" href="/app/#home" aria-label="Back">
+                    <a class="navbar-app-back" href="/app/#travel" aria-label="Back">
                         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </a>
                     <h1 class="navbar-app-title"></h1>

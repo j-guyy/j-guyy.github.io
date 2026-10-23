@@ -18,6 +18,7 @@
 // layer the map is the point, so `openInMap` opens it once its data is ready.
 const SCREENS = {
     home: {},
+    travel: {},
     dashboard: {},
     map: { open: () => ensureOpen('map-section', () => toggleMap()) },
     county: { open: () => ensureOpen('county-section', () => toggleCountyMap()) },
@@ -104,7 +105,7 @@ function currentRoute() {
     return normalizeRoute(location.hash);
 }
 
-// The Map tab reopens whichever layer was viewed last.
+// The Activity Map card reopens whichever layer was viewed last.
 const LAST_LAYER_KEY = 'app_map_layer';
 function lastMapRoute() {
     try {
@@ -233,11 +234,11 @@ if (CapApp?.addListener) {
 // else replaces the current entry (keeping its stamp), and going to the route
 // underneath simply goes back. History therefore stays at most [home, route].
 //
-// Tabs: Home, Dashboard, County, Metro, Map. County and Metro are opened most,
-// so they get their own tab; every other hunter is a Home card or a Map layer.
-// The Map tab opens the last layer viewed; any map route lights it up, and
-// every other screen (the remaining hunters, StatsHunters) lights Home.
-const TAB_ROUTES = new Set(['home', 'dashboard', 'county', 'metro']);
+// Tabs: Home, Dashboard, County, Metro, Travel. County and Metro are opened
+// most, so they get their own tab; every other hunter is a Home card. Travel
+// links out to the US Travel, World Travel and Peaks pages. Every other screen
+// (the remaining hunters, the map layers, StatsHunters) lights Home.
+const TAB_ROUTES = new Set(['home', 'dashboard', 'county', 'metro', 'travel']);
 let pendingFrom; // stamp carried across a location.replace()
 
 function routeFromUrl(url) {
@@ -254,12 +255,7 @@ function stampEntry(from) {
 }
 
 function tabFor(route) {
-    if (isMapRoute(route)) return 'map';
     return TAB_ROUTES.has(route) ? route : 'home';
-}
-
-function tabRoute(tab) {
-    return tab === 'map' ? lastMapRoute() : tab;
 }
 
 function updateTabs(route) {
@@ -271,8 +267,8 @@ function updateTabs(route) {
         else tab.removeAttribute('aria-current');
     });
     if (isMapRoute(route)) rememberMapRoute(route);
-    const mapTab = document.querySelector('.app-tab[data-tab="map"]');
-    if (mapTab) mapTab.setAttribute('href', `#${lastMapRoute()}`);
+    const mapCard = document.querySelector('.home-card[href^="#map"]');
+    if (mapCard) mapCard.setAttribute('href', `#${lastMapRoute()}`);
 }
 
 function goRoute(route) {
@@ -351,9 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.app-tab').forEach(tab => {
         tab.addEventListener('click', e => {
             e.preventDefault();
-            const route = tabRoute(tab.dataset.tab);
-            // Tapping Map while already on a map layer only scrolls to the top.
-            goRoute(isMapRoute(route) && isMapRoute(currentRoute()) ? currentRoute() : route);
+            goRoute(tab.dataset.tab);
         });
     });
     // Pills and the details link both live in the switcher bar.
