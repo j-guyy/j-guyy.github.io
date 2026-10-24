@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/strava.css">
     <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/app.css?v=20261023">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" rel="stylesheet" />
 </head>
@@ -44,6 +44,15 @@
                 <a class="home-card" href="#map"><span class="home-card-icon">🗺️</span><span class="home-card-name">Activity Map</span><em id="stat-map">—</em></a>
             </nav>
 
+            <!-- Same cards as the Travel tab (stats filled by data-stat in js/app.js). -->
+            <p class="home-section-label">Travel</p>
+            <nav class="home-grid">
+                <a class="home-card" href="/us-dashboard.html?app=1"><span class="home-card-icon">🗽</span><span class="home-card-name">US Travel</span><em data-stat="us-travel"></em></a>
+                <a class="home-card" href="/world-dashboard.html?app=1"><span class="home-card-icon">🌐</span><span class="home-card-name">World Travel</span><em data-stat="world-travel"></em></a>
+                <a class="home-card" href="/peaks-dashboard.html?app=1"><span class="home-card-icon">🏔️</span><span class="home-card-name">Peaks</span><em data-stat="peaks"></em></a>
+                <a class="home-card" href="/globe.html?app=1"><span class="home-card-icon">🌍</span><span class="home-card-name">Globe</span><em>3D map</em></a>
+            </nav>
+
             <p class="home-section-label">Hunters</p>
             <nav class="home-grid">
                 <a class="home-card" href="#county"><span class="home-card-icon">🇺🇸</span><span class="home-card-name">County Hunter</span><em id="stat-county"></em></a>
@@ -60,6 +69,22 @@
             <p class="home-section-label">More</p>
             <nav class="home-grid">
                 <a class="home-card" href="#statshunters"><span class="home-card-icon">🌍</span><span class="home-card-name">StatsHunters</span><em id="stat-statshunters"></em></a>
+            </nav>
+        </div>
+
+        <!-- ============ Travel (tab) ============ -->
+        <!-- Full site pages, opened with ?app=1 so their menu becomes a back bar
+             (js/navbar-component.js). Stats are filled by js/app.js. -->
+        <div id="screen-travel" class="app-screen" hidden>
+            <header class="app-home-header">
+                <h1>Travel</h1>
+                <p>Places and peaks</p>
+            </header>
+            <nav class="home-grid travel-grid">
+                <a class="home-card" href="/us-dashboard.html?app=1"><span class="home-card-icon">🗽</span><span class="home-card-name">US Travel</span><em data-stat="us-travel"></em></a>
+                <a class="home-card" href="/world-dashboard.html?app=1"><span class="home-card-icon">🌐</span><span class="home-card-name">World Travel</span><em data-stat="world-travel"></em></a>
+                <a class="home-card" href="/peaks-dashboard.html?app=1"><span class="home-card-icon">🏔️</span><span class="home-card-name">Peaks</span><em data-stat="peaks"></em></a>
+                <a class="home-card" href="/globe.html?app=1"><span class="home-card-icon">🌍</span><span class="home-card-name">Globe</span><em>3D map</em></a>
             </nav>
         </div>
 
@@ -356,8 +381,9 @@
     <!-- Top-level destinations; js/app.js decides push vs replace so the hash
          history (and the Android back button) stays one level deep. County and
          Metro are here because they're opened most; every other hunter is a Home
-         card or a pill on the Map tab. Map opens the last map layer viewed, and
-         the other hunter screens light up Home, since they live on its grid. -->
+         card. Travel opens US Travel, World Travel and Peaks. The Activity Map
+         (and its layer switcher) and the other hunter screens light up Home,
+         since they live on its grid. -->
     <nav class="app-tabbar" aria-label="Main">
         <a class="app-tab" href="#home" data-tab="home">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg>
@@ -375,9 +401,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20h17M5.5 20V10h4v10M9.5 20V4.5h5V20M14.5 20v-7.5h4V20"/></svg>
             <span>Metro</span>
         </a>
-        <a class="app-tab" href="#map" data-tab="map">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7zM9 5v12M15 7v12"/></svg>
-            <span>Map</span>
+        <a class="app-tab" href="#travel" data-tab="travel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5s1.2-6.1 3.6-8.5z"/></svg>
+            <span>Travel</span>
         </a>
     </nav>
 
@@ -386,7 +412,7 @@
     <script src="../js/map-fixes.js"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
     <script src="/js/strava.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/app.js?v=20261023c"></script>
 </body>
 
 </html>
