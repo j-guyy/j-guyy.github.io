@@ -149,3 +149,17 @@ body.globe-fullscreen .content {
 .globe-popup .maplibregl-popup-close-button:focus:not(:focus-visible) {
     outline: none;
 }
+
+.globe-toggle-row {
+    margin-top: -6px;
+}
+
+.radius-control[hidden],
+.wm-detail-selector[hidden] {
+    display: none;
+}
+
+.globe-legend-note {
+    font-style: italic;
+    opacity: 0.8;
+}

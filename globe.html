@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/world-map.css?v=20261022">
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-    <link rel="stylesheet" href="css/globe.css?v=20261023">
+    <link rel="stylesheet" href="css/globe.css?v=20261024">
 </head>
 
 <body class="page">
@@ -33,13 +33,32 @@
             <p class="map-description">A concept: everything on the <a href="world-dashboard.html#map">World Travel map</a> on a 3D globe. Drag to spin, pinch or scroll to zoom, right-drag or two-finger drag to tilt, and turn on 3D terrain to see the mountains.</p>
             <div class="globe-stats" id="globe-stats"></div>
             <div class="map-view-toggle">
+                <div class="view-mode-selector" role="group" aria-label="Globe view">
+                    <button class="view-mode-btn active" data-mode="countries" aria-pressed="true">Countries</button>
+                    <button class="view-mode-btn" data-mode="footprint" aria-pressed="false">Footprint</button>
+                    <button class="view-mode-btn" data-mode="fog" aria-pressed="false">Fog of War</button>
+                </div>
+                <div class="view-mode-selector wm-detail-selector" id="globe-detail" role="group" aria-label="How much of a country to fill">
+                    <button class="view-mode-btn" data-detail="lands" aria-pressed="false" title="Fill every visited country">Countries</button>
+                    <button class="view-mode-btn active" data-detail="subregions" aria-pressed="true" title="Fill only the states and provinces I've been to">Subregions</button>
+                </div>
+                <div class="radius-control" id="globe-radius-control" hidden>
+                    <label for="globe-radius">Place radius: <span id="globe-radius-value">100</span> km</label>
+                    <input type="range" id="globe-radius" min="10" max="500" value="100" step="10">
+                </div>
+                <div class="radius-control" id="globe-route-control" hidden>
+                    <label for="globe-route-radius">Route radius: <span id="globe-route-value">50</span> km</label>
+                    <input type="range" id="globe-route-radius" min="5" max="300" value="50" step="5">
+                </div>
+            </div>
+            <div class="map-view-toggle globe-toggle-row">
                 <div class="view-mode-selector" role="group" aria-label="Basemap">
-                    <button class="view-mode-btn active" data-basemap="none" aria-pressed="true">Plain</button>
-                    <button class="view-mode-btn" data-basemap="dark" aria-pressed="false">Dark</button>
+                    <button class="view-mode-btn active" data-basemap="dark" aria-pressed="true">Dark</button>
                     <button class="view-mode-btn" data-basemap="satellite" aria-pressed="false">Satellite</button>
+                    <button class="view-mode-btn" data-basemap="none" aria-pressed="false">Plain</button>
                 </div>
                 <div class="view-mode-selector" role="group" aria-label="Globe options">
-                    <button class="view-mode-btn active" id="globe-raise" aria-pressed="true" title="Lift visited countries off the globe">Raised</button>
+                    <button class="view-mode-btn" id="globe-raise" aria-pressed="false" title="Lift visited places off the globe">Raised</button>
                     <button class="view-mode-btn" id="globe-spin" aria-pressed="false" title="Slowly turn the globe">Spin</button>
                 </div>
             </div>
@@ -61,7 +80,7 @@
     <script>window.L = window.L || { Layer: { extend() { return this; } } };</script>
     <script src="js/world-map.js?v=20261022b"></script>
     <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-    <script src="js/globe.js?v=20261023"></script>
+    <script src="js/globe.js?v=20261024"></script>
     <script src="js/navbar-component.js?v=20261023c"></script>
 </body>
 
