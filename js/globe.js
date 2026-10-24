@@ -34,7 +34,7 @@ const GLOBE_DEM = {
 
 const GLOBE_STORAGE = {
     basemap: 'globe_base', raise: 'globe_raised', off: 'globe_hidden', detail: 'globe_detail',
-    mode: 'globe_mode', radius: 'globe_radius', route: 'globe_route_radius',
+    mode: 'globe_mode', radius: 'globe_radius', route: 'globe_route_radius', tiles: 'globe_tiles',
 };
 
 // Region features get ids from here up, so a click can tell them from outlines.
@@ -45,6 +45,18 @@ const GLOBE_REGION_ID = 100000;
 // past GLOBE_DETAIL_ZOOM a sharper one covers the view and its surroundings.
 const GLOBE_MERC_MAX_LAT = 85.0511;
 const GLOBE_DETAIL_ZOOM = 3;
+
+// Tile Hunter's z14 tiles (strava.html), with its colours and rules: a cluster
+// tile has all four neighbours visited, and squares of SIZE ≥ 10 are shown.
+const GLOBE_TILE_ZOOM = 14;
+const GLOBE_SQUARE_THRESHOLD = 10;
+const GLOBE_TILE_TIERS = [
+    ['isolated',   'rgba(244, 67, 54, 0.55)',   'Tile'],
+    ['cluster',    'rgba(129, 199, 132, 0.60)', 'Cluster'],
+    ['maxCluster', 'rgba(46, 125, 50, 0.80)',   'Max cluster'],
+    ['square',     'rgba(100, 181, 246, 0.65)', 'Square'],
+    ['maxSquare',  'rgba(21, 101, 192, 0.85)',  'Max square'],
+];
 
 function globeStore(key, value) {
     try {
@@ -119,6 +131,9 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
         pointKm: +globeStore(GLOBE_STORAGE.radius) || 100,
         routeKm: +globeStore(GLOBE_STORAGE.route) || 50,
         strava: 'idle',  // idle | loading | ready | error
+        tilesOn: globeStore(GLOBE_STORAGE.tiles) === '1',
+        tiles: 'idle',   // idle | loading | ready | error
+        tileStats: null, // { visited, maxCluster, maxSquare }
         stravaRoutes: [],  // makeRoute() per activity
         stravaCells: [],   // routeCells() per activity
     };
@@ -272,6 +287,7 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
                 highways: { type: 'geojson', data: highwaysData },
                 strava: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
                 places: { type: 'geojson', data: placesData },
+                tiles: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
             },
             layers: [
                 { id: 'ocean', type: 'background', paint: { 'background-color': GLOBE_COLORS.ocean } },
@@ -294,6 +310,13 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
                   paint: { 'line-color': 'rgba(255,255,255,0.22)', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.3, 6, 0.8] } },
                 { id: 'countries-line', type: 'line', source: 'countries',
                   paint: { 'line-color': 'rgba(255,255,255,0.35)', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 6, 1.3] } },
+                // Tile Hunter's tiles, fetched the first time the chip is
+                // switched on (loadTiles); under the labels.
+                { id: 'tiles', type: 'fill', source: 'tiles', layout: { visibility: 'none' },
+                  paint: {
+                      'fill-color': ['match', ['get', 'tier'], ...GLOBE_TILE_TIERS.flatMap(([id, color]) => [id, color]), '#f44336'],
+                      'fill-outline-color': 'rgba(0, 0, 0, 0.25)',
+                  } },
                 { id: 'labels', type: 'raster', source: 'labels' },
                 { id: 'highways', type: 'line', source: 'highways', layout: { 'line-cap': 'round', 'line-join': 'round' },
                   paint: { 'line-color': GLOBE_COLORS.highway, 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1, 8, 2.5] } },
@@ -383,7 +406,11 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
             count: allPlaces.filter(p => p.cat === c.id).length })),
         { id: 'highways', label: 'Highways driven', symbol: '〰', color: GLOBE_COLORS.highway, count: drivenSegments.length },
         { id: 'strava', label: STRAVA_LAYER.label, symbol: STRAVA_LAYER.symbol, color: STRAVA_LAYER.color },
+        { id: 'tiles', label: 'Tiles', symbol: '▦', color: '#64B5F6' },
     ];
+    // Tiles are off unless switched on (their own key, so they stay off for
+    // anyone who had saved the other chips before they existed).
+    const layerOn = id => id === 'tiles' ? state.tilesOn : !state.off.has(id);
     // Footprint and Fog read best uncluttered: their overview hides the pins,
     // which come back once zoomed in far enough to tell them apart (as on the map).
     const pinsHidden = () => state.mode !== 'countries' && map.getZoom() < OVERLAY_MARKER_ZOOM;
@@ -392,15 +419,19 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
         map.setFilter('places', ['in', ['get', 'cat'], ['literal', placeCats]]);
         map.setLayoutProperty('places', 'visibility', pinsHidden() ? 'none' : 'visible');
         ['highways', 'strava'].forEach(id => map.setLayoutProperty(id, 'visibility', state.off.has(id) ? 'none' : 'visible'));
+        map.setLayoutProperty('tiles', 'visibility', state.tilesOn && state.tiles === 'ready' ? 'visible' : 'none');
+        if (state.tilesOn) loadTiles();
     }
     function renderChips() {
         const bar = document.getElementById('globe-chips');
         bar.innerHTML = chips.map(c => {
-            const on = !state.off.has(c.id);
+            const on = layerOn(c.id);
             let count = c.count;
             if (c.id === 'strava') count = { idle: '', loading: '…', error: '!', ready: state.stravaRoutes.length }[state.strava];
+            if (c.id === 'tiles') count = { idle: '', loading: '…', error: '!', ready: state.tileStats && state.tileStats.visited }[state.tiles];
+            const failed = (c.id === 'strava' && state.strava === 'error') || (c.id === 'tiles' && state.tiles === 'error');
             return `<button class="wm-chip${on ? ' active' : ''}" data-layer="${c.id}" aria-pressed="${on}"
-                ${c.id === 'strava' && state.strava === 'error' ? 'disabled title="Strava routes unavailable"' : ''}>
+                ${failed ? `disabled title="${c.label} unavailable"` : ''}>
                 <span class="wm-chip-symbol" style="color:${c.color}">${c.symbol}</span>${escapeHtml(c.label)}
                 ${count !== '' && count !== undefined ? `<span class="wm-chip-count">${typeof count === 'number' ? count.toLocaleString() : count}</span>` : ''}
             </button>`;
@@ -410,8 +441,14 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
         const btn = e.target.closest('[data-layer]');
         if (!btn) return;
         const id = btn.dataset.layer;
-        if (state.off.has(id)) state.off.delete(id); else state.off.add(id);
-        globeStore(GLOBE_STORAGE.off, [...state.off].join(','));
+        if (id === 'tiles') {
+            state.tilesOn = !state.tilesOn;
+            globeStore(GLOBE_STORAGE.tiles, state.tilesOn ? '1' : '0');
+            renderLegend();
+        } else {
+            if (state.off.has(id)) state.off.delete(id); else state.off.add(id);
+            globeStore(GLOBE_STORAGE.off, [...state.off].join(','));
+        }
         applyLayers();
         renderChips();
         // The footprint counts Strava routes only while they're shown.
@@ -434,13 +471,44 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
         const el = document.getElementById('globe-legend');
         if (state.mode !== 'countries') {
             const routes = state.off.has('strava') ? 'a driven highway' : 'a highway or Strava route';
-            el.innerHTML = `<span>${state.mode === 'fog' ? 'Cleared' : 'Green'}: within ${state.pointKm} km of a place, ${state.routeKm} km of ${routes}</span>`;
+            el.innerHTML = `<span>${state.mode === 'fog' ? 'Cleared' : 'Green'}: within ${state.pointKm} km of a place, ${state.routeKm} km of ${routes}</span>` + tileLegend();
             return;
         }
         const keys = [['home', 'Home'], ['visited', 'Visited'], ['strava', 'Strava activity, not marked visited']];
         let note = '';
         if (state.detail === 'subregions' && regionsState !== 'ready') note = '<span class="globe-legend-note">Loading states and provinces…</span>';
-        el.innerHTML = keys.map(([k, label]) => `<span><i style="background:${GLOBE_COLORS[k]}"></i>${label}</span>`).join('') + note;
+        el.innerHTML = keys.map(([k, label]) => `<span><i style="background:${GLOBE_COLORS[k]}"></i>${label}</span>`).join('') + note + tileLegend();
+    }
+    function tileLegend() {
+        if (!state.tilesOn) return '';
+        const t = state.tileStats;
+        const label = { maxCluster: t ? `Max cluster (${t.maxCluster.toLocaleString()})` : 'Max cluster',
+                        maxSquare: t ? `Max square (${t.maxSquare}×${t.maxSquare})` : 'Max square' };
+        return '<span class="globe-legend-break"></span>' + GLOBE_TILE_TIERS.map(([id, color, name]) =>
+            `<span><i style="background:${color}"></i>${label[id] || name}</span>`).join('');
+    }
+
+    // ── Tiles ──
+    // Tile Hunter's visited tiles from the worker, coloured as on its map.
+    async function loadTiles() {
+        if (state.tiles !== 'idle') return;
+        state.tiles = 'loading';
+        renderChips();
+        try {
+            const res = await fetch(`${GLOBE_WORKER_URL}/tiles/all`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const { tiles = [] } = await res.json();
+            const { features, stats } = buildTileFeatures(new Set(tiles));
+            map.getSource('tiles').setData({ type: 'FeatureCollection', features });
+            state.tileStats = stats;
+            state.tiles = 'ready';
+        } catch (err) {
+            console.warn('Tiles unavailable:', err);
+            state.tiles = 'error';
+        }
+        applyLayers();
+        renderChips();
+        renderLegend();
     }
 
     // ── Popups ──
@@ -843,4 +911,118 @@ function createGlobeFog(map, { narrow, getMode, getRadii, getSources }) {
 
     map.on('moveend', updateDetail);
     return { redraw };
+}
+
+// ── Tile Hunter ──────────────────────────────────────────────────────────────
+//
+// The same analysis as Tile Hunter in js/strava.js (computeClusters,
+// computeSquares, computeTileStats): keep the rules in step with it. Squares
+// are placed biggest first without overlapping, ties going to the one with
+// the most visited tiles around it (strava.js breaks remaining ties by the
+// latest activity, which this page doesn't load; it only picks between
+// equal squares).
+
+function globeTileBounds(x, y) {
+    const n = 2 ** GLOBE_TILE_ZOOM;
+    const lng = tx => tx / n * 360 - 180;
+    const lat = ty => Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / n))) * 180 / Math.PI;
+    return { w: lng(x), e: lng(x + 1), n: lat(y), s: lat(y + 1) };
+}
+
+// A tile is a cluster tile when all four neighbours are visited; connected
+// cluster tiles form a cluster. Returns key → its cluster's size.
+function globeTileClusters(tileSet) {
+    const interior = new Set();
+    for (const key of tileSet) {
+        const [x, y] = key.split(',').map(Number);
+        if (tileSet.has(`${x},${y - 1}`) && tileSet.has(`${x},${y + 1}`) &&
+            tileSet.has(`${x - 1},${y}`) && tileSet.has(`${x + 1},${y}`)) interior.add(key);
+    }
+    const clusterOf = new Map();
+    for (const key of interior) {
+        if (clusterOf.has(key)) continue;
+        const queue = [key];
+        clusterOf.set(key, 0);
+        for (let head = 0; head < queue.length; head++) {
+            const [x, y] = queue[head].split(',').map(Number);
+            for (const nb of [`${x + 1},${y}`, `${x - 1},${y}`, `${x},${y + 1}`, `${x},${y - 1}`]) {
+                if (interior.has(nb) && !clusterOf.has(nb)) { clusterOf.set(nb, 0); queue.push(nb); }
+            }
+        }
+        queue.forEach(k => clusterOf.set(k, queue.length));
+    }
+    return clusterOf;
+}
+
+// key → size of the largest all-visited square with that tile as its
+// bottom-right corner.
+function globeTileSquares(tileSet) {
+    const dp = new Map();
+    [...tileSet].map(k => k.split(',').map(Number))
+        .sort((a, b) => a[1] - b[1] || a[0] - b[0])
+        .forEach(([x, y]) => dp.set(`${x},${y}`, Math.min(
+            dp.get(`${x - 1},${y}`) || 0, dp.get(`${x},${y - 1}`) || 0, dp.get(`${x - 1},${y - 1}`) || 0) + 1));
+    return dp;
+}
+
+// Visited tiles as GeoJSON squares tagged with their GLOBE_TILE_TIERS tier.
+function buildTileFeatures(tileSet) {
+    const clusters = globeTileClusters(tileSet);
+    const squares = globeTileSquares(tileSet);
+    let maxCluster = 0, maxSquare = 0;
+    for (const v of clusters.values()) if (v > maxCluster) maxCluster = v;
+    for (const v of squares.values()) if (v > maxSquare) maxSquare = v;
+
+    // Non-overlapping squares ≥ the threshold: tile → its square's size.
+    const membership = new Map();
+    if (maxSquare >= GLOBE_SQUARE_THRESHOLD) {
+        const candidates = [];
+        for (const [key, size] of squares) {
+            if (size < GLOBE_SQUARE_THRESHOLD) continue;
+            const [bx, by] = key.split(',').map(Number);
+            const x0 = bx - size + 1, y0 = by - size + 1;
+            let perim = 0;
+            for (let x = x0 - 1; x <= x0 + size; x++) {
+                for (let y = y0 - 1; y <= y0 + size; y++) {
+                    const inside = x >= x0 && x < x0 + size && y >= y0 && y < y0 + size;
+                    if (!inside && tileSet.has(`${x},${y}`)) perim++;
+                }
+            }
+            candidates.push({ x0, y0, size, perim });
+        }
+        candidates.sort((a, b) => b.size - a.size || b.perim - a.perim);
+        for (const c of candidates) {
+            let overlaps = false;
+            for (let dx = 0; dx < c.size && !overlaps; dx++) {
+                for (let dy = 0; dy < c.size; dy++) {
+                    if (membership.has(`${c.x0 + dx},${c.y0 + dy}`)) { overlaps = true; break; }
+                }
+            }
+            if (overlaps) continue;
+            for (let dx = 0; dx < c.size; dx++) {
+                for (let dy = 0; dy < c.size; dy++) membership.set(`${c.x0 + dx},${c.y0 + dy}`, c.size);
+            }
+        }
+    }
+
+    const features = [];
+    for (const key of tileSet) {
+        const [x, y] = key.split(',').map(Number);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const square = membership.get(key) || 0;
+        const cluster = clusters.get(key);
+        const tier = square >= maxSquare && maxSquare >= GLOBE_SQUARE_THRESHOLD ? 'maxSquare'
+            : square >= GLOBE_SQUARE_THRESHOLD ? 'square'
+            : cluster && cluster === maxCluster ? 'maxCluster'
+            : cluster ? 'cluster' : 'isolated';
+        const b = globeTileBounds(x, y);
+        features.push({
+            type: 'Feature', properties: { tier },
+            geometry: { type: 'Polygon', coordinates: [[[b.w, b.n], [b.e, b.n], [b.e, b.s], [b.w, b.s], [b.w, b.n]]] },
+        });
+    }
+    // Drawn lowest tier first, as on Tile Hunter's map.
+    const order = Object.fromEntries(GLOBE_TILE_TIERS.map(([id], i) => [id, i]));
+    features.sort((a, b) => order[a.properties.tier] - order[b.properties.tier]);
+    return { features, stats: { visited: tileSet.size, maxCluster, maxSquare } };
 }
