@@ -135,7 +135,7 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/activities/all` | GET | Get all cached slim activities: `{ slim, total, lastActivityTime, syncedAt }`; each slim activity is `l` start latlng, `t` sport type, `p` polyline, `n` name, `d` local date, `i` id, `e` elevation gain (m), `m` moving time (s), `di` distance (m), and for rides `eh` high point (m) |
+| `/activities/all` | GET | Get all cached slim activities: `{ slim, total, lastActivityTime, syncedAt }`; each slim activity is `l` start latlng, `t` sport type, `p` polyline, `n` name, `d` local date, `s` start time (epoch s; hunters order activities by `byStartTime` — date, then `s`, then id — so a first visit is the day's earliest activity), `i` id, `e` elevation gain (m), `m` moving time (s), `di` distance (m), and for rides `eh` high point (m) |
 | `/activities/sync` | POST | Start (or `?join=1` follow) the background Strava sync; streams progress (see Background sync) |
 | `/activities/sync/status` | GET | Whether a sync is running, its progress, and the last run's outcome (admin) |
 | `/activities/rebuild` | POST | Full re-sync (deletes + syncs) |

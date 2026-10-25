@@ -774,7 +774,8 @@ async function listSummitedPeaks(env) {
             const pvs = visits[id];
             if (!Array.isArray(pvs) || !pvs.length || hiddenIds.has(id) || seen.has(id)) continue;
             seen.add(id);
-            const sorted = [...pvs].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+            const sorted = [...pvs].sort((a, b) => String(a.date).localeCompare(String(b.date))
+                || (Number(a.actId) || 0) - (Number(b.actId) || 0));
             const brief = v => ({ actId: v.actId, actName: v.actName, date: v.date });
             peaks.push({
                 id, name: p.name || '', lat: p.lat, lng: p.lng, ele: p.ele,
@@ -1273,6 +1274,9 @@ function slimActivities(activities) {
             p: a.map?.summary_polyline || '',
             n: a.name || '',
             d: a.start_date_local?.slice(0, 10) || '',
+            // Start time (epoch s): orders same-day activities, so a hunter's
+            // first visit is the earliest activity that day, not the latest.
+            s: Math.floor(Date.parse(a.start_date) / 1000) || 0,
             i: a.id,
             e: a.total_elevation_gain ?? 0,
             m: a.moving_time ?? 0,   // seconds; feeds the dashboard's hours view
