@@ -116,6 +116,13 @@ function refreshAdminUI() {
     applyAdminVisibility();
 }
 
+// Tell other UI (the app's Home "Sync now" button, js/app.js) that the login
+// or sync state changed: a 'stravasync' event on document. Listeners read the
+// globals (syncing, syncProgress, lastSyncResult, lastSyncedAt) themselves.
+function notifySyncState() {
+    document.dispatchEvent(new CustomEvent('stravasync'));
+}
+
 // Owner-only controls outside the controls bar (e.g. Mountain Hunter's "Edit
 // peaks") carry class="admin-only" and start `hidden` in the HTML, on both
 // strava.html and the app shell. Show them only while logged in; logging out
@@ -649,6 +656,7 @@ function updateSyncProgress(fetched, estTotal) {
     syncProgress = { fetched, pct };
     const fill = document.getElementById('sync-progress-fill');
     if (fill) fill.style.width = `${pct}%`;
+    notifySyncState();
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
@@ -9310,9 +9318,10 @@ function relativeTime(ts) {
 }
 
 function setCacheInfo(gpsCount, total, syncedAt) {
+    lastSyncedAt = syncedAt;
+    notifySyncState();
     const el = document.getElementById('cache-info');
     if (!el) return;
-    lastSyncedAt = syncedAt;
     const gpsNote = total > 0 ? ` · ${gpsCount.toLocaleString()} with GPS` : '';
     const syncNote = syncedAt ? `Synced ${relativeTime(syncedAt)}` : 'Never synced';
     // Admin controls (force-sync + debug) only show when logged in; everyone else
