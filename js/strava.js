@@ -32,6 +32,26 @@ function isAppPage() { return document.body.classList.contains('app-page'); }
 // Uses a deactivated set — new types default to active without needing initialization
 const deactivatedTypes = new Set();
 let currentSlim = [];
+
+// Oldest activity first: local date, then start time (`s`, epoch seconds from
+// the worker), then Strava id (grows with upload order) for activities stored
+// before `s` existed. Sorting by date alone kept same-day activities in the
+// stored newest-first order, so a later activity was credited as a first visit.
+function byStartTime(a, b) {
+    return (a.d || '').localeCompare(b.d || '')
+        || ((a.s && b.s) ? a.s - b.s : 0)
+        || (Number(a.i) || 0) - (Number(b.i) || 0);
+}
+
+// Hunters stamp their saved first visits with this. Bump it to re-pick every
+// hunter's first visits after changing byStartTime. Stale data is redone only
+// once start times have arrived, so the redo uses them.
+const DISCOVERY_ORDER = 1;
+function hasStartTimes() { return currentSlim.some(a => a.s); }
+function discoveryOrderStale(saved) {
+    return (Number(saved?.order) || 0) < DISCOVERY_ORDER && hasStartTimes();
+}
+function discoveryOrderStamp() { return hasStartTimes() ? DISCOVERY_ORDER : 0; }
 let currentTotal = 0;
 let currentCache = {};
 let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the controls bar
@@ -1705,6 +1725,9 @@ async function initCountyMap() {
     visitedFips        = new Set((saved.fips         || []).filter(Boolean));
     countyProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
     countyDiscoveries  = saved.discoveries || {};
+    // First visits picked before same-day activities were ordered by start
+    // time: rebuild them with the backfill below (visited counties stay).
+    if (discoveryOrderStale(saved)) countyDiscoveries = {};
     dbg(`County cache: ${visitedFips.size} counties, ${countyProcessedIds.size} processed activities`);
 
     const counties = preprocessCounties(geojson);
@@ -1724,7 +1747,7 @@ async function initCountyMap() {
     if (needsBackfill) {
         dbg('County discoveries: backfilling from all activities…');
         const allWithPolylines = [...currentSlim].filter(a => a.i && a.p)
-            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));  // oldest first
+            .sort(byStartTime);  // oldest first
         const backfillResult = await detectCountiesBackfill(allWithPolylines, counties, index);
         countyDiscoveries = backfillResult;
         dbg(`County discoveries backfill: ${Object.keys(countyDiscoveries).length} counties mapped`);
@@ -1733,7 +1756,7 @@ async function initCountyMap() {
 
     // Only process activities with polylines not yet analysed — oldest-first so discovery date = first visit
     const unprocessed = currentSlim.filter(a => a.i && a.p && !countyProcessedIds.has(a.i))
-        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        .sort(byStartTime);
     dbg(`County detection: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
@@ -2130,6 +2153,7 @@ async function saveCountiesToWorker() {
                 fips: [...visitedFips],
                 processedIds: [...countyProcessedIds],
                 discoveries: countyDiscoveries,
+                order: discoveryOrderStamp(),
             }),
         });
         const data = await res.json();
@@ -2338,6 +2362,10 @@ async function initParkMap() {
     visitedStateParkIds   = new Set((savedState.ids          || []).filter(Boolean));
     stateParkProcessedIds = new Set((savedState.processedIds || []).filter(Boolean));
     stateParkDiscoveries  = savedState.discoveries || {};
+    // First visits picked before same-day activities were ordered by start
+    // time: rebuild them with the backfills below (visited parks stay).
+    if (discoveryOrderStale(savedFed))   parkDiscoveries = {};
+    if (discoveryOrderStale(savedState)) stateParkDiscoveries = {};
     dbg(`Park Hunter: ${visitedParkIds.size} federal, ${visitedStateParkIds.size} state cached`);
 
     const fedParks   = preprocessParks(fedGeojson);
@@ -2350,7 +2378,7 @@ async function initParkMap() {
     if (needsFedBackfill) {
         dbg('Park Hunter: backfilling federal discovery history…');
         const sorted = [...currentSlim].filter(a => a.i && a.p)
-            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+            .sort(byStartTime);
         parkDiscoveries = await detectParksBackfill(sorted, fedParks, fedIndex, visitedParkIds);
         dbg(`Park Hunter backfill: ${Object.keys(parkDiscoveries).length} parks mapped`);
         await saveParksToWorker();
@@ -2358,7 +2386,7 @@ async function initParkMap() {
 
     // Federal: detect unprocessed activities
     const fedUnprocessed = currentSlim.filter(a => a.i && a.p && !parkProcessedIds.has(a.i))
-        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        .sort(byStartTime);
     if (fedUnprocessed.length > 0) {
         const { newIds, newDiscoveries } = await detectParksAsync(fedUnprocessed, fedParks, fedIndex, visitedParkIds);
         newIds.forEach(id => visitedParkIds.add(id));
@@ -2368,9 +2396,17 @@ async function initParkMap() {
         await saveParksToWorker();
     }
 
+    // State parks: same backfill when visits exist without discovery history
+    if (visitedStateParkIds.size > 0 && Object.keys(stateParkDiscoveries).length === 0) {
+        dbg('Park Hunter: backfilling state park discovery history…');
+        const sorted = [...currentSlim].filter(a => a.i && a.p).sort(byStartTime);
+        stateParkDiscoveries = await detectParksBackfill(sorted, stateParks, stateIndex, visitedStateParkIds);
+        await saveStateParkData();
+    }
+
     // State parks: detect unprocessed activities
     const spUnprocessed = currentSlim.filter(a => a.i && a.p && !stateParkProcessedIds.has(a.i))
-        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        .sort(byStartTime);
     if (spUnprocessed.length > 0) {
         const { newIds, newDiscoveries } = await detectParksAsync(spUnprocessed, stateParks, stateIndex, visitedStateParkIds);
         newIds.forEach(id => visitedStateParkIds.add(id));
@@ -2736,6 +2772,7 @@ async function saveParksToWorker() {
                 ids:          [...visitedParkIds],
                 processedIds: [...parkProcessedIds],
                 discoveries:  parkDiscoveries,
+                order:        discoveryOrderStamp(),
             }),
         });
         const data = await res.json();
@@ -2754,6 +2791,7 @@ async function saveStateParkData() {
                 ids:          [...visitedStateParkIds],
                 processedIds: [...stateParkProcessedIds],
                 discoveries:  stateParkDiscoveries,
+                order:        discoveryOrderStamp(),
             }),
         });
         const data = await res.json();
@@ -2847,6 +2885,9 @@ async function initMetroMap() {
     visitedMetroIds   = new Set((saved.ids          || []).filter(Boolean));
     metroProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
     metroDiscoveries  = saved.discoveries || {};
+    // First visits picked before same-day activities were ordered by start
+    // time: rebuild them with the backfill below (visited metros stay).
+    if (discoveryOrderStale(saved)) metroDiscoveries = {};
     dbg(`Metro Hunter cache: ${visitedMetroIds.size} metros, ${metroProcessedIds.size} processed activities`);
 
     const metros = preprocessMetros(geojson);
@@ -2859,14 +2900,14 @@ async function initMetroMap() {
     if (needsBackfill) {
         dbg('Metro Hunter: backfilling discovery history…');
         const sorted = [...currentSlim].filter(a => a.i && a.p)
-            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+            .sort(byStartTime);
         metroDiscoveries = await detectMetrosBackfill(sorted, metros, index);
         dbg(`Metro Hunter backfill: ${Object.keys(metroDiscoveries).length} metros mapped`);
         await saveMetrosToWorker();
     }
 
     const unprocessed = currentSlim.filter(a => a.i && a.p && !metroProcessedIds.has(a.i))
-        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        .sort(byStartTime);
     dbg(`Metro Hunter: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
@@ -3349,6 +3390,7 @@ async function saveMetrosToWorker() {
                 ids:          [...visitedMetroIds],
                 processedIds: [...metroProcessedIds],
                 discoveries:  metroDiscoveries,
+                order:        discoveryOrderStamp(),
             }),
         });
         const data = await res.json();
@@ -3519,7 +3561,8 @@ async function initEcoregionMap() {
     geojson.features = ecoFeatures;
     buildEcoInfo(ecoFeatures);
 
-    if (saved && saved.v === ECO_DETECT_VERSION && saved.patchCount === ecoFeatures.length) {
+    if (saved && saved.v === ECO_DETECT_VERSION && saved.patchCount === ecoFeatures.length
+        && !discoveryOrderStale(saved)) {
         visitedEcoCodes = new Set((saved.codes || []).filter(c => ecoL4Info[c]));
         ecoProcessedIds = new Set((saved.processedIds || []).filter(Boolean));
         ecoDiscoveries  = saved.discoveries || {};
@@ -3536,7 +3579,7 @@ async function initEcoregionMap() {
     dbg(`Ecoregion cache: ${visitedEcoCodes.size} Level IV, ${ecoPatchFirst.size} patches, ${ecoProcessedIds.size} processed activities`);
 
     const unprocessed = currentSlim.filter(a => a.i && a.p && !ecoProcessedIds.has(a.i))
-        .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+        .sort(byStartTime);
     dbg(`Ecoregion detection: ${unprocessed.length} new activities to process`);
 
     if (unprocessed.length > 0) {
@@ -4101,6 +4144,7 @@ async function saveEcoregionsToWorker() {
                 codes:        [...visitedEcoCodes],
                 processedIds: [...ecoProcessedIds],
                 discoveries:  ecoDiscoveries,
+                order:        discoveryOrderStamp(),
             }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -7825,7 +7869,7 @@ function renderMountainTable() {
     const rows = [...mountainVisits.entries()]
         .map(([id, pvs]) => {
             const peak = mountainPeaks.find(p => p.id === id);
-            const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0];
+            const last = [...pvs].sort((a, b) => b.date.localeCompare(a.date) || (Number(b.actId) || 0) - (Number(a.actId) || 0))[0];
             return { peak, pvs, last };
         })
         .filter(r => r.peak && r.peak.name && !hiddenPeakIds.has(r.peak.id));
@@ -7964,7 +8008,7 @@ function renderRepeatSummitLeaderboard() {
     const rows = [...mountainVisits.entries()]
         .map(([id, pvs]) => {
             const peak = mountainPeaks.find(p => p.id === id);
-            const last = peak ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+            const last = peak ? [...pvs].sort((a, b) => b.date.localeCompare(a.date) || (Number(b.actId) || 0) - (Number(a.actId) || 0))[0] : null;
             return { peak, pvs, last };
         })
         .filter(r => r.peak && r.peak.name && r.pvs.length >= 2 && !hiddenPeakIds.has(r.peak.id));
@@ -8200,7 +8244,7 @@ function renderMountainMap() {
         const pvs   = mountainVisits.get(peak.id);
         const visited = !!pvs;
         const isNearMiss = !visited && mountainEditMode && nearMissPeaks.has(peak.id);
-        const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+        const last  = visited ? [...pvs].sort((a, b) => b.date.localeCompare(a.date) || (Number(b.actId) || 0) - (Number(a.actId) || 0))[0] : null;
         const href  = last?.actId ? `https://www.strava.com/activities/${last.actId}` : null;
 
         // Three states: summited (green), near-miss in edit mode (orange), unsummited (faint white)
@@ -8529,6 +8573,7 @@ async function savePassData(catalogIds) {
                 ids: Object.keys(passDiscoveries),
                 processedIds: [...passProcessedIds],
                 discoveries: passDiscoveries,
+                order: discoveryOrderStamp(),
                 catalogIds: catalogIds || coloradoPasses.map(p => p.id),
             }),
         });
@@ -8578,6 +8623,12 @@ async function initPassHunter() {
                 passProcessedIds = new Set();
                 passDiscoveries = {};
             }
+            // First climbs picked before same-day rides were ordered by start time.
+            if (discoveryOrderStale(saved)) {
+                dbg('Pass Hunter: re-picking first climbs by start time');
+                passProcessedIds = new Set();
+                passDiscoveries = {};
+            }
             // Drop discoveries for any pass no longer in the catalog
             const catalogIdSet = new Set(currentCatalogIds);
             for (const id of Object.keys(passDiscoveries)) {
@@ -8595,7 +8646,7 @@ async function initPassHunter() {
 
         // Oldest-first so a pass's recorded date is its first climb
         const unprocessed = rides.filter(a => !passProcessedIds.has(a.i))
-            .sort((a, b) => (a.d || '').localeCompare(b.d || ''));
+            .sort(byStartTime);
 
         if (unprocessed.length > 0) {
             dbg(`Pass Hunter: scanning ${unprocessed.length} new ride(s)`);
