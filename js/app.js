@@ -369,3 +369,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     updateTabs(currentRoute());
 });
+
+// ── Home "Sync now" button ───────────────────────────────────────────────────
+// A big button on Home for the same sync as the Dashboard's "Sync now":
+// strava.js's runManualSync() starts the worker's background sync (or follows
+// one already running) and refreshes every view when it lands. This only
+// mirrors its state — strava.js fires 'stravasync' whenever login, progress or
+// the result changes. States: logged out (offers the admin login), idle,
+// syncing (progress bar + activities fetched), then done / failed for a few
+// seconds (strava.js clears lastSyncResult after 8 s) before going idle again.
+function renderHomeSync() {
+    const btn = document.getElementById('home-sync-btn');
+    if (!btn || typeof isLoggedIn !== 'function') return;
+    const label = document.getElementById('home-sync-label');
+    const meta = document.getElementById('home-sync-meta');
+    const bar = document.getElementById('home-sync-bar');
+    const fill = document.getElementById('home-sync-fill');
+    const lastSync = lastSyncedAt ? `Last synced ${relativeTime(lastSyncedAt)}` : '';
+
+    let state = 'idle';
+    if (!isLoggedIn()) state = 'locked';
+    else if (syncing) state = 'syncing';
+    else if (lastSyncResult) state = /fail/i.test(lastSyncResult) ? 'error' : 'done';
+    btn.dataset.state = state;
+    btn.disabled = state === 'syncing';
+    bar.hidden = state !== 'syncing';
+
+    if (state === 'locked') {
+        label.textContent = 'Log in to sync';
+        meta.textContent = lastSync || 'Owner only';
+    } else if (state === 'syncing') {
+        const fetched = syncProgress?.fetched || 0;
+        const pct = syncProgress?.pct || 0;
+        label.textContent = 'Syncing…';
+        meta.textContent = fetched
+            ? `${fetched.toLocaleString()}${currentTotal ? ` of ~${currentTotal.toLocaleString()}` : ''} activities checked`
+            : 'Contacting Strava…';
+        fill.style.width = `${Math.max(pct, 4)}%`;
+    } else if (state === 'done') {
+        label.textContent = lastSyncResult === 'Up to date' ? '✓ Up to date' : `✓ ${lastSyncResult.replace(/^Synced — /, '')}`;
+        meta.textContent = 'Synced just now';
+    } else if (state === 'error') {
+        label.textContent = 'Sync failed — tap to retry';
+        meta.textContent = lastSyncResult.replace(/^Sync failed: /, '');
+    } else {
+        label.textContent = 'Sync now';
+        meta.textContent = lastSync || 'Fetch new activities from Strava';
+    }
+}
+
+function onHomeSyncTap() {
+    if (typeof isLoggedIn !== 'function') return;
+    if (!isLoggedIn()) { adminLogin(); return; } // a successful login fires 'stravasync'
+    if (syncing) return;
+    runManualSync();
+}
+
+document.addEventListener('stravasync', renderHomeSync);
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('home-sync-btn')?.addEventListener('click', onHomeSyncTap);
+    renderHomeSync();
+    setInterval(renderHomeSync, 60000); // keep "Last synced 5m ago" current
+});
