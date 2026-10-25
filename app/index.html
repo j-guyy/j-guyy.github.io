@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/strava.css">
     <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261023">
+    <link rel="stylesheet" href="/css/app.css?v=20261025">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" rel="stylesheet" />
 </head>
@@ -109,6 +109,9 @@
 
             <!-- Activity type filters -->
             <div id="strava-filters" class="section"></div>
+
+            <!-- At-a-glance charts (js/insights.js) — follow the filters above -->
+            <div id="strava-insights" class="ins-root"></div>
 
             <!-- By Country table -->
             <div class="section">
@@ -411,7 +414,8 @@
     <script src="../js/fluid-zoom.js?v=20261025b"></script>
     <script src="../js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
-    <script src="/js/strava.js?v=20261025b"></script>
+    <script src="/js/strava.js?v=20261025c"></script>
+    <script src="/js/insights.js?v=20261025a"></script>
     <script src="/js/app.js?v=20261023c"></script>
 </body>
 

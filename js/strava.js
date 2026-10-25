@@ -1060,6 +1060,8 @@ function applyFilters() {
     renderSummary(filtered, countries, displayTotal);
     renderTable(countries);
     renderSubdivisions(subdivisions);
+    // The app Dashboard's charts (js/insights.js, loaded only on /app/).
+    if (typeof renderInsights === 'function') renderInsights(filtered);
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
@@ -9412,6 +9414,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     renderSummary(slim, countries, total);
     renderTable(countries);
     renderSubdivisions(subdivisions);
+    if (typeof renderInsights === 'function') renderInsights(slim.filter(a => !deactivatedTypes.has(a.t)));
     renderOverviewStats();
     dbg('Render complete');
 
