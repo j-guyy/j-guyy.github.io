@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/strava.css">
     <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261023">
+    <link rel="stylesheet" href="/css/app.css?v=20261025">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" rel="stylesheet" />
 </head>
@@ -37,6 +37,22 @@
                 <h1>Strava</h1>
                 <p id="home-status">Loading activities…</p>
             </header>
+
+            <!-- Big Sync now button: drives strava.js's runManualSync() (the
+                 worker's background sync) and mirrors its progress; js/app.js
+                 renders its states. Logged out it offers the admin login. -->
+            <section class="home-sync" id="home-sync">
+                <button type="button" class="home-sync-btn" id="home-sync-btn">
+                    <span class="home-sync-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-14.3 4.9M4 12a8 8 0 0 1 14.3-4.9M18.5 3v4.2h-4.2M5.5 21v-4.2h4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="home-sync-text">
+                        <strong id="home-sync-label">Sync now</strong>
+                        <small id="home-sync-meta"></small>
+                    </span>
+                </button>
+                <div class="home-sync-bar" id="home-sync-bar" hidden><div class="home-sync-fill" id="home-sync-fill"></div></div>
+            </section>
 
             <p class="home-section-label">Overview</p>
             <nav class="home-grid">
@@ -411,8 +427,8 @@
     <script src="../js/fluid-zoom.js?v=20261025b"></script>
     <script src="../js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
-    <script src="/js/strava.js?v=20261025b"></script>
-    <script src="/js/app.js?v=20261023c"></script>
+    <script src="/js/strava.js?v=20261025c"></script>
+    <script src="/js/app.js?v=20261025"></script>
 </body>
 
 </html>
