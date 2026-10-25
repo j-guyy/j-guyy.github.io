@@ -551,18 +551,23 @@ function insTooltipEl() {
     return tip;
 }
 
-function insShowTip(html, clientX, clientY) {
+// Places the tooltip centred on `x`, its bottom edge just above `top` (the top
+// of the mark being read). A finger covers ~40px around the touch point, so on
+// touch it also stays clear of the finger; with no room above it drops below
+// `bottom` (or below the finger).
+const INS_FINGER = 44;
+function insShowTip(html, x, top, { bottom = top, touchY = null } = {}) {
     const tip = insTooltipEl();
     tip.innerHTML = html;
     tip.hidden = false;
-    const pad = 10;
+    const pad = 10, gap = 8;
     const w = tip.offsetWidth, h = tip.offsetHeight;
-    let left = clientX - w / 2;
-    left = Math.max(pad, Math.min(window.innerWidth - w - pad, left));
-    let top = clientY - h - 14;
-    if (top < pad) top = clientY + 18;
+    const left = Math.max(pad, Math.min(window.innerWidth - w - pad, x - w / 2));
+    const above = touchY == null ? top : Math.min(top, touchY - INS_FINGER);
+    let y = above - h - gap;
+    if (y < pad) y = Math.max(bottom, touchY == null ? bottom : touchY + INS_FINGER) + gap;
     tip.style.left = `${left}px`;
-    tip.style.top = `${top}px`;
+    tip.style.top = `${y}px`;
 }
 
 function insHideTip() {
@@ -580,19 +585,30 @@ function insBindTooltips(root) {
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
         if (hit && root.contains(hit)) {
             hit.classList.add('is-hover');
-            insShowTip(insEsc(hit.dataset.tip), ev.clientX, ev.clientY);
+            // Anchor on the drawn mark (a bar's rounded top, a cell, a goal
+            // row), not the pointer, so the tip sits above what you touch.
+            const mark = hit.querySelector('path, circle') || hit;
+            const r = mark.getBoundingClientRect();
+            insShowTip(insEsc(hit.dataset.tip), r.left + r.width / 2, r.top, {
+                bottom: r.bottom,
+                touchY: ev.pointerType === 'mouse' ? null : ev.clientY,
+            });
         } else {
             insHideTip();
         }
     };
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerdown', onMove);
-    root.addEventListener('pointerleave', () => {
+    // A touch pointer "leaves" as the finger lifts, so on touch the tip stays
+    // up after the tap and goes on the next tap elsewhere or a scroll.
+    const clear = () => {
         insHideTip();
         root.querySelectorAll('.ins-crosshair').forEach(c => { c.style.display = 'none'; });
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
-    });
-    window.addEventListener('scroll', insHideTip, { passive: true });
+    };
+    root.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') clear(); });
+    document.addEventListener('pointerdown', ev => { if (!root.contains(ev.target)) clear(); });
+    window.addEventListener('scroll', clear, { passive: true });
 }
 
 function insPaceHover(svg, ev) {
@@ -614,5 +630,8 @@ function insPaceHover(svg, ev) {
         if (!s.length || day >= s.length) return '';
         return `<div><span class="ins-swatch" style="background:${data.colors[k]}"></span>${y}: <strong>${insFmt(s[day])} mi</strong></div>`;
     }).join('');
-    insShowTip(`<div class="ins-tooltip-head">${label}</div>${rows}`, ev.clientX, box.top + 10);
+    insShowTip(`<div class="ins-tooltip-head">${label}</div>${rows}`, ev.clientX, box.top + 10, {
+        bottom: box.bottom,
+        touchY: ev.pointerType === 'mouse' ? null : ev.clientY,
+    });
 }
