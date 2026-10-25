@@ -21,8 +21,10 @@ const TYPE_LABELS = {
     TrailRun: 'Trail Run', VirtualRun: 'Virtual Run', EBikeRide: 'E-Bike',
     VirtualRide: 'Virtual Ride', AlpineSki: 'Alpine Ski', BackcountrySki: 'Backcountry Ski',
     NordicSki: 'Nordic Ski', OpenWaterSwim: 'Open Water', StandUpPaddling: 'SUP',
+    MountainBikeRide: 'Mountain Bike', GravelRide: 'Gravel Ride',
 };
-function typeLabel(t) { return TYPE_LABELS[t] || t; }
+// Anything unlisted is split at its capitals: "WeightTraining" → "Weight Training".
+function typeLabel(t) { return TYPE_LABELS[t] || String(t).replace(/([a-z])([A-Z])/g, '$1 $2'); }
 
 // True on /app/ (the Capacitor shell), false on strava.html. Lets shared code
 // pick phone-appropriate defaults without forking the module.
@@ -860,22 +862,34 @@ function cleanSubdivision(s) {
 
 
 // ── Dashboard metric ──────────────────────────────────────────────────────────
-// The summary, By Country and Regions tables can rank by activity count or by
-// total moving time. Buckets carry both (`b[col]` = count, `b.sec[col]` =
-// seconds); metricValue() picks the one being shown. Region "visited" logic
-// stays count-based either way.
+// The summary, By Country and Regions tables (and the app's charts,
+// js/insights.js) measure by activity count, miles, moving time or climbing.
+// Buckets carry all four (`b[col]` = count, `b.sec[col]` = seconds, `b.mi[col]`
+// = miles, `b.ft[col]` = feet); metricValue() picks the one being shown.
+// Region "visited" logic stays count-based either way.
 const METRIC_KEY = 'strava_dashboard_metric';
+const DASH_METRICS = {
+    count: { label: 'Activities', unit: '' },
+    dist:  { label: 'Miles',      unit: 'mi' },
+    hours: { label: 'Hours',      unit: 'h' },
+    elev:  { label: 'Climbing',   unit: 'ft' },
+};
 let dashboardMetric = (() => {
-    try { return localStorage.getItem(METRIC_KEY) === 'hours' ? 'hours' : 'count'; } catch { return 'count'; }
+    try { const m = localStorage.getItem(METRIC_KEY); return DASH_METRICS[m] ? m : 'count'; } catch { return 'count'; }
 })();
 
 function metricValue(bucket, col) {
-    return dashboardMetric === 'hours' ? (bucket.sec?.[col] || 0) / 3600 : (bucket[col] || 0);
+    switch (dashboardMetric) {
+        case 'hours': return (bucket.sec?.[col] || 0) / 3600;
+        case 'dist':  return bucket.mi?.[col] || 0;
+        case 'elev':  return bucket.ft?.[col] || 0;
+        default:      return bucket[col] || 0;
+    }
 }
 
-// Whole hours once there's enough to round, one decimal below that.
+// Counts as-is; amounts whole once there's enough to round, one decimal below.
 function formatMetric(v) {
-    if (dashboardMetric !== 'hours') return Number(v).toLocaleString();
+    if (dashboardMetric === 'count') return Number(v).toLocaleString();
     if (!v) return '0';
     return v >= 10 ? Math.round(v).toLocaleString() : String(Number(v.toFixed(1)));
 }
@@ -891,16 +905,30 @@ function setDashboardMetric(metric) {
 // ── Build data ────────────────────────────────────────────────────────────────
 
 function newBucket() {
-    const b = { total: 0, sec: { total: 0 } };
-    GROUP_KEYS.forEach(g => { b[g] = 0; b.sec[g] = 0; });
+    const b = { total: 0, sec: { total: 0 }, mi: { total: 0 }, ft: { total: 0 } };
+    GROUP_KEYS.forEach(g => { b[g] = 0; b.sec[g] = 0; b.mi[g] = 0; b.ft[g] = 0; });
     return b;
 }
 
 function addToBucket(b, group, a) {
+    const mi = (a.di || 0) / 1609.344;
+    const ft = (a.e || 0) * 3.28084;
     b[group]++;
     b.total++;
     b.sec[group] += a.m || 0;
     b.sec.total += a.m || 0;
+    b.mi[group] += mi;
+    b.mi.total += mi;
+    b.ft[group] += ft;
+    b.ft.total += ft;
+}
+
+// Adds bucket `src` into `dst` (both from newBucket()).
+function mergeBucket(dst, src) {
+    ['total', ...GROUP_KEYS].forEach(k => {
+        dst[k] += src[k] || 0;
+        ['sec', 'mi', 'ft'].forEach(f => { dst[f][k] += src[f]?.[k] || 0; });
+    });
 }
 
 // All 50 US states + DC — pre-populated so states with 0 activities still appear
@@ -1006,13 +1034,13 @@ function renderFilters() {
         return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleSportType('${t}')">${typeLabel(t)} <span class="filter-pill-count">${count}</span></button>`;
     }).join('');
 
-    const metricHtml = [['count', 'Activities'], ['hours', 'Hours']].map(([m, label]) =>
+    const metricHtml = Object.entries(DASH_METRICS).map(([m, { label }]) =>
         `<button type="button" class="metric-toggle-btn${dashboardMetric === m ? ' active' : ''}" aria-pressed="${dashboardMetric === m}" onclick="setDashboardMetric('${m}')">${label}</button>`
     ).join('');
 
     container.innerHTML = `
         <div class="filter-bar">
-            <div class="metric-toggle" role="group" aria-label="Rank by">${metricHtml}</div>
+            <div class="metric-toggle" role="group" aria-label="Measure by">${metricHtml}</div>
             <div class="filter-controls">
                 <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
                 <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
@@ -1077,7 +1105,7 @@ function applyFilters() {
 function buildSortableTable(data, state, nameCol, onSort) {
     const headers = [
         { label: nameCol, col: nameCol.toLowerCase() },
-        { label: dashboardMetric === 'hours' ? 'Hours' : 'Total', col: 'total' },
+        { label: dashboardMetric === 'count' ? 'Total' : DASH_METRICS[dashboardMetric].label, col: 'total' },
         ...GROUP_KEYS.map(g => ({ label: `${GROUP_ICONS[g]} ${g}`, col: g })),
     ];
 
@@ -1187,19 +1215,20 @@ function makeCollapsible(title, contentEl, { collapsed = true, onOpen = null } =
 
 function renderSummary(slim, countries, total) {
     const countryCount = Object.keys(countries).length;
-    const hours = dashboardMetric === 'hours';
+    const byCount = dashboardMetric === 'count';
     const groupTotals = {};
     GROUP_KEYS.forEach(g => {
         groupTotals[g] = Object.values(countries).reduce((s, c) => s + metricValue(c, g), 0);
     });
-    // Hours come from the GPS activities' moving time; the count total also
-    // includes non-GPS activities, which the store doesn't keep.
-    const headline = hours
-        ? Object.values(countries).reduce((s, c) => s + metricValue(c, 'total'), 0)
-        : total;
+    // Amounts come from the GPS activities; the count total also includes
+    // non-GPS activities, which the store doesn't keep.
+    const headline = byCount
+        ? total
+        : Object.values(countries).reduce((s, c) => s + metricValue(c, 'total'), 0);
     // Activities stored before the worker kept moving time have none until
     // the next sync rewrites the store.
-    const missingTime = hours && slim.length > 0 && !slim.some(a => a.m);
+    const missingTime = dashboardMetric === 'hours' && slim.length > 0 && !slim.some(a => a.m);
+    const headLabel = { count: 'Total Activities', dist: 'Total Miles', hours: 'Total Hours', elev: 'Feet Climbed' }[dashboardMetric];
 
     document.getElementById('strava-summary').innerHTML = `
         <div class="summary-stats-container">
@@ -1207,7 +1236,7 @@ function renderSummary(slim, countries, total) {
                 <div class="stat-number-container">
                     <span class="stat-number">${formatMetric(headline)}</span>
                 </div>
-                <span class="stat-label">${hours ? 'Total Hours' : 'Total Activities'}</span>
+                <span class="stat-label">${headLabel}</span>
             </div>
             <div class="other-stats strava-group-stats">
                 <div class="summary-stat">
@@ -1498,13 +1527,8 @@ function computeRegionVisited(cfg) {
         if (!bucket.total) return;
         const id = state.byAlias[regionKey(name)];
         if (!id) { unmatched++; return; }
-        if (!visited[id]) visited[id] = { total: 0, groups: {}, sec: { total: 0 }, groupSec: {} };
-        visited[id].total += bucket.total;
-        visited[id].sec.total += bucket.sec?.total || 0;
-        GROUP_KEYS.forEach(g => {
-            if (bucket[g]) visited[id].groups[g] = (visited[id].groups[g] || 0) + bucket[g];
-            if (bucket.sec?.[g]) visited[id].groupSec[g] = (visited[id].groupSec[g] || 0) + bucket.sec[g];
-        });
+        if (!visited[id]) visited[id] = newBucket();
+        mergeBucket(visited[id], bucket);
     });
     state.visited = visited;
     // Rows we couldn't place on the map are still regions that were visited,
@@ -1531,14 +1555,13 @@ function regionPopupHtml(cfg, feature) {
                 <div class="activity-popup-date" style="color:#888">No activities yet</div>
             </div>`;
     }
-    const hours = dashboardMetric === 'hours';
+    const unit = DASH_METRICS[dashboardMetric].unit;
+    const acts = `${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}`;
     const breakdown = GROUP_KEYS
-        .filter(g => v.groups[g])
-        .map(g => `${GROUP_ICONS[g]} ${hours ? formatMetric((v.groupSec[g] || 0) / 3600) + 'h' : v.groups[g]}`)
+        .filter(g => v[g])
+        .map(g => `${GROUP_ICONS[g]} ${unit ? `${formatMetric(metricValue(v, g))} ${unit}` : v[g]}`)
         .join(' · ');
-    const totalLine = hours
-        ? `${formatMetric(v.sec.total / 3600)} hours · ${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}`
-        : `${v.total.toLocaleString()} ${v.total === 1 ? 'activity' : 'activities'}`;
+    const totalLine = unit ? `${formatMetric(metricValue(v, 'total'))} ${unit} · ${acts}` : acts;
     return `
         <div class="activity-popup-inner">
             <div class="activity-popup-type" style="color:${REGION_COLOR}">${cfg.flag} ${cfg.colLabel}</div>
@@ -1572,8 +1595,9 @@ function renderRegionStats(cfg) {
         items.push([total.toLocaleString(), `Total ${cfg.colLabel}s`]);
         items.push([`${((visited / total) * 100).toFixed(1)}%`, 'Complete']);
     }
-    if (dashboardMetric === 'hours') {
-        items.push([formatMetric(buckets.reduce((sum, b) => sum + metricValue(b, 'total'), 0)), 'Hours']);
+    if (dashboardMetric !== 'count') {
+        items.push([formatMetric(buckets.reduce((sum, b) => sum + metricValue(b, 'total'), 0)),
+            dashboardMetric === 'elev' ? 'Feet Climbed' : DASH_METRICS[dashboardMetric].label]);
     } else {
         items.push([activities.toLocaleString(), 'Activities']);
     }

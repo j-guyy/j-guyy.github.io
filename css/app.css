@@ -1286,6 +1286,11 @@
     border-radius: var(--app-radius-sm);
 }
 
+.app-page .ins-tile.is-active {
+    border-color: var(--app-accent-border);
+    background: linear-gradient(160deg, rgba(61, 220, 132, 0.12), rgba(61, 220, 132, 0.03));
+}
+
 .app-page .ins-tile-label {
     color: var(--app-text-dim);
     font-size: 0.72rem;
@@ -1352,7 +1357,6 @@
 .app-page .ins-hit.is-hover .ins-bar { fill: var(--app-accent-strong); }
 .app-page .ins-bar-label { fill: var(--app-text); font-size: 9.5px; font-weight: 650; }
 
-.app-page .ins-toggle { margin: 0 0 12px; }
 
 .app-page .ins-pills {
     display: flex;
@@ -1487,3 +1491,33 @@
 }
 .app-page .ins-tooltip[hidden] { display: none; }
 .app-page .ins-tooltip-head { margin-bottom: 2px; color: var(--app-text-dim); font-size: 0.72rem; }
+
+/* ── Dashboard filter bar ────────────────────────────────────────────────── */
+/* The metric toggle drives every number and chart on the screen, so it spans
+   the card. The sport pills (~16 of them) wrapped to five rows and filled half
+   the first screen; two rows that scroll sideways keep them all one swipe
+   away. */
+.app-page #screen-dashboard #strava-filters .metric-toggle {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.app-page #screen-dashboard #strava-filters .metric-toggle-btn { flex: 1 1 0; padding-left: 4px; padding-right: 4px; }
+
+.app-page #screen-dashboard #strava-filters .filter-pills {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(2, auto);
+    justify-content: start;
+    gap: 6px;
+    margin: 0 -12px;
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.app-page #screen-dashboard #strava-filters .filter-pills::-webkit-scrollbar { display: none; }
+.app-page #screen-dashboard #strava-filters .filter-pill { white-space: nowrap; }
