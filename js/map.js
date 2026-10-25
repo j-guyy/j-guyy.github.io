@@ -56,10 +56,13 @@ function createCombinedMap() {
     const width = 960;
     const height = 600;
 
-    const svg = d3.select("#combined-map")
+    const svgEl = d3.select("#combined-map")
         .append("svg")
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("preserveAspectRatio", "xMidYMid meet");
+    // Everything is drawn into one layer that the zoom transforms.
+    const svg = svgEl.append("g").attr("class", "zoom-layer");
+    setupMapZoom(svgEl, svg, width, height);
 
     const projection = d3.geoAlbersUsa()
         .translate([width / 2, height / 2])
@@ -178,6 +181,45 @@ function createCombinedMap() {
             console.error("Error loading or parsing data:", error);
             document.getElementById("combined-map").innerHTML = "Error loading map. Please try again later.";
         });
+}
+
+// Pinch / drag / double-tap zoom, plus +/− buttons. The phone app's WebView
+// has no browser pinch-zoom, so without this the map could not be zoomed at
+// all there. Markers keep their on-screen size (css/map.css divides them by
+// --k) so zooming in separates crowded ones instead of just enlarging them.
+// Plain mouse-wheel scrolling still scrolls the page; ctrl/⌘ + wheel (and a
+// trackpad pinch, which arrives as ctrl + wheel) zooms. While the map is at
+// full extent, one finger scrolls the page; once zoomed in it pans the map.
+function setupMapZoom(svgEl, layer, width, height) {
+    const MAX_ZOOM = 12;
+    let k = 1;
+    const zoom = d3.zoom()
+        .scaleExtent([1, MAX_ZOOM])
+        .translateExtent([[0, 0], [width, height]])
+        .extent([[0, 0], [width, height]])
+        .filter(event => {
+            if (event.type === 'wheel') return event.ctrlKey || event.metaKey;
+            if (event.type === 'touchstart') return event.touches.length > 1 || k > 1;
+            return (!event.ctrlKey || event.type === 'wheel') && !event.button;
+        })
+        .on('zoom', event => {
+            k = event.transform.k;
+            layer.attr('transform', event.transform);
+            svgEl.style('--k', k);
+            // Let the page scroll under one finger only while fully zoomed out.
+            svgEl.style('touch-action', k > 1 ? 'none' : 'pan-x pan-y');
+            reset.property('hidden', k <= 1.001);
+        });
+    svgEl.call(zoom).style('touch-action', 'pan-x pan-y');
+
+    const controls = d3.select('#combined-map').append('div').attr('class', 'us-map-zoom');
+    const button = (label, title, onClick) => controls.append('button')
+        .attr('type', 'button').attr('aria-label', title).attr('title', title)
+        .text(label).on('click', onClick);
+    button('+', 'Zoom in', () => svgEl.transition().duration(250).call(zoom.scaleBy, 2));
+    button('−', 'Zoom out', () => svgEl.transition().duration(250).call(zoom.scaleBy, 0.5));
+    const reset = button('⤢', 'Reset zoom', () => svgEl.transition().duration(300).call(zoom.transform, d3.zoomIdentity))
+        .property('hidden', true);
 }
 
 function handleMouseOver(element, event, d, tooltip, type) {
