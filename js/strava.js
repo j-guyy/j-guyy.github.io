@@ -1618,9 +1618,6 @@ async function initRegionMap(cfg) {
         tap: false,  // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
         fullscreenControl: true,
         fullscreenControlOptions: { position: 'topleft' },
-        // Quarter zoom steps so fitBounds can fill the frame — at whole steps a
-        // country that just misses the next level in renders at half the size.
-        zoomSnap: 0.25,
     }).setView([lat, lng], zoom);
     state.map = map;
 
@@ -5386,8 +5383,26 @@ async function detectTilesAsync(activities) {
 //
 // Renders visited tiles as filled rectangles on a canvas element in Leaflet's
 // overlayPane. Canvas is repositioned via DomUtil.setPosition after each
-// moveend/zoomend (same pattern as Leaflet's own SVG renderer) so it stays
-// aligned with the basemap during smooth panning.
+// moveend (same pattern as Leaflet's own SVG renderer) so it stays aligned
+// with the basemap during smooth panning. Like the World Travel map's
+// overlays, the canvas reaches half a screen past every edge, so a drag or a
+// zoom out shows tiles there instead of a blank border until the redraw.
+// (Every zoom ends with a moveend, so zoomend needs no redraw of its own.)
+
+const TILE_CANVAS_PAD = 0.5;  // × the map's larger side, on every edge
+
+// Size and place an overlay canvas over the view plus TILE_CANVAS_PAD; returns
+// the container point of the canvas's top-left corner and its size.
+function placeTileCanvas(map, canvas, follow) {
+    const size = map.getSize();
+    const pad = Math.round(Math.max(size.x, size.y) * TILE_CANVAS_PAD);
+    const origin = L.point(-pad, -pad);
+    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint(origin));
+    follow.drawn();
+    canvas.width  = size.x + pad * 2;
+    canvas.height = size.y + pad * 2;
+    return { origin, w: canvas.width, h: canvas.height };
+}
 
 const TileHunterLayer = L.Layer.extend({
     initialize(tileKeys) {
@@ -5399,24 +5414,19 @@ const TileHunterLayer = L.Layer.extend({
         this._canvas = document.createElement('canvas');
         this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
         map.getPanes().overlayPane.appendChild(this._canvas);
-        map.on('moveend zoomend resize', this._redraw, this);
+        map.on('moveend resize', this._redraw, this);
         // Scale with the map while it zooms (js/fluid-zoom.js); redrawn at the end.
         this._follow = new L.ZoomFollower(this._canvas).addTo(map);
         this._redraw();
     },
     onRemove(map) {
         this._canvas.remove();
-        map.off('moveend zoomend resize', this._redraw, this);
+        map.off('moveend resize', this._redraw, this);
         this._follow.remove();
     },
     _redraw() {
         const map = this._map;
-        const size = map.getSize();
-        const topLeft = map.containerPointToLayerPoint([0, 0]);
-        L.DomUtil.setPosition(this._canvas, topLeft);
-        this._follow.drawn();
-        this._canvas.width  = size.x;
-        this._canvas.height = size.y;
+        const { origin, w, h } = placeTileCanvas(map, this._canvas, this._follow);
 
         const ctx = this._canvas.getContext('2d');
 
@@ -5453,13 +5463,13 @@ const TileHunterLayer = L.Layer.extend({
         const drawRect = (tx, ty) => {
             const [nwLat, nwLng] = tileXYToLatLng(tx,     ty);
             const [seLat, seLng] = tileXYToLatLng(tx + 1, ty + 1);
-            const nw = map.latLngToContainerPoint([nwLat, nwLng]);
-            const se = map.latLngToContainerPoint([seLat, seLng]);
+            const nw = map.latLngToContainerPoint([nwLat, nwLng]).subtract(origin);
+            const se = map.latLngToContainerPoint([seLat, seLng]).subtract(origin);
             const px = Math.min(nw.x, se.x);
             const py = Math.min(nw.y, se.y);
             const pw = Math.max(Math.abs(se.x - nw.x), 1);
             const ph = Math.max(Math.abs(se.y - nw.y), 1);
-            if (px + pw < 0 || py + ph < 0 || px > size.x || py > size.y) return;
+            if (px + pw < 0 || py + ph < 0 || px > w || py > h) return;
             ctx.fillRect(px, py, pw, ph);
         };
 
@@ -5682,24 +5692,19 @@ const TileGridLayer = L.Layer.extend({
         this._canvas = document.createElement('canvas');
         this._canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
         map.getPanes().overlayPane.appendChild(this._canvas);
-        map.on('moveend zoomend resize', this._redraw, this);
+        map.on('moveend resize', this._redraw, this);
         // Scale with the map while it zooms (js/fluid-zoom.js); redrawn at the end.
         this._follow = new L.ZoomFollower(this._canvas).addTo(map);
         this._redraw();
     },
     onRemove(map) {
         this._canvas.remove();
-        map.off('moveend zoomend resize', this._redraw, this);
+        map.off('moveend resize', this._redraw, this);
         this._follow.remove();
     },
     _redraw() {
         const map  = this._map;
-        const size = map.getSize();
-        const topLeft = map.containerPointToLayerPoint([0, 0]);
-        L.DomUtil.setPosition(this._canvas, topLeft);
-        this._follow.drawn();
-        this._canvas.width  = size.x;
-        this._canvas.height = size.y;
+        const { origin, w, h } = placeTileCanvas(map, this._canvas, this._follow);
 
         // Tile pixel size at current zoom — skip if too small to see
         const tilePx = 256 * Math.pow(2, map.getZoom() - TILE_ZOOM);
@@ -5709,22 +5714,23 @@ const TileGridLayer = L.Layer.extend({
         ctx.strokeStyle = tileMapIsDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
         ctx.lineWidth   = 0.5;
 
-        const bounds = map.getBounds();
-        const [xMin, yMin] = latLngToTileXY(bounds.getNorth(), bounds.getWest());
-        const [xMax, yMax] = latLngToTileXY(bounds.getSouth(), bounds.getEast());
+        const nwView = map.containerPointToLatLng(origin);
+        const seView = map.containerPointToLatLng(origin.add([w, h]));
+        const [xMin, yMin] = latLngToTileXY(nwView.lat, nwView.lng);
+        const [xMax, yMax] = latLngToTileXY(seView.lat, seView.lng);
 
         ctx.beginPath();
         for (let x = xMin; x <= xMax + 1; x++) {
             const [lat, lng] = tileXYToLatLng(x, yMin);
-            const pt = map.latLngToContainerPoint([lat, lng]);
+            const pt = map.latLngToContainerPoint([lat, lng]).subtract(origin);
             ctx.moveTo(pt.x, 0);
-            ctx.lineTo(pt.x, size.y);
+            ctx.lineTo(pt.x, h);
         }
         for (let y = yMin; y <= yMax + 1; y++) {
             const [lat, lng] = tileXYToLatLng(xMin, y);
-            const pt = map.latLngToContainerPoint([lat, lng]);
+            const pt = map.latLngToContainerPoint([lat, lng]).subtract(origin);
             ctx.moveTo(0, pt.y);
-            ctx.lineTo(size.x, pt.y);
+            ctx.lineTo(w, pt.y);
         }
         ctx.stroke();
     },
