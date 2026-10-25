@@ -560,7 +560,14 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
                 <p class="globe-popup-cat" style="color:${cat.color}">${cat.symbol} ${cat.label}</p></div>`);
             return;
         }
-        const area = map.queryRenderedFeatures(e.point, { layers: ['areas-raised', 'areas-fill'] })[0];
+        // One layer per query: on the globe, a query that includes the
+        // fill-extrusion layer (or every layer) comes back empty for much of
+        // the eastern hemisphere once the map has moved, which left regions
+        // in Italy, Germany or Sweden untappable. The raised blocks are
+        // tried first only while they're shown.
+        const query = id => map.queryRenderedFeatures(e.point, { layers: [id] })[0];
+        const raisedShown = map.getLayoutProperty('areas-raised', 'visibility') === 'visible' && map.getZoom() < 4.5;
+        const area = (raisedShown && query('areas-raised')) || query('areas-fill');
         if (!area) return;
         showPopup(e.lngLat, area.id >= GLOBE_REGION_ID
             ? regionPopup(regionFeatures[area.id - GLOBE_REGION_ID])
