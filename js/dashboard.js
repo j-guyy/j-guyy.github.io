@@ -92,7 +92,7 @@ function buildStateRows() {
     Object.entries(STATE_ABBRS).forEach(([name, abbr]) => {
         rows[abbr] = {
             name, abbr, visited: Boolean(visitedStates[name]),
-            metrosVisited: 0, metrosTotal: 0, parksVisited: 0, parksTotal: 0,
+            metrosVisited: 0, metrosTotal: 0, metros: [], parksVisited: 0, parksTotal: 0, parks: [],
             highPoint: null, hpVisited: false, capital: null, capVisited: false,
             countiesVisited: 0, countiesTotal: 0, countyPct: null
         };
@@ -112,12 +112,14 @@ function buildStateRows() {
         if (!r) return; // DC, Puerto Rico
         r.metrosTotal++;
         if (m.visited) r.metrosVisited++;
+        r.metros.push({ name: m.name, visited: m.visited });
     });
     nationalParks.forEach(p => {
         const r = rows[p.state];
         if (!r) return; // American Samoa, Virgin Islands
         r.parksTotal++;
         if (p.visited) r.parksVisited++;
+        r.parks.push({ name: p.name, visited: p.visited });
     });
     highPoints.forEach(h => {
         const r = rows[h.state];
@@ -165,9 +167,13 @@ function coreBreakdown(r) {
     return lines.join('\n');
 }
 
-// "3/5", or a dash for a state with none on the list.
-function fraction(done, total) {
-    return total ? `${done}/${total}` : '—';
+// "3/5", or a dash for a state with none on the list. Hovering the count lists
+// the items (items: [{ name, visited }]) as bullets, visited ones ticked.
+function fraction(done, total, items = []) {
+    if (!total) return '—';
+    if (!items.length) return `${done}/${total}`;
+    const list = items.map(i => `• ${i.visited ? '✅' : '⬜'} ${i.name}`).join('\n');
+    return `<span class="count-list" title="${list.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">${done}/${total}</span>`;
 }
 
 // A capital not checked off whose county Strava activities reach (County
@@ -522,8 +528,8 @@ function updateTable(tableType) {
                 <td class="col-name">${withFlag(`us-${item.abbr.toLowerCase()}`, item.name)}</td>
                 <td class="col-progress">${progressBar(item.progress, coreBreakdown(item))}</td>
                 <td class="col-progress">${progressBar(item.countyPct, `${item.countiesVisited} of ${item.countiesTotal} counties (from Strava)`)}</td>
-                <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal)}</td>
-                <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal)}</td>
+                <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal, item.metros)}</td>
+                <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal, item.parks)}</td>
                 <td class="col-status ${hp && editMode ? 'status-toggle' : ''}" data-toggle="hp" title="${hpTitle}">${hp ? (item.hpVisited ? '✅' : '⬜') : '—'}</td>
                 <td class="col-status ${cap && editMode ? 'status-toggle' : ''}" data-toggle="cap" title="${cap ? cap.name : ''}">${cap ? (item.capVisited ? '✅' : '⬜') : '—'}</td>
                 <td class="col-status ${statusClass}" data-toggle="state">${statusIcon}</td>

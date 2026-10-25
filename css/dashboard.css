@@ -989,3 +989,10 @@ Controls Styling */
         margin-top: 6px;
     }
 }
+
+/* A States / Countries count whose tooltip lists its items */
+.count-list {
+    cursor: help;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+}
