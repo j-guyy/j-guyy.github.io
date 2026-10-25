@@ -1,0 +1,314 @@
+/* Dashboard charts (js/insights.js), shared by the app's Dashboard screen and
+   the website's Dashboard (strava.html). Colours and shapes come from the
+   --ins-* tokens below: website values here, the app's set in css/app.css
+   (on .app-page, so the tooltip appended to <body> picks them up too).
+   Text stays in text tokens; marks carry the colour. */
+:root {
+    --ins-surface: var(--surface, #161a18);
+    --ins-surface-2: var(--surface-2, rgba(255, 255, 255, 0.06));
+    --ins-border: var(--border, rgba(255, 255, 255, 0.09));
+    --ins-accent: var(--primary-color, #4CAF50);
+    --ins-accent-strong: #66c56a;
+    --ins-accent-border: var(--accent-border, rgba(76, 175, 80, 0.45));
+    --ins-accent-soft: var(--accent-soft, rgba(76, 175, 80, 0.15));
+    --ins-accent-fill: rgba(76, 175, 80, 0.5);
+    --ins-text: var(--text, #eef2ef);
+    --ins-text-dim: var(--text-dim, rgba(238, 242, 239, 0.72));
+    --ins-radius: var(--radius, 14px);
+    --ins-radius-sm: var(--radius-sm, 10px);
+}
+
+/* Chart ink: text stays in text tokens; marks carry the colour. */
+.ins-root .ins-root:empty { display: none; }
+
+.ins-root .ins-card {
+    margin: 12px 12px 0;
+    padding: 14px 14px 16px;
+    background: var(--ins-surface);
+    border: 1px solid var(--ins-border);
+    border-radius: var(--ins-radius);
+}
+
+.ins-root .ins-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.ins-root .ins-card-head h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.ins-root .ins-card-sub {
+    color: var(--ins-text-dim);
+    font-size: 0.75rem;
+    text-align: right;
+}
+
+.ins-root .ins-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.ins-root .ins-tiles-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 14px; }
+
+.ins-root .ins-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 10px 12px;
+    background: var(--ins-surface-2);
+    border: 1px solid var(--ins-border);
+    border-radius: var(--ins-radius-sm);
+}
+
+.ins-root .ins-tile.is-active {
+    border-color: var(--ins-accent-border);
+    background: var(--ins-accent-soft);
+}
+
+.ins-root .ins-tile-label {
+    color: var(--ins-text-dim);
+    font-size: 0.72rem;
+    font-weight: 550;
+}
+
+.ins-root .ins-tile-value {
+    color: var(--ins-text);
+    font-size: 1.45rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+.ins-root .ins-tile-value small {
+    color: var(--ins-text-dim);
+    font-size: 0.75rem;
+    font-weight: 550;
+    letter-spacing: 0;
+}
+
+.ins-root .ins-tile-foot {
+    color: var(--ins-text-dim);
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+
+.ins-root .ins-tile-hero .ins-tile-value { font-size: 2.2rem; color: var(--ins-accent); }
+
+.ins-root .ins-delta { font-weight: 650; }
+.ins-root .ins-delta.up { color: #0ca30c; }
+.ins-root .ins-delta.down { color: #e66767; }
+.ins-root .ins-delta-ref { color: var(--ins-text-dim); }
+
+.ins-root .ins-note {
+    margin: 10px 0 0;
+    color: var(--ins-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.ins-root .ins-note strong { color: var(--ins-text); }
+
+/* SVG charts scale to the card width */
+.ins-root .ins-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    touch-action: pan-y;
+}
+
+.ins-root .ins-grid { stroke: #2c2c2a; stroke-width: 1; }
+.ins-root .ins-axis { fill: #898781; font-size: 9px; font-family: inherit; }
+.ins-root .ins-crosshair { stroke: rgba(238, 242, 239, 0.35); stroke-width: 1; stroke-dasharray: 2 2; pointer-events: none; }
+
+.ins-root .ins-line { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+.ins-root .ins-line-main { stroke-width: 2.5; }
+.ins-root .ins-line-label { fill: var(--ins-text-dim); font-size: 9.5px; }
+
+.ins-root .ins-bar { fill: var(--ins-accent-fill); transition: fill 0.12s; }
+.ins-root .ins-bar-cur { fill: var(--ins-accent); }
+.ins-root .ins-hit.is-hover .ins-bar { fill: var(--ins-accent-strong); }
+.ins-root .ins-bar-label { fill: var(--ins-text); font-size: 9.5px; font-weight: 650; }
+
+
+.ins-root .ins-pills {
+    display: flex;
+    gap: 6px;
+    margin: 0 -14px 12px;
+    padding: 0 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.ins-root .ins-pills::-webkit-scrollbar { display: none; }
+.ins-root .filter-pill.ins-year-pill { flex-shrink: 0; min-height: 30px; padding: 4px 11px; font-size: 0.8rem; }
+
+.ins-root .ins-donut-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 150px) 1fr;
+    align-items: center;
+    gap: 16px;
+}
+
+.ins-root .ins-donut .ins-hit path,
+.ins-root .ins-donut .ins-hit circle { transition: opacity 0.12s; }
+.ins-root .ins-donut:hover .ins-hit:not(.is-hover) path { opacity: 0.55; }
+.ins-root .ins-donut-num { fill: var(--ins-text); font-size: 22px; font-weight: 700; }
+.ins-root .ins-donut-unit { fill: var(--ins-text-dim); font-size: 10px; }
+
+.ins-root .ins-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.ins-root .ins-legend li { display: flex; align-items: center; gap: 8px; }
+.ins-root .ins-legend-name { flex: 1; }
+.ins-root .ins-legend-val { color: var(--ins-text-dim); font-variant-numeric: tabular-nums; }
+
+.ins-root .ins-swatch {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: 3px;
+}
+.ins-root .ins-legend .ins-swatch { margin-right: 0; }
+
+/* Calendar: one green ramp, empty days a faint step above the surface */
+.ins-root .ins-cell, .ins-root .ins-cell-key { fill: #232a26; background: #232a26; }
+.ins-root .ins-cell.l1, .ins-root .ins-cell-key.l1 { fill: #1d5a3a; background: #1d5a3a; }
+.ins-root .ins-cell.l2, .ins-root .ins-cell-key.l2 { fill: #24875a; background: #24875a; }
+.ins-root .ins-cell.l3, .ins-root .ins-cell-key.l3 { fill: #2fb873; background: #2fb873; }
+.ins-root .ins-cell.l4, .ins-root .ins-cell-key.l4 { fill: #6af0a8; background: #6af0a8; }
+.ins-root .ins-cell.is-hover { stroke: var(--ins-text); stroke-width: 1; }
+
+.ins-root .ins-cal-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-top: 8px;
+    color: var(--ins-text-dim);
+    font-size: 0.7rem;
+}
+.ins-root .ins-cal-legend span { margin: 0 4px; }
+.ins-root .ins-cell-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+
+/* Goals */
+.ins-root .ins-goals {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ins-root .ins-goal-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.ins-root .ins-goal-val { color: var(--ins-text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ins-root .ins-goal-val strong { color: var(--ins-text); }
+
+.ins-root .ins-goal-track {
+    height: 8px;
+    overflow: hidden;
+    background: var(--ins-surface-2);
+    border-radius: 999px;
+}
+
+.ins-root .ins-goal-fill {
+    height: 100%;
+    background: var(--ins-accent);
+    border-radius: 999px;
+}
+
+.ins-root .ins-goal.done .ins-goal-val strong::after { content: ' ✓'; color: var(--ins-accent); }
+
+.ins-root .ins-goal-extra {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ins-border);
+    color: var(--ins-text-dim);
+    font-size: 0.8rem;
+}
+.ins-root .ins-goal-extra strong { color: var(--ins-text); }
+
+/* Floating tooltip (appended to body) */
+.ins-tooltip {
+    position: fixed;
+    z-index: 3000;
+    max-width: 260px;
+    padding: 7px 10px;
+    background: #222925;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    color: var(--ins-text);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    pointer-events: none;
+}
+.ins-tooltip[hidden] { display: none; }
+.ins-tooltip-head { margin-bottom: 2px; color: var(--ins-text-dim); font-size: 0.72rem; }
+
+/* ── Website layout (strava.html) ────────────────────────────────────────── */
+/* The app stacks cards one per row; the website lines them up with its other
+   sections and, from tablet width, in two columns. */
+body:not(.app-page) .ins-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    width: 90%;
+    max-width: 1600px;
+    margin: 40px auto;
+    text-align: left;
+}
+
+@media (min-width: 900px) {
+    body:not(.app-page) .ins-root { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Goals is the odd card out: give it the full row, its bars in two columns. */
+    body:not(.app-page) .ins-root #ins-goals { grid-column: 1 / -1; }
+    body:not(.app-page) .ins-root .ins-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 40px; }
+}
+
+body:not(.app-page) .ins-root #ins-goals > .ins-card { height: 100%; box-sizing: border-box; }
+
+body:not(.app-page) .ins-root .ins-card {
+    margin: 0;
+    padding: 20px 22px 22px;
+    box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, 0.35));
+}
+
+body:not(.app-page) .ins-root .ins-card-head h2 { font-size: 1.15rem; }
+
+/* Charts are drawn ~340 units wide; past ~600px their text gets too big. */
+body:not(.app-page) .ins-root .ins-svg:not(.ins-calendar) { max-width: 600px; margin: 0 auto; }
+
+@media (max-width: 600px) {
+    body:not(.app-page) .ins-root { width: auto; margin: 20px 12px; gap: 12px; }
+    body:not(.app-page) .ins-root .ins-card { padding: 14px 14px 16px; }
+}

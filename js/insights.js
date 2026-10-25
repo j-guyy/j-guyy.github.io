@@ -178,7 +178,7 @@ function insCompareCard(list, today) {
 function insPaceCard(list, today) {
     const m = insMetric();
     const years = [today.year, today.year - 1, today.year - 2];
-    const colors = ['var(--app-accent, #3ddc84)', '#3987e5', '#898781'];
+    const colors = ['var(--ins-accent, #3ddc84)', '#3987e5', '#898781'];
     const todayIdx = insDayOfYear(today.iso);
     // cumulative total per day of year (0..365)
     const series = years.map(y => {
@@ -230,7 +230,7 @@ function insPaceCard(list, today) {
     });
     // today marker
     const s0 = series[0];
-    const dot = s0.length ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" fill="${colors[0]}" stroke="var(--app-surface, #131715)" stroke-width="2"/>` : '';
+    const dot = s0.length ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" fill="${colors[0]}" stroke="var(--ins-surface, #131715)" stroke-width="2"/>` : '';
 
     const cur = s0[s0.length - 1] || 0;
     const prevSame = series[1][Math.min(todayIdx, series[1].length - 1)] || 0;
