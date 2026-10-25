@@ -2,6 +2,10 @@ let metros, highPoints, nationalParks, visitedStates, capitals;
 // County Hunter's visited county FIPS codes (strava.html); null until loaded
 // or if the worker can't be reached, which leaves the Counties column blank.
 let visitedCountyFips = null;
+// Ecoregion Hunter's regions (TravelAPI.fetchEcoregions); null until loaded or
+// if the worker can't be reached, which leaves the Ecoregions table empty.
+let ecoregionData = null;
+const ecoExpanded = new Set(); // Ecoregions rows opened to list their Level IVs
 let editMode = false;
 let refreshOwnerUI = () => {};
 
@@ -10,10 +14,15 @@ const sortState = {
     highpoints: { col: 'elevation', dir: 'desc' },
     capitals:   { col: 'stateName', dir: 'asc'  },
     metros:     { col: 'rank',      dir: 'asc'  },
-    parks:      { col: 'name',      dir: 'asc'  }
+    parks:      { col: 'name',      dir: 'asc'  },
+    ecoregions: { col: 'progress',  dir: 'desc' }
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    // ?table=ecoregions (the app's Ecoregions card) opens on that table.
+    const selector = document.getElementById('table-selector');
+    const wanted = new URLSearchParams(location.search).get('table');
+    if (wanted && [...selector.options].some(o => o.value === wanted)) selector.value = wanted;
     const dataReady = Promise.all([
         TravelAPI.fetchMetros(),
         TravelAPI.fetchHighPoints(),
@@ -43,6 +52,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (currentTable() === 'states' || currentTable() === 'capitals') updateTable(currentTable());
         })
         .catch(err => console.warn('County data unavailable:', err));
+    Promise.all([dataReady, TravelAPI.fetchEcoregions()])
+        .then(([, eco]) => {
+            ecoregionData = eco;
+            displayTravelSummary();
+            if (currentTable() === 'ecoregions') updateTable('ecoregions');
+        })
+        .catch(err => {
+            console.warn('Ecoregion data unavailable:', err);
+            if (currentTable() === 'ecoregions') updateTable('ecoregions');
+        });
     setupUSViewSwitch(dataReady);
 });
 
@@ -182,6 +201,53 @@ function stravaHint(capital) {
     return !capital.visited && Boolean(visitedCountyFips) && visitedCountyFips.includes(capital.fips);
 }
 
+// ── Ecoregions table ────────────────────────────────────────────────────────
+// One row per EPA Level III ecoregion (105: 85 in the lower 48, 20 in Alaska),
+// from Ecoregion Hunter on strava.html: a region is seen once any Strava
+// activity reaches one of its Level IVs. Alaska has no Level IV data, so each
+// Alaska region is its own single Level IV (same code). Read-only here.
+function buildEcoregionRows() {
+    if (!ecoregionData) return [];
+    const { codes, discoveries, names } = ecoregionData;
+    const seen = new Set(codes);
+    const rows = {};
+    Object.entries(names.l3).forEach(([code, [name, biome]]) => {
+        rows[code] = { code, name, biome, alaska: false, l4s: [], seenCount: 0, total: 0, firstSeen: '', firstActivity: '' };
+    });
+    Object.entries(names.l4).forEach(([code, [name, l3]]) => {
+        const r = rows[l3];
+        if (!r) return;
+        if (code === l3) r.alaska = true;
+        const visited = seen.has(code);
+        r.total++;
+        r.l4s.push({ code, name, visited });
+        if (!visited) return;
+        r.seenCount++;
+        const d = discoveries[code];
+        if (d && d.date && (!r.firstSeen || d.date < r.firstSeen)) {
+            r.firstSeen = d.date;
+            r.firstActivity = d.actName || '';
+        }
+    });
+    return Object.values(rows).map(r => {
+        r.l4s.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+        r.visited = r.seenCount > 0;
+        r.progress = r.total ? Math.round((r.seenCount / r.total) * 100) : 0;
+        return r;
+    });
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// "Aug 9, 2026" from "2026-08-09".
+function shortDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function setupUSViewSwitch(dataReady) {
     setupViewSwitch({
         titles: { tables: 'US Travel — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
@@ -255,6 +321,16 @@ function setupCsvExport() {
                 item.rank, item.metro_name, item.state, item.population, item.visited ? 'Visited' : 'Not Visited'
             ]);
             filename = 'metros.csv';
+        } else if (tableType === 'ecoregions') {
+            headers = ['Level III Code', 'Ecoregion', 'Biome', 'Level IV Seen', 'Level IV Total', 'Progress (%)',
+                'Level IV Remaining', 'First Seen', 'First Activity', 'Status'];
+            const sorted = sortTableData(buildEcoregionRows(), col, dir, tableType);
+            rows = sorted.map(r => [
+                r.code, r.name + (r.alaska ? ' (Alaska)' : ''), r.biome, r.seenCount, r.total, r.progress,
+                r.l4s.filter(l => !l.visited).map(l => `${l.code} ${l.name}`).join('; '),
+                r.firstSeen, r.firstActivity, r.visited ? 'Seen' : 'Not Seen'
+            ]);
+            filename = 'ecoregions.csv';
         } else if (tableType === 'parks') {
             headers = ['National Park', 'State', 'Status'];
             const sorted = sortTableData(nationalParks, col, dir, tableType);
@@ -336,6 +412,16 @@ function displayTravelSummary() {
     const parkPercentage = ((parkCount / nationalParks.length) * 100).toFixed(0);
     const capitalCount = capitals.filter(c => c.visited).length;
     const capitalPercentage = ((capitalCount / 50) * 100).toFixed(0);
+    // Ecoregions arrive after the rest; dashes until then.
+    const ecoRows = buildEcoregionRows();
+    const ecoStat = (done, total) => (ecoregionData ? `
+                        <span class="stat-number">${done}</span>
+                        <span class="stat-total">/${total}</span>
+                        <span class="stat-percentage">(${total ? Math.round((done / total) * 100) : 0}%)</span>`
+        : '<span class="stat-number">—</span>');
+    const l3Seen = ecoRows.filter(r => r.visited).length;
+    const l4Seen = ecoRows.reduce((sum, r) => sum + r.seenCount, 0);
+    const l4Total = ecoRows.reduce((sum, r) => sum + r.total, 0);
 
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
@@ -347,7 +433,7 @@ function displayTravelSummary() {
                 </div>
                 <span class="stat-label">States Visited</span>
             </div>
-            <div class="other-stats other-stats-quad">
+            <div class="other-stats">
                 <div class="summary-stat">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>
@@ -380,9 +466,29 @@ function displayTravelSummary() {
                     </div>
                     <span class="stat-label">National Parks Visited</span>
                 </div>
+                <a class="summary-stat summary-stat-link" href="?table=ecoregions" data-table="ecoregions" title="Show the Ecoregions table">
+                    <div class="stat-number-container">${ecoStat(l3Seen, ecoRows.length)}</div>
+                    <span class="stat-label">Ecoregions Seen</span>
+                </a>
+                <a class="summary-stat summary-stat-link" href="?table=ecoregions" data-table="ecoregions" title="Show the Ecoregions table">
+                    <div class="stat-number-container">${ecoStat(l4Seen, l4Total)}</div>
+                    <span class="stat-label">Level IV Ecoregions</span>
+                </a>
             </div>
         </div>
     `;
+
+    // The ecoregion cards open their table in place (Tables view).
+    summaryContainer.querySelectorAll('[data-table]').forEach(card => {
+        card.addEventListener('click', e => {
+            e.preventDefault();
+            tableSelector.value = card.dataset.table;
+            updateTable(card.dataset.table);
+            const tables = document.querySelector('.view-switch-option[data-view="tables"]');
+            if (tables && document.getElementById('tables-view').hidden) tables.click();
+            document.getElementById('tables-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
 
     // Set up event listener for table selector (only once)
     if (!tableSelector.dataset.bound) {
@@ -461,6 +567,16 @@ function updateTable(tableType) {
         sortKeys     = ['name', 'state', 'visited'];
         colClasses   = ['col-name', '', 'col-status'];
         rawData      = nationalParks;
+    } else if (tableType === 'ecoregions') {
+        tableHeaders = ['Ecoregion', 'Progress', ['Level IV', 'L4'], 'Biome', 'First Seen', ['Status', '✓']];
+        sortKeys     = ['name', 'progress', 'seenCount', 'biome', 'firstSeen', 'visited'];
+        colClasses   = ['col-name', 'col-progress', 'col-num', 'col-detail', 'col-detail', 'col-status'];
+        headerTitles = [null, 'Share of its Level IV ecoregions reached by Strava activities', 'Level IV ecoregions seen / total'];
+        rawData      = buildEcoregionRows();
+        if (!ecoregionData) {
+            tableContainer.innerHTML = '<p class="table-note">Loading ecoregions from Strava…</p>';
+            return;
+        }
     }
 
     const { col, dir } = sortState[tableType];
@@ -498,7 +614,7 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'visited' || key === 'hpVisited' || key === 'capVisited' || key === 'progress' || key === 'countyPct' ||
+                const defaultDir = (key === 'visited' || key === 'seenCount' || key === 'firstSeen' || key === 'hpVisited' || key === 'capVisited' || key === 'progress' || key === 'countyPct' ||
                     key === 'metrosVisited' || key === 'parksVisited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
@@ -559,6 +675,18 @@ function updateTable(tableType) {
                 <td class="col-num">${item.population}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
+        } else if (tableType === 'ecoregions') {
+            const tag = item.alaska ? ' <span class="eco-tag" title="Alaska: Level III only, no Level IV data">AK</span>' : '';
+            const first = item.firstSeen
+                ? `<span class="eco-date" title="${escapeHtml(item.firstActivity)}">${shortDate(item.firstSeen)}</span>` : '—';
+            row.innerHTML = `
+                <td class="col-name"><span class="eco-code">${item.code}</span> ${escapeHtml(item.name)}${tag}</td>
+                <td class="col-progress">${progressBar(item.progress, `${item.seenCount} of ${item.total} Level IV ecoregions (from Strava)`)}</td>
+                <td class="col-num">${fraction(item.seenCount, item.total, item.l4s.map(l => ({ name: `${l.code} ${l.name}`, visited: l.visited })))}</td>
+                <td class="col-detail">${escapeHtml(item.biome)}</td>
+                <td class="col-detail">${first}</td>
+                <td class="col-status">${statusIcon}</td>
+            `;
         } else if (tableType === 'parks') {
             row.innerHTML = `
                 <td class="col-name">${item.name}</td>
@@ -576,12 +704,32 @@ function updateTable(tableType) {
             if (item.capital) {
                 row.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleToggle('capitals', item.capital));
             }
+        } else if (tableType === 'ecoregions') {
+            // Tap a region to list its Level IVs, seen and still to go (the
+            // count's tooltip does the same with a mouse).
+            row.classList.add('eco-row');
+            row.title = 'Show its Level IV ecoregions';
+            row.addEventListener('click', () => {
+                if (ecoExpanded.has(item.code)) ecoExpanded.delete(item.code);
+                else ecoExpanded.add(item.code);
+                updateTable('ecoregions');
+            });
         } else if (editMode) {
+            // Ecoregions come from Strava, so they have nothing to toggle.
             const statusCell = row.querySelector('.status-toggle');
             statusCell.addEventListener('click', () => handleToggle(tableType, item));
         }
 
         tbody.appendChild(row);
+
+        if (tableType === 'ecoregions' && ecoExpanded.has(item.code)) {
+            const detail = document.createElement('tr');
+            detail.className = 'eco-detail-row';
+            const chips = item.l4s.map(l =>
+                `<span class="eco-chip${l.visited ? ' seen' : ''}">${l.visited ? '✅' : '⬜'} ${l.code} ${escapeHtml(l.name)}</span>`).join('');
+            detail.innerHTML = `<td colspan="${tableHeaders.length}"><div class="eco-chips">${chips}</div></td>`;
+            tbody.appendChild(detail);
+        }
     });
 
     table.appendChild(tbody);
@@ -590,6 +738,10 @@ function updateTable(tableType) {
     wrapper.className = 'table-scroll-wrapper';
     wrapper.appendChild(table);
     tableContainer.appendChild(wrapper);
+    if (tableType === 'ecoregions') {
+        tableContainer.insertAdjacentHTML('beforeend',
+            '<p class="table-note">EPA Level III ecoregions reached by Strava activities (Ecoregion Hunter on the <a href="strava.html#ecoregion">Strava page</a>). Tap a region to list its Level IV ecoregions, seen (✅) and still to go (⬜).</p>');
+    }
 
     // Detect horizontal overflow and show/hide scroll hint
     function checkScroll() {

@@ -177,6 +177,10 @@ function pollHomeStats() {
         if (!summary) return;
         ['tile', 'county', 'city', 'metro', 'park', 'ecoregion', 'mountain', 'pass', 'trail']
             .forEach(key => setStat(`stat-${key}`, hunterStatText(key, summary)));
+        // Travel's Ecoregions card (US Travel's Ecoregions table): Level III regions seen.
+        if (summary.ecoregion?.l3Total) {
+            setTravelStat('ecoregions', `${summary.ecoregion.l3Visited} / ${summary.ecoregion.l3Total} seen`);
+        }
         // The pipeline's own count (above) wins once it lands.
         if (typeof currentTotal === 'undefined' || currentTotal === 0) {
             setStat('stat-dashboard', hunterStatText('dashboard', summary));

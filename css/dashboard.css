@@ -996,3 +996,80 @@ Controls Styling */
     text-decoration: underline dotted;
     text-underline-offset: 3px;
 }
+
+/* ── Ecoregions table (US Travel) ── */
+/* The ecoregion summary cards open their table. */
+a.summary-stat-link {
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+a.summary-stat-link:hover,
+a.summary-stat-link:focus-visible {
+    background-color: var(--surface-2-hover);
+    border-color: var(--accent-border);
+}
+
+.eco-code {
+    display: inline-block;
+    min-width: 2.2em;
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.eco-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 5px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+    vertical-align: middle;
+}
+
+.travel-table tr.eco-row {
+    cursor: pointer;
+}
+
+.travel-table tr.eco-detail-row td {
+    background: var(--surface-2);
+}
+
+.eco-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0;
+    text-align: left;
+}
+
+.eco-chip {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+}
+
+.eco-chip.seen {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
+.table-note {
+    margin: 12px 4px 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+}
+
+.table-note a {
+    color: var(--primary-color);
+}
+
+.eco-date {
+    white-space: nowrap;
+}
