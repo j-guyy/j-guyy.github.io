@@ -22,6 +22,15 @@
 //     (the pinch zoomed the page); they're followed like a touch pinch.
 //   • L.ZoomFollower keeps a hand-drawn overlay (a canvas or SVG that redraws
 //     on moveend) glued to the map while it zooms.
+//   • Maps settle on tenths of a level (zoomSnap 0.1) unless they ask for
+//     something else, so a pinch stays where the fingers left it. With
+//     Leaflet's default of whole levels, every pinch on a phone ended with the
+//     map jumping to the nearest level.
+//   • When a zoom comes to rest, lines and polygons re-project only what's near
+//     the view, with the projection maths inlined (see projectNearView below).
+//     Leaflet re-projects every point of every path on the map, so a hunter map
+//     with a few thousand Strava routes froze for a moment at the end of every
+//     zoom.
 // Touch pinch is Leaflet's own TouchZoom and already follows the fingers.
 
 (function () {
@@ -184,10 +193,113 @@
         });
     }
 
-    L.Map.mergeOptions({ fluidZoom: true });
+    L.Map.mergeOptions({ fluidZoom: true, zoomSnap: 0.1 });
     L.Map.addInitHook(function () {
         if (this.options.fluidZoom) enableFluidZoom(this);
     });
+
+    // ── Paths: project only what's near the view ─────────────────────────────
+    //
+    // At the end of every zoom (zoomend) Leaflet's renderers re-project every
+    // point of every line and polygon on the map, on screen or not — on a hunter
+    // map with every Strava route that was ~130 ms of frozen map each time a
+    // wheel glide or pinch came to rest. Here a path whose bounds lie outside
+    // its renderer's padded view is left unprojected (it has nothing to draw
+    // there anyway) and projected at the first moveend that brings it near, and
+    // the projection itself is Leaflet's Spherical Mercator maths inlined, with
+    // the same rounding, so the pixels are identical.
+    if (L.Polyline) {
+        const proto = L.Polyline.prototype;
+        const leafletProject = proto._project;
+        const leafletUpdate = proto._update;
+        const leafletProjectLatlngs = proto._projectLatlngs;
+        const MERC = L.Projection.SphericalMercator;
+        const EPSG3857 = L.CRS.EPSG3857;
+
+        // The pixel bounds a renderer draws into at the map's current view,
+        // as Renderer._update computes them (its own _bounds lag a zoom behind
+        // at zoomend).
+        function rendererView(map, renderer) {
+            const p = renderer.options.padding || 0;
+            const size = map.getSize();
+            const min = map.containerPointToLayerPoint(size.multiplyBy(-p));
+            return L.bounds(min, min.add(size.multiplyBy(1 + 2 * p)));
+        }
+
+        function nearView(layer) {
+            const map = layer._map, b = layer._bounds, r = layer._renderer;
+            if (!r || !b || !b.isValid()) return true;
+            const view = rendererView(map, r);
+            const pad = (layer.options.weight || 0) + layer._clickTolerance() + 1;
+            const nw = map.latLngToLayerPoint(b.getNorthWest());
+            const se = map.latLngToLayerPoint(b.getSouthEast());
+            return nw.x - pad <= view.max.x && se.x + pad >= view.min.x &&
+                   nw.y - pad <= view.max.y && se.y + pad >= view.min.y;
+        }
+
+        L.Polyline.include({
+            _project() {
+                if (this._map && !nearView(this)) {
+                    // Nothing to draw or hit-test until it comes near the view.
+                    this._rings = [];
+                    this._rawPxBounds = this._pxBounds = null;
+                    this._offView = true;
+                    return;
+                }
+                this._offView = false;
+                leafletProject.call(this);
+            },
+
+            _update() {
+                if (this._offView && this._map && nearView(this)) {
+                    this._offView = false;
+                    leafletProject.call(this);
+                }
+                return leafletUpdate.call(this);
+            },
+
+            // Leaflet's, minus the overhead (latLngToLayerPoint per point
+            // allocates and calls through four layers for each one), and
+            // dropping a point that rounds to the same pixel as the one before
+            // it — zoomed out, most points of a route do. Those are zero-length
+            // segments: Leaflet's simplify step would drop them after clipping
+            // anyway, so what's drawn and hit-tested is the same. A ring keeps
+            // at least two points, so a route that shrinks onto one pixel still
+            // has a segment to clip and draw as a dot (js/map-fixes.js).
+            _projectLatlngs(latlngs, result, projectedBounds) {
+                const map = this._map;
+                if (!(latlngs[0] instanceof L.LatLng) || map.options.crs !== EPSG3857) {
+                    return leafletProjectLatlngs.call(this, latlngs, result, projectedBounds);
+                }
+                const t = EPSG3857.transformation;
+                const scale = EPSG3857.scale(map.getZoom());
+                const origin = map.getPixelOrigin();
+                const d = Math.PI / 180, max = MERC.MAX_LATITUDE, R = MERC.R;
+                const ring = [], last = latlngs.length - 1;
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                let prevX = NaN, prevY = NaN;
+                for (let i = 0; i <= last; i++) {
+                    const ll = latlngs[i];
+                    const lat = Math.max(Math.min(max, ll.lat), -max);
+                    const sin = Math.sin(lat * d);
+                    const x = Math.round(scale * (t._a * (R * ll.lng * d) + t._b)) - origin.x;
+                    const y = Math.round(scale * (t._c * (R * Math.log((1 + sin) / (1 - sin)) / 2) + t._d)) - origin.y;
+                    if (x === prevX && y === prevY && !(i === last && ring.length === 1)) continue;
+                    prevX = x; prevY = y;
+                    ring.push(new L.Point(x, y));
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+                if (ring.length) {
+                    projectedBounds.extend(new L.Point(minX, minY));
+                    projectedBounds.extend(new L.Point(maxX, maxY));
+                }
+                result.push(ring);
+            },
+        });
+    }
 
     // Keeps a hand-drawn overlay element glued to the map while it zooms — a
     // wheel glide, a pinch, or Leaflet's zoom animation — for layers that only
