@@ -97,7 +97,8 @@
     text-align: center;
 }
 
-/* Footprint / fog and Strava route canvases (CanvasOverlay in js/world-map.js). */
+/* Footprint / fog, Strava route and place marker canvases (CanvasOverlay in
+   js/world-map.js). Clicks pass through; marker clicks are hit-tested in JS. */
 .wm-canvas-overlay {
     position: absolute;
     top: 0;
@@ -156,6 +157,12 @@
     }
 }
 
+/* Over a place marker (hit-tested in js/world-map.js). */
+.wm-over-place,
+.wm-over-place .leaflet-interactive {
+    cursor: pointer !important;
+}
+
 /* Footprint / Fog overview (js/world-map.js markersHidden()). */
 .wm-hide-markers .leaflet-marker-pane,
 .wm-hide-markers .leaflet-shadow-pane {
@@ -201,25 +208,3 @@
     outline: none;
 }
 
-/* "Still to visit" bucket list markers */
-.todo-marker {
-    background: none;
-    border: none;
-}
-
-.todo-marker-inner {
-    font-size: 14px;
-    font-weight: 700;
-    color: #FF5252;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
-    transition: transform 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-}
-
-.todo-marker:hover .todo-marker-inner {
-    transform: scale(1.2);
-}

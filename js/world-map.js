@@ -28,14 +28,16 @@ const CONTINENT_KEYS = ['northAmericanCountries', 'southAmericanCountries', 'eur
 const HOME_COUNTRY = 'United States of America';
 
 // Marker categories, in chip order. `symbol`/`color` double as the legend.
+// Markers are drawn on a canvas (PlacesLayer): `size` is the marker's box (and
+// tap target), `fontPx` its glyph, higher `z` draws on top.
 const PLACE_CATEGORIES = [
-    { id: 'cities',     label: 'Cities',              symbol: '●', color: '#2196F3', cls: 'city-marker',       size: 16, z: 0 },
-    { id: 'highpoints', label: 'Country high points', symbol: '▲', color: '#9C27B0', cls: 'high-point-marker', size: 14, z: 1000 },
-    { id: 'mountains',  label: 'Mountains',           symbol: '▲', color: '#FF9800', cls: 'mountain-marker',   size: 14, z: 900 },
-    { id: 'parks',      label: 'Parks & landmarks',   symbol: '◆', color: '#00897B', cls: 'park-marker',       size: 14, z: 800 },
+    { id: 'cities',     label: 'Cities',              symbol: '●', color: '#2196F3', size: 16, fontPx: 14, z: 0 },
+    { id: 'highpoints', label: 'Country high points', symbol: '▲', color: '#9C27B0', size: 14, fontPx: 12, z: 1000 },
+    { id: 'mountains',  label: 'Mountains',           symbol: '▲', color: '#FF9800', size: 14, fontPx: 11, z: 900 },
+    { id: 'parks',      label: 'Parks & landmarks',   symbol: '◆', color: '#00897B', size: 14, fontPx: 12, z: 800 },
     // Bucket list places not yet visited (js/bucket-lists.js). Off until
     // switched on, and never counted as being somewhere (fills, footprint).
-    { id: 'todo',       label: 'Still to visit',      symbol: '○', color: '#FF5252', cls: 'todo-marker',       size: 14, z: -100, defaultOff: true },
+    { id: 'todo',       label: 'Still to visit',      symbol: '○', color: '#FF5252', size: 14, fontPx: 14, weight: 700, shadow: 'rgba(0, 0, 0, 0.8)', z: -100, defaultOff: true },
 ];
 const STRAVA_LAYER = { id: 'strava', label: 'Strava routes', symbol: '〰', color: '#FC4C02' };
 
@@ -309,18 +311,65 @@ function featureBBox(geometry) {
     return { s, n, w, e };
 }
 
-function pointInRing(lng, lat, ring) {
-    let inside = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const [xi, yi] = ring[i], [xj, yj] = ring[j];
-        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
+// Even-odd ray casting over every ring of a geometry at once, but only against the edges that cross the point's latitude: each
+// geometry's edges are bucketed once into horizontal bands (bandIndex), so a
+// test reads one band instead of every vertex of the US or Canada. Locating
+// every Strava route used to spend ~10 s (phone CPU) walking whole outlines.
+const bandIndexes = new WeakMap();
+
+function bandIndex(geometry) {
+    let idx = bandIndexes.get(geometry);
+    if (idx) return idx;
+    const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+    let s = 90, n = -90, vertices = 0;
+    const rings = [];  // flat ring list; ringStart[p] is polygon p's first ring
+    const ringStart = [];
+    polys.forEach(p => {
+        ringStart.push(rings.length);
+        p.forEach(ring => {
+            rings.push(ring);
+            vertices += ring.length;
+            ring.forEach(([, lat]) => { if (lat < s) s = lat; if (lat > n) n = lat; });
+        });
+    });
+    ringStart.push(rings.length);
+    // About eight edges per band; small outlines get a single band.
+    const count = Math.max(1, Math.min(4096, Math.ceil(vertices / 8)));
+    const height = Math.max((n - s) / count, 1e-9);
+    const bands = Array.from({ length: count }, () => []);
+    rings.forEach((ring, r) => {
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            const yi = ring[i][1], yj = ring[j][1];
+            const lo = Math.max(0, Math.floor((Math.min(yi, yj) - s) / height));
+            const hi = Math.min(count - 1, Math.floor((Math.max(yi, yj) - s) / height));
+            for (let b = lo; b <= hi; b++) bands[b].push(r, i, j);
+        }
+    });
+    idx = { s, n, height, count, rings, ringStart, bands, parity: new Uint8Array(rings.length) };
+    bandIndexes.set(geometry, idx);
+    return idx;
 }
 
 function pointInGeometry(lng, lat, geometry) {
-    const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
-    return polys.some(rings => pointInRing(lng, lat, rings[0]) && !rings.slice(1).some(h => pointInRing(lng, lat, h)));
+    const idx = bandIndex(geometry);
+    if (lat < idx.s || lat > idx.n) return false;
+    const band = idx.bands[Math.min(idx.count - 1, Math.floor((lat - idx.s) / idx.height))];
+    const { rings, ringStart, parity } = idx;
+    parity.fill(0);
+    for (let k = 0; k < band.length; k += 3) {
+        const ring = rings[band[k]];
+        const [xi, yi] = ring[band[k + 1]], [xj, yj] = ring[band[k + 2]];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) parity[band[k]] ^= 1;
+    }
+    // Inside a polygon's outer ring and none of its holes.
+    for (let p = 0; p < ringStart.length - 1; p++) {
+        const first = ringStart[p], end = ringStart[p + 1];
+        if (!parity[first]) continue;
+        let inHole = false;
+        for (let r = first + 1; r < end && !inHole; r++) inHole = parity[r] === 1;
+        if (!inHole) return true;
+    }
+    return false;
 }
 
 // A [lng, lat] inside a geometry's largest polygon (by bounding box): the
@@ -419,6 +468,29 @@ function routeCells(points, near = () => false) {
     return [...cells.values()];
 }
 
+// Runs fn over items in slices of about `sliceMs`, yielding to the browser
+// between slices so a long job doesn't freeze the page. Yields with a
+// MessageChannel message rather than setTimeout(0), which background tabs
+// throttle to once a second or slower.
+function wmYield() {
+    return new Promise(resolve => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => resolve();
+        ch.port2.postMessage(null);
+    });
+}
+
+async function inSlices(items, fn, sliceMs = 12) {
+    let start = performance.now();
+    for (let i = 0; i < items.length; i++) {
+        fn(items[i], i);
+        if (performance.now() - start > sliceMs) {
+            await wmYield();
+            start = performance.now();
+        }
+    }
+}
+
 // The distinct features a route's cells fall in.
 function featuresAlong(cells, locate) {
     const hit = new Set();
@@ -436,7 +508,8 @@ function featuresAlong(cells, locate) {
 async function computeRegionProgress({ countries, countriesGeojson, visitedStates, places, encoded }) {
     const locate = makeCountryLocator(countriesGeojson.features);
     const stravaCells = [];
-    (encoded || []).forEach(enc => {
+    // In slices, like the map's loadStrava, so the Tables view stays usable.
+    await inSlices(encoded || [], enc => {
         if (!enc) return;
         const points = decodeWorldPolyline(enc);
         if (points.length) stravaCells.push(routeCells(points, locate.near));
@@ -458,7 +531,7 @@ async function computeRegionProgress({ countries, countriesGeojson, visitedState
     const locateRegion = (lat, lng) => { const f = locateAny(lat, lng); return f && f.properties.wmCountry ? f : null; };
     const been = new Set();
     places.forEach(p => { const f = locateRegion(p.lat, p.lng); if (f) been.add(f); });
-    stravaCells.forEach(cells => featuresAlong(cells, locateRegion).forEach(f => been.add(f)));
+    await inSlices(stravaCells, cells => featuresAlong(cells, locateRegion).forEach(f => been.add(f)));
     const byCountry = {};
     regions.forEach(f => {
         const { wmCountry, aliases, name } = f.properties;
@@ -515,7 +588,8 @@ function getFogTexture(onReady) {
 // functions (Spherical Mercator by hand, as L.CRS.EPSG3857 does — much faster
 // than latLngToLayerPoint for hundreds of thousands of route points).
 const CanvasOverlay = L.Layer.extend({
-    options: { className: '', hiDPI: false },
+    // pad: how far past the view the canvas reaches, in screens on each side.
+    options: { className: '', hiDPI: false, pad: 0.5 },
 
     onAdd(map) {
         this._canvas = L.DomUtil.create('canvas', 'wm-canvas-overlay ' + this.options.className, this.getPane());
@@ -570,17 +644,24 @@ const CanvasOverlay = L.Layer.extend({
         const map = this._map;
         if (!map || !this._canvas) return this;
         const size = map.getSize();
-        const pad = Math.round(Math.max(size.x, size.y) * 0.5);
+        const pad = Math.round(Math.max(size.x, size.y) * (this._padNow ?? this.options.pad));
+        this._pad = pad;
         const w = size.x + pad * 2, h = size.y + pad * 2;
         const topLeft = map.containerPointToLayerPoint([-pad, -pad]);
         const zoom = map.getZoom();
         this._topLeftLatLng = map.layerPointToLatLng(topLeft);
+        this._topLeft = topLeft;
         this._zoom = zoom;
 
         const dpr = this.options.hiDPI ? Math.min(2, window.devicePixelRatio || 1) : 1;
         const canvas = this._canvas;
-        canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
-        canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        // Resizing a canvas reallocates it; skip that when the size holds
+        // (every _draw clears what it draws on).
+        const cw = Math.round(w * dpr), ch = Math.round(h * dpr);
+        if (canvas.width !== cw || canvas.height !== ch) {
+            canvas.width = cw; canvas.height = ch;
+            canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+        }
         L.DomUtil.setPosition(canvas, topLeft);
 
         const worldPx = 256 * Math.pow(2, zoom);
@@ -752,6 +833,129 @@ const RoutesLayer = CanvasOverlay.extend({
     },
 });
 
+// Every place marker on one canvas. As Leaflet DOM markers (~640 of them),
+// each frame of a wheel / pinch zoom moved every marker element, which was
+// most of the map's zoom lag on phones. Here a zoom frame is one cleared
+// canvas and a stamp per marker in view. Markers keep their glyphs, colours
+// and stacking (categories drawn in `z` order); clicks are hit-tested by hand
+// (see createWorldMap), since a canvas over the map would otherwise swallow
+// the clicks meant for the countries underneath.
+const PlacesLayer = CanvasOverlay.extend({
+    // Redrawn while the map moves (below), so it needs only a small margin
+    // past the view: a near screen-sized canvas is far cheaper to clear and
+    // composite on every zoom frame than the other canvases' half screen.
+    options: { pane: 'markerPane', className: 'wm-places-canvas', hiDPI: true, pad: 0.2 },
+
+    // places: [{ lat, lng, cat }]; categories: PLACE_CATEGORIES
+    initialize(places, categories, options) {
+        L.setOptions(this, options);
+        this._cats = categories.slice().sort((a, b) => a.z - b.z);
+        this._byCat = Object.fromEntries(categories.map(c => [c.id, []]));
+        places.forEach(p => this._byCat[p.cat] && this._byCat[p.cat].push(p));
+        this._shown = new Set();
+        this._sprites = {};
+    },
+
+    showCategory(id, on) {
+        this._shown[on ? 'add' : 'delete'](id);
+        return this.redraw();
+    },
+
+    // Redraw on every zoom frame (cheap: a stamp per marker in view), so
+    // markers keep their size while the map zooms, as DOM markers did,
+    // instead of scaling with the canvas; while dragging, only once the drag
+    // has used up half the margin.
+    getEvents() {
+        const events = CanvasOverlay.prototype.getEvents.call(this);
+        delete events.zoom;
+        events.move = this._redrawOnMove;
+        return events;
+    },
+
+    _redrawOnMove() {
+        const map = this._map;
+        if (map._animatingZoom || !this._topLeft) return;
+        if (map.getZoom() !== this._zoom) {
+            // Mid-zoom frames draw just the view (moveend restores the margin).
+            this._padNow = 0;
+            this.redraw();
+            this._padNow = null;
+            return;
+        }
+        const pad = this._pad;
+        // In layer points: a lat/lng corner can lie past the world's edge
+        // (zoomed out), where it clamps and would look like a move.
+        const at = map.layerPointToContainerPoint(this._topLeft);
+        if (Math.abs(at.x + pad) > pad / 2 || Math.abs(at.y + pad) > pad / 2) this.redraw();
+    },
+
+    // A category's glyph, rendered once (with its text shadow) for stamping.
+    _sprite(cat, dpr, font) {
+        const key = `${cat.id}@${dpr}`;
+        if (this._sprites[key]) return this._sprites[key];
+        const pad = 3, size = cat.size + pad * 2;
+        const c = document.createElement('canvas');
+        c.width = c.height = Math.ceil(size * dpr);
+        const ctx = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.font = `${cat.weight || 'normal'} ${cat.fontPx}px ${font}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = cat.color;
+        ctx.shadowColor = cat.shadow || 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 2 * dpr;  // shadowBlur ignores the transform
+        ctx.shadowOffsetX = ctx.shadowOffsetY = cat.shadow ? 0 : dpr;
+        ctx.fillText(cat.symbol, size / 2, size / 2 + 0.5);
+        return (this._sprites[key] = { canvas: c, size });
+    },
+
+    _draw({ canvas, dpr, project, view }) {
+        const { px, py } = project(1);
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Read once: getComputedStyle on every frame forces a style recalc.
+        const font = this._font || (this._font = getComputedStyle(this._map.getContainer()).fontFamily || 'sans-serif');
+        const s = view.getSouth(), n = view.getNorth(), w = view.getWest(), e = view.getEast();
+        this._cats.forEach(cat => {
+            if (!this._shown.has(cat.id)) return;
+            const { canvas: img, size } = this._sprite(cat, dpr, font);
+            this._byCat[cat.id].forEach(({ lat, lng }) => {
+                if (lat < s || lat > n || lng < w || lng > e) return;
+                ctx.drawImage(img, px(lng) - size / 2, py(lat) - size / 2, size, size);
+            });
+        });
+    },
+
+    // The topmost shown place within reach of a container point, or null.
+    placeAt(point) {
+        const map = this._map;
+        if (!map) return null;
+        let best = null, bestD = Infinity;
+        this._cats.forEach(cat => {
+            if (!this._shown.has(cat.id)) return;
+            const reach = cat.size / 2 + 4;
+            this._byCat[cat.id].forEach(p => {
+                const q = map.latLngToContainerPoint([p.lat, p.lng]);
+                const d = Math.hypot(q.x - point.x, q.y - point.y);
+                // Later (higher) categories win ties, as they're drawn on top.
+                if (d <= reach && d <= bestD) { best = p; bestD = d; }
+            });
+        });
+        return best;
+    },
+});
+
+// One of the place categories as a layer of its own, for the layer control and
+// the chips (map.hasLayer, layeradd / layerremove); its markers are drawn by
+// the shared PlacesLayer.
+const PlaceCategoryLayer = L.Layer.extend({
+    initialize(places, id) { this._places = places; this._id = id; },
+    onAdd() { this._places.showCategory(this._id, true); },
+    onRemove() { this._places.showCategory(this._id, false); },
+});
+
 // ── The map ───────────────────────────────────────────────────────────────────
 
 function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, places, todoPlaces = [], drivenSegments }) {
@@ -797,8 +1001,9 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     };
 
     // ── Layers ──
+    const placesLayer = new PlacesLayer(places.concat(todoPlaces), PLACE_CATEGORIES).addTo(map);
     const placeGroups = {};
-    PLACE_CATEGORIES.forEach(cat => { placeGroups[cat.id] = L.layerGroup(); });
+    PLACE_CATEGORIES.forEach(cat => { placeGroups[cat.id] = new PlaceCategoryLayer(placesLayer, cat.id); });
     // Light basemaps get a heavier, more opaque line so the routes stay punchy.
     const stravaStyle = () => ({ weight: state.isDark ? 1.4 : 2, opacity: state.isDark ? 0.75 : 0.9 });
     const stravaLayer = new RoutesLayer(() => state.stravaRoutes, { color: STRAVA_LAYER.color, ...stravaStyle() });
@@ -1071,20 +1276,43 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
     }
 
     // ── Place markers ──
+    // Drawn by placesLayer; its canvas lets pointer events through, and a
+    // click (or tap) near a marker is caught here, before it reaches the
+    // country underneath, and opens the marker's popup.
     const catById = Object.fromEntries(PLACE_CATEGORIES.map(c => [c.id, c]));
-    const icons = Object.fromEntries(PLACE_CATEGORIES.map(c => [c.id, L.divIcon({
-        className: c.cls,
-        html: `<div class="${c.cls}-inner">${c.symbol}</div>`,
-        iconSize: [c.size, c.size],
-        iconAnchor: [c.size / 2, c.size / 2],
-        popupAnchor: [0, -c.size / 2],
-    })]));
     const placeCounts = {};
-    places.concat(todoPlaces).forEach(p => {
-        placeCounts[p.cat] = (placeCounts[p.cat] || 0) + 1;
-        L.marker([p.lat, p.lng], { icon: icons[p.cat], zIndexOffset: catById[p.cat].z, title: p.name })
-            .bindPopup(`<div class="${p.cat === 'cities' || p.cat === 'parks' ? 'city-popup' : 'high-point-popup'}"><h3>${escapeHtml(p.name)}</h3>${p.details.join('')}</div>`)
-            .addTo(placeGroups[p.cat]);
+    places.concat(todoPlaces).forEach(p => { placeCounts[p.cat] = (placeCounts[p.cat] || 0) + 1; });
+    const placePopup = p => `<div class="${p.cat === 'cities' || p.cat === 'parks' ? 'city-popup' : 'high-point-popup'}"><h3>${escapeHtml(p.name)}</h3>${p.details.join('')}</div>`;
+    const mapEl = map.getContainer();
+    const placeUnder = e => {
+        // Not over popups or controls, not after a drag, and not while the
+        // footprint overview hides the markers.
+        if (!e.target.closest('.leaflet-map-pane') || e.target.closest('.leaflet-popup-pane')) return null;
+        if (map.dragging && map.dragging.moved()) return null;
+        if (mapEl.classList.contains('wm-hide-markers')) return null;
+        return placesLayer.placeAt(map.mouseEventToContainerPoint(e));
+    };
+    mapEl.addEventListener('click', e => {
+        const p = placeUnder(e);
+        if (!p) return;
+        e.stopPropagation();
+        L.popup({ offset: [0, 7 - catById[p.cat].size / 2] })
+            .setLatLng([p.lat, p.lng]).setContent(placePopup(p)).openOn(map);
+    }, true);
+    // Hover: a pointer cursor and the place's name, as the DOM markers had.
+    // Skipped while a button is down (a drag), and the DOM is only touched
+    // when the place under the pointer changes.
+    let hoverFrame = null, hovered = null;
+    mapEl.addEventListener('mousemove', e => {
+        if (hoverFrame || e.buttons) return;
+        hoverFrame = requestAnimationFrame(() => {
+            hoverFrame = null;
+            const p = placeUnder(e);
+            if (p === hovered) return;
+            hovered = p;
+            mapEl.classList.toggle('wm-over-place', !!p);
+            if (p) mapEl.title = p.name; else mapEl.removeAttribute('title');
+        });
     });
 
     // ── Strava routes ──
@@ -1098,7 +1326,9 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         renderChips();
         try {
             const encoded = await fetchStravaPolylines();
-            encoded.forEach(enc => {
+            // A few thousand routes take a while to decode and locate, so do
+            // it in slices and let the map pan and zoom in between.
+            await inSlices(encoded, enc => {
                 if (!enc) return;
                 const points = decodeWorldPolyline(enc);
                 if (!points.length) return;
