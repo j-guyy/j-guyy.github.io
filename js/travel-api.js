@@ -5,6 +5,7 @@ const TRAVEL_PATHS = {
     visitedStates: 'visited-states',
     britishIsles: 'british-isles',
     countryHighpoints: 'country-highpoints',
+    worldCapitals: 'world-capitals',
 };
 
 // /data, resolved from this script so pages under /trip-reports/ find it too.
@@ -46,6 +47,25 @@ const TravelAPI = {
             }
         } catch { /* worker unreachable: keep the file's flags */ }
         return file;
+    },
+
+    // World capitals, one per country (World Travel dashboard), the same way:
+    // names and coordinates from data/worldCapitals.json, visited flags from
+    // the stored list once the first edit saves it. `stored` says whether the
+    // worker answered, so a page can refuse to save over a list it never saw.
+    async fetchWorldCapitals() {
+        const file = await fetch(new URL('worldCapitals.json', TRAVEL_DATA_URL)).then(r => r.json());
+        let stored = false;
+        try {
+            const res = await fetch(`${TRAVEL_WORKER_URL}/travel/world-capitals`);
+            const list = res.ok ? await res.json() : null;
+            if (Array.isArray(list)) {
+                stored = true;
+                const done = new Map(list.map(c => [c.country, Boolean(c.visited)]));
+                if (done.size) file.forEach(c => { if (done.has(c.country)) c.visited = done.get(c.country); });
+            }
+        } catch { /* worker unreachable: keep the file's flags */ }
+        return { capitals: file, stored };
     },
 
     async fetchMetros() {

@@ -76,11 +76,13 @@ function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// Fetches the map's own data and builds it. worldData is the dashboard's
-// countries data (shared, so Edit Mode toggles reach the map through refresh()).
-// Resolves to createWorldMap()'s { map, refresh }.
-function initWorldMap(worldData) {
-    return Promise.all([
+// The map's own sources: every place file, the outlines and the US states
+// visited. Fetched once and shared, so the Countries table's Regions bar
+// (js/world-dashboard.js) and the map don't download them twice.
+let worldMapDataPromise = null;
+function loadWorldMapData() {
+    if (worldMapDataPromise) return worldMapDataPromise;
+    worldMapDataPromise = Promise.all([
         fetch('data/worldCities.json').then(response => response.json()),
         TravelAPI.fetchMetros(),
         fetch('data/worldMountains.json').then(response => response.json()),
@@ -104,13 +106,35 @@ function initWorldMap(worldData) {
             .catch(() => fetch('data/visitedStates.json').then(response => response.json()))
             .catch(() => ({}))
     ])
-        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, bucketLists, visitedStates]) =>
-            createWorldMap('world-map', {
-                worldData, countriesGeojson, visitedStates,
-                places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
-                todoPlaces: collectTodoPlaces(bucketLists),
-                drivenSegments: collectDrivenSegments(interstateData, highwaysData),
-            }));
+        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, bucketLists, visitedStates]) => ({
+            countriesGeojson, visitedStates,
+            places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
+            todoPlaces: collectTodoPlaces(bucketLists),
+            drivenSegments: collectDrivenSegments(interstateData, highwaysData),
+        }));
+    worldMapDataPromise.catch(() => { worldMapDataPromise = null; });  // let a later call retry
+    return worldMapDataPromise;
+}
+
+// Every Strava route as an encoded polyline (the worker's /polylines/all),
+// fetched once for the map and the Regions bar.
+let stravaPolylinesPromise = null;
+function fetchStravaPolylines() {
+    if (!stravaPolylinesPromise) {
+        stravaPolylinesPromise = fetch(`${WORLD_MAP_WORKER_URL}/polylines/all`).then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        });
+        stravaPolylinesPromise.catch(() => { stravaPolylinesPromise = null; });
+    }
+    return stravaPolylinesPromise;
+}
+
+// Fetches the map's own data and builds it. worldData is the dashboard's
+// countries data (shared, so Edit Mode toggles reach the map through refresh()).
+// Resolves to createWorldMap()'s { map, refresh }.
+function initWorldMap(worldData) {
+    return loadWorldMapData().then(data => createWorldMap('world-map', { worldData, ...data }));
 }
 
 // ── Data → places / routes ────────────────────────────────────────────────────
@@ -400,6 +424,51 @@ function featuresAlong(cells, locate) {
     const hit = new Set();
     cells.forEach(([lat, lng]) => { const f = locate(lat, lng); if (f) hit.add(f); });
     return hit;
+}
+
+// ── Regions reached, per country ──────────────────────────────────────────────
+// The Countries table's Regions bar (js/world-dashboard.js): for each country
+// with a data/admin1/ file, how many of its regions I've been to, by the
+// Subregions view's rule (a place or a Strava route in it, or for US states
+// the US dashboard marking it visited). `countries` names whose files to load.
+// Also returns the ~1 km cells every route passes through (stravaCells), for
+// the capitals' "check Strava" hints.
+async function computeRegionProgress({ countries, countriesGeojson, visitedStates, places, encoded }) {
+    const locate = makeCountryLocator(countriesGeojson.features);
+    const stravaCells = [];
+    (encoded || []).forEach(enc => {
+        if (!enc) return;
+        const points = decodeWorldPolyline(enc);
+        if (points.length) stravaCells.push(routeCells(points, locate.near));
+    });
+    const wanted = Object.entries(ADMIN1_FILES).filter(([name]) => countries.includes(name));
+    const loaded = (await Promise.all(wanted.map(([name, file]) => fetch(`data/admin1/${file}.geojson`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(geojson => ({ name, geojson }))
+        .catch(err => { console.warn(`Regions for ${name} unavailable:`, err); return null; })))).filter(Boolean);
+    const regions = [];
+    loaded.forEach(({ name, geojson }) => geojson.features.forEach(f => {
+        f.properties.wmCountry = name;
+        regions.push(f);
+    }));
+    // As on the map: other countries' outlines go in after the regions, so a
+    // point in San Marino or the Vatican stops there.
+    const loadedNames = new Set(loaded.map(l => l.name));
+    const locateAny = makeCountryLocator(regions.concat(countriesGeojson.features.filter(f => !loadedNames.has(f.properties.name))));
+    const locateRegion = (lat, lng) => { const f = locateAny(lat, lng); return f && f.properties.wmCountry ? f : null; };
+    const been = new Set();
+    places.forEach(p => { const f = locateRegion(p.lat, p.lng); if (f) been.add(f); });
+    stravaCells.forEach(cells => featuresAlong(cells, locateRegion).forEach(f => been.add(f)));
+    const byCountry = {};
+    regions.forEach(f => {
+        const { wmCountry, aliases, name } = f.properties;
+        const c = byCountry[wmCountry] || (byCountry[wmCountry] = { done: 0, total: 0, visited: [], missing: [] });
+        c.total++;
+        const reached = been.has(f) || (wmCountry === HOME_COUNTRY && (aliases || [name]).some(a => visitedStates[a] === true));
+        if (reached) c.done++;
+        (reached ? c.visited : c.missing).push(name);
+    });
+    return { byCountry, stravaCells };
 }
 
 // ── Footprint / fog canvas layer ──────────────────────────────────────────────
@@ -1028,9 +1097,7 @@ function createWorldMap(mapId, { worldData, countriesGeojson, visitedStates, pla
         stravaStatus = 'loading';
         renderChips();
         try {
-            const res = await fetch(`${WORLD_MAP_WORKER_URL}/polylines/all`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const encoded = await res.json();
+            const encoded = await fetchStravaPolylines();
             encoded.forEach(enc => {
                 if (!enc) return;
                 const points = decodeWorldPolyline(enc);
