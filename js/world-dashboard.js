@@ -268,7 +268,7 @@ function buildCountryRows(tableType) {
     const rowFor = name => rows.get(countryKey(name));
     if (worldCapitals) worldCapitals.capitals.forEach(c => {
         const r = rowFor(c.country);
-        if (r) { r.capital = c; r.capVisited = Boolean(c.visited); }
+        if (r) { r.capital = c; r.capVisited = capitalDone(c); }
     });
     if (countryHighpoints) countryHighpoints.data.forEach(p => {
         const r = rowFor(p.country);
@@ -394,7 +394,7 @@ function setupCsvExport() {
         }
         if (type === 'capitals') {
             if (!worldCapitals) return;
-            const rows = sortTableData(worldCapitals.capitals, col, dir);
+            const rows = sortTableData(worldCapitals.capitals.map(c => ({ ...c, visited: capitalDone(c) })), col, dir);
             downloadCsv(['Capital', 'Country', 'Status', 'Strava Passes Nearby'], rows.map(c => [
                 c.name, c.country, c.visited ? 'Visited' : 'Not Visited', capitalHint(c) ? 'Yes' : '',
             ]), 'world-capitals.csv');
@@ -498,8 +498,19 @@ function handleHighpointToggle(peak) {
     if (saved) saved.then(() => { list.source = 'cloudflare'; delete list.reason; }).catch(() => {});
 }
 
+// City-states are their own capital, so their capital follows the country's
+// visited flag (and has nothing of its own to toggle).
+const CITY_STATES = new Set(['Vatican City', 'Monaco', 'Singapore', 'San Marino']);
+const isCityState = capital => CITY_STATES.has(capital.country);
+
+function capitalDone(capital) {
+    if (!isCityState(capital)) return Boolean(capital.visited);
+    const country = worldData && allCountries().find(c => c.name === capital.country);
+    return Boolean(country && country.visited);
+}
+
 function capitalHint(capital) {
-    return !capital.visited && Boolean(regionProgress) && regionProgress.capitalHints.has(capital.country);
+    return !capitalDone(capital) && Boolean(regionProgress) && regionProgress.capitalHints.has(capital.country);
 }
 
 // Done / total parts across a set of countries, as a whole-number percent.
@@ -517,7 +528,7 @@ function displayWorldTravelSummary() {
     const totalVisited = all.filter(c => c.visited).length;
     const allRows = buildCountryRows('world');
     const capitals = worldCapitals ? worldCapitals.capitals : null;
-    const capitalsDone = capitals ? capitals.filter(c => c.visited).length : 0;
+    const capitalsDone = capitals ? capitals.filter(capitalDone).length : 0;
     const pct = (n, d) => (d ? ((n / d) * 100).toFixed(0) : 0);
 
     // Each card: countries visited, and a thin bar of the continent's Core
@@ -745,13 +756,13 @@ function updateTable(tableType) {
             <td class="col-num col-detail">${fraction(r.citiesVisited, r.citiesTotal, r.cities)}</td>
             <td class="col-num col-detail">${fraction(r.wondersVisited, r.wondersTotal, r.wonders)}</td>
             <td class="col-status">${hps}</td>
-            <td class="col-status${toggleCls(Boolean(cap))}" data-toggle="cap" title="${escapeAttr(cap ? cap.name : '')}">${cap ? (r.capVisited ? '✅' : '⬜') : '—'}</td>
+            <td class="col-status${toggleCls(Boolean(cap) && !isCityState(cap))}" data-toggle="cap" title="${escapeAttr(cap ? cap.name + (isCityState(cap) ? ' (a city-state: follows the country)' : '') : '')}">${cap ? (r.capVisited ? '✅' : '⬜') : '—'}</td>
             <td class="col-status${toggleCls(true)}" data-toggle="country">${r.visited ? '✅' : '⬜'}</td>
         `;
         if (editMode) {
             // The country, its capital and its high point(s) all toggle from the row.
             tr.querySelector('[data-toggle="country"]').addEventListener('click', () => handleToggle(r.country));
-            if (cap) tr.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleCapitalToggle(cap));
+            if (cap && !isCityState(cap)) tr.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleCapitalToggle(cap));
             tr.querySelectorAll('[data-hp]').forEach(el => el.addEventListener('click', () => handleHighpointToggle(r.highpoints[+el.dataset.hp])));
         }
         tbody.appendChild(tr);
@@ -777,18 +788,20 @@ function updateCapitalsTable(tableContainer) {
     ]);
     const { col, dir } = sortState.capitals;
     const tbody = document.createElement('tbody');
-    sortTableData(worldCapitals.capitals, col, dir).forEach(c => {
+    const rows = worldCapitals.capitals.map(capital => ({ ...capital, capital, visited: capitalDone(capital) }));
+    sortTableData(rows, col, dir).forEach(c => {
         const tr = document.createElement('tr');
         tr.className = c.visited ? 'visited' : 'not-visited';
+        const cityState = isCityState(c);
         const hint = capitalHint(c)
             ? ` <span class="strava-hint" title="A Strava route passes near ${escapeAttr(c.name)}: check whether you were there">check Strava</span>`
             : '';
         tr.innerHTML = `
             <td class="col-name">${escapeAttr(c.name)}${hint}</td>
             <td>${withCountryFlag(c.country)}</td>
-            <td class="col-status${editMode ? ' status-toggle' : ''}">${c.visited ? '✅' : '⬜'}</td>
+            <td class="col-status${editMode && !cityState ? ' status-toggle' : ''}"${cityState ? ' title="A city-state: follows the country"' : ''}>${c.visited ? '✅' : '⬜'}</td>
         `;
-        if (editMode) tr.querySelector('.col-status').addEventListener('click', () => handleCapitalToggle(c));
+        if (editMode && !cityState) tr.querySelector('.col-status').addEventListener('click', () => handleCapitalToggle(c.capital));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
