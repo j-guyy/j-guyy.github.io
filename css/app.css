@@ -1127,6 +1127,113 @@
     .app-tab:active svg { transform: none; }
 }
 
+/* ── Home "Sync now" button (js/app.js renderHomeSync) ───────────────────── */
+/* .app-page prefix: base.css styles every button (and button:hover) green. */
+.home-sync {
+    padding: 16px 16px 0;
+}
+
+.app-page .home-sync-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 72px;
+    padding: 14px 18px;
+    border: 1px solid var(--app-accent-border);
+    border-radius: var(--app-radius);
+    background: var(--app-accent-soft);
+    color: var(--app-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-page .home-sync-btn:active:not(:disabled) {
+    transform: scale(0.98);
+    background: rgba(61, 220, 132, 0.22);
+}
+
+.app-page .home-sync-btn:disabled { cursor: default; }
+
+.home-sync-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--app-accent);
+    color: var(--app-bg);
+}
+
+.home-sync-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.home-sync-text strong {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.home-sync-text small {
+    font-size: 0.8rem;
+    color: var(--app-text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-page .home-sync-btn[data-state="syncing"] .home-sync-icon svg {
+    animation: home-sync-spin 1s linear infinite;
+}
+
+.app-page .home-sync-btn[data-state="done"] .home-sync-text strong { color: var(--app-accent); }
+
+.app-page .home-sync-btn[data-state="locked"] {
+    background: var(--app-surface);
+    border-color: var(--app-border);
+}
+
+.app-page .home-sync-btn[data-state="locked"] .home-sync-icon {
+    background: var(--app-surface-2);
+    color: var(--app-text-dim);
+}
+
+.app-page .home-sync-btn[data-state="error"] {
+    background: rgba(255, 99, 99, 0.1);
+    border-color: rgba(255, 99, 99, 0.4);
+}
+
+.app-page .home-sync-btn[data-state="error"] .home-sync-icon { background: #ff6b6b; }
+
+.home-sync-bar {
+    height: 6px;
+    margin-top: 10px;
+    border-radius: 3px;
+    background: var(--app-surface-2);
+    overflow: hidden;
+}
+
+.home-sync-fill {
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--app-accent);
+    transition: width 0.4s ease;
+}
+
+@keyframes home-sync-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .app-page .home-sync-btn[data-state="syncing"] .home-sync-icon svg { animation: none; }
+}
+
 /* ── Dashboard insights (js/insights.js) ─────────────────────────────────── */
 /* Chart ink: text stays in text tokens; marks carry the colour. */
 .app-page .ins-root:empty { display: none; }

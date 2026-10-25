@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="stylesheet" href="/css/strava.css">
     <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261025">
+    <link rel="stylesheet" href="/css/app.css?v=20261025ins">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" rel="stylesheet" />
 </head>
@@ -38,6 +38,22 @@
                 <p id="home-status">Loading activities…</p>
             </header>
 
+            <!-- Big Sync now button: drives strava.js's runManualSync() (the
+                 worker's background sync) and mirrors its progress; js/app.js
+                 renders its states. Logged out it offers the admin login. -->
+            <section class="home-sync" id="home-sync">
+                <button type="button" class="home-sync-btn" id="home-sync-btn">
+                    <span class="home-sync-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-14.3 4.9M4 12a8 8 0 0 1 14.3-4.9M18.5 3v4.2h-4.2M5.5 21v-4.2h4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="home-sync-text">
+                        <strong id="home-sync-label">Sync now</strong>
+                        <small id="home-sync-meta"></small>
+                    </span>
+                </button>
+                <div class="home-sync-bar" id="home-sync-bar" hidden><div class="home-sync-fill" id="home-sync-fill"></div></div>
+            </section>
+
             <p class="home-section-label">Overview</p>
             <nav class="home-grid">
                 <a class="home-card" href="#dashboard"><span class="home-card-icon">📊</span><span class="home-card-name">Dashboard</span><em id="stat-dashboard">—</em></a>
@@ -50,6 +66,7 @@
                 <a class="home-card" href="/us-dashboard.html?app=1"><span class="home-card-icon">🗽</span><span class="home-card-name">US Travel</span><em data-stat="us-travel"></em></a>
                 <a class="home-card" href="/world-dashboard.html?app=1"><span class="home-card-icon">🌐</span><span class="home-card-name">World Travel</span><em data-stat="world-travel"></em></a>
                 <a class="home-card" href="/peaks-dashboard.html?app=1"><span class="home-card-icon">🏔️</span><span class="home-card-name">Peaks</span><em data-stat="peaks"></em></a>
+                <a class="home-card" href="/us-dashboard.html?app=1&amp;table=ecoregions"><span class="home-card-icon">🌿</span><span class="home-card-name">Ecoregions</span><em data-stat="ecoregions"></em></a>
                 <a class="home-card" href="/globe.html?app=1"><span class="home-card-icon">🌍</span><span class="home-card-name">Globe</span><em>3D map</em></a>
             </nav>
 
@@ -84,6 +101,7 @@
                 <a class="home-card" href="/us-dashboard.html?app=1"><span class="home-card-icon">🗽</span><span class="home-card-name">US Travel</span><em data-stat="us-travel"></em></a>
                 <a class="home-card" href="/world-dashboard.html?app=1"><span class="home-card-icon">🌐</span><span class="home-card-name">World Travel</span><em data-stat="world-travel"></em></a>
                 <a class="home-card" href="/peaks-dashboard.html?app=1"><span class="home-card-icon">🏔️</span><span class="home-card-name">Peaks</span><em data-stat="peaks"></em></a>
+                <a class="home-card" href="/us-dashboard.html?app=1&amp;table=ecoregions"><span class="home-card-icon">🌿</span><span class="home-card-name">Ecoregions</span><em data-stat="ecoregions"></em></a>
                 <a class="home-card" href="/globe.html?app=1"><span class="home-card-icon">🌍</span><span class="home-card-name">Globe</span><em>3D map</em></a>
             </nav>
         </div>
@@ -414,9 +432,9 @@
     <script src="../js/fluid-zoom.js?v=20261025b"></script>
     <script src="../js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
-    <script src="/js/strava.js?v=20261025c"></script>
+    <script src="/js/strava.js?v=20261025d"></script>
     <script src="/js/insights.js?v=20261025a"></script>
-    <script src="/js/app.js?v=20261023c"></script>
+    <script src="/js/app.js?v=20261025eco4"></script>
 </body>
 
 </html>
