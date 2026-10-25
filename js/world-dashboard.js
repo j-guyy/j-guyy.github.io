@@ -262,57 +262,59 @@ function displayWorldTravelSummary() {
                 <span class="stat-label">Countries Visited</span>
             </div>
             <div class="other-stats">
-                <div class="summary-stat">
+                <button type="button" class="summary-stat bucket-card" data-list="northAmerica" title="Show the North American Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${northAmericaCount}</span>
                         <span class="stat-total">/${worldData.northAmericanCountries.length}</span>
                         <span class="stat-percentage">(${northAmericaPercentage}%)</span>
                     </div>
                     <span class="stat-label">North American Countries</span>
-                </div>
-                <div class="summary-stat">
+                </button>
+                <button type="button" class="summary-stat bucket-card" data-list="southAmerica" title="Show the South American Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${southAmericaCount}</span>
                         <span class="stat-total">/${worldData.southAmericanCountries.length}</span>
                         <span class="stat-percentage">(${southAmericaPercentage}%)</span>
                     </div>
                     <span class="stat-label">South American Countries</span>
-                </div>
-                <div class="summary-stat">
+                </button>
+                <button type="button" class="summary-stat bucket-card" data-list="europe" title="Show the European Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${europeCount}</span>
                         <span class="stat-total">/${worldData.europeanCountries.length}</span>
                         <span class="stat-percentage">(${europePercentage}%)</span>
                     </div>
                     <span class="stat-label">European Countries</span>
-                </div>
-                <div class="summary-stat">
+                </button>
+                <button type="button" class="summary-stat bucket-card" data-list="asia" title="Show the Asian Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${asiaCount}</span>
                         <span class="stat-total">/${worldData.asianCountries.length}</span>
                         <span class="stat-percentage">(${asiaPercentage}%)</span>
                     </div>
                     <span class="stat-label">Asian Countries</span>
-                </div>
-                <div class="summary-stat">
+                </button>
+                <button type="button" class="summary-stat bucket-card" data-list="africa" title="Show the African Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${africaCount}</span>
                         <span class="stat-total">/${worldData.africanCountries.length}</span>
                         <span class="stat-percentage">(${africaPercentage}%)</span>
                     </div>
                     <span class="stat-label">African Countries</span>
-                </div>
-                <div class="summary-stat">
+                </button>
+                <button type="button" class="summary-stat bucket-card" data-list="oceania" title="Show the Oceania Countries table">
                     <div class="stat-number-container">
                         <span class="stat-number">${oceaniaCount}</span>
                         <span class="stat-total">/${worldData.oceaniaCountries.length}</span>
                         <span class="stat-percentage">(${oceaniaPercentage}%)</span>
                     </div>
                     <span class="stat-label">Oceania Countries</span>
-                </div>
+                </button>
             </div>
         </div>
     `;
+
+    bindTableCards(summaryContainer);
 
     if (!tableSelector.dataset.bound) {
         tableSelector.dataset.bound = 'true';
@@ -348,6 +350,19 @@ function sortTableData(data, col, dir) {
     });
 }
 
+// Continent and bucket list cards: a tap picks that table and scrolls to it.
+function bindTableCards(container) {
+    container.querySelectorAll('.bucket-card').forEach(card => card.addEventListener('click', () => {
+        const selector = document.getElementById('table-selector');
+        selector.value = card.dataset.list;
+        if (worldData) updateTable(card.dataset.list);
+        if (document.getElementById('tables-view').hidden) {
+            document.querySelector('.view-switch-option[data-view="tables"]').click();
+        }
+        document.getElementById('tables-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+}
+
 // Bucket list progress cards, under the continents.
 function displayBucketSummary() {
     const container = document.getElementById('bucket-summary');
@@ -372,15 +387,7 @@ function displayBucketSummary() {
         <div class="summary-stats-container">
             <div class="other-stats other-stats-quad">${cards}</div>
         </div>`;
-    container.querySelectorAll('.bucket-card').forEach(card => card.addEventListener('click', () => {
-        const selector = document.getElementById('table-selector');
-        selector.value = card.dataset.list;
-        if (worldData) updateTable(card.dataset.list);
-        if (document.getElementById('tables-view').hidden) {
-            document.querySelector('.view-switch-option[data-view="tables"]').click();
-        }
-        document.getElementById('tables-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }));
+    bindTableCards(container);
 }
 
 function sortBucketRows(rows, col, dir) {
