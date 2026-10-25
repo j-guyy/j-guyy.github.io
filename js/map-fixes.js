@@ -26,9 +26,42 @@
 //     ones that didn't (the ecoregion maps) and is harmless alongside the rest.
 //   • Popups auto-pan clear of the top-left zoom bar instead of opening
 //     underneath it.
+//   • Canvas-drawn lines that shrink to a single pixel still show, as a dot.
+//     Leaflet rounds every projected point to a whole pixel, so zoomed out a
+//     short route collapses onto one point and becomes a zero-length line,
+//     which Chrome's canvas never paints (SVG draws it as a dot). Which routes
+//     collapse depends on where the rounding falls, so on the Activity Map
+//     different short routes popped in and out at every zoom level.
 
 (function () {
     if (!window.L || !L.Map) return;
+
+    // Leaflet 1.9.4's Canvas._updatePoly, except that a part whose points
+    // all sit on one pixel gets a hair-width segment, so its round caps paint
+    // a dot the size of the line's weight.
+    if (L.Canvas) {
+        L.Canvas.include({
+            _updatePoly(layer, closed) {
+                if (!this._drawing) return;
+                const parts = layer._parts, ctx = this._ctx;
+                if (!parts.length) return;
+                ctx.beginPath();
+                for (const part of parts) {
+                    if (!part.length) continue;
+                    const p0 = part[0];
+                    let dot = true;
+                    for (let j = 0; j < part.length; j++) {
+                        const p = part[j];
+                        ctx[j ? 'lineTo' : 'moveTo'](p.x, p.y);
+                        if (dot && (p.x !== p0.x || p.y !== p0.y)) dot = false;
+                    }
+                    if (dot) ctx.lineTo(p0.x + 0.01, p0.y);
+                    if (closed) ctx.closePath();
+                }
+                this._fillStroke(ctx, layer);
+            },
+        });
+    }
 
     const ANCESTOR = 'leaflet-pseudo-fullscreen-ancestor';
     const PAGE_OPEN = 'leaflet-pseudo-fullscreen-open';

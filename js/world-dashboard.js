@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
 const WORLD_MAP_SCRIPTS = [
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
     'js/fluid-zoom.js?v=20261022',
-    'js/map-fixes.js?v=20261022',
+    'js/map-fixes.js?v=20261025',
     'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
     'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
     'js/map-controls.js?v=20261022',
