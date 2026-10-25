@@ -15,6 +15,8 @@ const GLOBE_WORKER_URL = 'https://strava-worker.justinguyette.workers.dev';
 
 // Public browser-side tile key, same one js/strava.js and js/map-controls.js use.
 const GLOBE_CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
+// Cache-buster, same as CARTO_TILES_V in js/map-controls.js / js/strava.js.
+const GLOBE_CARTO_TILES_V = 2;
 
 const GLOBE_COLORS = {
     home: '#FFC107', visited: '#4CAF50', strava: '#FC4C02',
@@ -246,7 +248,7 @@ function buildGlobe({ worldData, countriesGeojson, visitedStates, places, todoPl
     // ── Map ──
     const osm = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const carto = `${osm} &copy; <a href="https://carto.com/attributions">CARTO</a>`;
-    const cartoTiles = style => ['a', 'b', 'c', 'd'].map(s => `https://${s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}@2x.png?key=${GLOBE_CARTO_KEY}`);
+    const cartoTiles = style => ['a', 'b', 'c', 'd'].map(s => `https://${s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}@2x.png?key=${GLOBE_CARTO_KEY}&v=${GLOBE_CARTO_TILES_V}`);
     const statusColor = ['match', ['get', 'status'], 'home', GLOBE_COLORS.home, 'strava', GLOBE_COLORS.strava, GLOBE_COLORS.visited];
     const map = new maplibregl.Map({
         container,
