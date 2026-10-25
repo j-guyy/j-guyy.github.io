@@ -219,18 +219,21 @@ function buildEcoregionRows() {
         if (!r) return;
         if (code === l3) r.alaska = true;
         const visited = seen.has(code);
+        const d = visited ? discoveries[code] : null;
         r.total++;
-        r.l4s.push({ code, name, visited });
+        r.l4s.push({ code, name, visited, firstSeen: (d && d.date) || '', firstActivity: (d && d.actName) || '' });
         if (!visited) return;
         r.seenCount++;
-        const d = discoveries[code];
         if (d && d.date && (!r.firstSeen || d.date < r.firstSeen)) {
             r.firstSeen = d.date;
             r.firstActivity = d.actName || '';
         }
     });
     return Object.values(rows).map(r => {
-        r.l4s.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+        // Seen first, then still to go; each by code (21a, 21b, …).
+        r.l4s.sort((a, b) => (b.visited - a.visited) || a.code.localeCompare(b.code, undefined, { numeric: true }));
+        // Alaska regions are their own single Level IV: nothing to expand.
+        r.expandable = !(r.alaska && r.total === 1);
         r.visited = r.seenCount > 0;
         r.progress = r.total ? Math.round((r.seenCount / r.total) * 100) : 0;
         return r;
@@ -680,7 +683,7 @@ function updateTable(tableType) {
             const first = item.firstSeen
                 ? `<span class="eco-date" title="${escapeHtml(item.firstActivity)}">${shortDate(item.firstSeen)}</span>` : '—';
             row.innerHTML = `
-                <td class="col-name"><span class="eco-code">${item.code}</span> ${escapeHtml(item.name)}${tag}</td>
+                <td class="col-name"><span class="eco-caret">${item.expandable ? (ecoExpanded.has(item.code) ? '▾' : '▸') : ''}</span><span class="eco-code">${item.code}</span> ${escapeHtml(item.name)}${tag}</td>
                 <td class="col-progress">${progressBar(item.progress, `${item.seenCount} of ${item.total} Level IV ecoregions (from Strava)`)}</td>
                 <td class="col-num">${fraction(item.seenCount, item.total, item.l4s.map(l => ({ name: `${l.code} ${l.name}`, visited: l.visited })))}</td>
                 <td class="col-detail">${escapeHtml(item.biome)}</td>
@@ -705,11 +708,12 @@ function updateTable(tableType) {
                 row.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleToggle('capitals', item.capital));
             }
         } else if (tableType === 'ecoregions') {
-            // Tap a region to list its Level IVs, seen and still to go (the
-            // count's tooltip does the same with a mouse).
+            // Tap a region to list its Level IVs as sub-rows, seen and still
+            // to go (the count's tooltip does the same with a mouse).
             row.classList.add('eco-row');
-            row.title = 'Show its Level IV ecoregions';
-            row.addEventListener('click', () => {
+            if (item.expandable) row.classList.add('eco-expandable');
+            if (item.expandable) row.title = ecoExpanded.has(item.code) ? 'Hide its Level IV ecoregions' : 'Show its Level IV ecoregions';
+            if (item.expandable) row.addEventListener('click', () => {
                 if (ecoExpanded.has(item.code)) ecoExpanded.delete(item.code);
                 else ecoExpanded.add(item.code);
                 updateTable('ecoregions');
@@ -722,13 +726,23 @@ function updateTable(tableType) {
 
         tbody.appendChild(row);
 
-        if (tableType === 'ecoregions' && ecoExpanded.has(item.code)) {
-            const detail = document.createElement('tr');
-            detail.className = 'eco-detail-row';
-            const chips = item.l4s.map(l =>
-                `<span class="eco-chip${l.visited ? ' seen' : ''}">${l.visited ? '✅' : '⬜'} ${l.code} ${escapeHtml(l.name)}</span>`).join('');
-            detail.innerHTML = `<td colspan="${tableHeaders.length}"><div class="eco-chips">${chips}</div></td>`;
-            tbody.appendChild(detail);
+        // An open region's Level IVs, one sub-row each under the same columns.
+        if (tableType === 'ecoregions' && item.expandable && ecoExpanded.has(item.code)) {
+            item.l4s.forEach(l => {
+                const sub = document.createElement('tr');
+                sub.className = `eco-sub-row ${l.visited ? 'visited' : 'not-visited'}`;
+                const first = l.firstSeen
+                    ? `<span class="eco-date" title="${escapeHtml(l.firstActivity)}">${shortDate(l.firstSeen)}</span>` : '';
+                sub.innerHTML = `
+                    <td class="col-name"><span class="eco-code">${l.code}</span> ${escapeHtml(l.name)}</td>
+                    <td class="col-progress"></td>
+                    <td class="col-num"></td>
+                    <td class="col-detail"></td>
+                    <td class="col-detail">${first}</td>
+                    <td class="col-status">${l.visited ? '✅' : '⬜'}</td>
+                `;
+                tbody.appendChild(sub);
+            });
         }
     });
 
@@ -740,7 +754,12 @@ function updateTable(tableType) {
     tableContainer.appendChild(wrapper);
     if (tableType === 'ecoregions') {
         tableContainer.insertAdjacentHTML('beforeend',
-            '<p class="table-note">EPA Level III ecoregions reached by Strava activities (Ecoregion Hunter on the <a href="strava.html#ecoregion">Strava page</a>). Tap a region to list its Level IV ecoregions, seen (✅) and still to go (⬜).</p>');
+            `<p class="table-note">EPA Level III ecoregions reached by Strava activities (Ecoregion Hunter on the <a href="strava.html#ecoregion">Strava page</a>). Tap a region to list its Level IV ecoregions, seen (✅) and still to go (⬜). <button type="button" class="eco-expand-all">${ecoExpanded.size ? 'Collapse all' : 'Expand all'}</button></p>`);
+        tableContainer.querySelector('.eco-expand-all').addEventListener('click', () => {
+            if (ecoExpanded.size) ecoExpanded.clear();
+            else buildEcoregionRows().forEach(r => { if (r.expandable) ecoExpanded.add(r.code); });
+            updateTable('ecoregions');
+        });
     }
 
     // Detect horizontal overflow and show/hide scroll hint

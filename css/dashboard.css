@@ -1030,34 +1030,41 @@ a.summary-stat-link:focus-visible {
     vertical-align: middle;
 }
 
-.travel-table tr.eco-row {
+.travel-table tr.eco-expandable {
     cursor: pointer;
 }
 
-.travel-table tr.eco-detail-row td {
-    background: var(--surface-2);
-}
-
-.eco-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 4px 0;
-    text-align: left;
-}
-
-.eco-chip {
-    padding: 2px 8px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+.eco-caret {
+    display: inline-block;
+    width: 1em;
     color: var(--text-dim);
-    font-size: var(--text-xs);
 }
 
-.eco-chip.seen {
-    border-color: var(--accent-border);
+/* A region's Level IVs, indented under it. */
+.travel-table tr.eco-sub-row td {
+    background: var(--surface-2);
+    font-size: var(--text-sm);
+}
+
+.travel-table tr.eco-sub-row td.col-name {
+    padding-left: 2.6em;
+    font-weight: normal;
+}
+
+.travel-table tr.eco-sub-row.not-visited td.col-name {
+    color: var(--text-dim);
+}
+
+.eco-expand-all {
+    margin-left: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--accent-border);
+    border-radius: 999px;
     background: var(--accent-soft);
     color: var(--text);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
 }
 
 .table-note {
