@@ -247,6 +247,11 @@ const COUNTRY_ALIASES = {
 };
 const countryKey = name => COUNTRY_ALIASES[name] || String(name || '').replace(/ \(Mainland\)$/, '');
 
+// A list item's name, with the territory it's in when that isn't the country
+// itself (El Yunque counts for the US, from Puerto Rico).
+const TERRITORIES = new Set(['Puerto Rico', 'Aruba', 'Christmas Island', 'Norfolk Island']);
+const placeLabel = item => (TERRITORIES.has(item.country) ? `${item.name} (${item.country})` : item.name);
+
 const WONDER_LISTS = ['sevenWonders', 'sevenNaturalWonders', 'wonderNominees'];
 
 function buildCountryRows(tableType) {
@@ -257,7 +262,7 @@ function buildCountryRows(tableType) {
     entries.forEach(([continent, country]) => rows.set(country.name, {
         country, continent, name: country.name, population: country.population, visited: Boolean(country.visited),
         capital: null, capVisited: false, highpoints: [], hpDone: 0,
-        citiesVisited: 0, citiesTotal: 0, wondersVisited: 0, wondersTotal: 0, wonderNames: [],
+        citiesVisited: 0, citiesTotal: 0, cities: [], wondersVisited: 0, wondersTotal: 0, wonders: [], wonderNames: [],
         regions: null, regionPct: null,
     }));
     const rowFor = name => rows.get(countryKey(name));
@@ -277,6 +282,7 @@ function buildCountryRows(tableType) {
             if (!r) return;
             r.citiesTotal++;
             if (c.visited) r.citiesVisited++;
+            r.cities.push({ name: placeLabel(c), visited: c.visited });
         });
         WONDER_LISTS.forEach(id => bucketLists.lists[id].rows.forEach(w => {
             const r = rowFor(w.country);
@@ -284,6 +290,7 @@ function buildCountryRows(tableType) {
             r.wondersTotal++;
             if (w.visited) r.wondersVisited++;
             r.wonderNames.push(`${w.name}: ${w.visited ? 'visited' : 'not yet'}`);
+            r.wonders.push({ name: placeLabel(w), visited: w.visited });
         }));
     }
     return [...rows.values()].map(r => {
@@ -344,9 +351,13 @@ function regionsTitle(r) {
     return 'No region data for this country';
 }
 
-// "3/5", or a dash for a country with none on the list.
-function fraction(done, total) {
-    return total ? `${done}/${total}` : '—';
+// "3/5", or a dash for a country with none on the list. Hovering the count lists
+// the items (items: [{ name, visited }]) as bullets, visited ones ticked.
+function fraction(done, total, items = []) {
+    if (!total) return '—';
+    if (!items.length) return `${done}/${total}`;
+    const list = items.map(i => `• ${i.visited ? '✅' : '⬜'} ${i.name}`).join('\n');
+    return `<span class="count-list" title="${list.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">${done}/${total}</span>`;
 }
 
 function setupEditMode() {
@@ -731,8 +742,8 @@ function updateTable(tableType) {
             <td class="col-name">${withCountryFlag(r.name)}</td>
             <td class="col-progress">${progressBar(r.progress, coreBreakdown(r))}</td>
             <td class="col-progress">${progressBar(r.regionPct, regionsTitle(r), regionsPending ? '…' : '—')}</td>
-            <td class="col-num col-detail">${fraction(r.citiesVisited, r.citiesTotal)}</td>
-            <td class="col-num col-detail">${fraction(r.wondersVisited, r.wondersTotal)}</td>
+            <td class="col-num col-detail">${fraction(r.citiesVisited, r.citiesTotal, r.cities)}</td>
+            <td class="col-num col-detail">${fraction(r.wondersVisited, r.wondersTotal, r.wonders)}</td>
             <td class="col-status">${hps}</td>
             <td class="col-status${toggleCls(Boolean(cap))}" data-toggle="cap" title="${escapeAttr(cap ? cap.name : '')}">${cap ? (r.capVisited ? '✅' : '⬜') : '—'}</td>
             <td class="col-status${toggleCls(true)}" data-toggle="country">${r.visited ? '✅' : '⬜'}</td>
