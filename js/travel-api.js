@@ -108,6 +108,19 @@ const TravelAPI = {
         return (await res.json()).fips || [];
     },
 
+    // Ecoregion Hunter (strava.html): { codes: [Level IV code], discoveries:
+    // { code: { actId, actName, date } } }, plus the names of every region.
+    async fetchEcoregions() {
+        const [seen, names] = await Promise.all([
+            fetch(`${TRAVEL_WORKER_URL}/ecoregions/all`).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            }),
+            fetch('data/ecoregion-names.json?v=20261025').then(r => r.json())
+        ]);
+        return { codes: seen.codes || [], discoveries: seen.discoveries || {}, names };
+    },
+
     async fetchAdk46ers() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/adk46ers`);
         return res.json();
