@@ -1,0 +1,1757 @@
+[
+  {
+    "country": "United States of America",
+    "name": "Washington D.C.",
+    "coords": [
+      -77.0114,
+      38.9015
+    ],
+    "visited": true
+  },
+  {
+    "country": "Mexico",
+    "name": "Mexico City",
+    "coords": [
+      -99.1329,
+      19.4444
+    ],
+    "visited": true
+  },
+  {
+    "country": "Canada",
+    "name": "Ottawa",
+    "coords": [
+      -75.702,
+      45.4186
+    ],
+    "visited": true
+  },
+  {
+    "country": "Guatemala",
+    "name": "Guatemala City",
+    "coords": [
+      -90.5289,
+      14.6231
+    ],
+    "visited": false
+  },
+  {
+    "country": "Cuba",
+    "name": "Havana",
+    "coords": [
+      -82.3661,
+      23.1339
+    ],
+    "visited": false
+  },
+  {
+    "country": "Haiti",
+    "name": "Port-au-Prince",
+    "coords": [
+      -72.338,
+      18.543
+    ],
+    "visited": true
+  },
+  {
+    "country": "Dominican Republic",
+    "name": "Santo Domingo",
+    "coords": [
+      -69.902,
+      18.472
+    ],
+    "visited": false
+  },
+  {
+    "country": "Honduras",
+    "name": "Tegucigalpa",
+    "coords": [
+      -87.2195,
+      14.104
+    ],
+    "visited": false
+  },
+  {
+    "country": "Nicaragua",
+    "name": "Managua",
+    "coords": [
+      -86.2704,
+      12.155
+    ],
+    "visited": false
+  },
+  {
+    "country": "El Salvador",
+    "name": "San Salvador",
+    "coords": [
+      -89.205,
+      13.7119
+    ],
+    "visited": false
+  },
+  {
+    "country": "Costa Rica",
+    "name": "San José",
+    "coords": [
+      -84.086,
+      9.937
+    ],
+    "visited": false
+  },
+  {
+    "country": "Panama",
+    "name": "Panama City",
+    "coords": [
+      -79.535,
+      8.97
+    ],
+    "visited": false
+  },
+  {
+    "country": "Jamaica",
+    "name": "Kingston",
+    "coords": [
+      -76.7674,
+      17.9771
+    ],
+    "visited": true
+  },
+  {
+    "country": "Trinidad and Tobago",
+    "name": "Port of Spain",
+    "coords": [
+      -61.517,
+      10.652
+    ],
+    "visited": false
+  },
+  {
+    "country": "Bahamas",
+    "name": "Nassau",
+    "coords": [
+      -77.35,
+      25.0834
+    ],
+    "visited": false
+  },
+  {
+    "country": "Belize",
+    "name": "Belmopan",
+    "coords": [
+      -88.7671,
+      17.252
+    ],
+    "visited": false
+  },
+  {
+    "country": "Barbados",
+    "name": "Bridgetown",
+    "coords": [
+      -59.6165,
+      13.102
+    ],
+    "visited": false
+  },
+  {
+    "country": "Saint Lucia",
+    "name": "Castries",
+    "coords": [
+      -61.0,
+      14.002
+    ],
+    "visited": false
+  },
+  {
+    "country": "Grenada",
+    "name": "St. George's",
+    "coords": [
+      -61.7416,
+      12.0526
+    ],
+    "visited": false
+  },
+  {
+    "country": "Saint Vincent and the Grenadines",
+    "name": "Kingstown",
+    "coords": [
+      -61.2121,
+      13.1483
+    ],
+    "visited": false
+  },
+  {
+    "country": "Antigua and Barbuda",
+    "name": "Saint John's",
+    "coords": [
+      -61.85,
+      17.118
+    ],
+    "visited": false
+  },
+  {
+    "country": "Dominica",
+    "name": "Roseau",
+    "coords": [
+      -61.387,
+      15.301
+    ],
+    "visited": false
+  },
+  {
+    "country": "Saint Kitts and Nevis",
+    "name": "Basseterre",
+    "coords": [
+      -62.717,
+      17.302
+    ],
+    "visited": false
+  },
+  {
+    "country": "Brazil",
+    "name": "Brasília",
+    "coords": [
+      -47.918,
+      -15.7814
+    ],
+    "visited": false
+  },
+  {
+    "country": "Colombia",
+    "name": "Bogotá",
+    "coords": [
+      -74.0853,
+      4.5984
+    ],
+    "visited": false
+  },
+  {
+    "country": "Argentina",
+    "name": "Buenos Aires",
+    "coords": [
+      -58.3995,
+      -34.6006
+    ],
+    "visited": false
+  },
+  {
+    "country": "Peru",
+    "name": "Lima",
+    "coords": [
+      -77.052,
+      -12.0461
+    ],
+    "visited": false
+  },
+  {
+    "country": "Venezuela",
+    "name": "Caracas",
+    "coords": [
+      -66.919,
+      10.5029
+    ],
+    "visited": false
+  },
+  {
+    "country": "Chile",
+    "name": "Santiago",
+    "coords": [
+      -70.669,
+      -33.4481
+    ],
+    "visited": false
+  },
+  {
+    "country": "Ecuador",
+    "name": "Quito",
+    "coords": [
+      -78.502,
+      -0.213
+    ],
+    "visited": true
+  },
+  {
+    "country": "Bolivia",
+    "name": "Sucre",
+    "coords": [
+      -65.2595,
+      -19.041
+    ],
+    "visited": false
+  },
+  {
+    "country": "Paraguay",
+    "name": "Asunción",
+    "coords": [
+      -57.6435,
+      -25.2945
+    ],
+    "visited": false
+  },
+  {
+    "country": "Uruguay",
+    "name": "Montevideo",
+    "coords": [
+      -56.173,
+      -34.8561
+    ],
+    "visited": false
+  },
+  {
+    "country": "Guyana",
+    "name": "Georgetown",
+    "coords": [
+      -58.167,
+      6.802
+    ],
+    "visited": false
+  },
+  {
+    "country": "Suriname",
+    "name": "Paramaribo",
+    "coords": [
+      -55.167,
+      5.835
+    ],
+    "visited": false
+  },
+  {
+    "country": "Albania",
+    "name": "Tirana",
+    "coords": [
+      19.8189,
+      41.3275
+    ],
+    "visited": false
+  },
+  {
+    "country": "Andorra",
+    "name": "Andorra la Vella",
+    "coords": [
+      1.5165,
+      42.5
+    ],
+    "visited": false
+  },
+  {
+    "country": "Austria",
+    "name": "Vienna",
+    "coords": [
+      16.3647,
+      48.202
+    ],
+    "visited": false
+  },
+  {
+    "country": "Belarus",
+    "name": "Minsk",
+    "coords": [
+      27.5647,
+      53.9019
+    ],
+    "visited": false
+  },
+  {
+    "country": "Belgium",
+    "name": "Brussels",
+    "coords": [
+      4.3314,
+      50.8353
+    ],
+    "visited": true
+  },
+  {
+    "country": "Bosnia and Herzegovina",
+    "name": "Sarajevo",
+    "coords": [
+      18.383,
+      43.85
+    ],
+    "visited": false
+  },
+  {
+    "country": "Bulgaria",
+    "name": "Sofia",
+    "coords": [
+      23.3147,
+      42.6853
+    ],
+    "visited": false
+  },
+  {
+    "country": "Croatia",
+    "name": "Zagreb",
+    "coords": [
+      16.0,
+      45.8
+    ],
+    "visited": false
+  },
+  {
+    "country": "Cyprus",
+    "name": "Nicosia",
+    "coords": [
+      33.3666,
+      35.1667
+    ],
+    "visited": false
+  },
+  {
+    "country": "Czech Republic",
+    "name": "Prague",
+    "coords": [
+      14.464,
+      50.0853
+    ],
+    "visited": false
+  },
+  {
+    "country": "Denmark",
+    "name": "Copenhagen",
+    "coords": [
+      12.5615,
+      55.6805
+    ],
+    "visited": false
+  },
+  {
+    "country": "Estonia",
+    "name": "Tallinn",
+    "coords": [
+      24.728,
+      59.4339
+    ],
+    "visited": false
+  },
+  {
+    "country": "Finland",
+    "name": "Helsinki",
+    "coords": [
+      24.9322,
+      60.1775
+    ],
+    "visited": false
+  },
+  {
+    "country": "France",
+    "name": "Paris",
+    "coords": [
+      2.3314,
+      48.8686
+    ],
+    "visited": true
+  },
+  {
+    "country": "Germany",
+    "name": "Berlin",
+    "coords": [
+      13.3996,
+      52.5238
+    ],
+    "visited": false
+  },
+  {
+    "country": "Greece",
+    "name": "Athens",
+    "coords": [
+      23.7314,
+      37.9853
+    ],
+    "visited": true
+  },
+  {
+    "country": "Hungary",
+    "name": "Budapest",
+    "coords": [
+      19.0814,
+      47.502
+    ],
+    "visited": false
+  },
+  {
+    "country": "Iceland",
+    "name": "Reykjavik",
+    "coords": [
+      -21.95,
+      64.15
+    ],
+    "visited": true
+  },
+  {
+    "country": "Ireland",
+    "name": "Dublin",
+    "coords": [
+      -6.2509,
+      53.335
+    ],
+    "visited": true
+  },
+  {
+    "country": "Italy",
+    "name": "Rome",
+    "coords": [
+      12.4813,
+      41.8979
+    ],
+    "visited": true
+  },
+  {
+    "country": "Kosovo",
+    "name": "Pristina",
+    "coords": [
+      21.1655,
+      42.6629
+    ],
+    "visited": false
+  },
+  {
+    "country": "Latvia",
+    "name": "Riga",
+    "coords": [
+      24.1,
+      56.95
+    ],
+    "visited": false
+  },
+  {
+    "country": "Liechtenstein",
+    "name": "Vaduz",
+    "coords": [
+      9.5167,
+      47.1337
+    ],
+    "visited": false
+  },
+  {
+    "country": "Lithuania",
+    "name": "Vilnius",
+    "coords": [
+      25.3166,
+      54.6834
+    ],
+    "visited": false
+  },
+  {
+    "country": "Luxembourg",
+    "name": "Luxembourg",
+    "coords": [
+      6.13,
+      49.6117
+    ],
+    "visited": false
+  },
+  {
+    "country": "Malta",
+    "name": "Valletta",
+    "coords": [
+      14.5147,
+      35.8997
+    ],
+    "visited": false
+  },
+  {
+    "country": "Moldova",
+    "name": "Chișinău",
+    "coords": [
+      28.8577,
+      47.005
+    ],
+    "visited": false
+  },
+  {
+    "country": "Monaco",
+    "name": "Monaco",
+    "coords": [
+      7.4069,
+      43.7396
+    ],
+    "visited": false
+  },
+  {
+    "country": "Montenegro",
+    "name": "Podgorica",
+    "coords": [
+      19.2663,
+      42.466
+    ],
+    "visited": false
+  },
+  {
+    "country": "Netherlands",
+    "name": "Amsterdam",
+    "coords": [
+      4.9147,
+      52.3519
+    ],
+    "visited": true
+  },
+  {
+    "country": "North Macedonia",
+    "name": "Skopje",
+    "coords": [
+      21.4335,
+      42.0
+    ],
+    "visited": false
+  },
+  {
+    "country": "Norway",
+    "name": "Oslo",
+    "coords": [
+      10.748,
+      59.9186
+    ],
+    "visited": false
+  },
+  {
+    "country": "Poland",
+    "name": "Warsaw",
+    "coords": [
+      20.9981,
+      52.2519
+    ],
+    "visited": false
+  },
+  {
+    "country": "Portugal",
+    "name": "Lisbon",
+    "coords": [
+      -9.1468,
+      38.7247
+    ],
+    "visited": true
+  },
+  {
+    "country": "Romania",
+    "name": "Bucharest",
+    "coords": [
+      26.098,
+      44.4353
+    ],
+    "visited": false
+  },
+  {
+    "country": "Russia",
+    "name": "Moscow",
+    "coords": [
+      37.6136,
+      55.7541
+    ],
+    "visited": false
+  },
+  {
+    "country": "San Marino",
+    "name": "San Marino",
+    "coords": [
+      12.4418,
+      43.9361
+    ],
+    "visited": false
+  },
+  {
+    "country": "Serbia",
+    "name": "Belgrade",
+    "coords": [
+      20.466,
+      44.8206
+    ],
+    "visited": false
+  },
+  {
+    "country": "Slovakia",
+    "name": "Bratislava",
+    "coords": [
+      17.117,
+      48.15
+    ],
+    "visited": false
+  },
+  {
+    "country": "Slovenia",
+    "name": "Ljubljana",
+    "coords": [
+      14.515,
+      46.0553
+    ],
+    "visited": false
+  },
+  {
+    "country": "Spain",
+    "name": "Madrid",
+    "coords": [
+      -3.6853,
+      40.402
+    ],
+    "visited": true
+  },
+  {
+    "country": "Sweden",
+    "name": "Stockholm",
+    "coords": [
+      18.0954,
+      59.3527
+    ],
+    "visited": true
+  },
+  {
+    "country": "Switzerland",
+    "name": "Bern",
+    "coords": [
+      7.467,
+      46.9167
+    ],
+    "visited": false
+  },
+  {
+    "country": "Ukraine",
+    "name": "Kyiv",
+    "coords": [
+      30.5147,
+      50.4353
+    ],
+    "visited": false
+  },
+  {
+    "country": "United Kingdom",
+    "name": "London",
+    "coords": [
+      -0.1187,
+      51.5019
+    ],
+    "visited": false
+  },
+  {
+    "country": "Vatican City",
+    "name": "Vatican City",
+    "coords": [
+      12.4534,
+      41.9033
+    ],
+    "visited": false
+  },
+  {
+    "country": "Algeria",
+    "name": "Algiers",
+    "coords": [
+      3.0486,
+      36.765
+    ],
+    "visited": false
+  },
+  {
+    "country": "Angola",
+    "name": "Luanda",
+    "coords": [
+      13.2325,
+      -8.8363
+    ],
+    "visited": false
+  },
+  {
+    "country": "Benin",
+    "name": "Porto-Novo",
+    "coords": [
+      2.6166,
+      6.4833
+    ],
+    "visited": false
+  },
+  {
+    "country": "Botswana",
+    "name": "Gaborone",
+    "coords": [
+      25.9119,
+      -24.6463
+    ],
+    "visited": false
+  },
+  {
+    "country": "Burkina Faso",
+    "name": "Ouagadougou",
+    "coords": [
+      -1.5267,
+      12.3723
+    ],
+    "visited": false
+  },
+  {
+    "country": "Burundi",
+    "name": "Gitega",
+    "coords": [
+      29.8436,
+      -3.426
+    ],
+    "visited": false
+  },
+  {
+    "country": "Cameroon",
+    "name": "Yaoundé",
+    "coords": [
+      11.5147,
+      3.8686
+    ],
+    "visited": false
+  },
+  {
+    "country": "Cape Verde",
+    "name": "Praia",
+    "coords": [
+      -23.5167,
+      14.9167
+    ],
+    "visited": false
+  },
+  {
+    "country": "Central African Republic",
+    "name": "Bangui",
+    "coords": [
+      18.5583,
+      4.3666
+    ],
+    "visited": false
+  },
+  {
+    "country": "Chad",
+    "name": "N'Djamena",
+    "coords": [
+      15.0472,
+      12.115
+    ],
+    "visited": false
+  },
+  {
+    "country": "Comoros",
+    "name": "Moroni",
+    "coords": [
+      43.2402,
+      -11.7042
+    ],
+    "visited": false
+  },
+  {
+    "country": "Congo",
+    "name": "Brazzaville",
+    "coords": [
+      15.2827,
+      -4.2572
+    ],
+    "visited": false
+  },
+  {
+    "country": "DR Congo",
+    "name": "Kinshasa",
+    "coords": [
+      15.313,
+      -4.3278
+    ],
+    "visited": false
+  },
+  {
+    "country": "Djibouti",
+    "name": "Djibouti",
+    "coords": [
+      43.148,
+      11.595
+    ],
+    "visited": false
+  },
+  {
+    "country": "Egypt",
+    "name": "Cairo",
+    "coords": [
+      31.248,
+      30.0519
+    ],
+    "visited": false
+  },
+  {
+    "country": "Equatorial Guinea",
+    "name": "Malabo",
+    "coords": [
+      8.7833,
+      3.75
+    ],
+    "visited": false
+  },
+  {
+    "country": "Eritrea",
+    "name": "Asmara",
+    "coords": [
+      38.9333,
+      15.3333
+    ],
+    "visited": false
+  },
+  {
+    "country": "Ethiopia",
+    "name": "Addis Ababa",
+    "coords": [
+      38.6981,
+      9.0353
+    ],
+    "visited": false
+  },
+  {
+    "country": "Gabon",
+    "name": "Libreville",
+    "coords": [
+      9.458,
+      0.3854
+    ],
+    "visited": false
+  },
+  {
+    "country": "Gambia",
+    "name": "Banjul",
+    "coords": [
+      -16.5917,
+      13.4539
+    ],
+    "visited": false
+  },
+  {
+    "country": "Ghana",
+    "name": "Accra",
+    "coords": [
+      -0.2187,
+      5.552
+    ],
+    "visited": false
+  },
+  {
+    "country": "Guinea",
+    "name": "Conakry",
+    "coords": [
+      -13.6822,
+      9.5335
+    ],
+    "visited": false
+  },
+  {
+    "country": "Guinea-Bissau",
+    "name": "Bissau",
+    "coords": [
+      -15.5984,
+      11.865
+    ],
+    "visited": false
+  },
+  {
+    "country": "Ivory Coast",
+    "name": "Yamoussoukro",
+    "coords": [
+      -5.2755,
+      6.8184
+    ],
+    "visited": false
+  },
+  {
+    "country": "Kenya",
+    "name": "Nairobi",
+    "coords": [
+      36.8147,
+      -1.2814
+    ],
+    "visited": false
+  },
+  {
+    "country": "Lesotho",
+    "name": "Maseru",
+    "coords": [
+      27.4833,
+      -29.3167
+    ],
+    "visited": false
+  },
+  {
+    "country": "Liberia",
+    "name": "Monrovia",
+    "coords": [
+      -10.7997,
+      6.3146
+    ],
+    "visited": false
+  },
+  {
+    "country": "Libya",
+    "name": "Tripoli",
+    "coords": [
+      13.18,
+      32.8925
+    ],
+    "visited": false
+  },
+  {
+    "country": "Madagascar",
+    "name": "Antananarivo",
+    "coords": [
+      47.5147,
+      -18.9147
+    ],
+    "visited": false
+  },
+  {
+    "country": "Malawi",
+    "name": "Lilongwe",
+    "coords": [
+      33.7833,
+      -13.9833
+    ],
+    "visited": false
+  },
+  {
+    "country": "Mali",
+    "name": "Bamako",
+    "coords": [
+      -8.002,
+      12.652
+    ],
+    "visited": false
+  },
+  {
+    "country": "Mauritania",
+    "name": "Nouakchott",
+    "coords": [
+      -15.9753,
+      18.0864
+    ],
+    "visited": false
+  },
+  {
+    "country": "Mauritius",
+    "name": "Port Louis",
+    "coords": [
+      57.5,
+      -20.1666
+    ],
+    "visited": false
+  },
+  {
+    "country": "Morocco",
+    "name": "Rabat",
+    "coords": [
+      -6.8364,
+      34.0253
+    ],
+    "visited": false
+  },
+  {
+    "country": "Mozambique",
+    "name": "Maputo",
+    "coords": [
+      32.5872,
+      -25.9533
+    ],
+    "visited": false
+  },
+  {
+    "country": "Namibia",
+    "name": "Windhoek",
+    "coords": [
+      17.0835,
+      -22.57
+    ],
+    "visited": false
+  },
+  {
+    "country": "Niger",
+    "name": "Niamey",
+    "coords": [
+      2.1147,
+      13.5187
+    ],
+    "visited": false
+  },
+  {
+    "country": "Nigeria",
+    "name": "Abuja",
+    "coords": [
+      7.5314,
+      9.0853
+    ],
+    "visited": false
+  },
+  {
+    "country": "Rwanda",
+    "name": "Kigali",
+    "coords": [
+      30.0586,
+      -1.9516
+    ],
+    "visited": false
+  },
+  {
+    "country": "Senegal",
+    "name": "Dakar",
+    "coords": [
+      -17.4751,
+      14.7178
+    ],
+    "visited": false
+  },
+  {
+    "country": "Seychelles",
+    "name": "Victoria",
+    "coords": [
+      55.45,
+      -4.6166
+    ],
+    "visited": false
+  },
+  {
+    "country": "Sierra Leone",
+    "name": "Freetown",
+    "coords": [
+      -13.2362,
+      8.472
+    ],
+    "visited": false
+  },
+  {
+    "country": "Somalia",
+    "name": "Mogadishu",
+    "coords": [
+      45.3647,
+      2.0686
+    ],
+    "visited": false
+  },
+  {
+    "country": "South Africa",
+    "name": "Pretoria",
+    "coords": [
+      28.2275,
+      -25.705
+    ],
+    "visited": false
+  },
+  {
+    "country": "South Sudan",
+    "name": "Juba",
+    "coords": [
+      31.58,
+      4.83
+    ],
+    "visited": false
+  },
+  {
+    "country": "Sudan",
+    "name": "Khartoum",
+    "coords": [
+      32.5322,
+      15.59
+    ],
+    "visited": false
+  },
+  {
+    "country": "Tanzania",
+    "name": "Dodoma",
+    "coords": [
+      35.75,
+      -6.1833
+    ],
+    "visited": false
+  },
+  {
+    "country": "Togo",
+    "name": "Lomé",
+    "coords": [
+      1.2208,
+      6.1339
+    ],
+    "visited": false
+  },
+  {
+    "country": "Tunisia",
+    "name": "Tunis",
+    "coords": [
+      10.1797,
+      36.8028
+    ],
+    "visited": false
+  },
+  {
+    "country": "Uganda",
+    "name": "Kampala",
+    "coords": [
+      32.5814,
+      0.3186
+    ],
+    "visited": false
+  },
+  {
+    "country": "Zambia",
+    "name": "Lusaka",
+    "coords": [
+      28.2814,
+      -15.4147
+    ],
+    "visited": false
+  },
+  {
+    "country": "Zimbabwe",
+    "name": "Harare",
+    "coords": [
+      31.0428,
+      -17.8158
+    ],
+    "visited": false
+  },
+  {
+    "country": "Australia",
+    "name": "Canberra",
+    "coords": [
+      149.129,
+      -35.283
+    ],
+    "visited": true
+  },
+  {
+    "country": "Fiji",
+    "name": "Suva",
+    "coords": [
+      178.4417,
+      -18.133
+    ],
+    "visited": false
+  },
+  {
+    "country": "Kiribati",
+    "name": "South Tarawa",
+    "coords": [
+      173.0176,
+      1.3382
+    ],
+    "visited": false
+  },
+  {
+    "country": "Marshall Islands",
+    "name": "Majuro",
+    "coords": [
+      171.38,
+      7.103
+    ],
+    "visited": false
+  },
+  {
+    "country": "Micronesia",
+    "name": "Palikir",
+    "coords": [
+      158.15,
+      6.9166
+    ],
+    "visited": false
+  },
+  {
+    "country": "Nauru",
+    "name": "Yaren",
+    "coords": [
+      166.9209,
+      -0.5477
+    ],
+    "visited": false
+  },
+  {
+    "country": "New Zealand",
+    "name": "Wellington",
+    "coords": [
+      174.7833,
+      -41.3
+    ],
+    "visited": true
+  },
+  {
+    "country": "Palau",
+    "name": "Ngerulmud",
+    "coords": [
+      134.6242,
+      7.5006
+    ],
+    "visited": false
+  },
+  {
+    "country": "Papua New Guinea",
+    "name": "Port Moresby",
+    "coords": [
+      147.1925,
+      -9.4647
+    ],
+    "visited": false
+  },
+  {
+    "country": "Samoa",
+    "name": "Apia",
+    "coords": [
+      -171.7386,
+      -13.8415
+    ],
+    "visited": false
+  },
+  {
+    "country": "Solomon Islands",
+    "name": "Honiara",
+    "coords": [
+      159.9498,
+      -9.438
+    ],
+    "visited": false
+  },
+  {
+    "country": "Tonga",
+    "name": "Nuku'alofa",
+    "coords": [
+      -175.2206,
+      -21.1385
+    ],
+    "visited": false
+  },
+  {
+    "country": "Tuvalu",
+    "name": "Funafuti",
+    "coords": [
+      179.2166,
+      -8.5167
+    ],
+    "visited": false
+  },
+  {
+    "country": "Vanuatu",
+    "name": "Port Vila",
+    "coords": [
+      168.3166,
+      -17.7334
+    ],
+    "visited": false
+  },
+  {
+    "country": "Afghanistan",
+    "name": "Kabul",
+    "coords": [
+      69.1813,
+      34.5186
+    ],
+    "visited": false
+  },
+  {
+    "country": "Armenia",
+    "name": "Yerevan",
+    "coords": [
+      44.5116,
+      40.1831
+    ],
+    "visited": false
+  },
+  {
+    "country": "Azerbaijan",
+    "name": "Baku",
+    "coords": [
+      49.8603,
+      40.3972
+    ],
+    "visited": false
+  },
+  {
+    "country": "Bahrain",
+    "name": "Manama",
+    "coords": [
+      50.5831,
+      26.2361
+    ],
+    "visited": false
+  },
+  {
+    "country": "Bangladesh",
+    "name": "Dhaka",
+    "coords": [
+      90.4066,
+      23.725
+    ],
+    "visited": false
+  },
+  {
+    "country": "Bhutan",
+    "name": "Thimphu",
+    "coords": [
+      89.639,
+      27.473
+    ],
+    "visited": false
+  },
+  {
+    "country": "Brunei",
+    "name": "Bandar Seri Begawan",
+    "coords": [
+      114.9333,
+      4.8833
+    ],
+    "visited": false
+  },
+  {
+    "country": "Cambodia",
+    "name": "Phnom Penh",
+    "coords": [
+      104.9147,
+      11.552
+    ],
+    "visited": false
+  },
+  {
+    "country": "China",
+    "name": "Beijing",
+    "coords": [
+      116.3863,
+      39.9308
+    ],
+    "visited": true
+  },
+  {
+    "country": "Georgia",
+    "name": "Tbilisi",
+    "coords": [
+      44.7888,
+      41.727
+    ],
+    "visited": false
+  },
+  {
+    "country": "India",
+    "name": "New Delhi",
+    "coords": [
+      77.2,
+      28.6
+    ],
+    "visited": true
+  },
+  {
+    "country": "Indonesia",
+    "name": "Jakarta",
+    "coords": [
+      106.8275,
+      -6.1725
+    ],
+    "visited": false
+  },
+  {
+    "country": "Iran",
+    "name": "Tehran",
+    "coords": [
+      51.4224,
+      35.6739
+    ],
+    "visited": false
+  },
+  {
+    "country": "Iraq",
+    "name": "Baghdad",
+    "coords": [
+      44.3919,
+      33.3406
+    ],
+    "visited": false
+  },
+  {
+    "country": "Israel",
+    "name": "Jerusalem",
+    "coords": [
+      35.2066,
+      31.7784
+    ],
+    "visited": false
+  },
+  {
+    "country": "Japan",
+    "name": "Tokyo",
+    "coords": [
+      139.7495,
+      35.687
+    ],
+    "visited": true
+  },
+  {
+    "country": "Jordan",
+    "name": "Amman",
+    "coords": [
+      35.9314,
+      31.952
+    ],
+    "visited": false
+  },
+  {
+    "country": "Kazakhstan",
+    "name": "Astana",
+    "coords": [
+      71.4278,
+      51.1811
+    ],
+    "visited": false
+  },
+  {
+    "country": "Kuwait",
+    "name": "Kuwait City",
+    "coords": [
+      47.9764,
+      29.3717
+    ],
+    "visited": false
+  },
+  {
+    "country": "Kyrgyzstan",
+    "name": "Bishkek",
+    "coords": [
+      74.5833,
+      42.875
+    ],
+    "visited": false
+  },
+  {
+    "country": "Laos",
+    "name": "Vientiane",
+    "coords": [
+      102.6,
+      17.9667
+    ],
+    "visited": false
+  },
+  {
+    "country": "Lebanon",
+    "name": "Beirut",
+    "coords": [
+      35.5078,
+      33.8739
+    ],
+    "visited": false
+  },
+  {
+    "country": "Malaysia",
+    "name": "Kuala Lumpur",
+    "coords": [
+      101.698,
+      3.1686
+    ],
+    "visited": false
+  },
+  {
+    "country": "Maldives",
+    "name": "Malé",
+    "coords": [
+      73.4999,
+      4.1667
+    ],
+    "visited": false
+  },
+  {
+    "country": "Mongolia",
+    "name": "Ulaanbaatar",
+    "coords": [
+      106.9147,
+      47.9186
+    ],
+    "visited": false
+  },
+  {
+    "country": "Myanmar",
+    "name": "Naypyidaw",
+    "coords": [
+      96.1167,
+      19.7685
+    ],
+    "visited": false
+  },
+  {
+    "country": "Nepal",
+    "name": "Kathmandu",
+    "coords": [
+      85.3147,
+      27.7186
+    ],
+    "visited": false
+  },
+  {
+    "country": "North Korea",
+    "name": "Pyongyang",
+    "coords": [
+      125.7527,
+      39.0214
+    ],
+    "visited": false
+  },
+  {
+    "country": "Oman",
+    "name": "Muscat",
+    "coords": [
+      58.5933,
+      23.6133
+    ],
+    "visited": false
+  },
+  {
+    "country": "Pakistan",
+    "name": "Islamabad",
+    "coords": [
+      73.1647,
+      33.7019
+    ],
+    "visited": false
+  },
+  {
+    "country": "Palestine",
+    "name": "Ramallah",
+    "coords": [
+      35.2062,
+      31.9029
+    ],
+    "visited": false
+  },
+  {
+    "country": "Philippines",
+    "name": "Manila",
+    "coords": [
+      120.9803,
+      14.6061
+    ],
+    "visited": false
+  },
+  {
+    "country": "Qatar",
+    "name": "Doha",
+    "coords": [
+      51.533,
+      25.2866
+    ],
+    "visited": false
+  },
+  {
+    "country": "Saudi Arabia",
+    "name": "Riyadh",
+    "coords": [
+      46.7708,
+      24.6428
+    ],
+    "visited": false
+  },
+  {
+    "country": "Singapore",
+    "name": "Singapore",
+    "coords": [
+      103.8539,
+      1.295
+    ],
+    "visited": false
+  },
+  {
+    "country": "South Korea",
+    "name": "Seoul",
+    "coords": [
+      126.9978,
+      37.5683
+    ],
+    "visited": true
+  },
+  {
+    "country": "Sri Lanka",
+    "name": "Colombo",
+    "coords": [
+      79.8578,
+      6.932
+    ],
+    "visited": false
+  },
+  {
+    "country": "Syria",
+    "name": "Damascus",
+    "coords": [
+      36.2981,
+      33.502
+    ],
+    "visited": false
+  },
+  {
+    "country": "Taiwan",
+    "name": "Taipei",
+    "coords": [
+      121.5683,
+      25.0358
+    ],
+    "visited": false
+  },
+  {
+    "country": "Tajikistan",
+    "name": "Dushanbe",
+    "coords": [
+      68.7739,
+      38.56
+    ],
+    "visited": false
+  },
+  {
+    "country": "Thailand",
+    "name": "Bangkok",
+    "coords": [
+      100.5147,
+      13.7519
+    ],
+    "visited": false
+  },
+  {
+    "country": "Timor-Leste",
+    "name": "Dili",
+    "coords": [
+      125.5795,
+      -8.5594
+    ],
+    "visited": false
+  },
+  {
+    "country": "Turkey",
+    "name": "Ankara",
+    "coords": [
+      32.8624,
+      39.9292
+    ],
+    "visited": false
+  },
+  {
+    "country": "Turkmenistan",
+    "name": "Ashgabat",
+    "coords": [
+      58.3833,
+      37.95
+    ],
+    "visited": false
+  },
+  {
+    "country": "United Arab Emirates",
+    "name": "Abu Dhabi",
+    "coords": [
+      54.3666,
+      24.4667
+    ],
+    "visited": false
+  },
+  {
+    "country": "Uzbekistan",
+    "name": "Tashkent",
+    "coords": [
+      69.293,
+      41.3136
+    ],
+    "visited": false
+  },
+  {
+    "country": "Vietnam",
+    "name": "Hanoi",
+    "coords": [
+      105.8481,
+      21.0353
+    ],
+    "visited": false
+  },
+  {
+    "country": "Yemen",
+    "name": "Sana'a",
+    "coords": [
+      44.2046,
+      15.3567
+    ],
+    "visited": false
+  }
+]
