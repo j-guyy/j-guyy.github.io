@@ -77,7 +77,7 @@ const WORLD_MAP_SCRIPTS = [
     'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
     'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
     'js/map-controls.js?v=20261022',
-    'js/world-map.js?v=20261022b'
+    'js/world-map.js?v=20261025'
 ];
 let worldMap = null;          // { map, refresh } once built
 let worldMapLoading = null;
