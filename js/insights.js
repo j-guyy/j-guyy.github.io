@@ -39,15 +39,27 @@ const INS_EDDINGTON = [
     { key: 'run',  label: '🏃 Run',  types: ['Run', 'TrailRun'] },
 ];
 
-const INS_BAR_METRICS = [
-    ['count', 'Activities'],
-    ['dist',  'Miles'],
-    ['hours', 'Hours'],
-    ['elev',  'Climbing'],
-];
+// What the charts measure, picked by the dashboard's Activities / Miles /
+// Hours / Climbing toggle (dashboardMetric in strava.js).
+const INS_METRICS = {
+    count: { label: 'Activities', noun: 'activities',   unit: '',   val: () => 1 },
+    dist:  { label: 'Miles',      noun: 'miles',        unit: 'mi', val: a => (a.di || 0) / INS_M_PER_MI },
+    hours: { label: 'Hours',      noun: 'moving time',  unit: 'h',  val: a => (a.m || 0) / 3600 },
+    elev:  { label: 'Climbing',   noun: 'climbing',     unit: 'ft', val: a => (a.e || 0) * INS_FT_PER_M },
+};
+
+function insMetric() {
+    const key = typeof dashboardMetric !== 'undefined' && INS_METRICS[dashboardMetric] ? dashboardMetric : 'dist';
+    return { key, ...INS_METRICS[key] };
+}
+
+// "1,234 mi", "1,234 h", "56 activities"
+function insWithUnit(v, m, short = false) {
+    const n = short ? insShort(v) : insFmt(v);
+    return m.unit ? `${n} ${m.unit}` : `${n} ${m.noun}`;
+}
 
 const insState = {
-    barMetric: 'dist',
     donutYear: null,      // null = this year
     goals: null,          // loaded once from the worker
     goalsLoading: false,
@@ -140,19 +152,20 @@ function insCompareCard(list, today) {
     const ytd = y => list.filter(a => a.d.startsWith(String(y)) && a.d.slice(5, 10) <= today.md);
     const cur = insTotals(ytd(today.year));
     const prev = insTotals(ytd(today.year - 1));
+    const metric = insMetric().key;
     const tiles = [
-        ['Distance', cur.mi, prev.mi, 'mi'],
-        ['Moving time', cur.hours, prev.hours, 'h'],
-        ['Climbing', cur.ft, prev.ft, 'ft'],
-        ['Active days', cur.days, prev.days, ''],
-    ].map(([label, v, p, unit]) => {
+        ['count', 'Activities', cur.count, prev.count, ''],
+        ['dist', 'Distance', cur.mi, prev.mi, 'mi'],
+        ['hours', 'Moving time', cur.hours, prev.hours, 'h'],
+        ['elev', 'Climbing', cur.ft, prev.ft, 'ft'],
+    ].map(([key, label, v, p, unit]) => {
         let delta = '<span class="ins-delta">no data last year</span>';
         if (p > 0) {
             const pct = Math.round((v / p - 1) * 100);
             const cls = pct >= 0 ? 'up' : 'down';
             delta = `<span class="ins-delta ${cls}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%</span> <span class="ins-delta-ref">vs ${insShort(p)}</span>`;
         }
-        return `<div class="ins-tile">
+        return `<div class="ins-tile${key === metric ? ' is-active' : ''}">
             <span class="ins-tile-label">${label}</span>
             <span class="ins-tile-value">${insShort(v)}${unit ? `<small> ${unit}</small>` : ''}</span>
             <span class="ins-tile-foot">${delta}</span>
@@ -163,13 +176,14 @@ function insCompareCard(list, today) {
 
 // ── 2. Year pace line ──────────────────────────────────────────────────────
 function insPaceCard(list, today) {
+    const m = insMetric();
     const years = [today.year, today.year - 1, today.year - 2];
     const colors = ['var(--app-accent, #3ddc84)', '#3987e5', '#898781'];
     const todayIdx = insDayOfYear(today.iso);
-    // cumulative miles per day of year (0..365)
+    // cumulative total per day of year (0..365)
     const series = years.map(y => {
         const perDay = new Array(366).fill(0);
-        list.forEach(a => { if (a.d.startsWith(String(y))) perDay[insDayOfYear(a.d)] += (a.di || 0) / INS_M_PER_MI; });
+        list.forEach(a => { if (a.d.startsWith(String(y))) perDay[insDayOfYear(a.d)] += m.val(a); });
         const last = y === today.year ? todayIdx : 365;
         const cum = [];
         let run = 0;
@@ -221,18 +235,18 @@ function insPaceCard(list, today) {
     const cur = s0[s0.length - 1] || 0;
     const prevSame = series[1][Math.min(todayIdx, series[1].length - 1)] || 0;
     const projected = cur / (todayIdx + 1) * 365;
-    let note = `On pace for <strong>${insFmt(projected)} mi</strong> in ${today.year}`;
+    let note = `On pace for <strong>${insWithUnit(projected, m)}</strong> in ${today.year}`;
     if (prevSame > 0) {
         const diff = cur - prevSame;
-        note += ` · ${insFmt(Math.abs(diff))} mi ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
+        note += ` · ${insWithUnit(Math.abs(diff), m)} ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
     }
 
-    const data = JSON.stringify({ years, colors, series: series.map(s => s.map(v => Math.round(v))) });
-    const svg = `<svg class="ins-svg ins-pace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative miles by day of year for ${years.join(', ')}" data-pace='${insEsc(data)}' data-geom="${L},${R},${W}">
+    const data = JSON.stringify({ years, colors, unit: m.unit || m.noun, series: series.map(s => s.map(v => Math.round(v))) });
+    const svg = `<svg class="ins-svg ins-pace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative ${m.noun} by day of year for ${years.join(', ')}" data-pace='${insEsc(data)}' data-geom="${L},${R},${W}">
         ${grid}${lines}${dot}${labels}
         <line class="ins-crosshair" y1="${T}" y2="${H - B}" x1="0" x2="0" style="display:none"/>
     </svg>`;
-    return insCard('Year pace', `${svg}<p class="ins-note">${note}</p>`, 'cumulative miles');
+    return insCard('Year pace', `${svg}<p class="ins-note">${note}</p>`, `cumulative ${m.noun}`);
 }
 
 // Axis top for 4 gridlines at round steps (1, 2, 2.5 or 5 × 10ⁿ).
@@ -259,8 +273,8 @@ function insYearsCard(list, today) {
     // Skip a nearly empty first year (an account opened in late autumn).
     if (years.length > 3 && byYear[years[0]].count < 5) years = years.slice(1);
     if (!years.length) return '';
-    const metric = insState.barMetric;
-    const unit = { count: '', dist: ' mi', hours: ' h', elev: ' ft' }[metric];
+    const m = insMetric();
+    const metric = m.key;
     const vals = years.map(y => byYear[y][metric]);
     const max = Math.max(...vals) || 1;
     const yMax = insNiceMax(max);
@@ -289,7 +303,7 @@ function insYearsCard(list, today) {
         const path = h > 0
             ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x1 - r} Q${x1},${top} ${x1},${top + r} V${base} Z`
             : '';
-        const tip = `${yr}${isCur ? ' (so far)' : ''}: ${insFmt(v)}${unit}`;
+        const tip = `${yr}${isCur ? ' (so far)' : ''}: ${insWithUnit(v, m)}`;
         bars += `<g class="ins-hit" data-tip="${insEsc(tip)}">
             <rect x="${cx - slot / 2}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>
             ${path ? `<path d="${path}" class="ins-bar${isCur ? ' ins-bar-cur' : ''}"/>` : ''}
@@ -299,15 +313,8 @@ function insYearsCard(list, today) {
             bars += `<text class="ins-axis" x="${cx}" y="${H - 6}" text-anchor="middle">'${yr.slice(2)}</text>`;
         }
     });
-    const toggle = `<div class="metric-toggle ins-toggle" role="group" aria-label="Year metric">${INS_BAR_METRICS.map(([m, label]) =>
-        `<button type="button" class="metric-toggle-btn${metric === m ? ' active' : ''}" aria-pressed="${metric === m}" onclick="insSetBarMetric('${m}')">${label}</button>`).join('')}</div>`;
-    const svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${insEsc(INS_BAR_METRICS.find(m => m[0] === metric)[1])} per year">${grid}${bars}</svg>`;
-    return insCard('Year by year', toggle + svg);
-}
-
-function insSetBarMetric(m) {
-    insState.barMetric = m;
-    renderInsights(insState.lastFiltered);
+    const svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${insEsc(m.label)} per year">${grid}${bars}</svg>`;
+    return insCard('Year by year', svg, m.noun);
 }
 
 // ── 4. Sport mix donut ─────────────────────────────────────────────────────
@@ -317,12 +324,14 @@ function insDonutCard(list, today) {
     let sel = insState.donutYear || String(today.year);
     if (sel !== 'all' && !years.includes(sel)) sel = years[0];
     const pool = sel === 'all' ? list : list.filter(a => a.d.startsWith(sel));
-    // Hours when moving time is known, activity count otherwise.
-    const useHours = pool.some(a => a.m);
+    // By the chosen metric; by activity count when it has nothing to show
+    // (e.g. moving time before the worker stored it).
+    let m = insMetric();
+    if (!pool.some(a => m.val(a) > 0)) m = { key: 'count', ...INS_METRICS.count };
     const totals = new Map(INS_FAMILIES.map(f => [f.key, { v: 0, n: 0 }]));
     pool.forEach(a => {
         const t = totals.get(insFamily(a.t).key);
-        t.v += useHours ? (a.m || 0) / 3600 : 1;
+        t.v += m.val(a);
         t.n++;
     });
     const sum = [...totals.values()].reduce((s, t) => s + t.v, 0);
@@ -338,7 +347,9 @@ function insDonutCard(list, today) {
         const frac = s.v / (sum || 1);
         const a0 = angle + gap / 2, a1 = angle + frac * Math.PI * 2 - gap / 2;
         angle += frac * Math.PI * 2;
-        const tip = `${s.key}: ${insFmt(s.v, useHours ? 0 : 0)}${useHours ? ' h' : ''} · ${Math.round(frac * 100)}% · ${s.n} activities`;
+        const tip = m.key === 'count'
+            ? `${s.key}: ${insFmt(s.v)} activities · ${insPct(frac)}`
+            : `${s.key}: ${insWithUnit(s.v, m)} · ${insPct(frac)} · ${s.n} activities`;
         if (frac >= 0.999) {
             arcs += `<g class="ins-hit" data-tip="${insEsc(tip)}"><circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${s.color}" stroke-width="${R - r}"/></g>`;
             return;
@@ -349,17 +360,22 @@ function insDonutCard(list, today) {
         arcs += `<g class="ins-hit" data-tip="${insEsc(tip)}"><path fill="${s.color}" d="M${p(R, a0)} A${R},${R} 0 ${large} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${large} 0 ${p(r, a0)} Z"/></g>`;
     });
     const centre = `<text class="ins-donut-num" x="${C}" y="${C + 2}" text-anchor="middle">${insShort(sum)}</text>
-        <text class="ins-donut-unit" x="${C}" y="${C + 16}" text-anchor="middle">${useHours ? 'hours' : 'activities'}</text>`;
-    const legend = slices.map(s => `<li><span class="ins-swatch" style="background:${s.color}"></span><span class="ins-legend-name">${s.key}</span><span class="ins-legend-val">${Math.round(s.v / (sum || 1) * 100)}%</span></li>`).join('');
+        <text class="ins-donut-unit" x="${C}" y="${C + 16}" text-anchor="middle">${{ count: 'activities', dist: 'miles', hours: 'hours', elev: 'feet' }[m.key]}</text>`;
+    const legend = slices.map(s => `<li><span class="ins-swatch" style="background:${s.color}"></span><span class="ins-legend-name">${s.key}</span><span class="ins-legend-val">${insPct(s.v / (sum || 1))}</span></li>`).join('');
 
     const pills = ['all', ...years].slice(0, 9).map(y =>
         `<button type="button" class="filter-pill ins-year-pill${y === sel ? ' active' : ''}" onclick="insSetDonutYear('${y}')">${y === 'all' ? 'All time' : y}</button>`).join('');
     const body = `<div class="ins-pills">${pills}</div>
         <div class="ins-donut-wrap">
-            <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${useHours ? 'hours' : 'activities'}">${arcs}${centre}</svg>
+            <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${m.noun}">${arcs}${centre}</svg>
             <ul class="ins-legend">${legend}</ul>
         </div>`;
-    return insCard('Sport mix', body, useHours ? 'by moving time' : 'by activities');
+    return insCard('Sport mix', body, `by ${m.noun}`);
+}
+
+// A share as a whole percent; a sliver shows as "<1%" rather than "0%".
+function insPct(f) {
+    return f > 0 && f < 0.005 ? '<1%' : `${Math.round(f * 100)}%`;
 }
 
 function insSetDonutYear(y) {
@@ -369,13 +385,15 @@ function insSetDonutYear(y) {
 
 // ── 5. Consistency calendar ────────────────────────────────────────────────
 function insCalendarCard(list, today) {
+    const m = insMetric();
     const perDay = new Map();
     list.forEach(a => {
         const d = a.d.slice(0, 10);
-        const e = perDay.get(d) || { n: 0, sec: 0, mi: 0 };
+        const e = perDay.get(d) || { n: 0, sec: 0, mi: 0, v: 0 };
         e.n++;
         e.sec += a.m || 0;
         e.mi += (a.di || 0) / INS_M_PER_MI;
+        e.v += m.val(a);
         perDay.set(d, e);
     });
 
@@ -399,43 +417,63 @@ function insCalendarCard(list, today) {
     const start = insAddDays(today.iso, -(todayDow + (weeks - 1) * 7));
     const cell = 6, g = 1.5, L = 14, T = 12;
     const W = L + weeks * (cell + g), H = T + 7 * (cell + g);
-    // Levels by moving time (or activity count when durations are missing).
+    // Four shades by the chosen metric: activity count as-is (1, 2, 3, 4+);
+    // amounts by quartile of the active days in view, so the scale fits
+    // whatever is measured. A day with activity but none of the amount (a
+    // swim on a climbing view) still gets the lightest shade.
+    let cuts = null;
+    if (m.key !== 'count') {
+        const inView = [];
+        perDay.forEach((e, d) => { if (d >= start && d <= today.iso && e.v > 0) inView.push(e.v); });
+        inView.sort((a, b) => a - b);
+        const q = f => inView[Math.min(inView.length - 1, Math.floor(f * inView.length))];
+        if (inView.length) cuts = [q(0.25), q(0.5), q(0.75)];
+    }
     const level = e => {
         if (!e) return 0;
-        const h = e.sec / 3600;
-        if (!e.sec) return Math.min(4, e.n);
-        return h < 0.75 ? 1 : h < 1.5 ? 2 : h < 3 ? 3 : 4;
+        if (!cuts) return Math.min(4, e.n);
+        return e.v <= cuts[0] ? 1 : e.v <= cuts[1] ? 2 : e.v <= cuts[2] ? 3 : 4;
     };
-    let cells = '', months = '', active = 0, lastMonth = -1;
+    let cells = '', months = '', active = 0, lastMonth = -1, lastLabelW = -9;
     for (let w = 0; w < weeks; w++) {
         for (let d = 0; d < 7; d++) {
             const iso = insAddDays(start, w * 7 + d);
             if (iso > today.iso) continue;
             const e = perDay.get(iso);
             if (e) active++;
+            const dayName = `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d]}, ${insShortDate(iso, today)}`;
             const tip = e
-                ? `${iso}: ${e.n} activit${e.n === 1 ? 'y' : 'ies'} · ${insFmt(e.mi, 1)} mi · ${insFmt(e.sec / 3600, 1)} h`
-                : `${iso}: rest day`;
+                ? `${dayName}: ${e.n} activit${e.n === 1 ? 'y' : 'ies'} · ${insFmt(e.mi, 1)} mi · ${insFmt(e.sec / 3600, 1)} h${m.key === 'elev' ? ` · ${insFmt(e.v)} ft` : ''}`
+                : `${dayName}: rest day`;
             cells += `<rect class="ins-hit ins-cell l${level(e)}" x="${L + w * (cell + g)}" y="${T + d * (cell + g)}" width="${cell}" height="${cell}" rx="1.5" data-tip="${insEsc(tip)}"/>`;
             if (d === 0) {
-                const m = Number(iso.slice(5, 7)) - 1;
-                if (m !== lastMonth && Number(iso.slice(8, 10)) <= 7 && w < weeks - 2) {
-                    months += `<text class="ins-axis" x="${L + w * (cell + g)}" y="${T - 4}">${INS_MONTHS[m]}</text>`;
+                const mon = Number(iso.slice(5, 7)) - 1;
+                // Label a month at its first week, if the last label is far
+                // enough left not to collide.
+                if (mon !== lastMonth && Number(iso.slice(8, 10)) <= 7 && w < weeks - 2 && w - lastLabelW >= 3) {
+                    months += `<text class="ins-axis" x="${L + w * (cell + g)}" y="${T - 4}">${INS_MONTHS[mon]}</text>`;
+                    lastLabelW = w;
                 }
-                lastMonth = m;
+                lastMonth = mon;
             }
         }
     }
     const dayLabels = ['M', '', 'W', '', 'F', '', ''].map((t, d) => t ? `<text class="ins-axis" x="0" y="${T + d * (cell + g) + cell - 0.5}">${t}</text>` : '').join('');
     const svg = `<svg class="ins-svg ins-calendar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Active days over the last year">${months}${dayLabels}${cells}</svg>`;
     const legend = `<div class="ins-cal-legend"><span>Less</span>${[0, 1, 2, 3, 4].map(l => `<i class="ins-cell-key l${l}"></i>`).join('')}<span>More</span></div>`;
-    const bestNote = bestEnd ? ` <span class="ins-tile-foot">ended ${bestEnd}</span>` : '';
+    const bestNote = bestEnd ? ` <span class="ins-tile-foot">ended ${insShortDate(bestEnd, today)}</span>` : '';
     const stats = `<div class="ins-tiles ins-tiles-3">
         <div class="ins-tile"><span class="ins-tile-label">Current streak</span><span class="ins-tile-value">${cur}<small> d</small></span></div>
         <div class="ins-tile"><span class="ins-tile-label">Best streak</span><span class="ins-tile-value">${best}<small> d</small></span>${bestNote}</div>
         <div class="ins-tile"><span class="ins-tile-label">Active days</span><span class="ins-tile-value">${active}</span><span class="ins-tile-foot">last 12 months</span></div>
     </div>`;
-    return insCard('Consistency', stats + svg + legend, 'shade = moving time');
+    return insCard('Consistency', stats + svg + legend, `shade = ${m.noun}`);
+}
+
+// "May 27" this year, "May 27, 2025" otherwise.
+function insShortDate(iso, today) {
+    const label = `${INS_MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`;
+    return iso.startsWith(String(today.year)) ? label : `${label}, ${iso.slice(0, 4)}`;
 }
 
 // ── 6. Eddington number ────────────────────────────────────────────────────
@@ -628,7 +666,7 @@ function insPaceHover(svg, ev) {
     const rows = data.years.map((y, k) => {
         const s = data.series[k];
         if (!s.length || day >= s.length) return '';
-        return `<div><span class="ins-swatch" style="background:${data.colors[k]}"></span>${y}: <strong>${insFmt(s[day])} mi</strong></div>`;
+        return `<div><span class="ins-swatch" style="background:${data.colors[k]}"></span>${y}: <strong>${insFmt(s[day])} ${data.unit}</strong></div>`;
     }).join('');
     insShowTip(`<div class="ins-tooltip-head">${label}</div>${rows}`, ev.clientX, box.top + 10, {
         bottom: box.bottom,
