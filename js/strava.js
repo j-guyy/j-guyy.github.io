@@ -5887,7 +5887,11 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
     // Like TF_KEY below this is a public tile key (browser requests carry it);
     // js/us-ecoregions.js has its own copy.
     const CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
-    const darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
+    // Cache-buster for CARTO tiles: some browsers / CDN edges held tiles from an
+    // older CARTO style (grey water instead of slate), so the map showed random
+    // tile-sized grey squares. Bump it if mixed tiles turn up again.
+    const CARTO_TILES_V = 2;
+    const darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}&v=${CARTO_TILES_V}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
     });
@@ -5895,7 +5899,7 @@ function setupStravaBasemaps(map, { overlays = null, onThemeChange = null } = {}
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
     });
-    const greyscaleLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
+    const greyscaleLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}&v=${CARTO_TILES_V}`, {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19,
     });

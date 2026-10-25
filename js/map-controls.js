@@ -14,17 +14,21 @@ function setupMapBasemaps(map, { overlays = null, onThemeChange = null, defaultB
     // CARTO stamps keyless raster tiles with an "API KEY REQUIRED" watermark.
     // Public browser-side tile keys, same ones js/strava.js uses — rotate together.
     const CARTO_KEY = 'cb1_43mc_1_257b4a4d0d9625f587e00261';
+    // Cache-buster for CARTO tiles: some browsers / CDN edges held tiles from an
+    // older CARTO style (grey water instead of slate), so the map showed random
+    // tile-sized grey squares. Bump it if mixed tiles turn up again.
+    const CARTO_TILES_V = 2;
     const TF_KEY = 'bc2ceac04cab454da559aaacefe3582f';
     const osm = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const carto = osm + ' &copy; <a href="https://carto.com/attributions">CARTO</a>';
     const tf = 'Maps &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, Data &copy; OSM contributors';
 
     const layers = {
-        dark: L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
+        dark: L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}&v=${CARTO_TILES_V}`,
             { attribution: carto, subdomains: 'abcd', maxZoom: 19 }),
         osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             { attribution: osm, maxZoom: 19 }),
-        greyscale: L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
+        greyscale: L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}&v=${CARTO_TILES_V}`,
             { attribution: carto, subdomains: 'abcd', maxZoom: 19 }),
         topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
             { attribution: 'Map data: &copy; OSM contributors, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)', maxZoom: 17 }),
