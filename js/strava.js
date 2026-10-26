@@ -1040,7 +1040,10 @@ function renderFilters() {
 
     container.innerHTML = `
         <div class="filter-bar">
-            <div class="metric-toggle" role="group" aria-label="Measure by">${metricHtml}</div>
+            <div class="metric-toggle-row">
+                <span class="metric-toggle-label" id="metric-toggle-label">Show stats by</span>
+                <div class="metric-toggle" role="group" aria-labelledby="metric-toggle-label">${metricHtml}</div>
+            </div>
             <div class="filter-controls">
                 <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
                 <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>

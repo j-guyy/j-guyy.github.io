@@ -339,7 +339,10 @@ function insDonutCard(list, today) {
         .map(f => ({ ...f, ...totals.get(f.key) }))
         .sort((a, b) => b.v - a.v);
 
-    const R = 64, r = 42, C = 75;
+    // Hovering a slice pops it out (--dx/--dy, along its middle) and shows it
+    // in the centre (insDonutCentre); the ring leaves room for the pop.
+    const R = 66, r = 44, C = 75, POP = 4;
+    const unitWord = { count: 'activities', dist: 'miles', hours: 'hours', elev: 'feet' }[m.key];
     let angle = -Math.PI / 2;
     let arcs = '';
     const gap = slices.length > 1 ? 0.025 : 0; // 2px-ish surface gap between slices
@@ -350,24 +353,34 @@ function insDonutCard(list, today) {
         const tip = m.key === 'count'
             ? `${s.key}: ${insFmt(s.v)} activities · ${insPct(frac)}`
             : `${s.key}: ${insWithUnit(s.v, m)} · ${insPct(frac)} · ${s.n} activities`;
+        const mid = (a0 + a1) / 2;
+        const attrs = `class="ins-hit" data-tip="${insEsc(tip)}" data-sport="${s.key}" data-color="${s.color}" data-num="${insShort(s.v)}" data-pct="${insPct(frac)}"`;
         if (frac >= 0.999) {
-            arcs += `<g class="ins-hit" data-tip="${insEsc(tip)}"><circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${s.color}" stroke-width="${R - r}"/></g>`;
+            arcs += `<g ${attrs}><circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${s.color}" stroke-width="${R - r}"/></g>`;
             return;
         }
         if (a1 <= a0) return;
         const large = a1 - a0 > Math.PI ? 1 : 0;
         const p = (rad, ang) => `${(C + rad * Math.cos(ang)).toFixed(2)},${(C + rad * Math.sin(ang)).toFixed(2)}`;
-        arcs += `<g class="ins-hit" data-tip="${insEsc(tip)}"><path fill="${s.color}" d="M${p(R, a0)} A${R},${R} 0 ${large} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${large} 0 ${p(r, a0)} Z"/></g>`;
+        arcs += `<g ${attrs} style="--dx:${(POP * Math.cos(mid)).toFixed(2)}px;--dy:${(POP * Math.sin(mid)).toFixed(2)}px"><path fill="${s.color}" d="M${p(R, a0)} A${R},${R} 0 ${large} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${large} 0 ${p(r, a0)} Z"/></g>`;
     });
-    const centre = `<text class="ins-donut-num" x="${C}" y="${C + 2}" text-anchor="middle">${insShort(sum)}</text>
-        <text class="ins-donut-unit" x="${C}" y="${C + 16}" text-anchor="middle">${{ count: 'activities', dist: 'miles', hours: 'hours', elev: 'feet' }[m.key]}</text>`;
-    const legend = slices.map(s => `<li><span class="ins-swatch" style="background:${s.color}"></span><span class="ins-legend-name">${s.key}</span><span class="ins-legend-val">${insPct(s.v / (sum || 1))}</span></li>`).join('');
+    const label = sel === 'all' ? 'All time' : sel;
+    const centre = `<text class="ins-donut-label" x="${C}" y="${C - 17}" text-anchor="middle">${label}</text>
+        <text class="ins-donut-num" x="${C}" y="${C + 7}" text-anchor="middle">${insShort(sum)}</text>
+        <text class="ins-donut-unit" x="${C}" y="${C + 21}" text-anchor="middle">${unitWord}</text>`;
+    // The share bar and amount show on the website, where the legend has room.
+    const legend = slices.map(s => {
+        const frac = s.v / (sum || 1);
+        const amt = m.key === 'count' ? insFmt(s.v) : insWithUnit(s.v, m);
+        return `<li><span class="ins-swatch" style="background:${s.color}"></span><span class="ins-legend-name">${s.key}</span><span class="ins-legend-amt">${amt}</span><span class="ins-legend-val">${insPct(frac)}</span>`
+            + `<span class="ins-legend-bar"><span style="width:${(frac * 100).toFixed(1)}%;background:${s.color}"></span></span></li>`;
+    }).join('');
 
     const pills = ['all', ...years].slice(0, 9).map(y =>
         `<button type="button" class="filter-pill ins-year-pill${y === sel ? ' active' : ''}" onclick="insSetDonutYear('${y}')">${y === 'all' ? 'All time' : y}</button>`).join('');
     const body = `<div class="ins-pills">${pills}</div>
         <div class="ins-donut-wrap">
-            <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${m.noun}">${arcs}${centre}</svg>
+            <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${m.noun}" data-label="${label}" data-num="${insShort(sum)}" data-unit="${unitWord}">${arcs}${centre}</svg>
             <ul class="ins-legend">${legend}</ul>
         </div>`;
     return insCard('Sport mix', body, `by ${m.noun}`);
@@ -376,6 +389,18 @@ function insDonutCard(list, today) {
 // A share as a whole percent; a sliver shows as "<1%" rather than "0%".
 function insPct(f) {
     return f > 0 && f < 0.005 ? '<1%' : `${Math.round(f * 100)}%`;
+}
+
+// The donut's centre: the hovered slice (its sport, amount and share), or the
+// total when hit is null.
+function insDonutCentre(svg, hit) {
+    const [label, num, unit] = svg.querySelectorAll('text');
+    if (!label) return;
+    const d = svg.dataset;
+    label.textContent = hit ? hit.dataset.sport : d.label;
+    label.style.fill = hit ? hit.dataset.color : '';
+    num.textContent = hit ? hit.dataset.num : d.num;
+    unit.textContent = hit ? `${hit.dataset.pct} of total` : d.unit;
 }
 
 function insSetDonutYear(y) {
@@ -621,8 +646,11 @@ function insBindTooltips(root) {
         const pace = ev.target.closest?.('.ins-pace');
         if (pace) { insPaceHover(pace, ev); return; }
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
+        root.querySelectorAll('.ins-donut').forEach(svg => insDonutCentre(svg, hit && svg.contains(hit) ? hit : null));
         if (hit && root.contains(hit)) {
             hit.classList.add('is-hover');
+            // The website's big donut shows the slice in its centre instead.
+            if (!document.body.classList.contains('app-page') && hit.closest('.ins-donut')) { insHideTip(); return; }
             // Anchor on the drawn mark (a bar's rounded top, a cell, a goal
             // row), not the pointer, so the tip sits above what you touch.
             const mark = hit.querySelector('path, circle') || hit;
@@ -643,6 +671,7 @@ function insBindTooltips(root) {
         insHideTip();
         root.querySelectorAll('.ins-crosshair').forEach(c => { c.style.display = 'none'; });
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
+        root.querySelectorAll('.ins-donut').forEach(svg => insDonutCentre(svg, null));
     };
     root.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') clear(); });
     document.addEventListener('pointerdown', ev => { if (!root.contains(ev.target)) clear(); });

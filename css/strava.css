@@ -913,6 +913,73 @@
     color: var(--primary-color);
 }
 
+/* Website: the metric switch drives the summary, every chart and the tables,
+   so it gets its own labelled row and a big segmented control with a solid
+   active state, above the sport filters. (The app styles it in app.css.) */
+.metric-toggle-row { display: contents; }
+.metric-toggle-label { display: none; }
+
+body:not(.app-page) .metric-toggle-row {
+    display: flex;
+    flex: 1 0 100%;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding-bottom: 14px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+body:not(.app-page) .metric-toggle-label {
+    display: inline;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body:not(.app-page) .metric-toggle {
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px;
+    background: rgba(0,0,0,0.35);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+}
+
+body:not(.app-page) .metric-toggle-btn {
+    min-width: 108px;
+    padding: 9px 20px;
+    border-radius: 999px;
+    color: rgba(255,255,255,0.78);
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+body:not(.app-page) .metric-toggle-btn + .metric-toggle-btn { border-left: none; }
+
+body:not(.app-page) .metric-toggle-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+}
+
+body:not(.app-page) .metric-toggle-btn.active {
+    background: var(--primary-color);
+    color: #0b140c;
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.45);
+}
+
+body:not(.app-page) .metric-toggle-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    body:not(.app-page) .metric-toggle { display: flex; width: 100%; box-sizing: border-box; }
+    body:not(.app-page) .metric-toggle-btn { flex: 1 1 0; min-width: 0; padding: 8px 4px; font-size: 0.85rem; }
+}
+
 .filter-all-btn {
     background: none;
     border: 1px solid rgba(255,255,255,0.2);
