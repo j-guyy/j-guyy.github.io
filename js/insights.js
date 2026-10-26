@@ -645,6 +645,9 @@ function insBindTooltips(root) {
         const hit = ev.target.closest?.('[data-tip]');
         const pace = ev.target.closest?.('.ins-pace');
         if (pace) { insPaceHover(pace, ev); return; }
+        // In the donut's gaps or hole, keep the last slice until the pointer
+        // leaves the chart, so sweeping across it doesn't flicker to the total.
+        if (!hit && ev.target.closest?.('.ins-donut')) return;
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
         root.querySelectorAll('.ins-donut').forEach(svg => insDonutCentre(svg, hit && svg.contains(hit) ? hit : null));
         if (hit && root.contains(hit)) {
