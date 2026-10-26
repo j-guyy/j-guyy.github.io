@@ -4,13 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strava Activities and Lists — Justin Guyette</title>
-    <meta name="description" content="Strava activity stats and lists — countries, regions, counties, parks, metros, ecoregions, tiles, peaks and more.">
+    <title>Dashboard — Justin Guyette</title>
+    <meta name="description" content="Activity dashboard — charts, goals and Strava stats and lists: countries, regions, counties, parks, metros, ecoregions, tiles, peaks and more.">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/strava.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/insights.css?v=20261025a">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" rel="stylesheet" />
 </head>
@@ -23,8 +24,8 @@
 
     <div class="content">
         <div class="hero strava-hero">
-            <h1>Strava Activities</h1>
-            <h2>Activities and Lists</h2>
+            <h1>Dashboard</h1>
+            <h2>Activities, goals and lists</h2>
         </div>
 
         <!-- Loading -->
@@ -33,11 +34,18 @@
             <p id="loading-status">Loading activities…</p>
         </div>
 
+
+        <!-- Metric toggle + sport filters: drive the summary, charts and tables -->
+        <div id="strava-filters" class="section"></div>
+
         <!-- Summary -->
         <div class="section" id="strava-summary-section">
             <div id="strava-summary"></div>
             <div id="cache-info" class="cache-info-bar"></div>
         </div>
+
+        <!-- At-a-glance charts (js/insights.js, shared with the app) -->
+        <div id="strava-insights" class="ins-root"></div>
 
         <!-- Overview: one card per section, filled by renderOverview() with each
              hunter's headline stat from the worker's /summary. Clicking a card
@@ -45,8 +53,6 @@
              has its own home grid. -->
         <nav id="strava-overview" class="strava-overview" aria-label="Sections"></nav>
 
-        <!-- Activity type filters -->
-        <div id="strava-filters" class="section"></div>
 
         <!-- Activity map (lazy-loaded) -->
         <div class="section" id="map">
@@ -245,6 +251,7 @@
     <script src="js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
     <script src="js/strava.js?v=20261025n"></script>
+    <script src="js/insights.js?v=20261025w"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 

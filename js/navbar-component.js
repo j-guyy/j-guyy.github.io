@@ -33,7 +33,7 @@ class NavbarComponent extends HTMLElement {
                             <div class="dropdown-content">
                                 <a href="${basePath}adventures.html">List</a>
                                 <a href="${basePath}peaks-dashboard.html">Peaks</a>
-                                <a href="${basePath}strava.html">Strava</a>
+                                <a href="${basePath}strava.html">Dashboard</a>
                             </div>
                         </li>
                         <li class="dropdown tools-dropdown">
