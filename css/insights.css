@@ -161,7 +161,7 @@
 
 .ins-root .ins-donut .ins-hit path,
 .ins-root .ins-donut .ins-hit circle { transition: opacity 0.15s, transform 0.18s ease-out; }
-.ins-root .ins-donut:hover .ins-hit:not(.is-hover) path { opacity: 0.45; }
+.ins-root .ins-donut:has(.is-hover) .ins-hit:not(.is-hover) path { opacity: 0.45; }
 .ins-root .ins-donut .ins-hit.is-hover path { transform: translate(var(--dx, 0), var(--dy, 0)); }
 .ins-root .ins-donut-label { fill: var(--ins-text-dim); font-size: 9px; font-weight: 650; letter-spacing: 0.04em; }
 .ins-root .ins-donut-num { fill: var(--ins-text); font-size: 24px; font-weight: 750; letter-spacing: -0.02em; }
