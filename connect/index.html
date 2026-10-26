@@ -9,8 +9,8 @@
     <meta name="theme-color" content="#0a0d0b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/family/icon-192.png">
-    <link rel="icon" href="/family/icon-192.png">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
+    <link rel="icon" href="/connect/icon-192.png">
     <style>
         :root {
             --bg: #0a0d0b; --surface: #131715; --border: rgba(255, 255, 255, 0.08);
@@ -59,7 +59,7 @@
 </main>
 <script>
 (function () {
-    const WORKER = 'https://family-strava.justinguyette.workers.dev';
+    const WORKER = 'https://user-strava.justinguyette.workers.dev';
     const params = new URLSearchParams(location.search);
 
     const connect = document.getElementById('connect');
@@ -84,10 +84,10 @@
     }
 
     let user = null;
-    try { user = JSON.parse(localStorage.getItem('family_user') || 'null'); } catch { /* none */ }
+    try { user = JSON.parse(localStorage.getItem('strava_user') || 'null'); } catch { /* none */ }
     if (user?.id && user?.token && !err) {
         const app = new URL('/app/', location.origin);
-        app.searchParams.set('family', '1');
+        app.searchParams.set('user', '1');
         app.searchParams.set('k', `${user.id}.${user.token}`);
         if (user.name) app.searchParams.set('n', user.name);
         app.hash = 'home';

@@ -1,5 +1,5 @@
-// js/family.js sets STRAVA_WORKER_URL / STRAVA_ADMIN_PW_KEY in the app's family
-// mode (/app/?family=1); everywhere else these are the owner's worker and key.
+// js/user-mode.js sets STRAVA_WORKER_URL / STRAVA_ADMIN_PW_KEY in the app's user
+// mode (/app/?user=1); everywhere else these are the owner's worker and key.
 const WORKER_URL = window.STRAVA_WORKER_URL || 'https://strava-worker.justinguyette.workers.dev';
 const GEO_CACHE_KEY = 'strava_geo_cache_v3'; // v3: 0.01° grid precision (was 0.1°)
 

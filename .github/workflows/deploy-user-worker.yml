@@ -1,5 +1,5 @@
-# Deploys the family Strava worker (family-worker.js + worker.js, configured by
-# wrangler.family.toml) as its own Worker, "family-strava". The owner's
+# Deploys the user Strava worker (user-worker.js + worker.js, configured by
+# wrangler.user.toml) as its own Worker, "user-strava". The owner's
 # strava-worker is deployed separately by deploy-worker.yml and is untouched.
 #
 # - Push to main touching these files: deploy.
@@ -9,37 +9,37 @@
 # Uses the same CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets as
 # deploy-worker.yml. Also needs repository secrets STRAVA_CLIENT_ID and
 # STRAVA_CLIENT_SECRET (from strava.com/settings/api), uploaded to the Worker on
-# every deploy; FAMILY_INVITE is optional (when set, connecting needs
-# ?invite=<it> on the family page link). The KV namespace "family-strava" is
+# every deploy; USER_INVITE is optional (when set, connecting needs
+# ?invite=<it> on the connect page link). The KV namespace "user-strava" is
 # created on the first deploy and its id filled into the config here.
-name: Deploy Family Worker
+name: Deploy User Worker
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - 'worker.js'
-      - 'family-worker.js'
-      - 'wrangler.family.toml'
-      - '.github/workflows/deploy-family-worker.yml'
+      - 'user-worker.js'
+      - 'wrangler.user.toml'
+      - '.github/workflows/deploy-user-worker.yml'
   push:
     branches: [main]
     paths:
       - 'worker.js'
-      - 'family-worker.js'
-      - 'wrangler.family.toml'
-      - '.github/workflows/deploy-family-worker.yml'
+      - 'user-worker.js'
+      - 'wrangler.user.toml'
+      - '.github/workflows/deploy-user-worker.yml'
 
 permissions:
   contents: read
 
 env:
   WRANGLER: npx --yes wrangler@4.20.0
-  KV_TITLE: family-strava
+  KV_TITLE: user-strava
 
 jobs:
   validate:
-    name: Validate Family Worker
+    name: Validate User Worker
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -48,23 +48,23 @@ jobs:
         with:
           node-version: '22'
       - name: Syntax check
-        run: node --check worker.js && node --check family-worker.js
+        run: node --check worker.js && node --check user-worker.js
       - name: Wrangler dry run
-        run: $WRANGLER deploy --dry-run --config wrangler.family.toml --outdir "$RUNNER_TEMP/family-dry-run"
+        run: $WRANGLER deploy --dry-run --config wrangler.user.toml --outdir "$RUNNER_TEMP/user-dry-run"
 
   deploy:
-    name: Deploy Family Worker
+    name: Deploy User Worker
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
-      group: deploy-family-worker
+      group: deploy-user-worker
       cancel-in-progress: false
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
       STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
-      FAMILY_INVITE: ${{ secrets.FAMILY_INVITE }}
+      USER_INVITE: ${{ secrets.USER_INVITE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,7 +78,7 @@ jobs:
           done
           exit $missing
       - name: Syntax check
-        run: node --check worker.js && node --check family-worker.js
+        run: node --check worker.js && node --check user-worker.js
       - name: Find or create the KV namespace
         run: |
           find_id() {
@@ -93,15 +93,15 @@ jobs:
           fi
           if [ -z "$id" ]; then echo "::error::Could not find or create KV namespace $KV_TITLE"; exit 1; fi
           echo "KV namespace id: $id"
-          sed "s/FAMILY_KV_ID/$id/g" wrangler.family.toml > wrangler.family.deploy.toml
+          sed "s/USER_KV_ID/$id/g" wrangler.user.toml > wrangler.user.deploy.toml
       - name: Deploy
-        run: $WRANGLER deploy --config wrangler.family.deploy.toml
+        run: $WRANGLER deploy --config wrangler.user.deploy.toml
       - name: Upload secrets
         run: |
           node -e '
             const s = { CLIENT_ID: process.env.STRAVA_CLIENT_ID, CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET };
-            if (process.env.FAMILY_INVITE) s.FAMILY_INVITE = process.env.FAMILY_INVITE;
-            require("fs").writeFileSync(process.env.RUNNER_TEMP + "/family-secrets.json", JSON.stringify(s));
+            if (process.env.USER_INVITE) s.USER_INVITE = process.env.USER_INVITE;
+            require("fs").writeFileSync(process.env.RUNNER_TEMP + "/user-secrets.json", JSON.stringify(s));
           '
-          $WRANGLER secret bulk "$RUNNER_TEMP/family-secrets.json" --config wrangler.family.deploy.toml
-          rm -f "$RUNNER_TEMP/family-secrets.json"
+          $WRANGLER secret bulk "$RUNNER_TEMP/user-secrets.json" --config wrangler.user.deploy.toml
+          rm -f "$RUNNER_TEMP/user-secrets.json"

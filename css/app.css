@@ -1280,20 +1280,20 @@
 .app-page #screen-dashboard #strava-filters .filter-pills::-webkit-scrollbar { display: none; }
 .app-page #screen-dashboard #strava-filters .filter-pill { white-space: nowrap; }
 
-/* ── Family mode (/app/?family=1, js/family.js) ─────────────────────────────
+/* ── User mode (/app/?user=1, js/user-mode.js) ─────────────────────────────
    Hides the owner-only parts (Travel, StatsHunters) and adds the account row. */
-.family-mode [data-family-hide] { display: none !important; }
-.family-mode .app-tabbar { grid-template-columns: repeat(4, 1fr); }
-.family-account { margin-top: 8px; padding-bottom: 8px; }
-.family-account-row, .family-tip { margin-left: 16px; margin-right: 16px; }
-.family-account-row {
+.user-mode [data-user-hide] { display: none !important; }
+.user-mode .app-tabbar { grid-template-columns: repeat(4, 1fr); }
+.user-account { margin-top: 8px; padding-bottom: 8px; }
+.user-account-row, .user-tip { margin-left: 16px; margin-right: 16px; }
+.user-account-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 12px 14px; border-radius: 14px;
     background: var(--app-surface, #151a17); border: 1px solid var(--app-border, #26302a);
     font-size: 0.9rem;
 }
-.family-tip {
+.user-tip {
     margin-top: 20px; margin-bottom: 0; padding: 10px 14px; border-radius: 12px;
     background: rgba(252, 76, 2, 0.12); border: 1px solid rgba(252, 76, 2, 0.35); font-size: 0.88rem;
 }
-.family-powered { margin: 10px 0 0; text-align: center; font-size: 0.75rem; opacity: 0.6; }
+.user-powered { margin: 10px 0 0; text-align: center; font-size: 0.75rem; opacity: 0.6; }

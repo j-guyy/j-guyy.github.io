@@ -1,9 +1,9 @@
-// ── Family Strava worker (family-strava) ─────────────────────────────────────
+// ── User Strava worker (user-strava) ─────────────────────────────────────
 //
 // The same API as worker.js, for anyone who connects their own Strava account
-// (family and friends), deployed as a separate Worker with its own KV and
+// (family and friends, or anyone invited), deployed as a separate Worker with its own KV and
 // Durable Object so the owner's strava-worker is untouched. Configured by
-// wrangler.family.toml and deployed by .github/workflows/deploy-family-worker.yml.
+// wrangler.user.toml and deployed by .github/workflows/deploy-user-worker.yml.
 //
 // How it reuses worker.js without changing it: every person's requests come in
 // under /u/<athleteId>/…, and this file strips that prefix and calls worker.js's
@@ -26,7 +26,7 @@
 //   u:<id>:<key>      that person's copy of every worker.js key
 //
 // Secrets: CLIENT_ID, CLIENT_SECRET (the Strava API app's), optional
-// FAMILY_INVITE (when set, /auth/start needs ?invite=<it>). Var: APP_ORIGIN.
+// USER_INVITE (when set, /auth/start needs ?invite=<it>). Var: APP_ORIGIN.
 
 import base, { SyncRunner } from './worker.js';
 
@@ -83,7 +83,7 @@ function scopedSyncRunner(ns, userId) {
             return {
                 fetch: (input, init = {}) => {
                     const headers = new Headers(init.headers);
-                    headers.set('X-Family-User', String(userId));
+                    headers.set('X-Strava-User', String(userId));
                     return stub.fetch(input, { ...init, headers });
                 },
             };
@@ -131,10 +131,10 @@ async function checkSession(env, user, request) {
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
 async function handleAuthStart(request, env, url) {
-    if (env.FAMILY_INVITE && url.searchParams.get('invite') !== env.FAMILY_INVITE) {
-        return redirect(`${appOrigin(env)}/family/?error=invite`);
+    if (env.USER_INVITE && url.searchParams.get('invite') !== env.USER_INVITE) {
+        return redirect(`${appOrigin(env)}/connect/?error=invite`);
     }
-    if (!env.CLIENT_ID || !env.CLIENT_SECRET) return redirect(`${appOrigin(env)}/family/?error=setup`);
+    if (!env.CLIENT_ID || !env.CLIENT_SECRET) return redirect(`${appOrigin(env)}/connect/?error=setup`);
     const state = randomToken();
     await env.STRAVA_KV.put(`oauth_state:${state}`, '1', { expirationTtl: STATE_TTL_SECONDS });
     const auth = new URL('https://www.strava.com/oauth/authorize');
@@ -148,7 +148,7 @@ async function handleAuthStart(request, env, url) {
 }
 
 async function handleAuthCallback(env, url) {
-    const back = reason => redirect(`${appOrigin(env)}/family/?error=${reason}`);
+    const back = reason => redirect(`${appOrigin(env)}/connect/?error=${reason}`);
     const state = url.searchParams.get('state') || '';
     if (!state || !(await env.STRAVA_KV.get(`oauth_state:${state}`))) return back('expired');
     await env.STRAVA_KV.delete(`oauth_state:${state}`);
@@ -200,7 +200,7 @@ async function handleAuthCallback(env, url) {
 
     const first = (athlete.firstname || '').trim();
     const app = new URL(`${appOrigin(env)}/app/`);
-    app.searchParams.set('family', '1');
+    app.searchParams.set('user', '1');
     app.searchParams.set('k', `${id}.${session}`);
     if (first) app.searchParams.set('n', first);
     app.hash = 'home';
@@ -279,9 +279,9 @@ export default {
 };
 
 // worker.js's SyncRunner, told which person it syncs for. The person arrives
-// with each call (X-Family-User, set by scopedSyncRunner) and is kept in the
+// with each call (X-Strava-User, set by scopedSyncRunner) and is kept in the
 // object's storage for the alarm that runs the sync.
-export class FamilySyncRunner extends SyncRunner {
+export class UserSyncRunner extends SyncRunner {
     constructor(state, env) {
         super(state, env);
         this.rootEnv = env;
@@ -291,15 +291,15 @@ export class FamilySyncRunner extends SyncRunner {
     async useUser(id) {
         if (id && id !== this.userId) {
             this.userId = id;
-            await this.state.storage.put('familyUser', id);
+            await this.state.storage.put('stravaUser', id);
         } else if (!this.userId) {
-            this.userId = (await this.state.storage.get('familyUser')) || null;
+            this.userId = (await this.state.storage.get('stravaUser')) || null;
         }
         if (this.userId) this.env = scopedEnv(this.rootEnv, this.userId);
     }
 
     async fetch(request) {
-        await this.useUser(request.headers.get('X-Family-User'));
+        await this.useUser(request.headers.get('X-Strava-User'));
         return super.fetch(request);
     }
 
