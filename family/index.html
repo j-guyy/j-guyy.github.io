@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <title>Strava Hunters</title>
+    <meta name="description" content="Connect your Strava account to see your own dashboard, maps and hunters.">
+    <meta name="theme-color" content="#0a0d0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/family/icon-192.png">
+    <link rel="icon" href="/family/icon-192.png">
+    <style>
+        :root {
+            --bg: #0a0d0b; --surface: #131715; --border: rgba(255, 255, 255, 0.08);
+            --text: #e8ece9; --muted: #9aa59f; --strava: #fc4c02; --error: #ff8a80;
+        }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        body {
+            margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+        }
+        main { width: 100%; max-width: 420px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px 22px; }
+        h1 { margin: 0 0 8px; font-size: 1.6rem; }
+        p { color: var(--muted); line-height: 1.5; margin: 0 0 16px; }
+        ul { color: var(--muted); padding-left: 20px; margin: 0 0 22px; line-height: 1.6; }
+        .btn {
+            display: block; width: 100%; text-align: center; text-decoration: none; border: 0; cursor: pointer;
+            padding: 14px 16px; border-radius: 12px; font-size: 1rem; font-weight: 600;
+        }
+        .btn-strava { background: var(--strava); color: #fff; }
+        .btn-open { background: #4caf50; color: #fff; margin-bottom: 12px; }
+        .error { color: var(--error); background: rgba(255, 138, 128, 0.1); border-radius: 10px; padding: 10px 12px; }
+        .fine { font-size: 0.8rem; margin: 16px 0 0; }
+        .powered { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 14px; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="card">
+        <h1>Strava Hunters</h1>
+        <p id="intro">See every county, park, metro, peak and map tile you've reached, built from your own Strava activities.</p>
+        <ul id="features">
+            <li>Dashboard with year-over-year charts and your Eddington number</li>
+            <li>County, Metro, Park, Ecoregion, Tile and Mountain hunters</li>
+            <li>A map of every activity</li>
+        </ul>
+        <p class="error" id="error" hidden></p>
+        <a class="btn btn-open" id="open" hidden>Open my dashboard</a>
+        <a class="btn btn-strava" id="connect" href="#">Connect with Strava</a>
+        <p class="fine" id="fine">Tick "View data about your private activities" on Strava's page so private activities count too. Only you can see your data, and Disconnect (on the app's Home screen) deletes it.</p>
+    </div>
+    <p class="powered">Powered by Strava</p>
+</main>
+<script>
+(function () {
+    const WORKER = 'https://family-strava.justinguyette.workers.dev';
+    const params = new URLSearchParams(location.search);
+
+    const connect = document.getElementById('connect');
+    const start = new URL(`${WORKER}/auth/start`);
+    if (params.get('invite')) start.searchParams.set('invite', params.get('invite'));
+    connect.href = start.toString();
+
+    const ERRORS = {
+        denied: 'Strava wasn\'t connected. Try again and tap Authorize.',
+        scope: 'Please tick "View data about your private activities" (and your activities) on Strava\'s page, then try again.',
+        expired: 'That sign-in took too long or was already used. Please try again.',
+        invite: 'This link needs an invite. Ask Justin for the full link.',
+        full: 'This app has reached Strava\'s limit on connected athletes. Ask Justin.',
+        setup: 'The app isn\'t fully set up yet. Ask Justin.',
+        strava: 'Strava didn\'t accept the sign-in. Please try again.',
+    };
+    const err = params.get('error');
+    if (err) {
+        const el = document.getElementById('error');
+        el.textContent = ERRORS[err] || ERRORS.strava;
+        el.hidden = false;
+    }
+
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('family_user') || 'null'); } catch { /* none */ }
+    if (user?.id && user?.token && !err) {
+        const app = new URL('/app/', location.origin);
+        app.searchParams.set('family', '1');
+        app.searchParams.set('k', `${user.id}.${user.token}`);
+        if (user.name) app.searchParams.set('n', user.name);
+        app.hash = 'home';
+        const open = document.getElementById('open');
+        open.href = app.toString();
+        open.hidden = false;
+        connect.textContent = 'Reconnect Strava';
+        const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+        if (standalone) location.replace(app.toString());
+    }
+})();
+</script>
+</body>
+</html>

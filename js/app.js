@@ -88,7 +88,7 @@ const MAP_LAYERS = [
     { key: 'pass',         label: 'Pass' },
     { key: 'trail',        label: 'Trail' },
     { key: 'statshunters', label: 'StatsHunters', detail: false },
-];
+].filter(l => !(window.FAMILY_USER && l.key === 'statshunters')); // family mode: the owner's StatsHunters only
 const layerRoute = key => (key === 'map' ? 'map' : `map/${key}`);
 const isMapRoute = route => route === 'map' || route.startsWith('map/');
 const screenOf = route => (isMapRoute(route) ? route.replace(/^map\/?/, '') || 'map' : route);
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildMapSwitcher();
     showScreen(currentRoute());
     pollHomeStats();
-    loadTravelStats();
+    if (!window.FAMILY_USER) loadTravelStats(); // family mode hides Travel
 });
 
 // ── Home grid quick stats ────────────────────────────────────────────────────

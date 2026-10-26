@@ -1,0 +1,40 @@
+# Cloudflare Worker config for the family Strava worker (family-worker.js):
+# the same API as strava-worker, for anyone who connects their own Strava
+# account. A separate Worker with its own storage, so strava-worker (and
+# wrangler.toml) is untouched. Deployed by .github/workflows/deploy-family-worker.yml.
+#
+# The KV namespace id is filled in by the deploy workflow, which creates the
+# namespace ("family-strava") on the first deploy. Secrets (CLIENT_ID,
+# CLIENT_SECRET, optional FAMILY_INVITE) are uploaded by the workflow from the
+# repository secrets STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET and FAMILY_INVITE.
+
+name = "family-strava"
+main = "family-worker.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+APP_ORIGIN = "https://j-guyy.github.io"
+
+# One namespace for both bindings worker.js expects; every person's keys are
+# prefixed u:<athleteId>: by family-worker.js.
+[[kv_namespaces]]
+binding = "STRAVA_DATA"
+id = "FAMILY_KV_ID"
+
+[[kv_namespaces]]
+binding = "STRAVA_KV"
+id = "FAMILY_KV_ID"
+
+# One background sync runner per person (see FamilySyncRunner). Never edit or
+# remove an applied migration; add a new tag.
+[[durable_objects.bindings]]
+name = "SYNC_RUNNER"
+class_name = "FamilySyncRunner"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FamilySyncRunner"]
+
+# Daily sync for everyone, half an hour after the owner's worker.
+[triggers]
+crons = ["30 0 * * *"]
