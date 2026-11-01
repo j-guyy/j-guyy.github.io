@@ -1882,6 +1882,8 @@ function buildSpatialIndex(counties) {
 // Process activities in chunks, yielding to the browser every 50 to keep the UI
 // responsive. Samples every 3rd decoded polyline point — accurate enough for
 // county-level detection since summary polylines are already simplified.
+// worker.js runs a port of this (and of detectParksAsync / detectMetrosAsync)
+// after every sync: detectPolygonHunter. Change both together.
 async function detectCountiesAsync(activities, counties, index) {
     const newFips = new Set();
     const newDiscoveries = {};  // fips → { actId, actName, date }
@@ -3479,6 +3481,8 @@ const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/
 const ECO_COLORS_JS    = '/js/eco-colors.js';
 // Bump when detection changes: a saved blob from another version is discarded
 // and every activity is scanned again. v2 records patches (see ecoPatchFirst).
+// worker.js has the same constant and a port of this detection (detectEcoregions,
+// run after every sync): change both together.
 const ECO_DETECT_VERSION = 2;
 const ECO_CELL_PER_DEG = 1000;  // points rounded to 0.001° (~100 m) before lookup
 // Numeric cell key = (lat + 90°) row × ECO_CELL_ROW + (lng + 360°) column. The
@@ -5396,6 +5400,7 @@ function addSegmentTiles(lat1, lng1, lat2, lng2, tileSet) {
     }
 }
 
+// worker.js runs a port of this after every sync (detectTiles): change both together.
 async function detectTilesAsync(activities) {
     const newTiles = new Set();
     for (let i = 0; i < activities.length; i++) {
