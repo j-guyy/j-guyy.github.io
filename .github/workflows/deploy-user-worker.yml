@@ -1,0 +1,107 @@
+# Deploys the user Strava worker (user-worker.js + worker.js, configured by
+# wrangler.user.toml) as its own Worker, "user-strava". The owner's
+# strava-worker is deployed separately by deploy-worker.yml and is untouched.
+#
+# - Push to main touching these files: deploy.
+# - Pull request: validate only (syntax check + dry run); no secrets used.
+# - Manual run (workflow_dispatch): deploys, but only from main.
+#
+# Uses the same CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets as
+# deploy-worker.yml. Also needs repository secrets STRAVA_CLIENT_ID and
+# STRAVA_CLIENT_SECRET (from strava.com/settings/api), uploaded to the Worker on
+# every deploy; USER_INVITE is optional (when set, connecting needs
+# ?invite=<it> on the connect page link). The KV namespace "user-strava" is
+# created on the first deploy and its id filled into the config here.
+name: Deploy User Worker
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'worker.js'
+      - 'user-worker.js'
+      - 'wrangler.user.toml'
+      - '.github/workflows/deploy-user-worker.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'worker.js'
+      - 'user-worker.js'
+      - 'wrangler.user.toml'
+      - '.github/workflows/deploy-user-worker.yml'
+
+permissions:
+  contents: read
+
+env:
+  WRANGLER: npx --yes wrangler@4.20.0
+  KV_TITLE: user-strava
+
+jobs:
+  validate:
+    name: Validate User Worker
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check worker.js && node --check user-worker.js
+      - name: Wrangler dry run
+        run: $WRANGLER deploy --dry-run --config wrangler.user.toml --outdir "$RUNNER_TEMP/user-dry-run"
+
+  deploy:
+    name: Deploy User Worker
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-user-worker
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+      USER_INVITE: ${{ secrets.USER_INVITE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require secrets
+        run: |
+          missing=0
+          for s in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID STRAVA_CLIENT_ID STRAVA_CLIENT_SECRET; do
+            if [ -z "${!s}" ]; then echo "::error::Repository secret $s is not set."; missing=1; fi
+          done
+          exit $missing
+      - name: Syntax check
+        run: node --check worker.js && node --check user-worker.js
+      - name: Find or create the KV namespace
+        run: |
+          find_id() {
+            $WRANGLER kv namespace list 2>/dev/null \
+              | sed -n '/^\[/,$p' \
+              | jq -r --arg t "$KV_TITLE" '[.[] | select(.title == $t or (.title | endswith("-" + $t)))][0].id // empty'
+          }
+          id=$(find_id)
+          if [ -z "$id" ]; then
+            $WRANGLER kv namespace create "$KV_TITLE"
+            id=$(find_id)
+          fi
+          if [ -z "$id" ]; then echo "::error::Could not find or create KV namespace $KV_TITLE"; exit 1; fi
+          echo "KV namespace id: $id"
+          sed "s/USER_KV_ID/$id/g" wrangler.user.toml > wrangler.user.deploy.toml
+      - name: Deploy
+        run: $WRANGLER deploy --config wrangler.user.deploy.toml
+      - name: Upload secrets
+        run: |
+          node -e '
+            const s = { CLIENT_ID: process.env.STRAVA_CLIENT_ID, CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET };
+            if (process.env.USER_INVITE) s.USER_INVITE = process.env.USER_INVITE;
+            require("fs").writeFileSync(process.env.RUNNER_TEMP + "/user-secrets.json", JSON.stringify(s));
+          '
+          $WRANGLER secret bulk "$RUNNER_TEMP/user-secrets.json" --config wrangler.user.deploy.toml
+          rm -f "$RUNNER_TEMP/user-secrets.json"
