@@ -360,13 +360,13 @@ function openSectionFromHash() {
 // `country` is the short name on the Regions section's country picker.
 // Region polygons live in /data/admin1/<id>.geojson (scripts/build-admin1-regions.py).
 const SUBDIVISION_CONFIG = [
-    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], country: 'USA',        flag: '🇺🇸', label: 'US States',           colLabel: 'State',    view: [39, -96, 3],    bounds: [[18, -170], [70, -66]] },
-    { id: 'canada',    names: ['Canada'],                                    country: 'Canada',     flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3]    },
-    { id: 'australia', names: ['Australia'],                                 country: 'Australia',  flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3]   },
-    { id: 'mexico',    names: ['Mexico'],                                    country: 'Mexico',     flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4]   },
-    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      country: 'China',      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3]    },
-    { id: 'spain',     names: ['Spain'],                                     country: 'Spain',      flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5]   },
-    { id: 'italy',     names: ['Italy'],                                     country: 'Italy',      flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5] },
+    { id: 'us',        names: ['United States', 'United States of America', 'United States of America (the)'], country: 'USA',        flag: '🇺🇸', label: 'US States',           colLabel: 'State',    view: [39, -96, 3],    bounds: [[18, -170], [70, -66]], box: [18.9, -180, 71.5, -66.9] },
+    { id: 'canada',    names: ['Canada'],                                    country: 'Canada',     flag: '🇨🇦', label: 'Canadian Provinces',   colLabel: 'Province', view: [58, -96, 3], box: [41.6, -141.1, 83.2, -52.6] },
+    { id: 'australia', names: ['Australia'],                                 country: 'Australia',  flag: '🇦🇺', label: 'Australian States',    colLabel: 'State',    view: [-26, 134, 3], box: [-43.7, 112.9, -9.2, 159.2] },
+    { id: 'mexico',    names: ['Mexico'],                                    country: 'Mexico',     flag: '🇲🇽', label: 'Mexican States',       colLabel: 'State',    view: [24, -102, 4], box: [14.5, -118.5, 32.8, -86.7] },
+    { id: 'china',     names: ['China', 'Hong Kong', 'Macau', 'Macao'],      country: 'China',      flag: '🇨🇳', label: 'Chinese Provinces',    colLabel: 'Province', view: [35, 104, 3], box: [18.1, 73.5, 53.6, 134.9] },
+    { id: 'spain',     names: ['Spain'],                                     country: 'Spain',      flag: '🇪🇸', label: 'Spanish Regions',      colLabel: 'Region',   view: [40, -3.5, 5], box: [27.6, -18.2, 43.8, 4.4] },
+    { id: 'italy',     names: ['Italy'],                                     country: 'Italy',      flag: '🇮🇹', label: 'Italian Regions',      colLabel: 'Region',   view: [42.5, 12.5, 5], box: [35.4, 6.6, 47.1, 18.6] },
 ];
 
 // Build a flat lookup: countryName → config entry
@@ -840,7 +840,7 @@ async function geocodeAll(keys, cache) {
 
     const needGeo = keys.filter(k => {
         const v = cache[k];
-        if (!v || !v.c || v.c === 'Unknown') return true;
+        if (!v || !v.c || v.c === 'Unknown' || v.b) return true;
         if (needsSubdivision(v)) return true;
         return false;
     });
@@ -878,6 +878,73 @@ async function geocodeAll(keys, cache) {
     dbg(`Geocoding complete: ${succeeded} / ${needGeo.length} cells resolved`);
     try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
     return { cache, modified: succeeded > 0 };
+}
+
+// Places cells Nominatim hasn't answered yet with the Regions boundary files
+// (/data/admin1/), so a new account's states and provinces show at once
+// instead of filling at Nominatim's 1.1 s per cell (newest first, so older
+// trips came last). Only files whose box holds a pending cell are fetched; a
+// cell no polygon holds (another country, a simplified coast) is left to
+// Nominatim. A placed cell is marked `b` and is still geocoded later, which
+// replaces it: simplified borders misplace a few cells that sit on a border.
+// Returns how many cells it placed.
+function cellInBox(lat, lng, [minLat, minLng, maxLat, maxLng]) {
+    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+}
+
+// pointInFeature, but a point in a hole (the Vatican in Lazio, San Marino in
+// Emilia-Romagna) is outside.
+function pointInFeatureWithHoles(lat, lng, feature) {
+    const { type, coordinates } = feature.geometry;
+    const polys = type === 'Polygon' ? [coordinates] : type === 'MultiPolygon' ? coordinates : [];
+    return polys.some(([outer, ...holes]) =>
+        pointInRing(lat, lng, outer) && !holes.some(h => pointInRing(lat, lng, h)));
+}
+
+const cellPoint = k => { const [lat, lng] = k.split(',').map(Number); return { k, lat, lng }; };
+
+async function placeCellsByBoundary(keys, cache) {
+    let pending = keys.filter(k => {
+        const v = cache[k];
+        return !v || !v.c || v.c === 'Unknown' || needsSubdivision(v);
+    }).map(cellPoint);
+    let placed = 0;
+    for (const cfg of SUBDIVISION_CONFIG) {
+        if (!pending.length) break;
+        const inBox = pending.filter(p => cellInBox(p.lat, p.lng, cfg.box));
+        if (!inBox.length) continue;
+        let geojson;
+        try { geojson = await loadRegionGeoJson(cfg.id); }
+        catch (err) { dbg(`Region boundaries (${cfg.id}) failed: ${err.message}`); continue; }
+        const locate = p => geojson.features.find(f => pointInFeatureWithHoles(p.lat, p.lng, f));
+
+        // Name each region the way geocoded cells already do (Nominatim says
+        // "Tuscany" where the file says "Toscana"), so it stays one table row.
+        const nameById = {};
+        Object.entries(cache).forEach(([k, v]) => {
+            if (!v || v.b || !v.s || !cfg.names.includes(v.c)) return;
+            const p = cellPoint(k);
+            if (!cellInBox(p.lat, p.lng, cfg.box)) return;
+            const f = locate(p);
+            if (f && !nameById[f.properties.id]) nameById[f.properties.id] = v.s;
+        });
+
+        const done = new Set();
+        inBox.forEach(p => {
+            const hit = locate(p);
+            if (!hit) return;
+            cache[p.k] = { c: cfg.names[0], s: nameById[hit.properties.id] || hit.properties.name, b: 1 };
+            done.add(p.k);
+            placed++;
+        });
+        pending = pending.filter(p => !done.has(p.k));
+        await new Promise(r => setTimeout(r, 0));
+    }
+    if (placed) {
+        dbg(`Region boundaries placed ${placed} cells (${pending.length} left for Nominatim)`);
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    }
+    return placed;
 }
 
 // Strip common suffixes OSM appends to Chinese province names
@@ -9629,7 +9696,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     let hits = 0, needCountry = 0, needSubdiv = 0;
     cellKeys.forEach(k => {
         const v = cache[k];
-        if (!v || !v.c || v.c === 'Unknown') needCountry++;
+        if (!v || !v.c || v.c === 'Unknown' || v.b) needCountry++;
         else if (needsSubdivision(v)) needSubdiv++;
         else hits++;
     });
@@ -9679,15 +9746,23 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
 
 // Background geocoding — runs after the initial render so the page feels instant
 async function geocodeInBackground(cellKeys, cache, slim, total) {
+    if (await placeCellsByBoundary(cellKeys, cache)) {
+        await saveGeoToWorker(cache);
+        rerenderGeo(cache);
+    }
     const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
     if (!modified) return;
 
     await saveGeoToWorker(updatedCache);
-
-    // Re-render with the now-complete data
-    currentCache = updatedCache;
     dbg('Background geocoding done — re-rendering with updated data');
+    rerenderGeo(updatedCache);
+}
+
+// Re-render the place-based tables and maps once more cells are known.
+function rerenderGeo(cache) {
+    currentCache = cache;
     applyFilters();
+    rebuildOpenRegionMaps();
 }
 
 // ── Post-sync hunter refresh ───────────────────────────────────────────────────
@@ -9754,9 +9829,19 @@ function refreshOpenMapHunters() {
             },
             initTrailMap);
     }
-    // Region maps recolour themselves whenever renderSubdivisions runs, but
-    // their route overlay and name→polygon resolution are built once at init,
-    // so an open one still needs rebuilding against the new activities.
+    if (mapInitialized && stravaMap) {
+        resyncMapHunter(() => stravaMap,
+            () => { stravaMap.remove(); stravaMap = null; mapInitialized = false; mapLayers = []; },
+            initMap);
+    }
+    rebuildOpenRegionMaps();
+}
+
+// Region maps recolour themselves whenever renderSubdivisions runs, but their
+// route overlay (routes starting in the country) and name→polygon resolution
+// are built once at init, so an open one needs rebuilding after a sync or once
+// more start points have been placed.
+function rebuildOpenRegionMaps() {
     SUBDIVISION_CONFIG.forEach(cfg => {
         if (!regionMaps[cfg.id]?.layer) return;
         resyncMapHunter(() => regionMaps[cfg.id]?.map,

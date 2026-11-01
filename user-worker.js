@@ -245,7 +245,9 @@ function gridKey(latlng) {
     return `${latlng[0].toFixed(2)},${latlng[1].toFixed(2)}`;
 }
 
-const resolved = v => v && v.c && v.c !== 'Unknown';
+// A cell the page placed from region boundaries (`b`) is only provisional: a
+// geocoded copy replaces it, and it never goes into the pool.
+const resolved = v => v && v.c && v.c !== 'Unknown' && !v.b;
 
 async function ownerGeo(env) {
     if (!env.OWNER) return {};
