@@ -199,7 +199,7 @@ function insPills(key, options, sel) {
 }
 
 // A year picker: an "all" option first, then every year, newest first.
-function insYearPills(key, years, sel, allLabel = 'All time', allValue = 'all') {
+function insYearPills(key, years, sel, allLabel = 'All Time', allValue = 'all') {
     return insPills(key, [[allValue, allLabel], ...years.map(y => [y, y])], sel);
 }
 
@@ -236,7 +236,7 @@ function insCompareCard(list, today) {
     const tiles = [
         ['count', 'Activities', 'count', ''],
         ['dist', 'Distance', 'mi', 'mi'],
-        ['hours', 'Moving time', 'hours', 'h'],
+        ['hours', 'Moving Time', 'hours', 'h'],
         ['elev', 'Climbing', 'ft', 'ft'],
     ].map(([key, label, f, unit]) => {
         const v = cur[f], p = prev ? prev[f] : 0;
@@ -377,7 +377,7 @@ function insPaceCard(list, today) {
     const legend = years.length > 1
         ? `<div class="ins-chips">${chips}<button type="button" class="ins-chip ins-chip-all" onclick="insSetPaceYears(${allOn ? 'false' : 'true'})">${allOn ? 'Hide all' : 'Show all'}</button></div>`
         : '';
-    return insCard('Year pace', `${svg}${legend}<p class="ins-note">${note}</p>`, `cumulative ${m.noun}`);
+    return insCard('Year Pace', `${svg}${legend}<p class="ins-note">${note}</p>`, `cumulative ${m.noun}`);
 }
 
 function insTogglePaceYear(y) {
@@ -457,7 +457,7 @@ function insYearsCard(list, today) {
         }
     });
     const svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${insEsc(m.label)} per year">${grid}${bars}</svg>`;
-    return insCard('Year by year', svg, m.noun);
+    return insCard('Year by Year', svg, m.noun);
 }
 
 // ── 4. Sport mix donut ─────────────────────────────────────────────────────
@@ -507,7 +507,7 @@ function insDonutCard(list, today) {
         const p = (rad, ang) => `${(C + rad * Math.cos(ang)).toFixed(2)},${(C + rad * Math.sin(ang)).toFixed(2)}`;
         arcs += `<g ${attrs} style="--dx:${(POP * Math.cos(mid)).toFixed(2)}px;--dy:${(POP * Math.sin(mid)).toFixed(2)}px"><path fill="${s.color}" d="M${p(R, a0)} A${R},${R} 0 ${large} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${large} 0 ${p(r, a0)} Z"/></g>`;
     });
-    const allLabel = insYearFiltered() ? 'All selected' : 'All time';
+    const allLabel = insYearFiltered() ? 'All Selected' : 'All Time';
     const label = sel === 'all' ? allLabel : sel;
     const centre = `<text class="ins-donut-label" x="${C}" y="${C - 17}" text-anchor="middle">${label}</text>
         <text class="ins-donut-num" x="${C}" y="${C + 7}" text-anchor="middle">${insShort(sum)}</text>
@@ -526,7 +526,7 @@ function insDonutCard(list, today) {
             <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${m.noun}" data-label="${label}" data-num="${insShort(sum)}" data-unit="${unitWord}">${arcs}${centre}</svg>
             <ul class="ins-legend">${legend}</ul>
         </div>`;
-    return insCard('Sport mix', body, `by ${m.noun}`);
+    return insCard('Sport Mix', body, `by ${m.noun}`);
 }
 
 // A share as a whole percent; a sliver shows as "<1%" rather than "0%".
@@ -640,11 +640,11 @@ function insCalendarCard(list, today) {
     const legend = `<div class="ins-cal-legend"><span>Less</span>${[0, 1, 2, 3, 4].map(l => `<i class="ins-cell-key l${l}"></i>`).join('')}<span>More</span></div>`;
     const bestNote = bestEnd ? ` <span class="ins-tile-foot">ended ${insShortDate(bestEnd, today)}</span>` : '';
     const stats = `<div class="ins-tiles ins-tiles-3">
-        <div class="ins-tile"><span class="ins-tile-label">Current streak</span><span class="ins-tile-value">${cur}<small> d</small></span></div>
-        <div class="ins-tile"><span class="ins-tile-label">Best streak</span><span class="ins-tile-value">${best}<small> d</small></span>${bestNote}</div>
-        <div class="ins-tile"><span class="ins-tile-label">Active days</span><span class="ins-tile-value">${active}</span><span class="ins-tile-foot">${view === 'last' ? 'last 12 months' : `in ${view}`}</span></div>
+        <div class="ins-tile"><span class="ins-tile-label">Current Streak</span><span class="ins-tile-value">${cur}<small> d</small></span></div>
+        <div class="ins-tile"><span class="ins-tile-label">Best Streak</span><span class="ins-tile-value">${best}<small> d</small></span>${bestNote}</div>
+        <div class="ins-tile"><span class="ins-tile-label">Active Days</span><span class="ins-tile-value">${active}</span><span class="ins-tile-foot">${view === 'last' ? 'last 12 months' : `in ${view}`}</span></div>
     </div>`;
-    const picker = insYearPills('calYear', years, view, 'Last 12 months', 'last');
+    const picker = insYearPills('calYear', years, view, 'Last 12 Months', 'last');
     return insCard('Consistency', picker + stats + svg + legend, `shade = ${m.noun}`);
 }
 
@@ -683,7 +683,7 @@ function insEddingtonCard() {
             <span class="ins-tile-foot">${need} more day${need === 1 ? '' : 's'} of ${next}+ mi for ${next}</span>
         </div>`;
     }).join('');
-    return insCard('Eddington number', `${insYearPills('eddYear', years, year)}<div class="ins-tiles">${tiles}</div>
+    return insCard('Eddington Number', `${insYearPills('eddYear', years, year)}<div class="ins-tiles">${tiles}</div>
         <p class="ins-note">E days with at least E miles in a day${year === 'all' ? '' : `, counting only ${year}`}. Ride counts road, gravel and mountain bike rides; Run counts road and trail runs.</p>`);
 }
 
