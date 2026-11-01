@@ -73,13 +73,13 @@ const INS_BEST_SPORTS = [
     { key: 'run',    label: '🏃 Run',             types: ['Run', 'TrailRun'] },
     { key: 'ride',   label: '🚴 Ride',            types: ['Ride', 'GravelRide', 'MountainBikeRide'] },
     { key: 'hike',   label: '🥾 Hike',            types: ['Hike'] },
-    { key: 'nordic', label: '⛷️ Nordic ski',      types: ['NordicSki'] },
-    { key: 'bc',     label: '🏔️ Backcountry ski', types: ['BackcountrySki'] },
+    { key: 'nordic', label: '⛷️ Nordic Ski',      types: ['NordicSki'] },
+    { key: 'bc',     label: '🏔️ Backcountry Ski', types: ['BackcountrySki'] },
 ];
 const INS_BEST_CATS = [
-    { key: 'dist', label: 'Longest distance', val: a => (a.di || 0) / INS_M_PER_MI },
-    { key: 'time', label: 'Longest time',     val: a => a.m || 0 },
-    { key: 'elev', label: 'Most climbing',    val: a => (a.e || 0) * INS_FT_PER_M },
+    { key: 'dist', label: 'Longest Distance', val: a => (a.di || 0) / INS_M_PER_MI },
+    { key: 'time', label: 'Longest Time',     val: a => a.m || 0 },
+    { key: 'elev', label: 'Most Climbing',    val: a => (a.e || 0) * INS_FT_PER_M },
 ];
 const INS_BEST_TOP = 5;
 
@@ -759,27 +759,27 @@ async function insLoadGoals() {
     const add = (label, done, total, note = '') => { if (total > 0) goals.push({ label, done, total, note }); };
 
     const top100 = arr(metros).filter(m => m.rank <= 100);
-    add('🏙️ Top 100 metros', top100.filter(m => m.visited).length, top100.length,
+    add('🏙️ Top 100 Metros', top100.filter(m => m.visited).length, top100.length,
         metros ? `${arr(metros).filter(m => m.visited).length} of ${arr(metros).length} in the top 200` : '');
-    if (states) add('🗽 US states', Object.values(states).filter(Boolean).length, Object.keys(states).length);
-    add('🏞️ National parks', arr(parks).filter(p => p.visited).length, arr(parks).length);
-    add('⛰️ State high points', arr(highpoints).filter(p => p.visited).length, arr(highpoints).length);
+    if (states) add('🗽 US States', Object.values(states).filter(Boolean).length, Object.keys(states).length);
+    add('🏞️ National Parks', arr(parks).filter(p => p.visited).length, arr(parks).length);
+    add('⛰️ State High Points', arr(highpoints).filter(p => p.visited).length, arr(highpoints).length);
     add('🏔️ ADK 46ers', arr(adk).filter(p => p.climbed).length, arr(adk).length);
     add('🏔️ Colorado 14ers', arr(co14).filter(p => p.climbed).length, arr(co14).length);
     if (countries) {
         const all = Object.values(countries).flat().filter(c => c && c.name);
         add('🌐 Countries', all.filter(c => c.visited).length, all.length);
     }
-    if (summary?.county?.total) add('🗺️ US counties', summary.county.visited, summary.county.total);
+    if (summary?.county?.total) add('🗺️ US Counties', summary.county.visited, summary.county.total);
     if (summary?.ecoregion?.l3Total) add('🌿 Ecoregions (Level III)', summary.ecoregion.l3Visited, summary.ecoregion.l3Total);
-    if (summary?.pass?.total) add('🛣️ Mountain passes', summary.pass.climbed, summary.pass.total);
+    if (summary?.pass?.total) add('🛣️ Mountain Passes', summary.pass.climbed, summary.pass.total);
 
     insState.goals = {
         list: goals,
         extra: [
-            summary?.mountain?.summited != null ? ['Peaks summited', summary.mountain.summited] : null,
+            summary?.mountain?.summited != null ? ['Peaks Summited', summary.mountain.summited] : null,
             summary?.tile?.visited != null ? ['Tiles', summary.tile.visited] : null,
-            summary?.tile?.maxSquare ? ['Max square', `${summary.tile.maxSquare}×${summary.tile.maxSquare}`] : null,
+            summary?.tile?.maxSquare ? ['Max Square', `${summary.tile.maxSquare}×${summary.tile.maxSquare}`] : null,
         ].filter(Boolean),
     };
     insState.goalsLoading = false;
