@@ -4222,7 +4222,7 @@ function setEcoStatus(msg) {
 // ── Map ───────────────────────────────────────────────────────────────────────
 
 const GROUP_COLORS = {
-    'Foot Sports':  '#4CAF50',
+    'Foot Sports':  '#FF2D55',   // hot red: pops on dark + grey basemaps, apart from bike orange and the hunters' green fills
     'Bike Sports':  '#FF9800',
     'Snow Sports':  '#90CAF9',
     'Water Sports': '#42A5F5',
