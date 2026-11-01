@@ -25,6 +25,13 @@ id = "USER_KV_ID"
 binding = "STRAVA_KV"
 id = "USER_KV_ID"
 
+# The owner's worker, for its geocode cache (shared place names; see
+# handleGeoAll in user-worker.js). A service binding, because a Worker can't
+# fetch another workers.dev Worker on the same account over the internet.
+[[services]]
+binding = "OWNER"
+service = "strava-worker"
+
 # One background sync runner per person (see UserSyncRunner). Never edit or
 # remove an applied migration; add a new tag.
 [[durable_objects.bindings]]
