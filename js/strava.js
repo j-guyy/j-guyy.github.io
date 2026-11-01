@@ -1003,7 +1003,7 @@ function sortedEntries(data, state, nameCol) {
 // Shortcut group buttons — toggle all types in the set at once
 const QUICK_GROUPS = {
     'All Run':  ['Run', 'TrailRun', 'VirtualRun'],
-    'All Ride': ['Ride', 'GravelRide', 'EBikeRide', 'VirtualRide', 'Handcycle', 'Velomobile'],
+    'All Ride': ['Ride', 'GravelRide', 'EBikeRide', 'VirtualRide', 'MountainBikeRide', 'Handcycle', 'Velomobile'],
 };
 
 function renderFilters() {
@@ -1027,7 +1027,7 @@ function renderFilters() {
         const present = types.filter(t => typeCounts[t]);
         if (!present.length) return '';
         const allActive = present.every(t => !deactivatedTypes.has(t));
-        return `<button class="filter-all-btn${allActive ? ' active' : ''}" onclick="toggleQuickGroup(${JSON.stringify(types)})">${label}</button>`;
+        return `<button class="filter-all-btn${allActive ? ' active' : ''}" onclick="toggleQuickGroup(${JSON.stringify(types).replace(/"/g, '&quot;')})">${label}</button>`;
     }).join('');
 
     let pillsHtml = sortedTypes.map(t => {
@@ -1042,7 +1042,10 @@ function renderFilters() {
 
     container.innerHTML = `
         <div class="filter-bar">
-            <div class="metric-toggle" role="group" aria-label="Measure by">${metricHtml}</div>
+            <div class="metric-toggle-row">
+                <span class="metric-toggle-label" id="metric-toggle-label">Show stats by</span>
+                <div class="metric-toggle" role="group" aria-labelledby="metric-toggle-label">${metricHtml}</div>
+            </div>
             <div class="filter-controls">
                 <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
                 <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
