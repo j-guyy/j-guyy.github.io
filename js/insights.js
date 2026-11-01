@@ -160,7 +160,11 @@ function renderInsights(filtered) {
     }
     const today = insTodayParts();
 
+    // Filters that match nothing would otherwise just make the charts vanish.
+    const empty = list.length ? '' : insCard('No activities match the filters',
+        '<p class="ins-note">Switch on a sport or a year above to bring the charts back. Eddington, Best Efforts and Goals below don\'t follow the filters.</p>', '', 'ins-empty');
     mount.innerHTML = [
+        empty,
         insCompareCard(list, today),
         insPaceCard(list, today),
         insYearsCard(list, today),
@@ -210,13 +214,28 @@ function insSet(key, value) {
 
 // Each picker row was just redrawn scrolled to its start; bring its chosen
 // pill into view so a pick far down the row stays visible.
+// Rows that scroll fade at the edge with more to see (insScrollFade).
 function insRevealActivePills(root) {
     root.querySelectorAll('.ins-pills').forEach(row => {
         const pill = row.querySelector('.active');
-        if (!pill || row.scrollWidth <= row.clientWidth) return;
-        const off = pill.getBoundingClientRect().left - row.getBoundingClientRect().left;
-        if (off + pill.offsetWidth > row.clientWidth - 24) row.scrollLeft = off - row.clientWidth / 2 + pill.offsetWidth / 2;
+        if (pill && row.scrollWidth > row.clientWidth) {
+            const off = pill.getBoundingClientRect().left - row.getBoundingClientRect().left;
+            if (off + pill.offsetWidth > row.clientWidth - 24) row.scrollLeft = off - row.clientWidth / 2 + pill.offsetWidth / 2;
+        }
     });
+    root.querySelectorAll('.ins-cal-scroll').forEach(box => {
+        if (box.dataset.end === 'right') box.scrollLeft = box.scrollWidth;
+    });
+    root.querySelectorAll('.ins-pills, .ins-cal-scroll').forEach(el => {
+        insScrollFade(el);
+        el.addEventListener('scroll', () => insScrollFade(el), { passive: true });
+    });
+}
+
+function insScrollFade(el) {
+    const max = el.scrollWidth - el.clientWidth;
+    el.classList.toggle('fade-left', max > 2 && el.scrollLeft > 2);
+    el.classList.toggle('fade-right', max > 2 && el.scrollLeft < max - 2);
 }
 
 // ── 1. One year vs another ─────────────────────────────────────────────────
@@ -243,8 +262,8 @@ function insCompareCard(list, today) {
         let delta = `<span class="ins-delta">${B ? `no data in ${B}` : 'only one year in the filter'}</span>`;
         if (p > 0) {
             const pct = Math.round((v / p - 1) * 100);
-            const cls = pct >= 0 ? 'up' : 'down';
-            delta = `<span class="ins-delta ${cls}">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%</span> <span class="ins-delta-ref">vs ${insShort(p)}</span>`;
+            const arrow = pct > 0 ? '<span class="ins-delta up">▲ ' : pct < 0 ? '<span class="ins-delta down">▼ ' : '<span class="ins-delta">±';
+            delta = `${arrow}${Math.abs(pct)}%</span> <span class="ins-delta-ref">vs ${insShort(p)}</span>`;
         }
         return `<div class="ins-tile${key === metric ? ' is-active' : ''}">
             <span class="ins-tile-label">${label}</span>
@@ -309,17 +328,17 @@ function insPaceCard(list, today) {
         grid += `<text class="ins-axis" x="${x(idx)}" y="${H - 6}">${INS_MONTHS[mo]}</text>`;
     });
 
-    // Direct labels only for this year and the year that finished highest,
-    // so a dozen lines don't bury the chart in numbers.
+    // Direct labels only for this year, last year and the year that finished
+    // highest, so a dozen lines don't bury the chart in numbers.
     const ends = series.map(s => s[s.length - 1] || 0);
     const bestK = ends.indexOf(Math.max(...ends));
     const curK = shown.indexOf(today.year);
-    const labelled = new Set([curK, bestK].filter(k => k >= 0 && ends[k] > 0));
+    const prevK = shown.indexOf(today.year - 1);
+    const labelled = new Set([curK, prevK, bestK].filter(k => k >= 0 && ends[k] > 0));
 
     // Oldest first so newer years sit on top; this year last of all.
     const order = shown.map((_, k) => k).sort((a, b) => (shown[a] === today.year) - (shown[b] === today.year) || shown[a] - shown[b]);
     let lines = '', labels = '';
-    const labelYs = [];
     order.forEach(k => {
         const s = series[k];
         if (!s.length || s[s.length - 1] <= 0) return;
@@ -329,14 +348,25 @@ function insPaceCard(list, today) {
         const main = shown[k] === today.year;
         lines += `<polyline class="ins-line${main ? ' ins-line-main' : ''}" data-year="${shown[k]}" points="${pts.join(' ')}" stroke="${colors[k]}"/>`;
     });
-    [...labelled].forEach(k => {
+    // Labels sit at each line's end (this year's mid-chart, the rest past the
+    // right edge); top to bottom, a label that would touch the one above
+    // (same column) moves down, and the column is pulled back up if it ran
+    // off the bottom.
+    const LH = 12, LW = 26;
+    const labs = [...labelled].map(k => {
         const s = series[k];
-        let ly = y(s[s.length - 1]) + 3;
-        labelYs.forEach(o => { if (Math.abs(o - ly) < 11) ly = o + (ly >= o ? 11 : -11); });
-        labelYs.push(ly);
         const main = shown[k] === today.year;
-        const lx = main ? x(s.length - 1) + 4 : W - R + 4;
-        labels += `<text class="ins-line-label" x="${lx}" y="${ly}" ${main ? 'style="font-weight:650"' : ''}>${shown[k]}</text>`;
+        return { k, main, x: main ? x(s.length - 1) + 6 : W - R + 4, y: y(s[s.length - 1]) + 3 };
+    }).sort((a, b) => a.y - b.y);
+    const clash = (a, b) => Math.abs(a.x - b.x) < LW;
+    labs.forEach((l, i) => labs.slice(0, i).forEach(o => { if (clash(l, o) && l.y < o.y + LH) l.y = o.y + LH; }));
+    for (let i = labs.length - 1; i >= 0; i--) {
+        const l = labs[i];
+        if (l.y > H - B) l.y = H - B;
+        labs.slice(i + 1).forEach(o => { if (clash(l, o) && l.y > o.y - LH) l.y = o.y - LH; });
+    }
+    labs.forEach(({ k, main, x: lx, y: ly }) => {
+        labels += `<text class="ins-line-label" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" ${main ? 'style="font-weight:650"' : ''}>${shown[k]}</text>`;
     });
     // today marker
     const s0 = curK >= 0 ? series[curK] : [];
@@ -355,7 +385,9 @@ function insPaceCard(list, today) {
         const prevK = shown.indexOf(today.year - 1);
         if (prevK >= 0 && atDate[prevK] > 0) {
             const diff = cur - atDate[prevK];
-            note += ` · ${insWithUnit(Math.abs(diff), m)} ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
+            note += Math.round(Math.abs(diff)) === 0
+                ? ` · level with ${today.year - 1}`
+                : ` · ${insWithUnit(Math.abs(diff), m)} ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
         }
     } else if (shown.length && ends[bestK] > 0) {
         note = `Best year shown: <strong>${shown[bestK]}</strong> with ${insWithUnit(ends[bestK], m)}`;
@@ -636,7 +668,9 @@ function insCalendarCard(list, today) {
         }
     }
     const dayLabels = ['M', '', 'W', '', 'F', '', ''].map((t, d) => t ? `<text class="ins-axis" x="0" y="${T + d * (cell + g) + cell - 0.5}">${t}</text>` : '').join('');
-    const svg = `<svg class="ins-svg ins-calendar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Active days ${view === 'last' ? 'over the last year' : `in ${view}`}">${months}${dayLabels}${cells}</svg>`;
+    // On a narrow card the calendar keeps a readable size and scrolls
+    // sideways instead (opened at its newest weeks, insRevealActivePills).
+    const svg = `<div class="ins-cal-scroll" data-end="${view === 'last' || view === String(today.year) ? 'right' : 'left'}"><svg class="ins-svg ins-calendar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Active days ${view === 'last' ? 'over the last year' : `in ${view}`}">${months}${dayLabels}${cells}</svg></div>`;
     const legend = `<div class="ins-cal-legend"><span>Less</span>${[0, 1, 2, 3, 4].map(l => `<i class="ins-cell-key l${l}"></i>`).join('')}<span>More</span></div>`;
     const bestNote = bestEnd ? ` <span class="ins-tile-foot">ended ${insShortDate(bestEnd, today)}</span>` : '';
     const stats = `<div class="ins-tiles ins-tiles-3">
@@ -725,7 +759,7 @@ function insBestCard(today) {
             const link = a.i ? `<a href="https://www.strava.com/activities/${encodeURIComponent(a.i)}" target="_blank" rel="noopener">${name}</a>` : name;
             return `<li class="ins-best-row${i === 0 ? ' is-first' : ''}">
                 <span class="ins-best-rank">${i + 1}</span>
-                <span class="ins-best-main"><span class="ins-best-name">${link}</span><span class="ins-best-meta">${insShortDate(a.d, today)}${others.length ? ` · ${others.join(' · ')}` : ''}</span></span>
+                <span class="ins-best-main"><span class="ins-best-name" title="${name}">${link}</span><span class="ins-best-meta">${insShortDate(a.d, today)}${others.length ? ` · ${others.join(' · ')}` : ''}</span></span>
                 <strong class="ins-best-val">${insBestValue(cat.key, cat.val(a))}</strong>
             </li>`;
         }).join('');
