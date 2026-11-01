@@ -228,6 +228,69 @@ async function handleDeleteAccount(env, id) {
     return jsonRes(env, { ok: true });
 }
 
+// ── Shared place names ───────────────────────────────────────────────────────
+//
+// The app names each activity's country / state by reverse-geocoding its
+// start cell (0.01°, ~1 km) with Nominatim from the browser, one cell every
+// 1.1 s, only while the page is open: a new account with 1,400 activities
+// took many minutes and showed only a few states meanwhile. Place names don't
+// depend on who was there, so /geo/all fills a person's missing cells from a
+// pool: the owner's geocode cache (strava-worker, through the OWNER service
+// binding) plus every cell anyone here has resolved. Only cells the person's
+// own activities start in are returned, so nobody sees where others have been.
+
+const SHARED_GEO_KEY = 'shared:strava_geo';
+
+function gridKey(latlng) {
+    return `${latlng[0].toFixed(2)},${latlng[1].toFixed(2)}`;
+}
+
+const resolved = v => v && v.c && v.c !== 'Unknown';
+
+async function ownerGeo(env) {
+    if (!env.OWNER) return {};
+    try {
+        const res = await env.OWNER.fetch('https://strava-worker/geo/all');
+        return res.ok ? await res.json() : {};
+    } catch {
+        return {};
+    }
+}
+
+async function handleGeoAll(env, id) {
+    const userEnv = scopedEnv(env, id);
+    const [own, stored, pool, owner] = await Promise.all([
+        userEnv.STRAVA_DATA.get('strava_geo', 'json'),
+        userEnv.STRAVA_DATA.get('strava_activities', 'json'),
+        env.STRAVA_KV.get(SHARED_GEO_KEY, 'json'),
+        ownerGeo(env),
+    ]);
+    const geo = { ...(own || {}) };
+    for (const a of stored?.slim || []) {
+        if (!Array.isArray(a.l) || a.l.length < 2) continue;
+        const key = gridKey(a.l);
+        if (resolved(geo[key])) continue;
+        const known = (pool && pool[key]) || owner[key];
+        if (resolved(known)) geo[key] = known;
+    }
+    return jsonRes(env, geo);
+}
+
+async function handleGeoSave(request, env, id) {
+    const geo = await request.json();
+    if (!geo || typeof geo !== 'object' || Array.isArray(geo)) return jsonRes(env, { error: 'Bad geo cache' }, 400);
+    const userEnv = scopedEnv(env, id);
+    await userEnv.STRAVA_DATA.put('strava_geo', JSON.stringify(geo));
+    // Add newly resolved cells to the pool for everyone else.
+    const pool = (await env.STRAVA_KV.get(SHARED_GEO_KEY, 'json')) || {};
+    let added = 0;
+    for (const [key, v] of Object.entries(geo)) {
+        if (resolved(v) && !resolved(pool[key])) { pool[key] = v; added++; }
+    }
+    if (added) await env.STRAVA_KV.put(SHARED_GEO_KEY, JSON.stringify(pool));
+    return jsonRes(env, { ok: true, keys: Object.keys(geo).length });
+}
+
 // ── Entry points ─────────────────────────────────────────────────────────────
 
 export default {
@@ -253,6 +316,16 @@ export default {
             }
             if (rest === '/account/delete' && request.method === 'POST') return await handleDeleteAccount(env, id);
             if (rest === '/mcp' || rest.startsWith('/music/')) return jsonRes(env, { error: 'Not found' }, 404);
+
+            // The ride high-point backfill makes one Strava detail call per
+            // ride. Strava's rate limits belong to the API app, shared by
+            // everyone here and the owner's strava-worker, so a new account's
+            // hundreds of rides used them up and blocked syncs (429). Off here.
+            if (rest === '/activities/backfill-elev') {
+                return jsonRes(env, { processed: 0, remaining: 0, rateLimited: false, updated: [] });
+            }
+            if (rest === '/geo/all' && request.method === 'GET') return await handleGeoAll(env, id);
+            if (rest === '/geo/save' && request.method === 'POST') return await handleGeoSave(request, env, id);
 
             const inner = new URL(request.url);
             inner.pathname = rest;
