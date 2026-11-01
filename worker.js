@@ -1066,8 +1066,10 @@ async function syncActivities(env, onProgress) {
         console.log(`attribution refresh failed: ${e.message}`);
     }
 
-    // Bring County / Park / Metro Hunter up to date with the new activities,
-    // so they don't wait for someone to open them on the site.
+    // Bring the hunters up to date with the new activities, so they don't wait
+    // for someone to open them on the site. Strava's full list is no longer
+    // needed; drop it so detection has the isolate's memory to itself.
+    all.length = 0;
     let hunters = null;
     try {
         hunters = await detectHuntersAfterSync(env, slim);
@@ -1285,32 +1287,28 @@ async function refreshAttribution(env, nameById) {
 
 // ── Hunter detection after a sync ────────────────────────────────────────────
 //
-// County, Park (federal + state) and Metro Hunter used to update only when
-// their map was opened on the site, so their results (and the MCP server's
-// answers) lagged until then. Every sync — the nightly cron, "Sync now",
-// rebuild, and each invited user's sync through user-worker.js — now runs the
-// same detection here for activities the hunter hasn't processed yet, so they
-// are current without a visit. The page still runs its own detection when a map
-// opens; it finds nothing left to do.
+// County, Park (federal + state), Metro, Tile and Ecoregion Hunter used to
+// update only when their map was opened on the site, so their results (and
+// the MCP server's answers) lagged until then. Every sync — the nightly cron,
+// "Sync now", rebuild, and each invited user's sync through user-worker.js —
+// now runs the same detection here for activities a hunter hasn't processed
+// yet, so they are current without a visit. The page still runs its own
+// detection when a map opens; it finds nothing left to do.
 //
-// This must match js/strava.js (initCountyMap / initParkMap / initMetroMap and
-// detectCountiesAsync / detectParksAsync / detectMetrosAsync), so both find the
-// same places: every 3rd decoded polyline point, a 1° grid of feature bounding
-// boxes, a ray cast against each polygon's outer ring only, activities oldest
-// first (byStartTime), and the first activity to reach a place as its
-// discovery. Change one, change the other.
+// Each detector must match its counterpart in js/strava.js so both find the
+// same places (change one, change the other):
+//   polygon hunters  ↔ detectCountiesAsync / detectParksAsync / detectMetrosAsync
+//   tiles            ↔ detectTilesAsync, plus computeClusters / computeSquares
+//                      (summarizeTiles) for the stats saved with them
+//   ecoregions       ↔ initEcoregionMap / detectEcoregionsAsync
 //
 // Detection is incremental (processedIds), so a run that stops early loses
-// nothing: at most HUNTER_DETECT_MAX activities per hunter per sync, which a
-// hunter that has never run (a newly invited user) catches up on over a few
-// syncs or a page visit. A failure is logged and never fails the sync.
-
-const POLYGON_HUNTERS = [
-    { name: 'county',     kv: COUNTIES_KEY,     file: 'data/counties-us.json',     ids: 'fips', idOf: p => p.GEOID },
-    { name: 'park',       kv: PARKS_KEY,        file: 'data/federal-lands.geojson', ids: 'ids',  idOf: p => p.id },
-    { name: 'state_park', kv: STATE_PARKS_KEY,  file: 'data/state-parks.geojson',  ids: 'ids',  idOf: p => p.id },
-    { name: 'metro',      kv: METRO_HUNTER_KEY, file: 'data/metro-areas.geojson',  ids: 'ids',  idOf: p => p.id },
-];
+// nothing: at most HUNTER_DETECT_MAX activities per hunter per sync, oldest
+// first, which a hunter that has never run (a newly invited user) catches up
+// on over a few syncs or a page visit. Results are merged into the latest
+// stored copy (any visitor's page may have saved meanwhile) and never replace a
+// stored first visit; a hunter reset meanwhile is left reset. A failure is
+// logged and never fails the sync.
 
 const HUNTER_DETECT_MAX = 500;
 
@@ -1324,10 +1322,14 @@ function byStartTime(a, b) {
         || (Number(a.i) || 0) - (Number(b.i) || 0);
 }
 
-// Every 3rd point of a Google encoded polyline, as a flat [lat, lng, …] array.
-function sampledPolylinePoints(encoded) {
+function discoveryOrderStamp(slim) {
+    return slim.some(a => a.s) ? DISCOVERY_ORDER : 0;
+}
+
+// decodePolyline in js/strava.js, as a flat [lat, lng, lat, lng, …] array.
+function decodePolylineFlat(encoded) {
     const out = [];
-    let index = 0, lat = 0, lng = 0, n = 0;
+    let index = 0, lat = 0, lng = 0;
     while (index < encoded.length) {
         let b, shift = 0, result = 0;
         do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
@@ -1335,47 +1337,57 @@ function sampledPolylinePoints(encoded) {
         shift = 0; result = 0;
         do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
         lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-        if (n++ % 3 === 0) out.push(lat / 1e5, lng / 1e5);
+        out.push(lat / 1e5, lng / 1e5);
     }
     return Float64Array.from(out);
 }
 
-function pointInOuterRing(lat, lng, ring) {
+// Decoded once per sync and shared by every hunter.
+function routePoints(act, cache) {
+    let pts = cache.get(act.i);
+    if (!pts) { pts = decodePolylineFlat(act.p); cache.set(act.i, pts); }
+    return pts;
+}
+
+// pointInRing in js/strava.js, over a flat [lng, lat, …] ring.
+function pointInFlatRing(lat, lng, ring) {
     let inside = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        const xi = ring[i], yi = ring[i + 1], xj = ring[j], yj = ring[j + 1];
         if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
     }
     return inside;
 }
 
-// Features with their outer rings and bounding boxes, and a 1° grid
-// ("lng,lat" of the cell's floor) listing the features whose box overlaps it.
-function buildPolygonIndex(geojson, idOf) {
+function flatRing(ring) {
+    const out = new Float64Array(ring.length * 2);
+    for (let i = 0; i < ring.length; i++) { out[2 * i] = ring[i][0]; out[2 * i + 1] = ring[i][1]; }
+    return out;
+}
+
+function ringBox(ring, box) {
+    for (let i = 0; i < ring.length; i += 2) {
+        const x = ring[i], y = ring[i + 1];
+        if (x < box.minLng) box.minLng = x;
+        if (x > box.maxLng) box.maxLng = x;
+        if (y < box.minLat) box.minLat = y;
+        if (y > box.maxLat) box.maxLat = y;
+    }
+    return box;
+}
+
+const emptyBox = () => ({ minLng: Infinity, maxLng: -Infinity, minLat: Infinity, maxLat: -Infinity });
+
+// buildSpatialIndex in js/strava.js: a 1° grid ("lng,lat" of the cell's floor)
+// listing, in order, the entries whose box overlaps each cell.
+function gridIndex(entries) {
     const index = new Map();
-    for (const feature of geojson.features || []) {
-        const geom = feature.geometry;
-        if (!geom) continue;
-        const rings = geom.type === 'Polygon' ? [geom.coordinates[0]]
-            : geom.type === 'MultiPolygon' ? geom.coordinates.map(poly => poly[0]) : [];
-        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-        // The box covers every ring, holes included, as computeFeatureBbox does.
-        const all = geom.type === 'Polygon' ? geom.coordinates : geom.type === 'MultiPolygon' ? geom.coordinates.flat() : [];
-        for (const ring of all) {
-            for (const [x, y] of ring) {
-                if (x < minLng) minLng = x;
-                if (x > maxLng) maxLng = x;
-                if (y < minLat) minLat = y;
-                if (y > maxLat) maxLat = y;
-            }
-        }
-        const entry = { id: idOf(feature.properties || {}), rings, minLng, maxLng, minLat, maxLat };
-        if (!entry.id || !rings.length) continue;
-        for (let x = Math.floor(minLng); x <= Math.floor(maxLng); x++) {
-            for (let y = Math.floor(minLat); y <= Math.floor(maxLat); y++) {
+    for (const e of entries) {
+        for (let x = Math.floor(e.minLng); x <= Math.floor(e.maxLng); x++) {
+            for (let y = Math.floor(e.minLat); y <= Math.floor(e.maxLat); y++) {
                 const key = `${x},${y}`;
                 if (!index.has(key)) index.set(key, []);
-                index.get(key).push(entry);
+                index.get(key).push(e);
             }
         }
     }
@@ -1390,41 +1402,75 @@ async function fetchBoundaryFile(path) {
     return res.json();
 }
 
-async function detectPolygonHunter(env, hunter, slim, pointsById) {
-    const kv = env.STRAVA_DATA;
-    const stored = await kv.get(hunter.kv, 'json');
+// Reads a hunter's blob and picks the activities it still has to process.
+async function pendingFor(env, kvKey, slim, { sort = true } = {}) {
+    const stored = await env.STRAVA_DATA.get(kvKey, 'json');
+    const processed = new Set((stored?.processedIds || []).filter(Boolean));
+    let pending = slim.filter(a => a.i && a.p && !processed.has(a.i));
+    if (sort) pending.sort(byStartTime);
+    const batch = pending.slice(0, HUNTER_DETECT_MAX);
+    return { stored, batch, remaining: pending.length - batch.length };
+}
+
+function detectResult(batch, added, remaining) {
+    return { processed: batch.length, added, ...(remaining > 0 ? { remaining } : {}) };
+}
+
+// ── County / Park / State Park / Metro ──
+
+const POLYGON_HUNTERS = [
+    { name: 'county',     kv: COUNTIES_KEY,     file: 'data/counties-us.json',     ids: 'fips', idOf: p => p.GEOID },
+    { name: 'park',       kv: PARKS_KEY,        file: 'data/federal-lands.geojson', ids: 'ids',  idOf: p => p.id },
+    { name: 'state_park', kv: STATE_PARKS_KEY,  file: 'data/state-parks.geojson',  ids: 'ids',  idOf: p => p.id },
+    { name: 'metro',      kv: METRO_HUNTER_KEY, file: 'data/metro-areas.geojson',  ids: 'ids',  idOf: p => p.id },
+];
+
+// preprocessCounties / preprocessParks / preprocessMetros + computeFeatureBbox:
+// each feature's outer rings (pointInFeature ignores holes) and a box over
+// every ring.
+function polygonEntries(geojson, idOf) {
+    const entries = [];
+    for (const feature of geojson.features || []) {
+        const geom = feature.geometry;
+        if (!geom) continue;
+        const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+        const id = idOf(feature.properties || {});
+        if (!id || !polys.length) continue;
+        const box = emptyBox();
+        for (const poly of polys) for (const ring of poly) ringBox(flatRing(ring), box);
+        entries.push({ id, outer: polys.map(poly => flatRing(poly[0])), ...box });
+    }
+    return entries;
+}
+
+async function detectPolygonHunter(env, hunter, slim, cache) {
+    const { stored, batch, remaining } = await pendingFor(env, hunter.kv, slim);
     const visited = new Set((stored?.[hunter.ids] || []).filter(Boolean));
     // Visits without first-visit history are rebuilt by the page's one-time
     // backfill, which only runs while the history is empty: leave them to it.
     if (visited.size && !Object.keys(stored?.discoveries || {}).length) return { skipped: 'awaiting page backfill' };
+    if (!batch.length) return { processed: 0, added: 0 };
 
-    const processed = new Set((stored?.processedIds || []).filter(Boolean));
-    const pending = slim.filter(a => a.i && a.p && !processed.has(a.i)).sort(byStartTime);
-    if (!pending.length) return { processed: 0, added: 0 };
-    const batch = pending.slice(0, HUNTER_DETECT_MAX);
-
-    const index = buildPolygonIndex(await fetchBoundaryFile(hunter.file), hunter.idOf);
+    const index = gridIndex(polygonEntries(await fetchBoundaryFile(hunter.file), hunter.idOf));
     const found = new Map();   // id → { actId, actName, date }
     for (const act of batch) {
-        let pts = pointsById.get(act.i);
-        if (!pts) { pts = sampledPolylinePoints(act.p); pointsById.set(act.i, pts); }
-        for (let k = 0; k < pts.length; k += 2) {
+        const pts = routePoints(act, cache);
+        for (let k = 0; k < pts.length; k += 6) {   // every 3rd point
             const lat = pts[k], lng = pts[k + 1];
             const candidates = index.get(`${Math.floor(lng)},${Math.floor(lat)}`);
             if (!candidates) continue;
             for (const f of candidates) {
                 if (visited.has(f.id) || found.has(f.id)) continue;
                 if (lng < f.minLng || lng > f.maxLng || lat < f.minLat || lat > f.maxLat) continue;
-                if (f.rings.some(ring => pointInOuterRing(lat, lng, ring))) {
+                if (f.outer.some(ring => pointInFlatRing(lat, lng, ring))) {
                     found.set(f.id, { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' });
                 }
             }
         }
     }
 
-    // A page may have saved this hunter while we worked (any visitor's page
-    // saves it), so merge into the latest copy rather than overwrite it.
-    const latest = (await kv.get(hunter.kv, 'json')) || stored;
+    const latest = await env.STRAVA_DATA.get(hunter.kv, 'json');
+    if (stored && !latest) return { skipped: 'reset during detection' };
     const ids = new Set((latest?.[hunter.ids] || []).filter(Boolean));
     const processedIds = new Set((latest?.processedIds || []).filter(Boolean));
     const discoveries = { ...(latest?.discoveries || {}) };
@@ -1433,28 +1479,266 @@ async function detectPolygonHunter(env, hunter, slim, pointsById) {
         if (!discoveries[id]) discoveries[id] = d;
     }
     for (const a of batch) processedIds.add(a.i);
-    const order = latest ? latest.order : (slim.some(a => a.s) ? DISCOVERY_ORDER : 0);
-    await kv.put(hunter.kv, JSON.stringify({
+    const order = latest ? latest.order : discoveryOrderStamp(slim);
+    await env.STRAVA_DATA.put(hunter.kv, JSON.stringify({
         ...(latest || {}),
         [hunter.ids]: [...ids],
         processedIds: [...processedIds],
         discoveries,
         ...(order !== undefined ? { order } : {}),
     }));
-    return { processed: batch.length, added: found.size, ...(pending.length > batch.length ? { remaining: pending.length - batch.length } : {}) };
+    return detectResult(batch, found.size, remaining);
 }
 
-// Runs every polygon hunter in turn (one boundary file in memory at a time).
-// Returns { county: { processed, added }, … }, or { error } per failed hunter.
+// ── Tiles ──
+
+const TILE_ZOOM = 14;
+const TILE_SAMPLE_M = 200;
+
+function tileKeyOf(lat, lng) {
+    const n = Math.pow(2, TILE_ZOOM);
+    const x = Math.floor((lng + 180) / 360 * n);
+    const latRad = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return `${x},${y}`;
+}
+
+function metresApart(lat1, lng1, lat2, lng2) {
+    const dlat = (lat2 - lat1) * 111320;
+    const dlng = (lng2 - lng1) * 111320 * Math.cos((lat1 + lat2) / 2 * Math.PI / 180);
+    return Math.sqrt(dlat * dlat + dlng * dlng);
+}
+
+async function detectTiles(env, slim, cache) {
+    // The page processes tiles in stored order; order can't change a tile set.
+    const { stored, batch, remaining } = await pendingFor(env, TILES_KEY, slim, { sort: false });
+    if (!batch.length) return { processed: 0, added: 0 };
+
+    const found = new Set();
+    for (const act of batch) {
+        const pts = routePoints(act, cache);
+        for (let k = 0; k < pts.length; k += 2) {
+            const lat = pts[k], lng = pts[k + 1];
+            found.add(tileKeyOf(lat, lng));
+            if (k > 0) {   // addSegmentTiles: sample the segment every 200 m
+                const lat1 = pts[k - 2], lng1 = pts[k - 1];
+                const steps = Math.max(1, Math.ceil(metresApart(lat1, lng1, lat, lng) / TILE_SAMPLE_M));
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    found.add(tileKeyOf(lat1 + (lat - lat1) * t, lng1 + (lng - lng1) * t));
+                }
+            }
+        }
+    }
+
+    const latest = await env.STRAVA_DATA.get(TILES_KEY, 'json');
+    if (stored && !latest) return { skipped: 'reset during detection' };
+    const tiles = new Set((latest?.tiles || []).filter(Boolean));
+    const before = tiles.size;
+    for (const t of found) tiles.add(t);
+    const processedIds = new Set((latest?.processedIds || []).filter(Boolean));
+    for (const a of batch) processedIds.add(a.i);
+    const tileList = [...tiles];
+    await env.STRAVA_DATA.put(TILES_KEY, JSON.stringify({ ...(latest || {}), tiles: tileList, processedIds: [...processedIds] }));
+    // The stats /summary shows, as the page's saveTilesToWorker sends them.
+    await env.STRAVA_DATA.put(TILE_STATS_KEY, JSON.stringify(summarizeTiles(tileList)));
+    return detectResult(batch, tiles.size - before, remaining);
+}
+
+// ── Ecoregions ──
+
+const ECO_FILES = { topo: 'data/us-ecoregions.topojson', alaska: 'data/ak-ecoregions.geojson' };
+const ECO_DETECT_VERSION = 2;    // ECO_DETECT_VERSION in js/strava.js
+const ECO_CELL_PER_DEG = 1000;
+const ECO_CELL_ROW = 720001;
+const ECO_STEP_DEG = 0.002;
+const ECO_MAX_GAP_DEG = 1;
+const ECO_BOUNDS = [
+    [24, -125.5, 50, -66.5],   // lower 48
+    [51, -188, 72, -129.5],    // Alaska (western Aleutians as lng - 360)
+];
+
+// topojson.feature() (topojson-client 3.0.2) for the first object of a
+// topology, polygons only, with each ring as a flat [lng, lat, …] array.
+// Same arithmetic in the same order, so the coordinates match the page's.
+function topojsonPolygons(topo) {
+    const obj = topo.objects[Object.keys(topo.objects)[0]];
+    const t = topo.transform;
+    const kx = t ? t.scale[0] : 1, ky = t ? t.scale[1] : 1, dx = t ? t.translate[0] : 0, dy = t ? t.translate[1] : 0;
+    // Each arc decoded once, as absolute coordinates.
+    const arcs = topo.arcs.map(arc => {
+        const out = new Float64Array(arc.length * 2);
+        let x0 = 0, y0 = 0;
+        for (let k = 0; k < arc.length; k++) {
+            if (t) { out[2 * k] = (x0 += arc[k][0]) * kx + dx; out[2 * k + 1] = (y0 += arc[k][1]) * ky + dy; }
+            else { out[2 * k] = arc[k][0]; out[2 * k + 1] = arc[k][1]; }
+        }
+        return out;
+    });
+    const ring = (arcIds) => {
+        const pts = [];
+        for (const i of arcIds) {
+            if (pts.length) pts.length -= 2;              // drop the shared point
+            const a = arcs[i < 0 ? ~i : i];
+            const n = a.length / 2, start = pts.length;
+            for (let k = 0; k < n; k++) pts.push(a[2 * k], a[2 * k + 1]);
+            if (i < 0) {                                  // reverse the n points just added
+                for (let lo = start, hi = pts.length - 2; lo < hi; lo += 2, hi -= 2) {
+                    const x = pts[lo], y = pts[lo + 1];
+                    pts[lo] = pts[hi]; pts[lo + 1] = pts[hi + 1];
+                    pts[hi] = x; pts[hi + 1] = y;
+                }
+            }
+        }
+        if (pts.length < 4) pts.push(pts[0], pts[1]);     // line(): fewer than 2 points
+        while (pts.length < 8) pts.push(pts[0], pts[1]);  // ring(): fewer than 4 points
+        return Float64Array.from(pts);
+    };
+    return obj.geometries.map(g => ({
+        properties: g.properties || {},
+        polygons: g.type === 'Polygon' ? [g.arcs.map(ring)]
+            : g.type === 'MultiPolygon' ? g.arcs.map(p => p.map(ring)) : null,
+    }));
+}
+
+// initEcoregionMap's patch list: the TopoJSON features with a geometry, then
+// the Alaska features, split into one entry per polygon (splitEcoPatches),
+// each with its outer ring's box (preprocessEcoregions). The patch id is the
+// index here, so the order must match the page's exactly.
+function ecoPatches(topo, alaska) {
+    const features = topojsonPolygons(topo).filter(f => f.polygons)
+        .concat((alaska.features || []).filter(f => f.geometry).map(f => ({
+            properties: f.properties || {},
+            polygons: f.geometry.type === 'Polygon' ? [f.geometry.coordinates.map(flatRing)]
+                : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates.map(p => p.map(flatRing)) : [],
+        })));
+    const patches = [];
+    for (const f of features) {
+        for (const rings of f.polygons) {
+            if (!rings.length) continue;
+            patches.push({ patch: patches.length, code: f.properties.US_L4CODE, rings, ...ringBox(rings[0], emptyBox()) });
+        }
+    }
+    return patches;
+}
+
+// ecoPolyContains: inside the outer ring and in none of the holes.
+function ecoContains(p, lat, lng) {
+    if (lng < p.minLng || lng > p.maxLng || lat < p.minLat || lat > p.maxLat) return false;
+    if (!pointInFlatRing(lat, lng, p.rings[0])) return false;
+    for (let k = 1; k < p.rings.length; k++) if (pointInFlatRing(lat, lng, p.rings[k])) return false;
+    return true;
+}
+
+async function detectEcoregions(env, slim, cache) {
+    const { stored, batch, remaining } = await pendingFor(env, ECOREGIONS_KEY, slim);
+    if (!batch.length) return { processed: 0, added: 0 };
+
+    const [topo, alaska] = await Promise.all([fetchBoundaryFile(ECO_FILES.topo), fetchBoundaryFile(ECO_FILES.alaska)]);
+    const patches = ecoPatches(topo, alaska);
+    const usable = (blob) => blob && blob.v === ECO_DETECT_VERSION && blob.patchCount === patches.length
+        && !((Number(blob.order) || 0) < DISCOVERY_ORDER && slim.some(a => a.s));
+    // Saved under another detection version or boundary set: the page discards
+    // it and rescans everything when Ecoregion Hunter opens. Leave that to it.
+    if (stored && !usable(stored)) return { skipped: 'awaiting page rescan' };
+
+    const knownCodes = new Set(patches.map(p => p.code));
+    const visited = new Set((stored?.codes || []).filter(c => knownCodes.has(c)));
+    const patchFirst = new Set(Object.keys(stored?.patches || {}).map(Number));
+    const index = gridIndex(patches);
+
+    // Distinct ~100 m cells, each with the first (oldest) activity reaching it.
+    const firstAct = new Map();
+    const addCell = (lat, lng, ai) => {
+        if (!ECO_BOUNDS.some(([s, w, n, e]) => lat >= s && lat <= n && lng >= w && lng <= e)) return;
+        const key = (Math.round(lat * ECO_CELL_PER_DEG) + 90 * ECO_CELL_PER_DEG) * ECO_CELL_ROW
+                  + (Math.round(lng * ECO_CELL_PER_DEG) + 360 * ECO_CELL_PER_DEG);
+        if (!firstAct.has(key)) firstAct.set(key, ai);
+    };
+    for (let ai = 0; ai < batch.length; ai++) {
+        const pts = routePoints(batch[ai], cache);
+        let prevLat = null, prevLng = null;
+        for (let k = 0; k < pts.length; k += 2) {
+            const lat = pts[k], rawLng = pts[k + 1];
+            const lng = rawLng > 170 ? rawLng - 360 : rawLng;
+            if (prevLat !== null) {
+                const dLat = lat - prevLat, dLng = lng - prevLng;
+                const span = Math.max(Math.abs(dLat), Math.abs(dLng));
+                if (span > ECO_STEP_DEG && span < ECO_MAX_GAP_DEG) {
+                    const steps = Math.ceil(span / ECO_STEP_DEG);
+                    for (let s = 1; s < steps; s++) addCell(prevLat + dLat * s / steps, prevLng + dLng * s / steps, ai);
+                }
+            }
+            addCell(lat, lng, ai);
+            prevLat = lat;
+            prevLng = lng;
+        }
+    }
+
+    const newCodes = new Map();     // code → discovery
+    const newPatches = new Map();   // patch id → first activity id
+    let last = null;
+    for (const [key, ai] of firstAct) {
+        const lat = (Math.floor(key / ECO_CELL_ROW) - 90 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
+        const lng = ((key % ECO_CELL_ROW) - 360 * ECO_CELL_PER_DEG) / ECO_CELL_PER_DEG;
+        let hit = null;
+        if (last && ecoContains(last, lat, lng)) {
+            hit = last;
+        } else {
+            const candidates = index.get(`${Math.floor(lng)},${Math.floor(lat)}`);
+            if (candidates) hit = candidates.find(p => ecoContains(p, lat, lng)) || null;
+        }
+        if (!hit) continue;
+        last = hit;
+        const act = batch[ai];
+        if (!patchFirst.has(hit.patch) && !newPatches.has(hit.patch)) newPatches.set(hit.patch, act.i);
+        if (visited.has(hit.code) || newCodes.has(hit.code)) continue;
+        newCodes.set(hit.code, { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' });
+    }
+
+    const latest = await env.STRAVA_DATA.get(ECOREGIONS_KEY, 'json');
+    if (stored && !latest) return { skipped: 'reset during detection' };
+    if (latest && !usable(latest)) return { skipped: 'rescanned during detection' };
+    const codes = new Set((latest?.codes || []).filter(c => knownCodes.has(c)));
+    const discoveries = { ...(latest?.discoveries || {}) };
+    for (const [code, d] of newCodes) {
+        codes.add(code);
+        if (!discoveries[code]) discoveries[code] = d;
+    }
+    const patchMap = { ...(latest?.patches || {}) };
+    for (const [id, actId] of newPatches) if (patchMap[id] === undefined) patchMap[id] = actId;
+    const processedIds = new Set((latest?.processedIds || []).filter(Boolean));
+    for (const a of batch) processedIds.add(a.i);
+    await env.STRAVA_DATA.put(ECOREGIONS_KEY, JSON.stringify({
+        ...(latest || {}),
+        v: ECO_DETECT_VERSION,
+        patchCount: patches.length,
+        patches: patchMap,
+        codes: [...codes],
+        processedIds: [...processedIds],
+        discoveries,
+        order: latest ? latest.order : discoveryOrderStamp(slim),
+    }));
+    return { ...detectResult(batch, newCodes.size, remaining), patches: newPatches.size };
+}
+
+// Runs every hunter in turn, one boundary file set in memory at a time.
+// Returns { county: { processed, added, remaining? }, … }, or { error } /
+// { skipped } per hunter.
 async function detectHuntersAfterSync(env, slim) {
+    const cache = new Map();   // activity id → decoded route, shared by the hunters
+    const jobs = [
+        ...POLYGON_HUNTERS.map(h => [h.name, () => detectPolygonHunter(env, h, slim, cache)]),
+        ['tile', () => detectTiles(env, slim, cache)],
+        ['ecoregion', () => detectEcoregions(env, slim, cache)],
+    ];
     const results = {};
-    const pointsById = new Map();   // decoded once, shared by the hunters
-    for (const hunter of POLYGON_HUNTERS) {
+    for (const [name, run] of jobs) {
         try {
-            results[hunter.name] = await detectPolygonHunter(env, hunter, slim, pointsById);
+            results[name] = await run();
         } catch (e) {
-            console.log(`${hunter.name} detection failed: ${e.message}`);
-            results[hunter.name] = { error: e.message };
+            console.log(`${name} detection failed: ${e.message}`);
+            results[name] = { error: e.message };
         }
     }
     return results;
@@ -1711,7 +1995,7 @@ const MCP_SERVER_INFO = { name: 'j-guyy-adventures', title: 'j-guyy.github.io ad
 
 const MCP_INSTRUCTIONS = `Data behind Justin Guyette's adventure site, ${SITE_URL}.
 - Activities are his Strava activities that have a GPS start point (indoor and manual entries aren't stored), refreshed nightly. Each has a sport type, date, distance, moving time, elevation gain and the country / state where it started. Strava links: https://www.strava.com/activities/<id>.
-- The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. Counties, parks, state parks and metros are brought up to date at every Strava sync (nightly); the others are recomputed when the owner opens that hunter on the site, so they can lag the newest activities by a few days.
+- The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. Counties, parks, state parks, metros, ecoregions and map tiles are brought up to date at every Strava sync (nightly); summits and passes update when the site is opened, so they can lag the newest activities by a few days.
 - The peak lists (Colorado 14ers, Adirondack 46ers, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
 - Distances come in km and mi, elevations in m and ft. Use the units the user uses.
 Start with get_overview for headline numbers.`;
