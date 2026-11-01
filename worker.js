@@ -1066,7 +1066,17 @@ async function syncActivities(env, onProgress) {
         console.log(`attribution refresh failed: ${e.message}`);
     }
 
-    return { ...record, newActivities, updated, removed };
+    // Bring County / Park / Metro Hunter up to date with the new activities,
+    // so they don't wait for someone to open them on the site.
+    let hunters = null;
+    try {
+        hunters = await detectHuntersAfterSync(env, slim);
+        console.log(`hunters after sync: ${JSON.stringify(hunters)}`);
+    } catch (e) {
+        console.log(`hunter detection failed: ${e.message}`);
+    }
+
+    return { ...record, newActivities, updated, removed, hunters };
 }
 
 // Non-streaming entry point (used by /activities/rebuild).
@@ -1271,6 +1281,183 @@ async function refreshAttribution(env, nameById) {
         }
         if (changed) await env.STRAVA_DATA.put(SUMMITS_KEY, JSON.stringify(summits));
     }
+}
+
+// ── Hunter detection after a sync ────────────────────────────────────────────
+//
+// County, Park (federal + state) and Metro Hunter used to update only when
+// their map was opened on the site, so their results (and the MCP server's
+// answers) lagged until then. Every sync — the nightly cron, "Sync now",
+// rebuild, and each invited user's sync through user-worker.js — now runs the
+// same detection here for activities the hunter hasn't processed yet, so they
+// are current without a visit. The page still runs its own detection when a map
+// opens; it finds nothing left to do.
+//
+// This must match js/strava.js (initCountyMap / initParkMap / initMetroMap and
+// detectCountiesAsync / detectParksAsync / detectMetrosAsync), so both find the
+// same places: every 3rd decoded polyline point, a 1° grid of feature bounding
+// boxes, a ray cast against each polygon's outer ring only, activities oldest
+// first (byStartTime), and the first activity to reach a place as its
+// discovery. Change one, change the other.
+//
+// Detection is incremental (processedIds), so a run that stops early loses
+// nothing: at most HUNTER_DETECT_MAX activities per hunter per sync, which a
+// hunter that has never run (a newly invited user) catches up on over a few
+// syncs or a page visit. A failure is logged and never fails the sync.
+
+const POLYGON_HUNTERS = [
+    { name: 'county',     kv: COUNTIES_KEY,     file: 'data/counties-us.json',     ids: 'fips', idOf: p => p.GEOID },
+    { name: 'park',       kv: PARKS_KEY,        file: 'data/federal-lands.geojson', ids: 'ids',  idOf: p => p.id },
+    { name: 'state_park', kv: STATE_PARKS_KEY,  file: 'data/state-parks.geojson',  ids: 'ids',  idOf: p => p.id },
+    { name: 'metro',      kv: METRO_HUNTER_KEY, file: 'data/metro-areas.geojson',  ids: 'ids',  idOf: p => p.id },
+];
+
+const HUNTER_DETECT_MAX = 500;
+
+// Mirrors DISCOVERY_ORDER in js/strava.js: a hunter blob stamped with it has
+// first visits picked in byStartTime order.
+const DISCOVERY_ORDER = 1;
+
+function byStartTime(a, b) {
+    return (a.d || '').localeCompare(b.d || '')
+        || ((a.s && b.s) ? a.s - b.s : 0)
+        || (Number(a.i) || 0) - (Number(b.i) || 0);
+}
+
+// Every 3rd point of a Google encoded polyline, as a flat [lat, lng, …] array.
+function sampledPolylinePoints(encoded) {
+    const out = [];
+    let index = 0, lat = 0, lng = 0, n = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        if (n++ % 3 === 0) out.push(lat / 1e5, lng / 1e5);
+    }
+    return Float64Array.from(out);
+}
+
+function pointInOuterRing(lat, lng, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+// Features with their outer rings and bounding boxes, and a 1° grid
+// ("lng,lat" of the cell's floor) listing the features whose box overlaps it.
+function buildPolygonIndex(geojson, idOf) {
+    const index = new Map();
+    for (const feature of geojson.features || []) {
+        const geom = feature.geometry;
+        if (!geom) continue;
+        const rings = geom.type === 'Polygon' ? [geom.coordinates[0]]
+            : geom.type === 'MultiPolygon' ? geom.coordinates.map(poly => poly[0]) : [];
+        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+        // The box covers every ring, holes included, as computeFeatureBbox does.
+        const all = geom.type === 'Polygon' ? geom.coordinates : geom.type === 'MultiPolygon' ? geom.coordinates.flat() : [];
+        for (const ring of all) {
+            for (const [x, y] of ring) {
+                if (x < minLng) minLng = x;
+                if (x > maxLng) maxLng = x;
+                if (y < minLat) minLat = y;
+                if (y > maxLat) maxLat = y;
+            }
+        }
+        const entry = { id: idOf(feature.properties || {}), rings, minLng, maxLng, minLat, maxLat };
+        if (!entry.id || !rings.length) continue;
+        for (let x = Math.floor(minLng); x <= Math.floor(maxLng); x++) {
+            for (let y = Math.floor(minLat); y <= Math.floor(maxLat); y++) {
+                const key = `${x},${y}`;
+                if (!index.has(key)) index.set(key, []);
+                index.get(key).push(entry);
+            }
+        }
+    }
+    return index;
+}
+
+// Boundary files are several MB, so unlike fetchSiteJson they aren't kept in
+// the isolate between syncs; Cloudflare's cache still saves the download.
+async function fetchBoundaryFile(path) {
+    const res = await fetch(`${SITE_URL}/${path}`, { cf: { cacheTtl: 3600, cacheEverything: true } });
+    if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+    return res.json();
+}
+
+async function detectPolygonHunter(env, hunter, slim, pointsById) {
+    const kv = env.STRAVA_DATA;
+    const stored = await kv.get(hunter.kv, 'json');
+    const visited = new Set((stored?.[hunter.ids] || []).filter(Boolean));
+    // Visits without first-visit history are rebuilt by the page's one-time
+    // backfill, which only runs while the history is empty: leave them to it.
+    if (visited.size && !Object.keys(stored?.discoveries || {}).length) return { skipped: 'awaiting page backfill' };
+
+    const processed = new Set((stored?.processedIds || []).filter(Boolean));
+    const pending = slim.filter(a => a.i && a.p && !processed.has(a.i)).sort(byStartTime);
+    if (!pending.length) return { processed: 0, added: 0 };
+    const batch = pending.slice(0, HUNTER_DETECT_MAX);
+
+    const index = buildPolygonIndex(await fetchBoundaryFile(hunter.file), hunter.idOf);
+    const found = new Map();   // id → { actId, actName, date }
+    for (const act of batch) {
+        let pts = pointsById.get(act.i);
+        if (!pts) { pts = sampledPolylinePoints(act.p); pointsById.set(act.i, pts); }
+        for (let k = 0; k < pts.length; k += 2) {
+            const lat = pts[k], lng = pts[k + 1];
+            const candidates = index.get(`${Math.floor(lng)},${Math.floor(lat)}`);
+            if (!candidates) continue;
+            for (const f of candidates) {
+                if (visited.has(f.id) || found.has(f.id)) continue;
+                if (lng < f.minLng || lng > f.maxLng || lat < f.minLat || lat > f.maxLat) continue;
+                if (f.rings.some(ring => pointInOuterRing(lat, lng, ring))) {
+                    found.set(f.id, { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' });
+                }
+            }
+        }
+    }
+
+    // A page may have saved this hunter while we worked (any visitor's page
+    // saves it), so merge into the latest copy rather than overwrite it.
+    const latest = (await kv.get(hunter.kv, 'json')) || stored;
+    const ids = new Set((latest?.[hunter.ids] || []).filter(Boolean));
+    const processedIds = new Set((latest?.processedIds || []).filter(Boolean));
+    const discoveries = { ...(latest?.discoveries || {}) };
+    for (const [id, d] of found) {
+        ids.add(id);
+        if (!discoveries[id]) discoveries[id] = d;
+    }
+    for (const a of batch) processedIds.add(a.i);
+    const order = latest ? latest.order : (slim.some(a => a.s) ? DISCOVERY_ORDER : 0);
+    await kv.put(hunter.kv, JSON.stringify({
+        ...(latest || {}),
+        [hunter.ids]: [...ids],
+        processedIds: [...processedIds],
+        discoveries,
+        ...(order !== undefined ? { order } : {}),
+    }));
+    return { processed: batch.length, added: found.size, ...(pending.length > batch.length ? { remaining: pending.length - batch.length } : {}) };
+}
+
+// Runs every polygon hunter in turn (one boundary file in memory at a time).
+// Returns { county: { processed, added }, … }, or { error } per failed hunter.
+async function detectHuntersAfterSync(env, slim) {
+    const results = {};
+    const pointsById = new Map();   // decoded once, shared by the hunters
+    for (const hunter of POLYGON_HUNTERS) {
+        try {
+            results[hunter.name] = await detectPolygonHunter(env, hunter, slim, pointsById);
+        } catch (e) {
+            console.log(`${hunter.name} detection failed: ${e.message}`);
+            results[hunter.name] = { error: e.message };
+        }
+    }
+    return results;
 }
 
 function slimActivities(activities) {
@@ -1524,7 +1711,7 @@ const MCP_SERVER_INFO = { name: 'j-guyy-adventures', title: 'j-guyy.github.io ad
 
 const MCP_INSTRUCTIONS = `Data behind Justin Guyette's adventure site, ${SITE_URL}.
 - Activities are his Strava activities that have a GPS start point (indoor and manual entries aren't stored), refreshed nightly. Each has a sport type, date, distance, moving time, elevation gain and the country / state where it started. Strava links: https://www.strava.com/activities/<id>.
-- The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. The site recomputes them when the owner opens a hunter, so they can lag the newest activities by a few days.
+- The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. Counties, parks, state parks and metros are brought up to date at every Strava sync (nightly); the others are recomputed when the owner opens that hunter on the site, so they can lag the newest activities by a few days.
 - The peak lists (Colorado 14ers, Adirondack 46ers, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
 - Distances come in km and mi, elevations in m and ft. Use the units the user uses.
 Start with get_overview for headline numbers.`;
