@@ -880,6 +880,148 @@
     padding-top: 2px;
 }
 
+/* Filters: a summary row on the page, the pills in a side panel */
+.filter-summary {
+    display: flex;
+    flex: 1 0 100%;
+    align-items: center;
+    gap: 8px 10px;
+    flex-wrap: wrap;
+}
+.filter-summary-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.88rem;
+}
+.filter-open-btn, .filter-fab, .filter-drawer-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 6px 14px;
+    border: 1px solid rgba(76, 175, 80, 0.55);
+    border-radius: 999px;
+    background: rgba(76, 175, 80, 0.14);
+    color: #8fdc92;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+.filter-open-btn:hover, .filter-fab:hover, .filter-drawer-done:hover { background: rgba(76, 175, 80, 0.24); }
+.filter-open-btn.is-filtered, .filter-fab.is-filtered { background: #4CAF50; border-color: #4CAF50; color: #0e1410; }
+.filter-icon { flex-shrink: 0; }
+.filter-summary-label { margin-right: 6px; color: rgba(255, 255, 255, 0.55); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.filter-fab {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 2500;
+    min-height: 44px;
+    padding: 8px 18px;
+    background: #18201b;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.filter-fab[hidden] { display: none; }
+.filter-fab-badge {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #0e1410;
+    color: #8fdc92;
+    font-size: 0.72rem;
+    line-height: 18px;
+    text-align: center;
+}
+
+.filter-drawer { position: fixed; inset: 0; z-index: 4000; }
+.filter-drawer[hidden] { display: none; }
+.filter-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.filter-drawer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    width: min(400px, 92vw);
+    background: #151a17;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -16px 0 40px rgba(0, 0, 0, 0.45);
+    color: #eef2ef;
+    text-align: left;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-out;
+}
+.filter-drawer.is-open .filter-drawer-backdrop { opacity: 1; }
+.filter-drawer.is-open .filter-drawer-panel { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .filter-drawer-backdrop, .filter-drawer-panel { transition: none; }
+}
+html.filter-drawer-open { overflow: hidden; }
+
+.filter-drawer-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: max(18px, env(safe-area-inset-top)) 20px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.filter-drawer-head h2 { margin: 0; font-size: 1.2rem; }
+.filter-drawer-summary { margin: 4px 0 0; color: rgba(238, 242, 239, 0.7); font-size: 0.85rem; }
+.filter-drawer-close {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 0;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.filter-drawer-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 20px 16px;
+}
+.filter-drawer-section { padding: 14px 0 6px; }
+.filter-drawer-section + .filter-drawer-section { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.filter-drawer-section h3 {
+    margin: 0 0 10px;
+    color: rgba(238, 242, 239, 0.7);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.filter-drawer-section .filter-controls { flex-wrap: wrap; margin-bottom: 10px; }
+.filter-drawer-section .filter-pills { gap: 6px; }
+.filter-drawer-section .filter-pill { min-height: 32px; font-size: 0.85rem; }
+.filter-drawer-foot {
+    padding: 12px 20px max(16px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.filter-drawer-foot p { margin: 0 0 12px; color: rgba(238, 242, 239, 0.6); font-size: 0.78rem; line-height: 1.4; }
+.filter-drawer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.filter-drawer-done { justify-content: center; min-width: 96px; background: #4CAF50; border-color: #4CAF50; color: #0e1410; }
+.filter-drawer-done:hover { background: #5cbf60; }
+
 /* Activities / Hours switch: what the summary and tables count */
 .metric-toggle {
     display: inline-flex;

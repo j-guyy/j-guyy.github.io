@@ -1297,3 +1297,9 @@
     background: rgba(252, 76, 2, 0.12); border: 1px solid rgba(252, 76, 2, 0.35); font-size: 0.88rem;
 }
 .user-powered { margin: 10px 0 0; text-align: center; font-size: 0.75rem; opacity: 0.6; }
+
+/* Filters side panel (built by strava.js on <body>) in the app's tokens,
+   and the floating Filters button kept clear of the tab bar. */
+.app-page .filter-drawer-panel { background: var(--app-surface, #151a17); border-color: var(--app-border, #26302a); }
+.app-page .filter-fab { bottom: calc(var(--app-tabbar-h, 64px) + env(safe-area-inset-bottom) + 14px); }
+.app-page .filter-summary-text { color: var(--app-text-dim); }

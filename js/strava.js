@@ -35,7 +35,35 @@ function isAppPage() { return document.body.classList.contains('app-page'); }
 // ── Filter state ──────────────────────────────────────────────────────────────
 // Uses a deactivated set — new types default to active without needing initialization
 const deactivatedTypes = new Set();
+// Years switched off in the Dashboard's year filter ("2019"), same idea.
+const deactivatedYears = new Set();
 let currentSlim = [];
+
+function activityYear(a) { return a && a.d ? a.d.slice(0, 4) : ''; }
+
+// Whether an activity passes the Dashboard's sport and year filters.
+function activityShown(a) {
+    return !deactivatedTypes.has(a.t) && !deactivatedYears.has(activityYear(a));
+}
+
+function filtersActive() { return deactivatedTypes.size > 0 || deactivatedYears.size > 0; }
+
+// The sport and year filters are remembered between visits (like the metric
+// toggle): what's switched off, so a new sport or a new year starts switched on.
+const FILTERS_KEY = 'strava_dashboard_filters';
+try {
+    const saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+    if (saved) {
+        (saved.types || []).forEach(t => deactivatedTypes.add(t));
+        (saved.years || []).forEach(y => deactivatedYears.add(y));
+    }
+} catch {}
+
+function saveFilters() {
+    try {
+        localStorage.setItem(FILTERS_KEY, JSON.stringify({ types: [...deactivatedTypes], years: [...deactivatedYears] }));
+    } catch {}
+}
 
 // Oldest activity first: local date, then start time (`s`, epoch seconds from
 // the worker), then Strava id (grows with upload order) for activities stored
@@ -1107,19 +1135,183 @@ function renderFilters() {
         `<button type="button" class="metric-toggle-btn${dashboardMetric === m ? ' active' : ''}" aria-pressed="${dashboardMetric === m}" onclick="setDashboardMetric('${m}')">${label}</button>`
     ).join('');
 
+    // On the page: the metric toggle and a one-line summary of the filters
+    // with a Filters button. The sport and year pills live in a side panel
+    // (filterDrawer()) that slides out from the right; a floating Filters
+    // button (#filter-fab) opens it from anywhere once this row is scrolled
+    // past.
+    const nOff = [...deactivatedTypes].filter(t => typeCounts[t]).length
+        + [...deactivatedYears].filter(y => currentSlim.some(a => activityYear(a) === y)).length;
     container.innerHTML = `
         <div class="filter-bar">
             <div class="metric-toggle-row">
                 <span class="metric-toggle-label" id="metric-toggle-label">Show stats by</span>
                 <div class="metric-toggle" role="group" aria-labelledby="metric-toggle-label">${metricHtml}</div>
             </div>
+            <div class="filter-summary" id="filter-summary">
+                <span class="filter-summary-text"><span class="filter-summary-label">Showing</span> ${filterSummaryText(sortedTypes)}</span>
+                ${nOff ? '<button type="button" class="filter-all-btn" onclick="resetDashboardFilters()">Reset</button>' : ''}
+                <button type="button" class="filter-open-btn${nOff ? ' is-filtered' : ''}" onclick="openFilterDrawer()" aria-haspopup="dialog">${FILTER_ICON} Filters</button>
+            </div>
+        </div>`;
+
+    const drawer = filterDrawer();
+    drawer.querySelector('.filter-drawer-body').innerHTML = `
+        <section class="filter-drawer-section">
+            <h3>Sports</h3>
             <div class="filter-controls">
                 <button class="filter-all-btn" onclick="setAllFilters(true)">All</button>
                 <button class="filter-all-btn" onclick="setAllFilters(false)">None</button>
                 ${quickGroupHtml}
             </div>
             <div class="filter-pills">${pillsHtml}</div>
-        </div>`;
+        </section>
+        ${renderYearFilterHtml()}`;
+    drawer.querySelector('.filter-drawer-summary').textContent = filterSummaryText(sortedTypes);
+    updateFilterFab(nOff);
+}
+
+const FILTER_ICON = '<svg class="filter-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
+
+// "All sports · All years", "Run, Trail Run · 2026", "12 of 16 sports · 3 years"
+function filterSummaryText(sortedTypes) {
+    const onTypes = sortedTypes.filter(t => !deactivatedTypes.has(t));
+    const years = [...new Set(currentSlim.map(activityYear).filter(Boolean))].sort().reverse();
+    const onYears = years.filter(y => !deactivatedYears.has(y));
+    const part = (on, all, noun, label) => {
+        if (on.length === all.length) return `All ${noun}`;
+        if (!on.length) return `No ${noun}`;
+        if (on.length <= 3) return on.map(label).join(', ');
+        return `${on.length} of ${all.length} ${noun}`;
+    };
+    return `${part(onTypes, sortedTypes, 'sports', typeLabel)} · ${part(onYears, years, 'years', y => y)}`;
+}
+
+function resetDashboardFilters() {
+    deactivatedTypes.clear();
+    deactivatedYears.clear();
+    renderFilters();
+    applyFilters();
+    updateMapFilters();
+}
+
+// The side panel, built once and appended to <body> so it sits above the
+// navbar / app bars.
+function filterDrawer() {
+    let el = document.getElementById('filter-drawer');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'filter-drawer';
+    el.className = 'filter-drawer';
+    el.hidden = true;
+    el.innerHTML = `
+        <div class="filter-drawer-backdrop" onclick="closeFilterDrawer()"></div>
+        <aside class="filter-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="filter-drawer-title">
+            <header class="filter-drawer-head">
+                <div>
+                    <h2 id="filter-drawer-title">Filters</h2>
+                    <p class="filter-drawer-summary"></p>
+                </div>
+                <button type="button" class="filter-drawer-close" onclick="closeFilterDrawer()" aria-label="Close filters">✕</button>
+            </header>
+            <div class="filter-drawer-body"></div>
+            <footer class="filter-drawer-foot">
+                <p>Filters the summary, charts, tables and Activity Map. Hunters, Eddington, Best Efforts and Goals always count every activity.</p>
+                <div class="filter-drawer-actions">
+                    <button type="button" class="filter-all-btn" onclick="resetDashboardFilters()">Reset</button>
+                    <button type="button" class="filter-drawer-done" onclick="closeFilterDrawer()">Done</button>
+                </div>
+            </footer>
+        </aside>`;
+    if (isAppPage()) el.classList.add('app-drawer');
+    document.body.appendChild(el);
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !el.hidden) closeFilterDrawer(); });
+    return el;
+}
+
+function openFilterDrawer() {
+    const el = filterDrawer();
+    el.hidden = false;
+    document.documentElement.classList.add('filter-drawer-open');
+    requestAnimationFrame(() => el.classList.add('is-open'));
+    el.querySelector('.filter-drawer-close').focus({ preventScroll: true });
+}
+
+function closeFilterDrawer() {
+    const el = document.getElementById('filter-drawer');
+    if (!el || el.hidden) return;
+    el.classList.remove('is-open');
+    document.documentElement.classList.remove('filter-drawer-open');
+    setTimeout(() => { if (!el.classList.contains('is-open')) el.hidden = true; }, 220);
+}
+
+// Floating Filters button: shown once the page's own Filters row has scrolled
+// out of view (and, on the app, only on the Dashboard screen).
+function updateFilterFab(nOff) {
+    let fab = document.getElementById('filter-fab');
+    if (!fab) {
+        fab = document.createElement('button');
+        fab.type = 'button';
+        fab.id = 'filter-fab';
+        fab.className = 'filter-fab';
+        fab.hidden = true;
+        fab.onclick = openFilterDrawer;
+        document.body.appendChild(fab);
+        const check = () => {
+            const row = document.getElementById('filter-summary');
+            const shown = !!row && row.offsetParent !== null && row.getBoundingClientRect().bottom < 0;
+            fab.hidden = !shown;
+        };
+        let raf = 0;
+        window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; check(); }); }, { passive: true });
+        window.addEventListener('hashchange', () => setTimeout(check, 50));
+        fab._check = check;
+    }
+    fab.innerHTML = `${FILTER_ICON} Filters${nOff ? ` <span class="filter-fab-badge">${nOff}</span>` : ''}`;
+    fab.classList.toggle('is-filtered', nOff > 0);
+    fab._check();
+}
+
+// The year filter: one pill per year with activities (newest first), each
+// toggled on its own like the sport pills, plus All years / This year.
+function renderYearFilterHtml() {
+    const yearCounts = {};
+    currentSlim.forEach(a => { const y = activityYear(a); if (y) yearCounts[y] = (yearCounts[y] || 0) + 1; });
+    const years = Object.keys(yearCounts).sort().reverse();
+    if (years.length < 2) return '';
+    const thisYear = String(new Date().getFullYear());
+    const allOn = years.every(y => !deactivatedYears.has(y));
+    const onlyThis = years.every(y => (y === thisYear) !== deactivatedYears.has(y));
+    const pills = years.map(y =>
+        `<button class="filter-pill filter-year-pill${deactivatedYears.has(y) ? '' : ' active'}" onclick="toggleYearFilter('${y}')">${y} <span class="filter-pill-count">${yearCounts[y]}</span></button>`
+    ).join('');
+    return `<section class="filter-drawer-section filter-years">
+            <h3>Years</h3>
+            <div class="filter-controls">
+                <button class="filter-all-btn${allOn ? ' active' : ''}" onclick="setYearFilter('all')">All years</button>
+                ${yearCounts[thisYear] ? `<button class="filter-all-btn${onlyThis ? ' active' : ''}" onclick="setYearFilter('${thisYear}')">This year</button>` : ''}
+            </div>
+            <div class="filter-pills filter-year-pills">${pills}</div>
+        </section>`;
+}
+
+function toggleYearFilter(y) {
+    if (deactivatedYears.has(y)) deactivatedYears.delete(y);
+    else deactivatedYears.add(y);
+    renderFilters();
+    applyFilters();
+    updateMapFilters();
+}
+
+// 'all' switches every year on; a year switches on only that year.
+function setYearFilter(only) {
+    deactivatedYears.clear();
+    if (only !== 'all') {
+        currentSlim.forEach(a => { const y = activityYear(a); if (y && y !== only) deactivatedYears.add(y); });
+    }
+    renderFilters();
+    applyFilters();
+    updateMapFilters();
 }
 
 function toggleQuickGroup(types) {
@@ -1156,13 +1348,12 @@ function setAllFilters(enabled) {
 }
 
 function applyFilters() {
-    const filtered = deactivatedTypes.size === 0
-        ? currentSlim
-        : currentSlim.filter(a => !deactivatedTypes.has(a.t));
+    const filtered = filtersActive() ? currentSlim.filter(activityShown) : currentSlim;
+    saveFilters();
 
-    // When all types are active, show the true KV total (includes non-GPS activities).
+    // With no filter on, show the true KV total (includes non-GPS activities).
     // When filtering, show the filtered GPS count so the number matches what's displayed.
-    const displayTotal = deactivatedTypes.size === 0 ? currentTotal : filtered.length;
+    const displayTotal = filtersActive() ? filtered.length : currentTotal;
 
     const { countries, subdivisions } = buildData(filtered, currentCache);
     renderSummary(filtered, countries, displayTotal);
@@ -4426,7 +4617,7 @@ async function initMap() {
 
         const group = getGroup(slim.t);
         const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
-        const visible = !deactivatedTypes.has(slim.t);
+        const visible = activityShown(slim);
 
         const layer = L.polyline(points, {
             color,
@@ -4436,10 +4627,10 @@ async function initMap() {
         }).addTo(stravaMap);
 
         layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
-        layer.on('mouseover', function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.95, weight: routeBaseWeight(stravaMapIsDark) + 1.5 }); });
-        layer.on('mouseout',  function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: routeBaseOpacity(stravaMapIsDark), weight: routeBaseWeight(stravaMapIsDark) }); });
+        layer.on('mouseover', function () { if (activityShown(slim)) this.setStyle({ opacity: 0.95, weight: routeBaseWeight(stravaMapIsDark) + 1.5 }); });
+        layer.on('mouseout',  function () { if (activityShown(slim)) this.setStyle({ opacity: routeBaseOpacity(stravaMapIsDark), weight: routeBaseWeight(stravaMapIsDark) }); });
 
-        mapLayers.push({ layer, type: slim.t });
+        mapLayers.push({ layer, type: slim.t, slim });
         if (visible) points.forEach(p => allPoints.push(p));
     });
 
@@ -4460,8 +4651,8 @@ function updateMapFilters() {
     if (!mapInitialized) return;
     const op = routeBaseOpacity(stravaMapIsDark);
     const w  = routeBaseWeight(stravaMapIsDark);
-    mapLayers.forEach(({ layer, type }) => {
-        const visible = !deactivatedTypes.has(type);
+    mapLayers.forEach(({ layer, slim }) => {
+        const visible = activityShown(slim);
         layer.setStyle({ opacity: visible ? op : 0, weight: w });
         layer.options.interactive = visible;
     });
@@ -4473,8 +4664,8 @@ function restyleActivityMapTheme() {
     if (!mapInitialized) return;
     const op = routeBaseOpacity(stravaMapIsDark);
     const w  = routeBaseWeight(stravaMapIsDark);
-    mapLayers.forEach(({ layer, type }) => {
-        const visible = !deactivatedTypes.has(type);
+    mapLayers.forEach(({ layer, slim }) => {
+        const visible = activityShown(slim);
         layer.setStyle({ opacity: visible ? op : 0, weight: w });
     });
 }
@@ -9525,10 +9716,9 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     dbg(`Subdivisions: ${subCounts.join(', ') || 'none'}`);
 
     renderFilters();
-    renderSummary(slim, countries, total);
-    renderTable(countries);
-    renderSubdivisions(subdivisions);
-    if (typeof renderInsights === 'function') renderInsights(slim.filter(a => !deactivatedTypes.has(a.t)));
+    // Through applyFilters, so filters remembered from the last visit apply
+    // from the first paint.
+    applyFilters();
     renderOverviewStats();
     dbg('Render complete');
 
@@ -9558,23 +9748,20 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
 async function geocodeInBackground(cellKeys, cache, slim, total) {
     if (await placeCellsByBoundary(cellKeys, cache)) {
         await saveGeoToWorker(cache);
-        rerenderGeo(slim, cache, total);
+        rerenderGeo(cache);
     }
     const { cache: updatedCache, modified } = await geocodeAll(cellKeys, cache);
     if (!modified) return;
 
     await saveGeoToWorker(updatedCache);
     dbg('Background geocoding done — re-rendering with updated data');
-    rerenderGeo(slim, updatedCache, total);
+    rerenderGeo(updatedCache);
 }
 
 // Re-render the place-based tables and maps once more cells are known.
-function rerenderGeo(slim, cache, total) {
+function rerenderGeo(cache) {
     currentCache = cache;
-    const { countries, subdivisions } = buildData(slim, cache);
-    renderSummary(slim, countries, total);
-    renderTable(countries);
-    renderSubdivisions(subdivisions);
+    applyFilters();
     rebuildOpenRegionMaps();
 }
 
