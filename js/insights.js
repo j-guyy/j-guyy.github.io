@@ -207,8 +207,21 @@ function insYearPills(key, years, sel, allLabel = 'All Time', allValue = 'all') 
     return insPills(key, [[allValue, allLabel], ...years.map(y => [y, y])], sel);
 }
 
+// Picking a year on one card picks it on every one-year card (and as the
+// first year of the comparison); "All Time" carries across the cards that
+// have it. "Last 12 Months" is the calendar's alone.
+const INS_YEAR_KEYS = ['donutYear', 'calYear', 'eddYear', 'bestYear'];
+
 function insSet(key, value) {
-    insState[key] = value;
+    if (INS_YEAR_KEYS.includes(key) && /^\d{4}$/.test(value)) {
+        INS_YEAR_KEYS.forEach(k => { insState[k] = value; });
+        insState.compareA = value;
+        insState.compareB = null;
+    } else if (INS_YEAR_KEYS.includes(key) && value === 'all') {
+        ['donutYear', 'eddYear', 'bestYear'].forEach(k => { insState[k] = 'all'; });
+    } else {
+        insState[key] = value;
+    }
     renderInsights(insState.lastFiltered);
 }
 
@@ -274,8 +287,56 @@ function insCompareCard(list, today) {
     const select = (key, sel, skip) => `<select class="ins-select" aria-label="${key === 'compareA' ? 'Year' : 'Compared with'}" onchange="insSet('${key}', this.value)">${
         years.filter(y => y !== skip).map(y => `<option value="${y}"${y === sel ? ' selected' : ''}>${y}${y === cy ? ' so far' : ''}</option>`).join('')}</select>`;
     const picker = `<div class="ins-compare-pick">${select('compareA', A, null)}${B ? `<span>vs</span>${select('compareB', B, A)}` : ''}</div>`;
-    return insCard(`${A}${A === cy ? ' so far' : ''}`, picker + `<div class="ins-tiles">${tiles}</div>`,
+    return insCard(`${A}${A === cy ? ' so far' : ''}`, picker + `<div class="ins-tiles">${tiles}</div>` + insMonthBars(list, years, A, B, today),
         B ? (toDate ? `vs ${B} to the same date` : `vs ${B}, full years`) : '');
+}
+
+// Month by month, the two compared years side by side (each in its Year
+// Pace colour), by the chosen metric.
+function insMonthBars(list, years, A, B, today) {
+    const m = insMetric();
+    const nums = years.map(Number);
+    const sums = y => {
+        const out = new Array(12).fill(0);
+        list.forEach(a => { if (a.d.startsWith(y)) out[Number(a.d.slice(5, 7)) - 1] += m.val(a); });
+        return out;
+    };
+    const a = sums(A), b = B ? sums(B) : null;
+    const lastA = A === String(today.year) ? Number(today.iso.slice(5, 7)) - 1 : 11;
+    const max = Math.max(...a, ...(b || [0])) || 1;
+    const yMax = insNiceMax(max);
+    const W = 340, H = 120, L = 34, R = 6, T = 8, Bm = 18;
+    const slot = (W - L - R) / 12;
+    const bw = Math.min(10, (slot - 4) / (b ? 2 : 1));
+    const y = v => T + (1 - v / yMax) * (H - T - Bm);
+    const cA = insPaceColor(Number(A), nums, today), cB = B ? insPaceColor(Number(B), nums, today) : '';
+    const bar = (x0, v, color) => {
+        const top = y(v), h = H - Bm - top;
+        if (h <= 0) return '';
+        const r = Math.min(2.5, bw / 2, h);
+        return `<path style="fill:${color}" d="M${x0},${H - Bm} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x0 + bw - r} Q${x0 + bw},${top} ${x0 + bw},${top + r} V${H - Bm} Z"/>`;
+    };
+    let grid = '';
+    [0, 2, 4].forEach(k => {
+        const v = (yMax / 4) * k;
+        grid += `<line class="ins-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+        grid += `<text class="ins-axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${insShort(v)}</text>`;
+    });
+    let marks = '';
+    for (let i = 0; i < 12; i++) {
+        const cx = L + slot * i + slot / 2;
+        const gap = b ? 1 : 0;
+        const xA = b ? cx - bw - gap / 2 : cx - bw / 2;
+        const tipA = i > lastA ? `${A}: —` : `${A}: ${insWithUnit(a[i], m)}${i === lastA && A === String(today.year) ? ' (so far)' : ''}`;
+        const tip = `${INS_MONTHS[i]} · ${tipA}${b ? ` · ${B}: ${insWithUnit(b[i], m)}` : ''}`;
+        marks += `<g class="ins-hit" data-tip="${insEsc(tip)}"><rect x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - Bm}" fill="transparent"/>`
+            + (i <= lastA ? bar(xA, a[i], cA) : '')
+            + (b ? bar(cx + gap / 2, b[i], cB) : '')
+            + '</g>';
+        marks += `<text class="ins-axis" x="${cx}" y="${H - 5}" text-anchor="middle">${INS_MONTHS[i][0]}</text>`;
+    }
+    const key = `<div class="ins-month-key"><span><i class="ins-swatch" style="background:${cA}"></i>${A}</span>${b ? `<span><i class="ins-swatch" style="background:${cB}"></i>${B}</span>` : ''}<span class="ins-month-key-unit">${m.noun} per month</span></div>`;
+    return `<div class="ins-months">${key}<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${insEsc(m.noun)} per month, ${A}${B ? ` and ${B}` : ''}">${grid}${marks}</svg></div>`;
 }
 
 // ── 2. Year pace lines ─────────────────────────────────────────────────────
@@ -318,7 +379,11 @@ function insPaceCard(list, today) {
     const colors = shown.map(y => insPaceColor(y, years, today));
 
     const W = 340, H = 190, L = 34, R = 50, T = 10, B = 22;
-    const max = Math.max(0, ...series.map(s => s[s.length - 1])) || 1;
+    // This year's pace carried on to Dec 31, drawn dashed.
+    const ck = shown.indexOf(today.year);
+    const curEnd = ck >= 0 ? series[ck][series[ck].length - 1] : 0;
+    const projection = ck >= 0 && curEnd > 0 && todayIdx < 364 ? curEnd / (todayIdx + 1) * 365 : 0;
+    const max = Math.max(0, projection, ...series.map(s => s[s.length - 1])) || 1;
     const yMax = insNiceMax(max);
     const x = i => L + (i / 365) * (W - L - R);
     const y = v => T + (1 - v / yMax) * (H - T - B);
@@ -352,7 +417,7 @@ function insPaceCard(list, today) {
         for (let i = 0; i < s.length; i += 2) pts.push(`${x(i).toFixed(1)},${y(s[i]).toFixed(1)}`);
         pts.push(`${x(s.length - 1).toFixed(1)},${y(s[s.length - 1]).toFixed(1)}`);
         const main = shown[k] === today.year;
-        lines += `<polyline class="ins-line${main ? ' ins-line-main' : ''}" data-year="${shown[k]}" points="${pts.join(' ')}" stroke="${colors[k]}"/>`;
+        lines += `<polyline class="ins-line${main ? ' ins-line-main' : ''}" data-year="${shown[k]}" points="${pts.join(' ')}" style="stroke:${colors[k]}"/>`;
     });
     // Labels sit at each line's end (this year's mid-chart, the rest past the
     // right edge); top to bottom, a label that would touch the one above
@@ -376,13 +441,16 @@ function insPaceCard(list, today) {
     });
     // today marker
     const s0 = curK >= 0 ? series[curK] : [];
-    const dot = s0.length && ends[curK] > 0 ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" fill="${colors[curK]}" stroke="var(--ins-surface, #131715)" stroke-width="2"/>` : '';
+    const proj = projection
+        ? `<line class="ins-projection" x1="${x(todayIdx).toFixed(1)}" y1="${y(curEnd).toFixed(1)}" x2="${x(365).toFixed(1)}" y2="${y(projection).toFixed(1)}" style="stroke:${colors[ck]}"/>`
+        : '';
+    const dot = s0.length && ends[curK] > 0 ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" style="fill:${colors[curK]};stroke:var(--ins-surface, #131715)" stroke-width="2"/>` : '';
 
     let note = '';
     if (curK >= 0 && ends[curK] > 0) {
         const cur = ends[curK];
         const projected = cur / (todayIdx + 1) * 365;
-        note = `On pace for <strong>${insWithUnit(projected, m)}</strong> in ${today.year}`;
+        note = `On pace for <strong>${insWithUnit(projected, m)}</strong> in ${today.year}${projection ? ' (dashed)' : ''}`;
         const atDate = series.map((s, k) => (k === curK ? cur : s[Math.min(todayIdx, s.length - 1)] || 0));
         if (shown.length > 1) {
             const rank = atDate.filter(v => v > cur).length + 1;
@@ -403,7 +471,7 @@ function insPaceCard(list, today) {
 
     const data = JSON.stringify({ years: shown, colors, unit: m.unit || m.noun, series: series.map(s => s.map(v => Math.round(v))) });
     const svg = `<svg class="ins-svg ins-pace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative ${m.noun} by day of year for ${shown.join(', ')}" data-pace='${insEsc(data)}' data-geom="${L},${R},${W}">
-        ${grid}${lines}${dot}${labels}
+        ${grid}${lines}${proj}${dot}${labels}
         <line class="ins-crosshair" y1="${T}" y2="${H - B}" x1="0" x2="0" style="display:none"/>
     </svg>`;
     const chips = years.map(yr => {
@@ -471,6 +539,7 @@ function insYearsCard(list, today) {
         grid += `<text class="ins-axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${insShort(v)}</text>`;
     }
     const maxIdx = vals.indexOf(max);
+    const picks = insState.donutYear;   // the year the one-year cards show
     let bars = '';
     years.forEach((yr, i) => {
         const v = vals[i];
@@ -484,12 +553,13 @@ function insYearsCard(list, today) {
         const path = h > 0
             ? `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x1 - r} Q${x1},${top} ${x1},${top + r} V${base} Z`
             : '';
-        const tip = `${yr}${isCur ? ' (so far)' : ''}: ${insWithUnit(v, m)}`;
-        bars += `<g class="ins-hit" data-tip="${insEsc(tip)}">
+        const tip = `${yr}${isCur ? ' (so far)' : ''}: ${insWithUnit(v, m)} · tap to view ${yr} on every card`;
+        const picked = yr === picks && !isCur;
+        bars += `<g class="ins-hit ins-bar-hit" data-tip="${insEsc(tip)}" onclick="insSet('donutYear', '${yr}')">
             <rect x="${cx - slot / 2}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>
-            ${path ? `<path d="${path}" class="ins-bar${isCur ? ' ins-bar-cur' : ''}"/>` : ''}
+            ${path ? `<path d="${path}" class="ins-bar${isCur ? ' ins-bar-cur' : ''}${picked ? ' ins-bar-picked' : ''}"/>` : ''}
         </g>`;
-        if (i === maxIdx || isCur) bars += `<text class="ins-bar-label" x="${cx}" y="${top - 4}" text-anchor="middle">${insShort(v)}</text>`;
+        if (i === maxIdx || isCur || yr === picks) bars += `<text class="ins-bar-label" x="${cx}" y="${top - 4}" text-anchor="middle">${insShort(v)}</text>`;
         if (years.length <= 12 || i % 2 === (years.length - 1) % 2) {
             bars += `<text class="ins-axis" x="${cx}" y="${H - 6}" text-anchor="middle">'${yr.slice(2)}</text>`;
         }
@@ -756,16 +826,21 @@ function insBestCard(today) {
     const pool = year === 'all' ? sport.acts : sport.acts.filter(a => a.d.startsWith(year));
 
     const cols = INS_BEST_CATS.map(cat => {
-        const top = pool.filter(a => cat.val(a) > 0)
+        const ranked = list => list.filter(a => cat.val(a) > 0)
             .sort((a, b) => cat.val(b) - cat.val(a) || (a.d < b.d ? -1 : 1))
             .slice(0, INS_BEST_TOP);
+        const top = ranked(pool);
+        // Viewing one year: flag the efforts that are also in the all-time top 5.
+        const allTime = year === 'all' ? [] : ranked(sport.acts);
         const rows = top.map((a, i) => {
+            const at = allTime.indexOf(a);
+            const badge = at < 0 ? '' : `<span class="ins-best-badge${at === 0 ? ' is-best' : ''}">★ ${at === 0 ? 'All-time best' : `All-time #${at + 1}`}</span>`;
             const others = INS_BEST_CATS.filter(c => c.key !== cat.key && c.val(a) > 0).map(c => insBestValue(c.key, c.val(a)));
             const name = insEsc(a.n || 'Untitled');
             const link = a.i ? `<a href="https://www.strava.com/activities/${encodeURIComponent(a.i)}" target="_blank" rel="noopener">${name}</a>` : name;
             return `<li class="ins-best-row${i === 0 ? ' is-first' : ''}">
                 <span class="ins-best-rank">${i + 1}</span>
-                <span class="ins-best-main"><span class="ins-best-name" title="${name}">${link}</span><span class="ins-best-meta">${insShortDate(a.d, today)}${others.length ? ` · ${others.join(' · ')}` : ''}</span></span>
+                <span class="ins-best-main"><span class="ins-best-name" title="${name}">${link}</span><span class="ins-best-meta">${badge}${insShortDate(a.d, today)}${others.length ? ` · ${others.join(' · ')}` : ''}</span></span>
                 <strong class="ins-best-val">${insBestValue(cat.key, cat.val(a))}</strong>
             </li>`;
         }).join('');

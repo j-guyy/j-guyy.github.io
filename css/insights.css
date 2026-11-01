@@ -134,6 +134,10 @@
 
 .ins-root .ins-line { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
 .ins-root .ins-line-main { stroke-width: 2.5; }
+.ins-root .ins-projection { stroke-width: 1.75; stroke-dasharray: 4 4; stroke-linecap: round; opacity: 0.7; }
+.ins-root .ins-pace.has-focus .ins-projection { opacity: 0.15; }
+.ins-root .ins-bar-hit { cursor: pointer; }
+.ins-root .ins-bar-picked { fill: var(--ins-accent); fill-opacity: 0.75; stroke: var(--ins-text); stroke-width: 1.5; }
 .ins-root .ins-line-label { fill: var(--ins-text-dim); font-size: 9.5px; }
 /* A halo in the card colour keeps a label readable where it crosses a line. */
 .ins-root .ins-line-label, .ins-root .ins-bar-label { paint-order: stroke; stroke: var(--ins-surface); stroke-width: 3px; stroke-linejoin: round; }
@@ -310,6 +314,13 @@
 }
 .ins-root .ins-select option { background: #1b201d; color: #eef2ef; }
 
+/* Year comparison: month-by-month bars under the tiles */
+.ins-root .ins-months { margin-top: 14px; }
+.ins-root .ins-month-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 6px; color: var(--ins-text); font-size: 0.75rem; }
+.ins-root .ins-month-key .ins-swatch { margin-right: 5px; }
+.ins-root .ins-month-key-unit { margin-left: auto; color: var(--ins-text-dim); }
+.ins-root .ins-months .ins-hit.is-hover path { filter: brightness(1.2); }
+
 /* Year pace legend: one chip per year, tap to hide / show */
 .ins-root .ins-chips {
     display: flex;
@@ -382,6 +393,15 @@
 .ins-root .ins-best-name a { color: var(--ins-text); text-decoration: none; }
 .ins-root .ins-best-name a:hover { text-decoration: underline; }
 .ins-root .ins-best-meta { color: var(--ins-text-dim); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-root .ins-best-badge {
+    margin-right: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ins-accent-soft);
+    color: var(--ins-accent);
+    font-weight: 650;
+}
+.ins-root .ins-best-badge.is-best { background: var(--ins-accent); color: #131715; }
 .ins-root .ins-best-val { color: var(--ins-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Floating tooltip (appended to body) */
