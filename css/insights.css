@@ -261,6 +261,100 @@
 }
 .ins-root .ins-goal-extra strong { color: var(--ins-text); }
 
+/* Year compare: two year selects */
+.ins-root .ins-compare-pick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -4px 0 12px;
+    color: var(--ins-text-dim);
+    font-size: 0.8rem;
+}
+.ins-root .ins-select {
+    min-height: 30px;
+    padding: 3px 26px 3px 10px;
+    background: var(--ins-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23aab2ad' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+    border: 1px solid var(--ins-border);
+    border-radius: 999px;
+    color: var(--ins-text);
+    font: inherit;
+    font-size: 0.8rem;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+.ins-root .ins-select option { background: #1b201d; color: #eef2ef; }
+
+/* Year pace legend: one chip per year, tap to hide / show */
+.ins-root .ins-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+.ins-root .ins-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 2px 9px;
+    background: transparent;
+    border: 1px solid var(--ins-border);
+    border-radius: 999px;
+    color: var(--ins-text-dim);
+    font: inherit;
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    opacity: 0.55;
+}
+.ins-root .ins-chip .ins-swatch { width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+.ins-root .ins-chip.active { opacity: 1; color: var(--ins-text); background: var(--ins-surface-2); }
+.ins-root .ins-chip-all { opacity: 1; border-style: dashed; }
+.ins-root .ins-pace.has-focus .ins-line { opacity: 0.15; }
+.ins-root .ins-pace.has-focus .ins-line.is-focus { opacity: 1; stroke-width: 3; }
+
+/* Best Efforts: sport + year pickers, then a top 5 per category */
+.ins-root .ins-pills + .ins-pills { margin-top: -6px; }
+.ins-root .ins-best {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+}
+.ins-root .ins-best-col h3 {
+    margin: 0 0 6px;
+    color: var(--ins-text-dim);
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.ins-root .ins-best-list { margin: 0; padding: 0; list-style: none; }
+.ins-root .ins-best-row {
+    display: grid;
+    grid-template-columns: 1.4em minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid var(--ins-border);
+    font-size: 0.85rem;
+}
+.ins-root .ins-best-row:first-child { border-top: 0; }
+.ins-root .ins-best-rank { color: var(--ins-text-dim); font-variant-numeric: tabular-nums; text-align: center; }
+.ins-root .ins-best-row.is-first .ins-best-rank {
+    color: #131715;
+    background: var(--ins-accent);
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.75rem;
+    line-height: 1.4em;
+}
+.ins-root .ins-best-main { display: flex; flex-direction: column; min-width: 0; }
+.ins-root .ins-best-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-root .ins-best-name a { color: var(--ins-text); text-decoration: none; }
+.ins-root .ins-best-name a:hover { text-decoration: underline; }
+.ins-root .ins-best-meta { color: var(--ins-text-dim); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-root .ins-best-val { color: var(--ins-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 /* Floating tooltip (appended to body) */
 .ins-tooltip {
     position: fixed;
@@ -295,7 +389,10 @@ body:not(.app-page) .ins-root {
 @media (min-width: 900px) {
     body:not(.app-page) .ins-root { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     /* Goals is the odd card out: give it the full row, its bars in two columns. */
-    body:not(.app-page) .ins-root #ins-goals { grid-column: 1 / -1; }
+    body:not(.app-page) .ins-root #ins-goals,
+    body:not(.app-page) .ins-root #ins-best { grid-column: 1 / -1; }
+    /* Best Efforts: the three leaderboards side by side */
+    body:not(.app-page) .ins-root .ins-best { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
     body:not(.app-page) .ins-root .ins-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 40px; }
 }
 

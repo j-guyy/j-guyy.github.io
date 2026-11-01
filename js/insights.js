@@ -1,18 +1,27 @@
 // Dashboard insights: the app Dashboard's at-a-glance charts.
 //
 // strava.js calls renderInsights(filtered) from applyFilters() whenever the
-// activity list or the sport filters change; it draws into #strava-insights
-// when the page has that mount point (only /app/ does) and does nothing
-// otherwise. Charts are hand-written SVG — no chart library.
+// activity list or the Dashboard's sport / year filters change; it draws into
+// #strava-insights when the page has that mount point (the app's Dashboard
+// and strava.html) and does nothing otherwise. Charts are hand-written SVG —
+// no chart library.
+//
+// Every chart follows the sport and year filters, and each card that looks at
+// one year has its own year picker covering every year with activities.
 //
 // Cards, top to bottom:
-//   1. This year vs the same date last year (distance, hours, climbing, days)
-//   2. Year pace: cumulative distance this year vs the two before
+//   1. One year vs another (default this year vs last, to the same date)
+//   2. Year pace: cumulative totals, one line per year (every year shown by
+//      default; the legend chips hide / show each)
 //   3. Year by year bars (activities / distance / hours / climbing)
-//   4. Sport mix donut by hours, for one year or all time
-//   5. Consistency calendar (last 52 weeks) + current / best streak
-//   6. Eddington numbers (ride + run, in miles) — ignore the sport filter
-//   7. Goal progress bars from the worker's /summary and travel lists
+//   4. Sport mix donut, for any one year or all of them
+//   5. Consistency calendar (last 12 months or any year) + streaks
+//   6. Eddington numbers (ride + run, in miles), all time or any year
+//   7. Best Efforts: top 5 longest distance / time / climbing per sport,
+//      all time or any year
+//   8. Goal progress bars from the worker's /summary and travel lists
+// Eddington, Best Efforts and Goals ignore the filters (their sport groups
+// are fixed, and their year picker is their own).
 //
 // Only GPS activities are stored by the worker, so indoor activities without
 // a route don't appear in any of these.
@@ -59,8 +68,30 @@ function insWithUnit(v, m, short = false) {
     return m.unit ? `${n} ${m.unit}` : `${n} ${m.noun}`;
 }
 
+// Best Efforts: the sports, and what is ranked for each.
+const INS_BEST_SPORTS = [
+    { key: 'run',    label: '🏃 Run',             types: ['Run', 'TrailRun'] },
+    { key: 'ride',   label: '🚴 Ride',            types: ['Ride', 'GravelRide', 'MountainBikeRide'] },
+    { key: 'hike',   label: '🥾 Hike',            types: ['Hike'] },
+    { key: 'nordic', label: '⛷️ Nordic ski',      types: ['NordicSki'] },
+    { key: 'bc',     label: '🏔️ Backcountry ski', types: ['BackcountrySki'] },
+];
+const INS_BEST_CATS = [
+    { key: 'dist', label: 'Longest distance', val: a => (a.di || 0) / INS_M_PER_MI },
+    { key: 'time', label: 'Longest time',     val: a => a.m || 0 },
+    { key: 'elev', label: 'Most climbing',    val: a => (a.e || 0) * INS_FT_PER_M },
+];
+const INS_BEST_TOP = 5;
+
 const insState = {
-    donutYear: null,      // null = this year
+    donutYear: null,      // null = this year; 'all' = every year in the filter
+    compareA: null,       // years compared in card 1 (null = this year / the one before)
+    compareB: null,
+    paceHidden: new Set(),// years switched off in the pace chart's legend
+    calYear: 'last',      // 'last' = last 12 months, or a year
+    eddYear: 'all',
+    bestYear: null,       // null = this year (or all time when it has none)
+    bestSport: 'run',
     goals: null,          // loaded once from the worker
     goalsLoading: false,
     lastFiltered: [],
@@ -136,30 +167,80 @@ function renderInsights(filtered) {
         insDonutCard(list, today),
         insCalendarCard(list, today),
         insEddingtonCard(today),
+        insBestCard(today),
         insGoalsCard(),
     ].join('');
 
     insBindTooltips(mount);
+    insRevealActivePills(mount);
     if (!insState.goals && !insState.goalsLoading) insLoadGoals();
 }
 
-function insCard(title, body, sub = '') {
-    return `<section class="ins-card"><header class="ins-card-head"><h2>${title}</h2>${sub ? `<span class="ins-card-sub">${sub}</span>` : ''}</header>${body}</section>`;
+function insCard(title, body, sub = '', id = '') {
+    return `<section class="ins-card"${id ? ` id="${id}"` : ''}><header class="ins-card-head"><h2>${title}</h2>${sub ? `<span class="ins-card-sub">${sub}</span>` : ''}</header>${body}</section>`;
 }
 
-// ── 1. This year vs last year ──────────────────────────────────────────────
+// Years with activities in a list, newest first.
+function insYears(list) {
+    return [...new Set(list.map(a => a.d.slice(0, 4)))].sort().reverse();
+}
+
+// Whether the Dashboard's year filter has any year switched off.
+function insYearFiltered() {
+    return typeof deactivatedYears !== 'undefined' && deactivatedYears.size > 0;
+}
+
+// A sideways-scrolling row of picker pills: options are [value, label]; a tap
+// sets insState[key] to the value and redraws.
+function insPills(key, options, sel) {
+    const pills = options.map(([v, label]) =>
+        `<button type="button" class="filter-pill ins-year-pill${v === sel ? ' active' : ''}" aria-pressed="${v === sel}" onclick="insSet('${key}', '${v}')">${label}</button>`).join('');
+    return `<div class="ins-pills">${pills}</div>`;
+}
+
+// A year picker: an "all" option first, then every year, newest first.
+function insYearPills(key, years, sel, allLabel = 'All time', allValue = 'all') {
+    return insPills(key, [[allValue, allLabel], ...years.map(y => [y, y])], sel);
+}
+
+function insSet(key, value) {
+    insState[key] = value;
+    renderInsights(insState.lastFiltered);
+}
+
+// Each picker row was just redrawn scrolled to its start; bring its chosen
+// pill into view so a pick far down the row stays visible.
+function insRevealActivePills(root) {
+    root.querySelectorAll('.ins-pills').forEach(row => {
+        const pill = row.querySelector('.active');
+        if (!pill || row.scrollWidth <= row.clientWidth) return;
+        const off = pill.getBoundingClientRect().left - row.getBoundingClientRect().left;
+        if (off + pill.offsetWidth > row.clientWidth - 24) row.scrollLeft = off - row.clientWidth / 2 + pill.offsetWidth / 2;
+    });
+}
+
+// ── 1. One year vs another ─────────────────────────────────────────────────
 function insCompareCard(list, today) {
-    const ytd = y => list.filter(a => a.d.startsWith(String(y)) && a.d.slice(5, 10) <= today.md);
-    const cur = insTotals(ytd(today.year));
-    const prev = insTotals(ytd(today.year - 1));
+    const years = insYears(list);
+    if (!years.length) return '';
+    const cy = String(today.year);
+    let A = insState.compareA && years.includes(insState.compareA) ? insState.compareA : (years.includes(cy) ? cy : years[0]);
+    let B = insState.compareB && years.includes(insState.compareB) && insState.compareB !== A ? insState.compareB : null;
+    if (!B) B = years.includes(String(Number(A) - 1)) ? String(Number(A) - 1) : (years.find(y => y !== A) || null);
+    // This year is compared to the same date in the other one; past years in full.
+    const toDate = A === cy || B === cy;
+    const pick = y => list.filter(a => a.d.startsWith(y) && (!toDate || a.d.slice(5, 10) <= today.md));
+    const cur = insTotals(pick(A));
+    const prev = B ? insTotals(pick(B)) : null;
     const metric = insMetric().key;
     const tiles = [
-        ['count', 'Activities', cur.count, prev.count, ''],
-        ['dist', 'Distance', cur.mi, prev.mi, 'mi'],
-        ['hours', 'Moving time', cur.hours, prev.hours, 'h'],
-        ['elev', 'Climbing', cur.ft, prev.ft, 'ft'],
-    ].map(([key, label, v, p, unit]) => {
-        let delta = '<span class="ins-delta">no data last year</span>';
+        ['count', 'Activities', 'count', ''],
+        ['dist', 'Distance', 'mi', 'mi'],
+        ['hours', 'Moving time', 'hours', 'h'],
+        ['elev', 'Climbing', 'ft', 'ft'],
+    ].map(([key, label, f, unit]) => {
+        const v = cur[f], p = prev ? prev[f] : 0;
+        let delta = `<span class="ins-delta">${B ? `no data in ${B}` : 'only one year in the filter'}</span>`;
         if (p > 0) {
             const pct = Math.round((v / p - 1) * 100);
             const cls = pct >= 0 ? 'up' : 'down';
@@ -171,17 +252,36 @@ function insCompareCard(list, today) {
             <span class="ins-tile-foot">${delta}</span>
         </div>`;
     }).join('');
-    return insCard(`${today.year} so far`, `<div class="ins-tiles">${tiles}</div>`, `vs ${today.year - 1} to the same date`);
+    const select = (key, sel, skip) => `<select class="ins-select" aria-label="${key === 'compareA' ? 'Year' : 'Compared with'}" onchange="insSet('${key}', this.value)">${
+        years.filter(y => y !== skip).map(y => `<option value="${y}"${y === sel ? ' selected' : ''}>${y}${y === cy ? ' so far' : ''}</option>`).join('')}</select>`;
+    const picker = `<div class="ins-compare-pick">${select('compareA', A, null)}${B ? `<span>vs</span>${select('compareB', B, A)}` : ''}</div>`;
+    return insCard(`${A}${A === cy ? ' so far' : ''}`, picker + `<div class="ins-tiles">${tiles}</div>`,
+        B ? (toDate ? `vs ${B} to the same date` : `vs ${B}, full years`) : '');
 }
 
-// ── 2. Year pace line ──────────────────────────────────────────────────────
+// ── 2. Year pace lines ─────────────────────────────────────────────────────
+// One cumulative line per year, every year by default. This year is the
+// accent; earlier years are one blue, fading with age, so the newest stand
+// out without needing a hue per year. Legend chips under the chart hide or
+// show a year (and hovering one picks out its line).
+const INS_PACE_BLUE = [57, 135, 229];
+
+function insPaceColor(year, years, today) {
+    if (year === today.year) return 'var(--ins-accent, #3ddc84)';
+    const older = years.filter(y => y !== today.year);
+    const k = older.indexOf(year);
+    const op = older.length > 1 ? 0.95 - (k / (older.length - 1)) * 0.65 : 0.95;
+    return `rgba(${INS_PACE_BLUE.join(',')},${op.toFixed(2)})`;
+}
+
 function insPaceCard(list, today) {
     const m = insMetric();
-    const years = [today.year, today.year - 1, today.year - 2];
-    const colors = ['var(--ins-accent, #3ddc84)', '#3987e5', '#898781'];
+    const years = insYears(list).map(Number);
+    if (!years.length) return '';
+    const shown = years.filter(y => !insState.paceHidden.has(String(y)));
     const todayIdx = insDayOfYear(today.iso);
     // cumulative total per day of year (0..365)
-    const series = years.map(y => {
+    const series = shown.map(y => {
         const perDay = new Array(366).fill(0);
         list.forEach(a => { if (a.d.startsWith(String(y))) perDay[insDayOfYear(a.d)] += m.val(a); });
         const last = y === today.year ? todayIdx : 365;
@@ -190,10 +290,10 @@ function insPaceCard(list, today) {
         for (let i = 0; i <= last; i++) { run += perDay[i]; cum.push(run); }
         return cum;
     });
-    if (!series.some(s => s[s.length - 1] > 0)) return '';
+    const colors = shown.map(y => insPaceColor(y, years, today));
 
     const W = 340, H = 190, L = 34, R = 50, T = 10, B = 22;
-    const max = Math.max(...series.map(s => s[s.length - 1])) || 1;
+    const max = Math.max(0, ...series.map(s => s[s.length - 1])) || 1;
     const yMax = insNiceMax(max);
     const x = i => L + (i / 365) * (W - L - R);
     const y = v => T + (1 - v / yMax) * (H - T - B);
@@ -204,49 +304,92 @@ function insPaceCard(list, today) {
         grid += `<line class="ins-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
         grid += `<text class="ins-axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${insShort(v)}</text>`;
     }
-    [0, 3, 6, 9].forEach(m => {
-        const idx = insDayOfYear(`${today.year}-${String(m + 1).padStart(2, '0')}-01`);
-        grid += `<text class="ins-axis" x="${x(idx)}" y="${H - 6}">${INS_MONTHS[m]}</text>`;
+    [0, 3, 6, 9].forEach(mo => {
+        const idx = insDayOfYear(`${today.year}-${String(mo + 1).padStart(2, '0')}-01`);
+        grid += `<text class="ins-axis" x="${x(idx)}" y="${H - 6}">${INS_MONTHS[mo]}</text>`;
     });
 
-    // Draw older years first so this year sits on top.
-    let lines = '';
-    let labels = '';
+    // Direct labels only for this year and the year that finished highest,
+    // so a dozen lines don't bury the chart in numbers.
+    const ends = series.map(s => s[s.length - 1] || 0);
+    const bestK = ends.indexOf(Math.max(...ends));
+    const curK = shown.indexOf(today.year);
+    const labelled = new Set([curK, bestK].filter(k => k >= 0 && ends[k] > 0));
+
+    // Oldest first so newer years sit on top; this year last of all.
+    const order = shown.map((_, k) => k).sort((a, b) => (shown[a] === today.year) - (shown[b] === today.year) || shown[a] - shown[b]);
+    let lines = '', labels = '';
     const labelYs = [];
-    [2, 1, 0].forEach(k => {
+    order.forEach(k => {
         const s = series[k];
         if (!s.length || s[s.length - 1] <= 0) return;
-        const step = 2;
         const pts = [];
-        for (let i = 0; i < s.length; i += step) pts.push(`${x(i).toFixed(1)},${y(s[i]).toFixed(1)}`);
+        for (let i = 0; i < s.length; i += 2) pts.push(`${x(i).toFixed(1)},${y(s[i]).toFixed(1)}`);
         pts.push(`${x(s.length - 1).toFixed(1)},${y(s[s.length - 1]).toFixed(1)}`);
-        lines += `<polyline class="ins-line${k === 0 ? ' ins-line-main' : ''}" points="${pts.join(' ')}" stroke="${colors[k]}"/>`;
-        // direct label at the line's end, nudged apart when ends collide
+        const main = shown[k] === today.year;
+        lines += `<polyline class="ins-line${main ? ' ins-line-main' : ''}" data-year="${shown[k]}" points="${pts.join(' ')}" stroke="${colors[k]}"/>`;
+    });
+    [...labelled].forEach(k => {
+        const s = series[k];
         let ly = y(s[s.length - 1]) + 3;
         labelYs.forEach(o => { if (Math.abs(o - ly) < 11) ly = o + (ly >= o ? 11 : -11); });
         labelYs.push(ly);
-        const lx = k === 0 ? x(s.length - 1) + 4 : W - R + 4;
-        labels += `<text class="ins-line-label" x="${lx}" y="${ly}" ${k === 0 ? 'style="font-weight:650"' : ''}>${years[k]}</text>`;
+        const main = shown[k] === today.year;
+        const lx = main ? x(s.length - 1) + 4 : W - R + 4;
+        labels += `<text class="ins-line-label" x="${lx}" y="${ly}" ${main ? 'style="font-weight:650"' : ''}>${shown[k]}</text>`;
     });
     // today marker
-    const s0 = series[0];
-    const dot = s0.length ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" fill="${colors[0]}" stroke="var(--ins-surface, #131715)" stroke-width="2"/>` : '';
+    const s0 = curK >= 0 ? series[curK] : [];
+    const dot = s0.length && ends[curK] > 0 ? `<circle cx="${x(s0.length - 1)}" cy="${y(s0[s0.length - 1])}" r="4" fill="${colors[curK]}" stroke="var(--ins-surface, #131715)" stroke-width="2"/>` : '';
 
-    const cur = s0[s0.length - 1] || 0;
-    const prevSame = series[1][Math.min(todayIdx, series[1].length - 1)] || 0;
-    const projected = cur / (todayIdx + 1) * 365;
-    let note = `On pace for <strong>${insWithUnit(projected, m)}</strong> in ${today.year}`;
-    if (prevSame > 0) {
-        const diff = cur - prevSame;
-        note += ` · ${insWithUnit(Math.abs(diff), m)} ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
+    let note = '';
+    if (curK >= 0 && ends[curK] > 0) {
+        const cur = ends[curK];
+        const projected = cur / (todayIdx + 1) * 365;
+        note = `On pace for <strong>${insWithUnit(projected, m)}</strong> in ${today.year}`;
+        const atDate = series.map((s, k) => (k === curK ? cur : s[Math.min(todayIdx, s.length - 1)] || 0));
+        if (shown.length > 1) {
+            const rank = atDate.filter(v => v > cur).length + 1;
+            note += ` · #${rank} of ${shown.length} years at this date`;
+        }
+        const prevK = shown.indexOf(today.year - 1);
+        if (prevK >= 0 && atDate[prevK] > 0) {
+            const diff = cur - atDate[prevK];
+            note += ` · ${insWithUnit(Math.abs(diff), m)} ${diff >= 0 ? 'ahead of' : 'behind'} ${today.year - 1}`;
+        }
+    } else if (shown.length && ends[bestK] > 0) {
+        note = `Best year shown: <strong>${shown[bestK]}</strong> with ${insWithUnit(ends[bestK], m)}`;
+    } else {
+        note = 'Pick a year below to draw its line.';
     }
 
-    const data = JSON.stringify({ years, colors, unit: m.unit || m.noun, series: series.map(s => s.map(v => Math.round(v))) });
-    const svg = `<svg class="ins-svg ins-pace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative ${m.noun} by day of year for ${years.join(', ')}" data-pace='${insEsc(data)}' data-geom="${L},${R},${W}">
+    const data = JSON.stringify({ years: shown, colors, unit: m.unit || m.noun, series: series.map(s => s.map(v => Math.round(v))) });
+    const svg = `<svg class="ins-svg ins-pace" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative ${m.noun} by day of year for ${shown.join(', ')}" data-pace='${insEsc(data)}' data-geom="${L},${R},${W}">
         ${grid}${lines}${dot}${labels}
         <line class="ins-crosshair" y1="${T}" y2="${H - B}" x1="0" x2="0" style="display:none"/>
     </svg>`;
-    return insCard('Year pace', `${svg}<p class="ins-note">${note}</p>`, `cumulative ${m.noun}`);
+    const chips = years.map(yr => {
+        const on = !insState.paceHidden.has(String(yr));
+        const color = insPaceColor(yr, years, today);
+        return `<button type="button" class="ins-chip${on ? ' active' : ''}" aria-pressed="${on}" data-pace-year="${yr}" onclick="insTogglePaceYear('${yr}')"><span class="ins-swatch" style="background:${color}"></span>${yr}</button>`;
+    }).join('');
+    const allOn = shown.length === years.length;
+    const legend = years.length > 1
+        ? `<div class="ins-chips">${chips}<button type="button" class="ins-chip ins-chip-all" onclick="insSetPaceYears(${allOn ? 'false' : 'true'})">${allOn ? 'Hide all' : 'Show all'}</button></div>`
+        : '';
+    return insCard('Year pace', `${svg}${legend}<p class="ins-note">${note}</p>`, `cumulative ${m.noun}`);
+}
+
+function insTogglePaceYear(y) {
+    if (insState.paceHidden.has(y)) insState.paceHidden.delete(y);
+    else insState.paceHidden.add(y);
+    renderInsights(insState.lastFiltered);
+}
+
+function insSetPaceYears(show) {
+    insState.paceHidden.clear();
+    if (!show) insYears(insState.lastFiltered.filter(a => a.d)).forEach(y => insState.paceHidden.add(y));
+    renderInsights(insState.lastFiltered);
 }
 
 // Axis top for 4 gridlines at round steps (1, 2, 2.5 or 5 × 10ⁿ).
@@ -319,7 +462,7 @@ function insYearsCard(list, today) {
 
 // ── 4. Sport mix donut ─────────────────────────────────────────────────────
 function insDonutCard(list, today) {
-    const years = [...new Set(list.map(a => a.d.slice(0, 4)))].sort().reverse();
+    const years = insYears(list);
     if (!years.length) return '';
     let sel = insState.donutYear || String(today.year);
     if (sel !== 'all' && !years.includes(sel)) sel = years[0];
@@ -364,7 +507,8 @@ function insDonutCard(list, today) {
         const p = (rad, ang) => `${(C + rad * Math.cos(ang)).toFixed(2)},${(C + rad * Math.sin(ang)).toFixed(2)}`;
         arcs += `<g ${attrs} style="--dx:${(POP * Math.cos(mid)).toFixed(2)}px;--dy:${(POP * Math.sin(mid)).toFixed(2)}px"><path fill="${s.color}" d="M${p(R, a0)} A${R},${R} 0 ${large} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${large} 0 ${p(r, a0)} Z"/></g>`;
     });
-    const label = sel === 'all' ? 'All time' : sel;
+    const allLabel = insYearFiltered() ? 'All selected' : 'All time';
+    const label = sel === 'all' ? allLabel : sel;
     const centre = `<text class="ins-donut-label" x="${C}" y="${C - 17}" text-anchor="middle">${label}</text>
         <text class="ins-donut-num" x="${C}" y="${C + 7}" text-anchor="middle">${insShort(sum)}</text>
         <text class="ins-donut-unit" x="${C}" y="${C + 21}" text-anchor="middle">${unitWord}</text>`;
@@ -376,9 +520,8 @@ function insDonutCard(list, today) {
             + `<span class="ins-legend-bar"><span style="width:${(frac * 100).toFixed(1)}%;background:${s.color}"></span></span></li>`;
     }).join('');
 
-    const pills = ['all', ...years].slice(0, 9).map(y =>
-        `<button type="button" class="filter-pill ins-year-pill${y === sel ? ' active' : ''}" onclick="insSetDonutYear('${y}')">${y === 'all' ? 'All time' : y}</button>`).join('');
-    const body = `<div class="ins-pills">${pills}</div>
+    // Every year, newest first; the row scrolls sideways.
+    const body = `${insYearPills('donutYear', years, sel, allLabel)}
         <div class="ins-donut-wrap">
             <svg class="ins-svg ins-donut" viewBox="0 0 150 150" role="img" aria-label="Sport mix by ${m.noun}" data-label="${label}" data-num="${insShort(sum)}" data-unit="${unitWord}">${arcs}${centre}</svg>
             <ul class="ins-legend">${legend}</ul>
@@ -401,11 +544,6 @@ function insDonutCentre(svg, hit) {
     label.style.fill = hit ? hit.dataset.color : '';
     num.textContent = hit ? hit.dataset.num : d.num;
     unit.textContent = hit ? `${hit.dataset.pct} of total` : d.unit;
-}
-
-function insSetDonutYear(y) {
-    insState.donutYear = y;
-    renderInsights(insState.lastFiltered);
 }
 
 // ── 5. Consistency calendar ────────────────────────────────────────────────
@@ -436,10 +574,24 @@ function insCalendarCard(list, today) {
     let probe = perDay.has(today.iso) ? today.iso : insAddDays(today.iso, -1);
     while (perDay.has(probe)) { cur++; probe = insAddDays(probe, -1); }
 
-    // 52 full weeks + this partial one, weeks starting Monday.
-    const todayDow = (new Date(`${today.iso}T12:00:00Z`).getUTCDay() + 6) % 7; // Mon=0
-    const weeks = 53;
-    const start = insAddDays(today.iso, -(todayDow + (weeks - 1) * 7));
+    // The last 12 months (52 full weeks + this partial one), or one calendar
+    // year; weeks start Monday.
+    const years = insYears(list);
+    let view = insState.calYear;
+    if (view !== 'last' && !years.includes(view)) view = 'last';
+    const mondayOf = iso => insAddDays(iso, -((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7));
+    let first, end, weeks, start;
+    if (view === 'last') {
+        end = today.iso;
+        weeks = 53;
+        start = insAddDays(mondayOf(end), -(weeks - 1) * 7);
+        first = start;
+    } else {
+        first = `${view}-01-01`;
+        end = view === String(today.year) ? today.iso : `${view}-12-31`;
+        start = mondayOf(first);
+        weeks = Math.floor((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86400000 / 7) + 1;
+    }
     const cell = 6, g = 1.5, L = 14, T = 12;
     const W = L + weeks * (cell + g), H = T + 7 * (cell + g);
     // Four shades by the chosen metric: activity count as-is (1, 2, 3, 4+);
@@ -449,7 +601,7 @@ function insCalendarCard(list, today) {
     let cuts = null;
     if (m.key !== 'count') {
         const inView = [];
-        perDay.forEach((e, d) => { if (d >= start && d <= today.iso && e.v > 0) inView.push(e.v); });
+        perDay.forEach((e, d) => { if (d >= first && d <= end && e.v > 0) inView.push(e.v); });
         inView.sort((a, b) => a - b);
         const q = f => inView[Math.min(inView.length - 1, Math.floor(f * inView.length))];
         if (inView.length) cuts = [q(0.25), q(0.5), q(0.75)];
@@ -463,7 +615,7 @@ function insCalendarCard(list, today) {
     for (let w = 0; w < weeks; w++) {
         for (let d = 0; d < 7; d++) {
             const iso = insAddDays(start, w * 7 + d);
-            if (iso > today.iso) continue;
+            if (iso > end || iso < first) continue;
             const e = perDay.get(iso);
             if (e) active++;
             const dayName = `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d]}, ${insShortDate(iso, today)}`;
@@ -484,15 +636,16 @@ function insCalendarCard(list, today) {
         }
     }
     const dayLabels = ['M', '', 'W', '', 'F', '', ''].map((t, d) => t ? `<text class="ins-axis" x="0" y="${T + d * (cell + g) + cell - 0.5}">${t}</text>` : '').join('');
-    const svg = `<svg class="ins-svg ins-calendar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Active days over the last year">${months}${dayLabels}${cells}</svg>`;
+    const svg = `<svg class="ins-svg ins-calendar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Active days ${view === 'last' ? 'over the last year' : `in ${view}`}">${months}${dayLabels}${cells}</svg>`;
     const legend = `<div class="ins-cal-legend"><span>Less</span>${[0, 1, 2, 3, 4].map(l => `<i class="ins-cell-key l${l}"></i>`).join('')}<span>More</span></div>`;
     const bestNote = bestEnd ? ` <span class="ins-tile-foot">ended ${insShortDate(bestEnd, today)}</span>` : '';
     const stats = `<div class="ins-tiles ins-tiles-3">
         <div class="ins-tile"><span class="ins-tile-label">Current streak</span><span class="ins-tile-value">${cur}<small> d</small></span></div>
         <div class="ins-tile"><span class="ins-tile-label">Best streak</span><span class="ins-tile-value">${best}<small> d</small></span>${bestNote}</div>
-        <div class="ins-tile"><span class="ins-tile-label">Active days</span><span class="ins-tile-value">${active}</span><span class="ins-tile-foot">last 12 months</span></div>
+        <div class="ins-tile"><span class="ins-tile-label">Active days</span><span class="ins-tile-value">${active}</span><span class="ins-tile-foot">${view === 'last' ? 'last 12 months' : `in ${view}`}</span></div>
     </div>`;
-    return insCard('Consistency', stats + svg + legend, `shade = ${m.noun}`);
+    const picker = insYearPills('calYear', years, view, 'Last 12 months', 'last');
+    return insCard('Consistency', picker + stats + svg + legend, `shade = ${m.noun}`);
 }
 
 // "May 27" this year, "May 27, 2025" otherwise.
@@ -503,11 +656,11 @@ function insShortDate(iso, today) {
 
 // ── 6. Eddington number ────────────────────────────────────────────────────
 // E = the largest number such that you have E days of at least E miles.
-function insEddington(types) {
+function insEddington(types, year = 'all') {
     const perDay = new Map();
     const pool = typeof currentSlim !== 'undefined' ? currentSlim : [];
     pool.forEach(a => {
-        if (!types.includes(a.t) || !a.d) return;
+        if (!types.includes(a.t) || !a.d || (year !== 'all' && !a.d.startsWith(year))) return;
         const d = a.d.slice(0, 10);
         perDay.set(d, (perDay.get(d) || 0) + (a.di || 0) / INS_M_PER_MI);
     });
@@ -519,19 +672,74 @@ function insEddington(types) {
 }
 
 function insEddingtonCard() {
+    const pool = (typeof currentSlim !== 'undefined' ? currentSlim : []).filter(a => a.d && INS_EDDINGTON.some(g => g.types.includes(a.t)));
+    const years = insYears(pool);
+    const year = insState.eddYear === 'all' || years.includes(insState.eddYear) ? insState.eddYear : 'all';
     const tiles = INS_EDDINGTON.map(({ label, types }) => {
-        const { E, next, need } = insEddington(types);
+        const { E, next, need } = insEddington(types, year);
         return `<div class="ins-tile ins-tile-hero">
             <span class="ins-tile-label">${label}</span>
             <span class="ins-tile-value">${E}</span>
             <span class="ins-tile-foot">${need} more day${need === 1 ? '' : 's'} of ${next}+ mi for ${next}</span>
         </div>`;
     }).join('');
-    return insCard('Eddington number', `<div class="ins-tiles">${tiles}</div>
-        <p class="ins-note">E days with at least E miles in a day. Ride counts road, gravel and mountain bike rides; Run counts road and trail runs.</p>`);
+    return insCard('Eddington number', `${insYearPills('eddYear', years, year)}<div class="ins-tiles">${tiles}</div>
+        <p class="ins-note">E days with at least E miles in a day${year === 'all' ? '' : `, counting only ${year}`}. Ride counts road, gravel and mountain bike rides; Run counts road and trail runs.</p>`);
 }
 
-// ── 7. Goal progress ───────────────────────────────────────────────────────
+// ── 7. Best Efforts ────────────────────────────────────────────────────────
+// Like Strava's leaderboards for yourself: per sport, the top 5 activities by
+// distance, moving time and climbing, for all time or any one year. Fixed
+// sport groups, so it ignores the Dashboard's filters.
+function insDuration(sec) {
+    const h = Math.floor(sec / 3600), mm = Math.round((sec % 3600) / 60);
+    if (mm === 60) return `${h + 1}h 00m`;
+    return h ? `${h}h ${String(mm).padStart(2, '0')}m` : `${mm}m`;
+}
+
+function insBestValue(cat, v) {
+    if (cat === 'dist') return `${insFmt(v, 1)} mi`;
+    if (cat === 'time') return insDuration(v);
+    return `${insFmt(v)} ft`;
+}
+
+function insBestCard(today) {
+    const all = (typeof currentSlim !== 'undefined' ? currentSlim : []).filter(a => a.d);
+    const sports = INS_BEST_SPORTS.map(sp => ({ ...sp, acts: all.filter(a => sp.types.includes(a.t)) }));
+    const present = sports.filter(sp => sp.acts.length);
+    if (!present.length) return '';
+    const sport = present.find(sp => sp.key === insState.bestSport) || present[0];
+    const years = insYears(sport.acts);
+    const cy = String(today.year);
+    let year = insState.bestYear || (sport.acts.some(a => a.d.startsWith(cy)) ? cy : 'all');
+    if (year !== 'all' && !years.includes(year)) year = 'all';
+    const pool = year === 'all' ? sport.acts : sport.acts.filter(a => a.d.startsWith(year));
+
+    const cols = INS_BEST_CATS.map(cat => {
+        const top = pool.filter(a => cat.val(a) > 0)
+            .sort((a, b) => cat.val(b) - cat.val(a) || (a.d < b.d ? -1 : 1))
+            .slice(0, INS_BEST_TOP);
+        const rows = top.map((a, i) => {
+            const others = INS_BEST_CATS.filter(c => c.key !== cat.key && c.val(a) > 0).map(c => insBestValue(c.key, c.val(a)));
+            const name = insEsc(a.n || 'Untitled');
+            const link = a.i ? `<a href="https://www.strava.com/activities/${encodeURIComponent(a.i)}" target="_blank" rel="noopener">${name}</a>` : name;
+            return `<li class="ins-best-row${i === 0 ? ' is-first' : ''}">
+                <span class="ins-best-rank">${i + 1}</span>
+                <span class="ins-best-main"><span class="ins-best-name">${link}</span><span class="ins-best-meta">${insShortDate(a.d, today)}${others.length ? ` · ${others.join(' · ')}` : ''}</span></span>
+                <strong class="ins-best-val">${insBestValue(cat.key, cat.val(a))}</strong>
+            </li>`;
+        }).join('');
+        return `<div class="ins-best-col"><h3>${cat.label}</h3>${rows ? `<ol class="ins-best-list">${rows}</ol>` : '<p class="ins-note">None yet.</p>'}</div>`;
+    }).join('');
+
+    const sportPills = insPills('bestSport', present.map(sp => [sp.key, sp.label]), sport.key);
+    const yearPills = insYearPills('bestYear', years, year);
+    const sub = `${year === 'all' ? 'all time' : year} · ${insFmt(pool.length)} ${sport.label.replace(/^\S+\s/, '').toLowerCase()} activities`;
+    const note = { run: 'Run includes trail runs.', ride: 'Ride includes gravel and mountain bike rides (no e-bike or virtual rides).' }[sport.key] || '';
+    return insCard('Best Efforts', `${sportPills}${yearPills}<div class="ins-best">${cols}</div>${note ? `<p class="ins-note">${note}</p>` : ''}`, sub, 'ins-best');
+}
+
+// ── 8. Goal progress ───────────────────────────────────────────────────────
 async function insLoadGoals() {
     insState.goalsLoading = true;
     const base = typeof WORKER_URL !== 'undefined' ? WORKER_URL : 'https://strava-worker.justinguyette.workers.dev';
@@ -644,6 +852,9 @@ function insBindTooltips(root) {
     const onMove = ev => {
         const hit = ev.target.closest?.('[data-tip]');
         const pace = ev.target.closest?.('.ins-pace');
+        // A pace legend chip picks out its year's line.
+        const chip = ev.target.closest?.('[data-pace-year]');
+        root.querySelectorAll('.ins-pace').forEach(svg => insPaceFocus(svg, chip ? chip.dataset.paceYear : null));
         if (pace) { insPaceHover(pace, ev); return; }
         // In the donut's gaps or hole, keep the last slice until the pointer
         // leaves the chart, so sweeping across it doesn't flicker to the total.
@@ -675,10 +886,16 @@ function insBindTooltips(root) {
         root.querySelectorAll('.ins-crosshair').forEach(c => { c.style.display = 'none'; });
         root.querySelectorAll('.ins-hit.is-hover').forEach(el => el.classList.remove('is-hover'));
         root.querySelectorAll('.ins-donut').forEach(svg => insDonutCentre(svg, null));
+        root.querySelectorAll('.ins-pace').forEach(svg => insPaceFocus(svg, null));
     };
     root.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') clear(); });
     document.addEventListener('pointerdown', ev => { if (!root.contains(ev.target)) clear(); });
     window.addEventListener('scroll', clear, { passive: true });
+}
+
+function insPaceFocus(svg, year) {
+    svg.classList.toggle('has-focus', !!year && !!svg.querySelector(`.ins-line[data-year="${year}"]`));
+    svg.querySelectorAll('.ins-line').forEach(l => l.classList.toggle('is-focus', l.dataset.year === year));
 }
 
 function insPaceHover(svg, ev) {
@@ -695,11 +912,12 @@ function insPaceHover(svg, ev) {
     cross.style.display = '';
     const d = new Date(Date.UTC(2001, 0, 1 + day)); // a non-leap year for the label
     const label = `${INS_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
-    const rows = data.years.map((y, k) => {
-        const s = data.series[k];
-        if (!s.length || day >= s.length) return '';
-        return `<div><span class="ins-swatch" style="background:${data.colors[k]}"></span>${y}: <strong>${insFmt(s[day])} ${data.unit}</strong></div>`;
-    }).join('');
+    // Every year that has reached this day, highest first.
+    const rows = data.years.map((y, k) => ({ y, k, v: data.series[k][day] }))
+        .filter(r => r.v != null)
+        .sort((a, b) => b.v - a.v)
+        .map(({ y, k, v }) => `<div><span class="ins-swatch" style="background:${data.colors[k]}"></span>${y}: <strong>${insFmt(v)} ${data.unit}</strong></div>`)
+        .join('');
     insShowTip(`<div class="ins-tooltip-head">${label}</div>${rows}`, ev.clientX, box.top + 10, {
         bottom: box.bottom,
         touchY: ev.pointerType === 'mouse' ? null : ev.clientY,

@@ -1297,3 +1297,9 @@
     background: rgba(252, 76, 2, 0.12); border: 1px solid rgba(252, 76, 2, 0.35); font-size: 0.88rem;
 }
 .user-powered { margin: 10px 0 0; text-align: center; font-size: 0.75rem; opacity: 0.6; }
+
+/* Year filter on the Dashboard: one sideways-scrolling row */
+.app-page #screen-dashboard #strava-filters .filter-years { flex-direction: column; gap: 8px; width: 100%; }
+.app-page #screen-dashboard #strava-filters .filter-years .filter-controls { align-items: center; }
+.app-page .filter-years-label { color: var(--app-text-dim); font-size: 0.8rem; font-weight: 600; margin-right: 2px; }
+.app-page #screen-dashboard #strava-filters .filter-year-pills { grid-template-rows: auto; }

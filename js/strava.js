@@ -35,7 +35,18 @@ function isAppPage() { return document.body.classList.contains('app-page'); }
 // ── Filter state ──────────────────────────────────────────────────────────────
 // Uses a deactivated set — new types default to active without needing initialization
 const deactivatedTypes = new Set();
+// Years switched off in the Dashboard's year filter ("2019"), same idea.
+const deactivatedYears = new Set();
 let currentSlim = [];
+
+function activityYear(a) { return a && a.d ? a.d.slice(0, 4) : ''; }
+
+// Whether an activity passes the Dashboard's sport and year filters.
+function activityShown(a) {
+    return !deactivatedTypes.has(a.t) && !deactivatedYears.has(activityYear(a));
+}
+
+function filtersActive() { return deactivatedTypes.size > 0 || deactivatedYears.size > 0; }
 
 // Oldest activity first: local date, then start time (`s`, epoch seconds from
 // the worker), then Strava id (grows with upload order) for activities stored
@@ -1052,7 +1063,50 @@ function renderFilters() {
                 ${quickGroupHtml}
             </div>
             <div class="filter-pills">${pillsHtml}</div>
+            ${renderYearFilterHtml()}
         </div>`;
+}
+
+// The year filter: one pill per year with activities (newest first), each
+// toggled on its own like the sport pills, plus All years / This year.
+function renderYearFilterHtml() {
+    const yearCounts = {};
+    currentSlim.forEach(a => { const y = activityYear(a); if (y) yearCounts[y] = (yearCounts[y] || 0) + 1; });
+    const years = Object.keys(yearCounts).sort().reverse();
+    if (years.length < 2) return '';
+    const thisYear = String(new Date().getFullYear());
+    const allOn = years.every(y => !deactivatedYears.has(y));
+    const onlyThis = years.every(y => (y === thisYear) !== deactivatedYears.has(y));
+    const pills = years.map(y =>
+        `<button class="filter-pill filter-year-pill${deactivatedYears.has(y) ? '' : ' active'}" onclick="toggleYearFilter('${y}')">${y} <span class="filter-pill-count">${yearCounts[y]}</span></button>`
+    ).join('');
+    return `<div class="filter-years">
+            <div class="filter-controls">
+                <span class="filter-years-label">Years</span>
+                <button class="filter-all-btn${allOn ? ' active' : ''}" onclick="setYearFilter('all')">All years</button>
+                ${yearCounts[thisYear] ? `<button class="filter-all-btn${onlyThis ? ' active' : ''}" onclick="setYearFilter('${thisYear}')">This year</button>` : ''}
+            </div>
+            <div class="filter-pills filter-year-pills">${pills}</div>
+        </div>`;
+}
+
+function toggleYearFilter(y) {
+    if (deactivatedYears.has(y)) deactivatedYears.delete(y);
+    else deactivatedYears.add(y);
+    renderFilters();
+    applyFilters();
+    updateMapFilters();
+}
+
+// 'all' switches every year on; a year switches on only that year.
+function setYearFilter(only) {
+    deactivatedYears.clear();
+    if (only !== 'all') {
+        currentSlim.forEach(a => { const y = activityYear(a); if (y && y !== only) deactivatedYears.add(y); });
+    }
+    renderFilters();
+    applyFilters();
+    updateMapFilters();
 }
 
 function toggleQuickGroup(types) {
@@ -1089,13 +1143,11 @@ function setAllFilters(enabled) {
 }
 
 function applyFilters() {
-    const filtered = deactivatedTypes.size === 0
-        ? currentSlim
-        : currentSlim.filter(a => !deactivatedTypes.has(a.t));
+    const filtered = filtersActive() ? currentSlim.filter(activityShown) : currentSlim;
 
-    // When all types are active, show the true KV total (includes non-GPS activities).
+    // With no filter on, show the true KV total (includes non-GPS activities).
     // When filtering, show the filtered GPS count so the number matches what's displayed.
-    const displayTotal = deactivatedTypes.size === 0 ? currentTotal : filtered.length;
+    const displayTotal = filtersActive() ? filtered.length : currentTotal;
 
     const { countries, subdivisions } = buildData(filtered, currentCache);
     renderSummary(filtered, countries, displayTotal);
@@ -4359,7 +4411,7 @@ async function initMap() {
 
         const group = getGroup(slim.t);
         const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
-        const visible = !deactivatedTypes.has(slim.t);
+        const visible = activityShown(slim);
 
         const layer = L.polyline(points, {
             color,
@@ -4369,10 +4421,10 @@ async function initMap() {
         }).addTo(stravaMap);
 
         layer.bindPopup(buildActivityPopup(slim), { className: 'activity-popup' });
-        layer.on('mouseover', function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: 0.95, weight: routeBaseWeight(stravaMapIsDark) + 1.5 }); });
-        layer.on('mouseout',  function () { if (!deactivatedTypes.has(slim.t)) this.setStyle({ opacity: routeBaseOpacity(stravaMapIsDark), weight: routeBaseWeight(stravaMapIsDark) }); });
+        layer.on('mouseover', function () { if (activityShown(slim)) this.setStyle({ opacity: 0.95, weight: routeBaseWeight(stravaMapIsDark) + 1.5 }); });
+        layer.on('mouseout',  function () { if (activityShown(slim)) this.setStyle({ opacity: routeBaseOpacity(stravaMapIsDark), weight: routeBaseWeight(stravaMapIsDark) }); });
 
-        mapLayers.push({ layer, type: slim.t });
+        mapLayers.push({ layer, type: slim.t, slim });
         if (visible) points.forEach(p => allPoints.push(p));
     });
 
@@ -4393,8 +4445,8 @@ function updateMapFilters() {
     if (!mapInitialized) return;
     const op = routeBaseOpacity(stravaMapIsDark);
     const w  = routeBaseWeight(stravaMapIsDark);
-    mapLayers.forEach(({ layer, type }) => {
-        const visible = !deactivatedTypes.has(type);
+    mapLayers.forEach(({ layer, slim }) => {
+        const visible = activityShown(slim);
         layer.setStyle({ opacity: visible ? op : 0, weight: w });
         layer.options.interactive = visible;
     });
@@ -4406,8 +4458,8 @@ function restyleActivityMapTheme() {
     if (!mapInitialized) return;
     const op = routeBaseOpacity(stravaMapIsDark);
     const w  = routeBaseWeight(stravaMapIsDark);
-    mapLayers.forEach(({ layer, type }) => {
-        const visible = !deactivatedTypes.has(type);
+    mapLayers.forEach(({ layer, slim }) => {
+        const visible = activityShown(slim);
         layer.setStyle({ opacity: visible ? op : 0, weight: w });
     });
 }
@@ -9461,7 +9513,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     renderSummary(slim, countries, total);
     renderTable(countries);
     renderSubdivisions(subdivisions);
-    if (typeof renderInsights === 'function') renderInsights(slim.filter(a => !deactivatedTypes.has(a.t)));
+    if (typeof renderInsights === 'function') renderInsights(slim.filter(activityShown));
     renderOverviewStats();
     dbg('Render complete');
 

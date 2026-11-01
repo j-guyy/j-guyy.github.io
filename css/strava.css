@@ -880,6 +880,22 @@
     padding-top: 2px;
 }
 
+/* Year filter: its own row under the sport pills */
+.filter-years {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+}
+
+.filter-years-label {
+    align-self: center;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
 /* Activities / Hours switch: what the summary and tables count */
 .metric-toggle {
     display: inline-flex;
