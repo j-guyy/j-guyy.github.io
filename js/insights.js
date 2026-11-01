@@ -77,7 +77,7 @@ const INS_BEST_SPORTS = [
     { key: 'bc',     label: '🏔️ Backcountry Ski', types: ['BackcountrySki'] },
 ];
 const INS_BEST_CATS = [
-    { key: 'dist', label: 'Longest Distance', val: a => (a.di || 0) / INS_M_PER_MI },
+    { key: 'dist', label: 'Furthest Distance', val: a => (a.di || 0) / INS_M_PER_MI },
     { key: 'time', label: 'Longest Time',     val: a => a.m || 0 },
     { key: 'elev', label: 'Most Climbing',    val: a => (a.e || 0) * INS_FT_PER_M },
 ];
@@ -280,17 +280,23 @@ function insCompareCard(list, today) {
 
 // ── 2. Year pace lines ─────────────────────────────────────────────────────
 // One cumulative line per year, every year by default. This year is the
-// accent; earlier years are one blue, fading with age, so the newest stand
-// out without needing a hue per year. Legend chips under the chart hide or
-// show a year (and hovering one picks out its line).
-const INS_PACE_BLUE = [57, 135, 229];
+// accent green; the five years before it each get their own hue (the
+// validated dark categorical slots, in an order that keeps neighbouring years
+// distinguishable, without aqua / green so nothing passes for this year);
+// older years are grey, fading with age, since a dozen hues can't be told
+// apart. Colour follows the year: hiding one never repaints the others.
+// Legend chips under the chart hide or show a year (hovering one picks out
+// its line).
+const INS_PACE_HUES = ['#3987e5', '#d95926', '#9085e9', '#c98500', '#d55181'];
 
 function insPaceColor(year, years, today) {
     if (year === today.year) return 'var(--ins-accent, #3ddc84)';
-    const older = years.filter(y => y !== today.year);
+    const back = today.year - year - 1;           // 0 = last year
+    if (back >= 0 && back < INS_PACE_HUES.length) return INS_PACE_HUES[back];
+    const older = years.filter(y => today.year - y - 1 >= INS_PACE_HUES.length);
     const k = older.indexOf(year);
-    const op = older.length > 1 ? 0.95 - (k / (older.length - 1)) * 0.65 : 0.95;
-    return `rgba(${INS_PACE_BLUE.join(',')},${op.toFixed(2)})`;
+    const op = older.length > 1 ? 0.8 - (k / (older.length - 1)) * 0.45 : 0.8;
+    return `rgba(137,135,129,${op.toFixed(2)})`;
 }
 
 function insPaceCard(list, today) {

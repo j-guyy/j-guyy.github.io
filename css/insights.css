@@ -401,6 +401,7 @@
 }
 .ins-tooltip[hidden] { display: none; }
 .ins-tooltip-head { margin-bottom: 2px; color: var(--ins-text-dim); font-size: 0.72rem; }
+.ins-tooltip .ins-swatch { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
 
 /* ── Website layout (strava.html) ────────────────────────────────────────── */
 /* The app stacks cards one per row; the website lines them up with its other
