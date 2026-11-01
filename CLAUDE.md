@@ -128,7 +128,7 @@ Near the top of strava.html, an **overview grid** (`#strava-overview`, website o
 **Shared infrastructure**:
 - Polyline cache (`polylineCache`) — decoded once, reused by all hunters
 - Activity pipeline (`runPipeline`) — loads activities, renders immediately, syncs in background
-- Geocoding (`geocodeAndRender`) — renders with cached data first, geocodes missing cells in background
+- Geocoding (`geocodeAndRender`) — renders with cached data first, geocodes missing cells in background; cells not yet geocoded are first placed from the `/data/admin1/` boundary files (`placeCellsByBoundary`, using each `SUBDIVISION_CONFIG` entry's `box`) so states show at once, marked `b: 1` and still geocoded by Nominatim later, which replaces them (simplified borders misplace a few cells on a border); the user worker never pools a `b` cell
 - Overpass / COTrex fetches (`fetchOverpass`, `fetchWithTimeout`) — browser-side Overpass queries go through `fetchOverpass`, which tries every `OVERPASS_MIRRORS` entry (starting with the one that answered last) with a per-request deadline and a retry round; a mirror that times out or can't be reached 3 times in a row (an HTTP 502/429 means up but busy and doesn't count) is skipped for 30 min, remembered in `localStorage` `overpass_mirror_health`, and the last mirror in play is never skipped (Mountain Hunter's peak queries go through the worker's `/peaks/fetch`, which races the same mirrors). When a refresh fails, City/Trail Hunter fall back to the expired localStorage copy (`readTimedCache`) and Mountain Hunter keeps the cell's old peaks, so a busy Overpass never wipes data
 - All tables use `.travel-table` class with sortable headers and `.table-scroll-wrapper` for mobile
 
