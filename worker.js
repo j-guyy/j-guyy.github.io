@@ -179,7 +179,7 @@ export default {
                 return json(geo || {});
             }
             if (path === '/geo/save' && request.method === 'POST') {
-                const geo = await request.json();
+                const geo = mergeGeo(await env.STRAVA_DATA.get(GEO_KEY, 'json'), await request.json());
                 await env.STRAVA_DATA.put(GEO_KEY, JSON.stringify(geo));
                 return json({ ok: true, keys: Object.keys(geo).length });
             }
@@ -487,13 +487,16 @@ export default {
         // Through the SyncRunner when bound, so the cron and a manual "Sync
         // now" never run at the same time (a manual sync joins the cron's).
         if (env.SYNC_RUNNER) {
-            ctx.waitUntil(callSyncRunner(env, '/start')
+            ctx.waitUntil(callSyncRunner(env, '/start?geocode=1')
                 .catch(err => console.log(`scheduled sync failed to start: ${err.message}`)));
             return;
         }
         ctx.waitUntil(
             syncActivities(env)
-                .then(r => console.log(`scheduled sync: ${r.newActivities} new, ${r.updated} updated, ${r.removed} removed`))
+                .then(r => {
+                    console.log(`scheduled sync: ${r.newActivities} new, ${r.updated} updated, ${r.removed} removed`);
+                    return geocodeAfterSync(env, r.slim);
+                })
                 .catch(err => console.log(`scheduled sync failed: ${err.message}`))
         );
     },
@@ -1174,7 +1177,9 @@ export class SyncRunner {
                 }
                 const now = Date.now();
                 this.fetched = 0;
-                await this.state.storage.put('status', { state: 'running', startedAt: now, updatedAt: now, fetched: 0 });
+                // The nightly run (?geocode=1) also looks up start places afterwards.
+                const geocode = url.searchParams.get('geocode') === '1';
+                await this.state.storage.put('status', { state: 'running', startedAt: now, updatedAt: now, fetched: 0, ...(geocode ? { geocode } : {}) });
                 await this.state.storage.setAlarm(now);
             }
             if (url.pathname === '/start') return json({ ok: true, joined: running });
@@ -1206,7 +1211,8 @@ export class SyncRunner {
     async alarm() {
         if (this.running) return;
         this.running = true;
-        const startedAt = (await this.getStatus()).startedAt || Date.now();
+        const { startedAt = Date.now(), geocode = false } = await this.getStatus();
+        let synced = null;
         // Pings keep a watching page's stream visibly alive between pages, so
         // the page can tell a quiet stream from a dead one.
         const ping = setInterval(() => this.broadcast({ type: 'ping' }), SYNC_PING_MS);
@@ -1225,6 +1231,7 @@ export class SyncRunner {
             });
             console.log(`sync: ${result.newActivities} new, ${result.updated} updated, ${result.removed} removed`);
             this.broadcast({ type: 'done', ...result });
+            synced = result.slim;
         } catch (e) {
             const now = Date.now();
             await this.state.storage.put('status', {
@@ -1238,6 +1245,8 @@ export class SyncRunner {
             for (const writer of this.watchers) writer.close().catch(() => {});
             this.watchers.clear();
         }
+        // After the run is reported done, so no page waits on Nominatim.
+        if (geocode && synced) await geocodeAfterSync(this.env, synced);
     }
 }
 
@@ -1742,6 +1751,145 @@ async function detectHuntersAfterSync(env, slim) {
         }
     }
     return results;
+}
+
+// ── Start-place geocoding after sync ──
+//
+// The page names each activity's start cell (gridKey: lat/lng to 2 decimals)
+// with Nominatim at 1.1 s per cell, which only runs while the page is open, so
+// a new account waits days of visits for its older trips. After each sync the
+// worker looks up up to GEOCODE_MAX_PER_SYNC cells the page hasn't: cells with
+// no country first, then ones missing their region, then the ones the page
+// placed provisionally from region boundaries (`b`, which can be off on a
+// border). Results are merged into the latest stored cache, since a page may
+// have saved meanwhile.
+//
+// Mirrors geocodeKey / needsSubdivision / isoSubdivision / cityAsSubdivision /
+// cleanSubdivision in js/strava.js (change both).
+
+const GEOCODE_MAX_PER_SYNC = 40;   // well under the Workers subrequest cap
+const GEOCODE_GAP_MS = 1500;       // Nominatim allows 1 request a second
+const GEOCODE_RETRY_MS = 30 * 86400 * 1000;   // a cell Nominatim can't place (open sea) waits this long
+
+// SUBDIVISION_CONFIG names in js/strava.js: countries whose cells need a region.
+const SUBDIVISION_COUNTRIES = new Set([
+    'United States', 'United States of America', 'United States of America (the)',
+    'Canada', 'Australia', 'Mexico', 'China', 'Hong Kong', 'Macau', 'Macao', 'Spain', 'Italy',
+]);
+const CHINA_NAMES = new Set(['China', 'Hong Kong', 'Macau', 'Macao']);
+
+const GEO_REGION_BY_ISO = {
+    'CN-BJ': 'Beijing', 'CN-SH': 'Shanghai', 'CN-TJ': 'Tianjin', 'CN-CQ': 'Chongqing',
+    'CN-HK': 'Hong Kong', 'CN-MO': 'Macau', hk: 'Hong Kong', mo: 'Macau',
+};
+
+function geoGridKey(latlng) {
+    return `${latlng[0].toFixed(2)},${latlng[1].toFixed(2)}`;
+}
+
+function geoNeedsSubdivision(v) {
+    if (!SUBDIVISION_COUNTRIES.has(v.c)) return false;
+    if (!v.s) return true;
+    return CHINA_NAMES.has(v.c) && / (District|County)$/.test(v.s);
+}
+
+// 0 = no country yet, 1 = no region yet, 2 = placed from boundaries, null = done.
+function geoCellPriority(v) {
+    if (!v || !v.c || v.c === 'Unknown') return 0;
+    if (geoNeedsSubdivision(v)) return 1;
+    if (v.b) return 2;
+    return null;
+}
+
+function geoSubdivision(addr) {
+    const iso = GEO_REGION_BY_ISO[addr['ISO3166-2-lvl4']] || GEO_REGION_BY_ISO[addr['ISO3166-2-lvl3']]
+        || GEO_REGION_BY_ISO[addr.country_code];
+    const city = addr['ISO3166-2-lvl4'] ? (addr.city || addr.municipality || addr.county || '') : '';
+    const raw = iso || addr.state || addr.territory || addr.province || city;
+    return raw
+        ? raw.replace(/ Province$/, '').replace(/ Autonomous Region$/, '').replace(/ Municipality$/, '')
+            .replace(/ Special Administrative Region$/, '').trim()
+        : '';
+}
+
+// One Nominatim lookup: { c, s }, or null when Nominatim refused (stop for
+// now) — a cell it can't place comes back as country 'Unknown'.
+async function geocodeCell(lat, lng) {
+    const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`,
+        { headers: { 'User-Agent': 'j-guyy.github.io strava-worker', Referer: `${SITE_URL}/` } },
+    );
+    if (!res.ok) {
+        console.log(`Nominatim HTTP ${res.status} for ${lat},${lng}`);
+        return null;
+    }
+    const addr = (await res.json()).address || {};
+    return { c: addr.country || 'Unknown', s: geoSubdivision(addr) };
+}
+
+// A page's /geo/save sends its whole cache, which can predate cells the worker
+// looked up after a sync: keep a stored cell wherever the saved one is less
+// complete (none < no region < placed from boundaries < geocoded).
+const geoRank = v => { const p = geoCellPriority(v); return p === null ? 3 : p; };
+function mergeGeo(stored, incoming) {
+    const merged = { ...(stored || {}) };
+    for (const [key, v] of Object.entries(incoming || {})) {
+        if (geoRank(v) >= geoRank(merged[key])) merged[key] = v;
+    }
+    return merged;
+}
+
+// Never fails the sync it follows.
+async function geocodeAfterSync(env, slim) {
+    try {
+        console.log(`geocoding after sync: ${JSON.stringify(await geocodeCellsAfterSync(env, slim))}`);
+    } catch (e) {
+        console.log(`geocoding after sync failed: ${e.message}`);
+    }
+}
+
+async function geocodeCellsAfterSync(env, slim) {
+    const stored = (await env.STRAVA_DATA.get(GEO_KEY, 'json')) || {};
+    const todo = [];
+    const seen = new Set();
+    for (const a of slim) {
+        if (!Array.isArray(a.l) || a.l.length < 2) continue;
+        const key = geoGridKey(a.l);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const v = stored[key];
+        if (v?.t && Date.now() - v.t < GEOCODE_RETRY_MS) continue;   // Nominatim had nothing lately
+        const priority = geoCellPriority(v);
+        if (priority !== null) todo.push({ key, priority });
+    }
+    if (!todo.length) return { looked: 0, resolved: 0, remaining: 0 };
+    todo.sort((x, y) => x.priority - y.priority);   // stable: newest activity first within a tier
+
+    const found = {};
+    let looked = 0;
+    for (const { key } of todo.slice(0, GEOCODE_MAX_PER_SYNC)) {
+        if (looked) await new Promise(r => setTimeout(r, GEOCODE_GAP_MS));
+        const [lat, lng] = key.split(',').map(Number);
+        let result;
+        try { result = await geocodeCell(lat, lng); }
+        catch (e) { console.log(`Nominatim error for ${key}: ${e.message}`); result = null; }
+        looked++;
+        if (!result) break;
+        // Remember a miss so it doesn't take a place in every night's batch.
+        found[key] = result.c === 'Unknown' ? { c: 'Unknown', s: '', t: Date.now() } : result;
+    }
+
+    const resolved = Object.values(found).filter(v => v.c !== 'Unknown').length;
+    if (Object.keys(found).length) {
+        const latest = (await env.STRAVA_DATA.get(GEO_KEY, 'json')) || {};
+        for (const [key, v] of Object.entries(found)) {
+            // Keep a cell the page geocoded meanwhile.
+            if (geoCellPriority(latest[key]) === null) continue;
+            latest[key] = v;
+        }
+        await env.STRAVA_DATA.put(GEO_KEY, JSON.stringify(latest));
+    }
+    return { looked, resolved, remaining: todo.length - looked };
 }
 
 function slimActivities(activities) {
