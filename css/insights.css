@@ -513,3 +513,25 @@ body:not(.app-page) .ins-root .ins-cal-legend { max-width: 720px; margin-left: a
     body:not(.app-page) .ins-root { width: auto; margin: 20px 12px; gap: 12px; }
     body:not(.app-page) .ins-root .ins-card { padding: 14px 14px 16px; }
 }
+
+/* Heart rate zone legend: two columns of zone · hours · share */
+.ins-root ul.ins-legend.ins-hr-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    margin-top: 8px;
+    font-size: 0.85rem;
+}
+.ins-root ul.ins-legend.ins-hr-legend li { display: flex; gap: 8px; }
+.ins-root .ins-hr-legend .ins-legend-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ins-root .ins-hr-legend .ins-legend-amt {
+    display: inline;
+    color: var(--ins-text);
+    font-size: inherit;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.ins-root .ins-hr-legend .ins-legend-val { min-width: 2.6em; text-align: right; font-weight: 400; color: var(--ins-text-dim); }
+@media (max-width: 520px) {
+    .ins-root ul.ins-legend.ins-hr-legend { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+}

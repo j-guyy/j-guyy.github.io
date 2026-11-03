@@ -16,6 +16,9 @@
 //   3. Year by year bars (activities / distance / hours / climbing)
 //   4. Sport mix donut, for any one year or all of them
 //   5. Consistency calendar (last 12 months or any year) + streaks
+//   5b. Heart rate zones by week (last 12 months or any year), and by year
+//      (hours, share, or one zone month by month with a line per year);
+//      hidden until the worker has collected some heart rate history
 //   6. Eddington numbers (ride + run, in miles), all time or any year
 //   7. Best Efforts: top 5 longest distance / time / climbing per sport,
 //      all time or any year
@@ -92,6 +95,11 @@ const insState = {
     eddYear: 'all',
     bestYear: null,       // null = this year (or all time when it has none)
     bestSport: 'run',
+    hrYear: 'last',       // heart rate weeks: 'last' = last 12 months, or a year
+    hrView: 'hours',      // heart rate by year: 'hours' | 'share' | 'month'
+    hrZone: '1',          // the zone drawn month by month (0 = Z1)
+    hr: null,             // /hr/all, loaded once
+    hrLoading: false,
     goals: null,          // loaded once from the worker
     goalsLoading: false,
     lastFiltered: [],
@@ -170,6 +178,8 @@ function renderInsights(filtered) {
         insYearsCard(list, today),
         insDonutCard(list, today),
         insCalendarCard(list, today),
+        insHrWeeksCard(list, today),
+        insHrYearsCard(list, today),
         insEddingtonCard(today),
         insBestCard(today),
         insGoalsCard(),
@@ -178,6 +188,7 @@ function renderInsights(filtered) {
     insBindTooltips(mount);
     insRevealActivePills(mount);
     if (!insState.goals && !insState.goalsLoading) insLoadGoals();
+    if (!insState.hr && !insState.hrLoading) insLoadHr();
 }
 
 function insCard(title, body, sub = '', id = '') {
@@ -210,7 +221,7 @@ function insYearPills(key, years, sel, allLabel = 'All Time', allValue = 'all') 
 // Picking a year on one card picks it on every one-year card (and as the
 // first year of the comparison); "All Time" carries across the cards that
 // have it. "Last 12 Months" is the calendar's alone.
-const INS_YEAR_KEYS = ['donutYear', 'calYear', 'eddYear', 'bestYear'];
+const INS_YEAR_KEYS = ['donutYear', 'calYear', 'eddYear', 'bestYear', 'hrYear'];
 
 function insSet(key, value) {
     if (INS_YEAR_KEYS.includes(key) && /^\d{4}$/.test(value)) {
@@ -762,6 +773,257 @@ function insCalendarCard(list, today) {
 function insShortDate(iso, today) {
     const label = `${INS_MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`;
     return iso.startsWith(String(today.year)) ? label : `${label}, ${iso.slice(0, 4)}`;
+}
+
+// ── Heart rate zones ───────────────────────────────────────────────────────
+// The worker collects each activity's time per 5 bpm (/hr/all, a few hundred
+// activities a day within Strava's rate limit), so zone limits are applied
+// here: the athlete's Strava zones when the worker could read them, or zones
+// from max HR otherwise. Both cards follow the sport + year filters and stay
+// hidden until some heart rate history has arrived.
+const INS_HR_ZONES = [
+    { label: 'Z1', name: 'Endurance', color: '#8a96a3' },
+    { label: 'Z2', name: 'Moderate',  color: '#3987e5' },
+    { label: 'Z3', name: 'Tempo',     color: '#199e70' },
+    { label: 'Z4', name: 'Threshold', color: '#c98500' },
+    { label: 'Z5', name: 'Anaerobic', color: '#d95926' },
+];
+// Fallback zone floors as a share of max HR (Z2 … Z5).
+const INS_HR_FALLBACK = [0.6, 0.7, 0.8, 0.9];
+
+async function insLoadHr() {
+    insState.hrLoading = true;
+    const base = typeof WORKER_URL !== 'undefined' ? WORKER_URL : 'https://strava-worker.justinguyette.workers.dev';
+    const data = await fetch(`${base}/hr/all`).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    insState.hr = data && data.h ? data : { h: {}, withHr: 0, pending: 0 };
+    insState.hrSecs = new Map();
+    insState.hrFloors = insHrFloors(insState.hr);
+    if (Object.keys(insState.hr.h).length) renderInsights(insState.lastFiltered);
+}
+
+// Lower bpm of Z2 … Z5, and where they came from.
+function insHrFloors(hr) {
+    const z = hr.zones;
+    if (Array.isArray(z) && z.length === 5 && z.every(x => typeof x.min === 'number')) {
+        return { floors: z.slice(1).map(x => x.min), source: 'Strava zones' };
+    }
+    // Max HR: the third-highest activity max, so one sensor spike doesn't set it.
+    const all = typeof currentSlim !== 'undefined' ? currentSlim : insState.lastFiltered;
+    const maxes = all.map(a => a.hm || 0).filter(v => v > 100 && v < 230).sort((a, b) => b - a);
+    const max = maxes[Math.min(2, maxes.length - 1)] || 190;
+    return { floors: INS_HR_FALLBACK.map(f => Math.round(max * f)), source: `zones from max HR ${max} bpm` };
+}
+
+// Seconds in each zone for one activity, or null without heart rate data.
+// A 5 bpm bin that straddles a zone floor is split between the two zones.
+function insHrSecs(a) {
+    const hr = insState.hr;
+    if (!hr || !a.hr) return null;
+    if (insState.hrSecs.has(a.i)) return insState.hrSecs.get(a.i);
+    const hist = hr.h[a.i];
+    let out = null;
+    if (Array.isArray(hist) && hist.length > 1) {
+        const { floors } = insState.hrFloors;
+        const bin = hr.bin || 5, base = hr.base || 40;
+        out = [0, 0, 0, 0, 0];
+        for (let k = 1; k < hist.length; k++) {
+            const sec = hist[k];
+            if (!sec) continue;
+            const lo = base + (hist[0] + k - 1) * bin, hi = lo + bin;
+            let from = lo;
+            for (let z = 0; z < 5 && from < hi; z++) {
+                const top = z < 4 ? Math.min(hi, Math.max(from, floors[z])) : hi;
+                if (top > from) { out[z] += sec * (top - from) / bin; from = top; }
+            }
+        }
+    }
+    insState.hrSecs.set(a.i, out);
+    return out;
+}
+
+function insHrHours(v) {
+    return v >= 10 ? `${Math.round(v)} h` : v >= 1 ? `${v.toFixed(1)} h` : `${Math.round(v * 60)} min`;
+}
+
+function insHrLegend(sums) {
+    const total = sums.reduce((s, v) => s + v, 0) || 1;
+    return `<ul class="ins-legend ins-hr-legend">${INS_HR_ZONES.map((z, k) =>
+        `<li><span class="ins-swatch" style="background:${z.color}"></span><span class="ins-legend-name">${z.label} ${z.name}</span><span class="ins-legend-amt">${insHrHours(sums[k] / 3600)}</span><span class="ins-legend-val">${insPct(sums[k] / total)}</span></li>`).join('')}</ul>`;
+}
+
+// How much of the view has heart rate data, and whether history is still loading.
+function insHrNote(pool) {
+    const withHr = pool.filter(a => a.hr);
+    const done = withHr.filter(a => insHrSecs(a)).length;
+    const hr = insState.hr;
+    let note = `${insFmt(done)} of ${insFmt(pool.length)} activities with heart rate · ${insState.hrFloors.source}`;
+    if (hr.pending > 0) note += ` · still collecting ${insFmt(hr.pending)} older activities`;
+    return `<p class="ins-note">${note}</p>`;
+}
+
+// A stacked bar of zone hours (or shares, in %); returns SVG rects.
+function insHrStack(cx, bw, secs, y, share = false) {
+    const total = secs.reduce((s, v) => s + v, 0);
+    if (!total) return '';
+    let acc = 0, rects = '';
+    secs.forEach((v, z) => {
+        if (!v) return;
+        const a = share ? acc / total * 100 : acc / 3600;
+        const b = share ? (acc + v) / total * 100 : (acc + v) / 3600;
+        acc += v;
+        rects += `<rect x="${(cx - bw / 2).toFixed(1)}" y="${y(b).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, y(a) - y(b)).toFixed(1)}" fill="${INS_HR_ZONES[z].color}"/>`;
+    });
+    return rects;
+}
+
+function insHrTip(head, secs) {
+    const total = secs.reduce((s, v) => s + v, 0);
+    return `${head}: ${insHrHours(total / 3600)} · ` + INS_HR_ZONES.map((z, k) => `${z.label} ${insHrHours(secs[k] / 3600)}`).join(', ');
+}
+
+// Weekly time in each zone: the last 12 months, or any year.
+function insHrWeeksCard(list, today) {
+    if (!insState.hr || !Object.keys(insState.hr.h).length) return '';
+    const years = insYears(list.filter(a => a.hr));
+    if (!years.length) return '';
+    let view = insState.hrYear;
+    if (view !== 'last' && !years.includes(view)) view = 'last';
+    const mondayOf = iso => insAddDays(iso, -((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7));
+    let start, weeks;
+    if (view === 'last') {
+        weeks = 53;
+        start = insAddDays(mondayOf(today.iso), -(weeks - 1) * 7);
+    } else {
+        start = mondayOf(`${view}-01-01`);
+        const last = view === String(today.year) ? today.iso : `${view}-12-31`;
+        weeks = Math.round((Date.parse(mondayOf(last)) - Date.parse(start)) / (7 * 864e5)) + 1;
+    }
+    const startMs = Date.parse(`${start}T12:00:00Z`);
+    const buckets = Array.from({ length: weeks }, () => [0, 0, 0, 0, 0]);
+    const pool = list.filter(a => {
+        const d = a.d.slice(0, 10);
+        return view === 'last' ? d >= start : d.startsWith(view);
+    });
+    const sums = [0, 0, 0, 0, 0];
+    pool.forEach(a => {
+        const s = insHrSecs(a);
+        if (!s) return;
+        const w = Math.floor((Date.parse(`${a.d.slice(0, 10)}T12:00:00Z`) - startMs) / (7 * 864e5));
+        if (w < 0 || w >= weeks) return;
+        s.forEach((v, z) => { buckets[w][z] += v; sums[z] += v; });
+    });
+    const totals = buckets.map(b => b.reduce((s, v) => s + v, 0) / 3600);
+    const yMax = insNiceMax(Math.max(...totals, 1));
+
+    const W = 340, H = 170, L = 30, R = 6, T = 10, B = 20;
+    const slot = (W - L - R) / weeks;
+    const bw = Math.max(2, slot - (slot > 4 ? 1.5 : 0.6));
+    const y = v => T + (1 - v / yMax) * (H - T - B);
+    let grid = '';
+    for (let k = 0; k <= 4; k++) {
+        const v = (yMax / 4) * k;
+        grid += `<line class="ins-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+        grid += `<text class="ins-axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${insShort(v)}</text>`;
+    }
+    let bars = '', lastMonth = -1;
+    buckets.forEach((secs, w) => {
+        const wk = insAddDays(start, w * 7);
+        const cx = L + slot * w + slot / 2;
+        const tip = insHrTip(`Week of ${insShortDate(wk, today)}`, secs);
+        bars += `<g class="ins-hit" data-tip="${insEsc(tip)}"><rect x="${(cx - slot / 2).toFixed(1)}" y="${T}" width="${slot.toFixed(2)}" height="${H - T - B}" fill="transparent"/>${insHrStack(cx, bw, secs, y)}</g>`;
+        const mo = Number(wk.slice(5, 7)) - 1;
+        if (mo !== lastMonth) {
+            if (w > 0 || view !== 'last') bars += `<text class="ins-axis" x="${cx}" y="${H - 6}" text-anchor="start">${INS_MONTHS[mo].slice(0, 1)}</text>`;
+            lastMonth = mo;
+        }
+    });
+    const svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Hours per week in each heart rate zone">${grid}${bars}</svg>`;
+    const pills = insPills('hrYear', [['last', 'Last 12 Months'], ...years.map(yr => [yr, yr])], view);
+    const avg = totals.reduce((s, v) => s + v, 0) / weeks;
+    return insCard('Heart Rate Zones by Week', `${pills}${svg}${insHrLegend(sums)}<p class="ins-note">Average <strong>${insHrHours(avg)}</strong> a week with heart rate</p>${insHrNote(pool)}`, 'hours per week');
+}
+
+// Year to year: hours or share per zone each year, or one zone month by month
+// with a line per year.
+function insHrYearsCard(list, today) {
+    if (!insState.hr || !Object.keys(insState.hr.h).length) return '';
+    const hrList = list.filter(a => insHrSecs(a));
+    if (!hrList.length) return '';
+    const view = insState.hrView || 'hours';
+    const byYear = {}, byMonth = {};
+    hrList.forEach(a => {
+        const yr = a.d.slice(0, 4), mo = Number(a.d.slice(5, 7)) - 1;
+        const s = insHrSecs(a);
+        const yb = byYear[yr] || (byYear[yr] = [0, 0, 0, 0, 0]);
+        const mb = byMonth[yr] || (byMonth[yr] = Array.from({ length: 12 }, () => [0, 0, 0, 0, 0]));
+        s.forEach((v, z) => { yb[z] += v; mb[mo][z] += v; });
+    });
+    const years = Object.keys(byYear).sort();
+    const W = 340, H = 170, L = 30, R = 6, T = 10, B = 20;
+    const y = (v, max) => T + (1 - v / max) * (H - T - B);
+    const gridFor = (max, fmt) => {
+        let g = '';
+        for (let k = 0; k <= 4; k++) {
+            const v = (max / 4) * k;
+            g += `<line class="ins-grid" x1="${L}" x2="${W - R}" y1="${y(v, max)}" y2="${y(v, max)}"/>`;
+            g += `<text class="ins-axis" x="${L - 5}" y="${y(v, max) + 3}" text-anchor="end">${fmt(v)}</text>`;
+        }
+        return g;
+    };
+    let svg = '', extra = '';
+    if (view === 'month') {
+        const zone = Number(insState.hrZone ?? 1);
+        const series = years.map(yr => byMonth[yr].map(m => m[zone] / 3600));
+        const max = insNiceMax(Math.max(...series.flat(), 1));
+        const slot = (W - L - R) / 12;
+        const x = mo => L + slot * mo + slot / 2;
+        const nums = years.map(Number);
+        let lines = '', hits = '', labels = '';
+        series.forEach((s, k) => {
+            const yr = nums[k];
+            // This year stops at last month (this month isn't over yet).
+            const upto = yr === today.year ? Number(today.iso.slice(5, 7)) - 1 : 12;
+            const pts = s.slice(0, upto).map((v, mo) => `${x(mo).toFixed(1)},${y(v, max).toFixed(1)}`);
+            lines += `<polyline class="ins-line${yr === today.year ? ' ins-line-main' : ''}" points="${pts.join(' ')}" style="stroke:${insPaceColor(yr, nums, today)}"/>`;
+        });
+        for (let mo = 0; mo < 12; mo++) {
+            const tip = `${INS_MONTHS[mo]} · ${INS_HR_ZONES[zone].label}: ` + years.map((yr, k) =>
+                (Number(yr) === today.year && mo >= Number(today.iso.slice(5, 7)) - 1) ? null : `${yr} ${insHrHours(series[k][mo])}`).filter(Boolean).reverse().join(', ');
+            hits += `<g class="ins-hit" data-tip="${insEsc(tip)}"><rect x="${(x(mo) - slot / 2).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${H - T - B}" fill="transparent"/></g>`;
+            labels += `<text class="ins-axis" x="${x(mo)}" y="${H - 6}" text-anchor="middle">${INS_MONTHS[mo].slice(0, 1)}</text>`;
+        }
+        svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${INS_HR_ZONES[zone].label} hours by month, one line per year">${gridFor(max, insShort)}${lines}${labels}${hits}</svg>`;
+        const chips = [...nums].reverse().map(yr => `<span class="ins-chip active"><span class="ins-swatch" style="background:${insPaceColor(yr, nums, today)}"></span>${yr}</span>`).join('');
+        extra = insPills('hrZone', INS_HR_ZONES.map((z, k) => [String(k), `${z.label} ${z.name}`]), String(zone))
+            + svg + `<div class="ins-chips">${chips}</div>`;
+    } else {
+        const share = view === 'share';
+        const totals = years.map(yr => byYear[yr].reduce((s, v) => s + v, 0) / 3600);
+        const max = share ? 100 : insNiceMax(Math.max(...totals, 1));
+        const slot = (W - L - R) / years.length;
+        const bw = Math.max(4, Math.min(26, slot - 4));
+        let bars = '';
+        years.forEach((yr, i) => {
+            const cx = L + slot * i + slot / 2;
+            const secs = byYear[yr];
+            const total = secs.reduce((s, v) => s + v, 0) || 1;
+            const head = `${yr}${Number(yr) === today.year ? ' (so far)' : ''}`;
+            const tip = share
+                ? `${head}: ` + INS_HR_ZONES.map((z, k) => `${z.label} ${insPct(secs[k] / total)}`).join(', ')
+                : insHrTip(head, secs);
+            bars += `<g class="ins-hit" data-tip="${insEsc(tip)}"><rect x="${(cx - slot / 2).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${H - T - B}" fill="transparent"/>${insHrStack(cx, bw, secs, v => y(v, max), share)}</g>`;
+            if (years.length <= 12 || i % 2 === (years.length - 1) % 2) {
+                bars += `<text class="ins-axis" x="${cx}" y="${H - 6}" text-anchor="middle">'${yr.slice(2)}</text>`;
+            }
+        });
+        svg = `<svg class="ins-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Heart rate zone ${share ? 'share' : 'hours'} per year">${gridFor(max, share ? v => `${Math.round(v)}%` : insShort)}${bars}</svg>`;
+        const sums = [0, 0, 0, 0, 0];
+        years.forEach(yr => byYear[yr].forEach((v, z) => { sums[z] += v; }));
+        extra = svg + insHrLegend(sums);
+    }
+    const pills = insPills('hrView', [['hours', 'Hours'], ['share', 'Share'], ['month', 'Month by Month']], view);
+    const sub = view === 'month' ? 'hours per month, by year' : view === 'share' ? 'share of time per year' : 'hours per year';
+    return insCard('Heart Rate Zones by Year', `${pills}${extra}${insHrNote(list)}`, sub);
 }
 
 // ── 6. Eddington number ────────────────────────────────────────────────────

@@ -42,6 +42,7 @@ class_name = "UserSyncRunner"
 tag = "v1"
 new_sqlite_classes = ["UserSyncRunner"]
 
-# Daily sync for everyone, half an hour after the owner's worker.
+# Daily sync for everyone, half an hour after the owner's worker, plus the
+# quarter-hourly heart rate backfill (USER_HR_CRON in user-worker.js; keep equal).
 [triggers]
-crons = ["30 0 * * *"]
+crons = ["30 0 * * *", "3,18,33,48 * * * *"]

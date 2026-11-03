@@ -34,6 +34,7 @@ function unauthorized() {
 // ── KV keys ──────────────────────────────────────────────────────────────────
 
 const ACTIVITIES_KEY = 'strava_activities';
+const HR_KEY = 'strava_hr';   // per-activity heart rate histograms (see Heart rate zones)
 const GEO_KEY        = 'strava_geo';
 const COUNTIES_KEY   = 'strava_counties';
 const TILES_KEY      = 'strava_tiles';
@@ -165,6 +166,9 @@ export default {
             if (path === '/activities/backfill-elev' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
                 return await handleBackfillElev(env);
+            }
+            if (path === '/hr/all' && request.method === 'GET') {
+                return await handleHrAll(env);
             }
             if (path === '/polylines/all') {
                 const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
@@ -484,6 +488,15 @@ export default {
     // (Workers → strava-worker → Settings → Triggers). Currently set to once
     // daily at 00:00 UTC: `0 0 * * *`.
     async scheduled(event, env, ctx) {
+        // The quarter-hourly cron only collects heart rate history (see Heart
+        // rate zones); the nightly one syncs. The user worker runs its own
+        // heart rate cron (USER_HR_CRON) itself and never passes it here.
+        if (event?.cron === HR_CRON) {
+            ctx.waitUntil(backfillHeartRate(env)
+                .then(r => console.log(`heart rate backfill: ${JSON.stringify(r)}`))
+                .catch(err => console.log(`heart rate backfill failed: ${err.message}`)));
+            return;
+        }
         // Through the SyncRunner when bound, so the cron and a manual "Sync
         // now" never run at the same time (a manual sync joins the cron's).
         if (env.SYNC_RUNNER) {
@@ -1908,7 +1921,134 @@ function slimActivities(activities) {
             e: a.total_elevation_gain ?? 0,
             m: a.moving_time ?? 0,   // seconds; feeds the dashboard's hours view
             di: Math.round(a.distance ?? 0),   // metres; read by the MCP tools
+            // Average / max heart rate (bpm), only on activities recorded with
+            // a heart rate monitor. Time in each zone comes from /hr/all.
+            ...(a.has_heartrate && a.average_heartrate
+                ? { hr: Math.round(a.average_heartrate), hm: Math.round(a.max_heartrate || 0) }
+                : {}),
         }));
+}
+
+// ── Heart rate zones ─────────────────────────────────────────────────────────
+//
+// Time in each heart rate zone needs the activity's heart rate stream, one
+// Strava call per activity. Strava's read limit (about 100 per 15 min, 1,000 a
+// day) is shared with the nightly sync and every invited user's sync, so the
+// history fills in slowly: a quarter-hourly cron (HR_CRON, also listed in
+// wrangler.toml) fetches up to HR_MAX_PER_RUN streams, newest activity first,
+// and stops early once Strava's rate-limit headers say a share of the window
+// is used up. New activities are picked up within 15 minutes of a sync.
+//
+// Each activity is stored as a histogram, not zone totals, so the Dashboard
+// can apply any zone limits (Strava's, or its own from max HR) without
+// refetching: seconds per HR_BIN bpm bin from HR_BASE bpm up.
+//   strava_hr: { v, h: { <id>: [firstBin, sec, sec, …] | 0 (no stream) },
+//                zones: [{min, max}, …] | null, zonesAt }
+const HR_CRON = '7,22,37,52 * * * *';
+const HR_BIN = 5;
+const HR_BASE = 40;
+const HR_MAX_PER_RUN = 40;          // under the Workers 50-subrequest cap
+const HR_SHARE_15MIN = 0.5;         // leave half of each 15-min window to syncs
+const HR_SHARE_DAY = 0.6;
+const HR_GAP_CAP_S = 30;            // a longer gap between samples is a pause
+const HR_ZONES_TTL_MS = 7 * 24 * 3600 * 1000;
+
+async function handleHrAll(env) {
+    const [stored, acts] = await Promise.all([
+        env.STRAVA_DATA.get(HR_KEY, 'json'),
+        env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json'),
+    ]);
+    const h = stored?.h || {};
+    const withHr = (acts?.slim || []).filter(a => a.hr);
+    const pending = withHr.filter(a => !(a.i in h)).length;
+    return json({
+        bin: HR_BIN, base: HR_BASE,
+        zones: stored?.zones || null,
+        withHr: withHr.length, pending,
+        h,
+    }, 200, { 'Cache-Control': 'public, max-age=300' });
+}
+
+// Seconds per bin from Strava's heartrate + time streams.
+function hrHistogram(hrData, timeData) {
+    const bins = [];
+    for (let k = 0; k < hrData.length; k++) {
+        const bpm = hrData[k];
+        if (!bpm) continue;
+        const dt = k + 1 < timeData.length ? timeData[k + 1] - timeData[k] : 1;
+        if (!(dt > 0)) continue;
+        const b = Math.max(0, Math.floor((bpm - HR_BASE) / HR_BIN));
+        bins[b] = (bins[b] || 0) + Math.min(dt, HR_GAP_CAP_S);
+    }
+    let first = bins.findIndex(v => v);
+    if (first < 0) return 0;
+    const out = [first];
+    for (let b = first; b < bins.length; b++) out.push(bins[b] || 0);
+    return out;
+}
+
+// "used15,usedDay" vs "limit15,limitDay" from a Strava response: true when
+// the backfill should leave the rest of the window to the syncs.
+function hrNearLimit(res) {
+    const usage = (res.headers.get('X-ReadRateLimit-Usage') || res.headers.get('X-RateLimit-Usage') || '').split(',').map(Number);
+    const limit = (res.headers.get('X-ReadRateLimit-Limit') || res.headers.get('X-RateLimit-Limit') || '').split(',').map(Number);
+    if (usage.length < 2 || limit.length < 2 || !limit[0] || !limit[1]) return false;
+    return usage[0] >= limit[0] * HR_SHARE_15MIN || usage[1] >= limit[1] * HR_SHARE_DAY;
+}
+
+export async function backfillHeartRate(env) {
+    const acts = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
+    const slim = acts?.slim || [];
+    const stored = (await env.STRAVA_DATA.get(HR_KEY, 'json')) || { v: 1, h: {}, zones: null, zonesAt: 0 };
+    const h = stored.h || (stored.h = {});
+    const pending = slim.filter(a => a.hr && a.i && !(a.i in h)).sort((a, b) => (b.s || 0) - (a.s || 0));
+    const zonesStale = !stored.zonesAt || Date.now() - stored.zonesAt > HR_ZONES_TTL_MS;
+    if (!pending.length && !zonesStale) return { fetched: 0, pending: 0 };
+
+    const token = await getAccessToken(env);
+    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    let changed = false, fetched = 0, stop = null;
+
+    // The athlete's own zone limits (needs the profile:read_all scope; without
+    // it the Dashboard falls back to zones from max HR).
+    if (zonesStale) {
+        stored.zonesAt = Date.now();
+        changed = true;
+        try {
+            const res = await fetch('https://www.strava.com/api/v3/athlete/zones', auth);
+            if (res.ok) {
+                const z = (await res.json())?.heart_rate?.zones;
+                if (Array.isArray(z) && z.length >= 3) stored.zones = z.map(({ min, max }) => ({ min, max }));
+            }
+            if (res.status === 429 || hrNearLimit(res)) stop = 'rate limit';
+        } catch (e) { console.log(`hr zones: ${e.message}`); }
+    }
+
+    for (const a of pending.slice(0, stop ? 0 : HR_MAX_PER_RUN)) {
+        const res = await fetch(`https://www.strava.com/api/v3/activities/${a.i}/streams?keys=heartrate,time&key_by_type=true`, auth);
+        if (res.status === 429) { stop = 'rate limited'; break; }
+        if (res.ok) {
+            const st = await res.json();
+            const hr = st?.heartrate?.data, time = st?.time?.data;
+            h[a.i] = Array.isArray(hr) && Array.isArray(time) ? hrHistogram(hr, time) : 0;
+        } else if (res.status === 404) {
+            h[a.i] = 0;
+        } else {
+            stop = `HTTP ${res.status}`;
+            break;
+        }
+        fetched++;
+        changed = true;
+        if (hrNearLimit(res)) { stop = 'rate limit'; break; }
+    }
+
+    if (changed) {
+        // Drop activities deleted on Strava.
+        const ids = new Set(slim.map(a => String(a.i)));
+        for (const id of Object.keys(h)) if (!ids.has(id)) delete h[id];
+        await env.STRAVA_DATA.put(HR_KEY, JSON.stringify(stored));
+    }
+    return { fetched, pending: pending.length - fetched, stop };
 }
 
 // Outdoor ride types whose high point (elev_high) we backfill for the Pass

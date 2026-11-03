@@ -42,6 +42,7 @@ tag = "v1"
 new_sqlite_classes = ["SyncRunner"]
 
 # Cron trigger (Settings -> Triggers). Cloudflare crons run in UTC; this is
-# midnight UTC. Keep it identical to the dashboard's cron expression.
+# midnight UTC (the nightly sync), plus the quarter-hourly heart rate backfill
+# (HR_CRON in worker.js; the two must match). Keep identical to the dashboard.
 [triggers]
-crons = ["0 0 * * *"]
+crons = ["0 0 * * *", "7,22,37,52 * * * *"]
