@@ -28,7 +28,14 @@
 // Secrets: CLIENT_ID, CLIENT_SECRET (the Strava API app's), optional
 // USER_INVITE (when set, /auth/start needs ?invite=<it>). Var: APP_ORIGIN.
 
-import base, { SyncRunner } from './worker.js';
+import base, { SyncRunner, backfillHeartRate } from './worker.js';
+
+// Heart rate history (see "Heart rate zones" in worker.js): its own
+// quarter-hourly cron, listed in wrangler.user.toml too, offset from the
+// owner's. Each run serves one person (rotating), so a run stays within the
+// Workers subrequest cap and the shared Strava limit; backfillHeartRate stops
+// on its own once the app-wide usage passes its share.
+const USER_HR_CRON = '3,18,33,48 * * * *';
 
 const DEFAULT_APP_ORIGIN = 'https://j-guyy.github.io';
 const MAX_SESSIONS = 5;          // devices signed in per person
@@ -343,8 +350,15 @@ export default {
         }
     },
 
-    // Daily sync for everyone connected, through each person's SyncRunner.
+    // Daily sync for everyone connected, through each person's SyncRunner;
+    // the heart rate cron collects one person's heart rate history.
     async scheduled(event, env, ctx) {
+        if (event?.cron === USER_HR_CRON) {
+            ctx.waitUntil(backfillHeartRateForUsers(env)
+                .then(r => console.log(`heart rate backfill: ${JSON.stringify(r)}`))
+                .catch(err => console.log(`heart rate backfill failed: ${err.message}`)));
+            return;
+        }
         let cursor;
         do {
             const page = await env.STRAVA_KV.list({ prefix: 'user:', cursor });
@@ -356,6 +370,26 @@ export default {
         } while (cursor);
     },
 };
+
+// Starting with a different person each quarter hour, run the backfill for
+// the first one who still has heart rate history to collect.
+async function backfillHeartRateForUsers(env) {
+    const ids = [];
+    let cursor;
+    do {
+        const page = await env.STRAVA_KV.list({ prefix: 'user:', cursor });
+        page.keys.forEach(k => ids.push(k.name.slice('user:'.length)));
+        cursor = page.list_complete ? null : page.cursor;
+    } while (cursor);
+    if (!ids.length) return { users: 0 };
+    const start = Math.floor(Date.now() / (15 * 60 * 1000)) % ids.length;
+    for (let k = 0; k < ids.length; k++) {
+        const id = ids[(start + k) % ids.length];
+        const r = await backfillHeartRate(scopedEnv(env, id));
+        if (r.fetched || r.stop) return { user: id, ...r };
+    }
+    return { users: ids.length, fetched: 0 };
+}
 
 // worker.js's SyncRunner, told which person it syncs for. The person arrives
 // with each call (X-Strava-User, set by scopedSyncRunner) and is kept in the

@@ -489,8 +489,8 @@ export default {
     // daily at 00:00 UTC: `0 0 * * *`.
     async scheduled(event, env, ctx) {
         // The quarter-hourly cron only collects heart rate history (see Heart
-        // rate zones); the nightly one syncs. The user worker passes its own
-        // cron string, so it never runs the heart rate backfill.
+        // rate zones); the nightly one syncs. The user worker runs its own
+        // heart rate cron (USER_HR_CRON) itself and never passes it here.
         if (event?.cron === HR_CRON) {
             ctx.waitUntil(backfillHeartRate(env)
                 .then(r => console.log(`heart rate backfill: ${JSON.stringify(r)}`))
@@ -1996,7 +1996,7 @@ function hrNearLimit(res) {
     return usage[0] >= limit[0] * HR_SHARE_15MIN || usage[1] >= limit[1] * HR_SHARE_DAY;
 }
 
-async function backfillHeartRate(env) {
+export async function backfillHeartRate(env) {
     const acts = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
     const slim = acts?.slim || [];
     const stored = (await env.STRAVA_DATA.get(HR_KEY, 'json')) || { v: 1, h: {}, zones: null, zonesAt: 0 };
