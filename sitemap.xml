@@ -11,6 +11,12 @@
     <loc>https://j-guyy.github.io/adventures.html</loc>
   </url>
   <url>
+    <loc>https://j-guyy.github.io/strava.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/peaks-dashboard.html</loc>
+  </url>
+  <url>
     <loc>https://j-guyy.github.io/us-dashboard.html</loc>
   </url>
   <url>
@@ -29,67 +35,79 @@
     <loc>https://j-guyy.github.io/mountain-mapping.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/resort-skiing.html</loc>
+    <loc>https://j-guyy.github.io/colorado-ranges.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/strava.html</loc>
+    <loc>https://j-guyy.github.io/us-ecoregions.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/training-plan.html</loc>
   </url>
   <!-- Trip reports -->
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/pico-de-orizaba.html</loc>
+    <loc>https://j-guyy.github.io/trip-reports/adirondack-46ers.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/creede-100.html</loc>
+    <loc>https://j-guyy.github.io/trip-reports/backcountry-skiing.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/ironman-lake-placid.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/mount-rainier.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/mount-hood.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/mount-adams.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/iztaccihuatl.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/mount-fuji.html</loc>
+    <loc>https://j-guyy.github.io/trip-reports/badlands.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/trip-reports/british-isles-high-five.html</loc>
   </url>
   <url>
+    <loc>https://j-guyy.github.io/trip-reports/colorado-14ers.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/creede-100.html</loc>
+  </url>
+  <url>
     <loc>https://j-guyy.github.io/trip-reports/halla-san.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/mulhacen.html</loc>
+    <loc>https://j-guyy.github.io/trip-reports/ironman-lake-placid.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/iztaccihuatl.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/jeju-cycling.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/mount-adams.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/mount-fuji.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/mount-hood.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/trip-reports/mount-kosciuszko.html</loc>
   </url>
   <url>
-    <loc>https://j-guyy.github.io/trip-reports/sincholagua.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/adirondack-46ers.html</loc>
-  </url>
-  <url>
-    <loc>https://j-guyy.github.io/trip-reports/colorado-14ers.html</loc>
+    <loc>https://j-guyy.github.io/trip-reports/mount-rainier.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/trip-reports/mt-blue-sky-bike.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/mulhacen.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/trip-reports/natchez-trace.html</loc>
   </url>
   <url>
     <loc>https://j-guyy.github.io/trip-reports/normandy.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/pico-de-orizaba.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/resort-skiing.html</loc>
+  </url>
+  <url>
+    <loc>https://j-guyy.github.io/trip-reports/sincholagua.html</loc>
   </url>
 </urlset>

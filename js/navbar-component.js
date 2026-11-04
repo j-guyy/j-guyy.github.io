@@ -80,7 +80,7 @@ class NavbarComponent extends HTMLElement {
     // Back walks history (to the app's Travel tab, or wherever it came from); a page
     // opened with nothing behind it goes to the app instead.
     renderAppBar() {
-        const title = (document.title || '').split(/\s+[-|–—]\s+/)[0].trim();
+        const title = (document.title || '').split(/\s+[-|–—]\s+|:\s/)[0].trim();
         this.innerHTML = `
             <nav class="navbar navbar-app">
                 <div class="navbar-container">
