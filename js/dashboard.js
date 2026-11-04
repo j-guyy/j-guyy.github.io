@@ -253,7 +253,7 @@ function shortDate(iso) {
 
 function setupUSViewSwitch(dataReady) {
     setupViewSwitch({
-        titles: { tables: 'US Travel — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
+        titles: { tables: 'US Travel: States, Parks & High Points — Justin Guyette', map: 'US Travel Map — Justin Guyette' },
         onShow: view => {
             if (view !== 'map' || !mapStale) return;
             mapStale = false;
