@@ -116,15 +116,19 @@ function createCombinedMap() {
 
             // Add high points (triangles) - filter out points with invalid coordinates
             const validHighPoints = highPoints.filter(d => d.coords && Array.isArray(d.coords) && d.coords.length === 2 && !isNaN(d.coords[0]) && !isNaN(d.coords[1]));
+            // Triangles and stars are placed by a wrapping <g>: css/map.css's zoom
+            // `scale` would otherwise also scale a translate on the shape itself,
+            // pulling every marker toward the map's top-left corner when zoomed.
             svg.selectAll(".high-point-triangle")
                 .data(validHighPoints)
-                .enter().append("path")
-                .attr("class", d => `high-point-triangle ${d.visited ? 'visited' : 'not-visited'}`)
-                .attr("d", d3.symbol().type(d3.symbolTriangle).size(100))
+                .enter().append("g")
                 .attr("transform", d => {
                     const projected = projection(d.coords);
                     return projected ? `translate(${projected[0]}, ${projected[1]})` : 'translate(0, 0)';
                 })
+                .append("path")
+                .attr("class", d => `high-point-triangle ${d.visited ? 'visited' : 'not-visited'}`)
+                .attr("d", d3.symbol().type(d3.symbolTriangle).size(100))
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'highpoint');
                 })
@@ -164,10 +168,11 @@ function createCombinedMap() {
             // Add state capitals (stars)
             svg.selectAll(".capital-star")
                 .data(capitals.filter(d => projection(d.coords)))
-                .enter().append("path")
+                .enter().append("g")
+                .attr("transform", d => `translate(${projection(d.coords).join(', ')})`)
+                .append("path")
                 .attr("class", d => `capital-star ${d.visited ? 'visited' : 'not-visited'}`)
                 .attr("d", d3.symbol().type(d3.symbolStar).size(90))
-                .attr("transform", d => `translate(${projection(d.coords).join(', ')})`)
                 .on("mouseover", function (event, d) {
                     handleMouseOver(this, event, d, tooltip, 'capital');
                 })
