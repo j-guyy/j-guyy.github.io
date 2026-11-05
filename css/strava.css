@@ -169,6 +169,13 @@
     display: none;
 }
 
+/* With the filter drawer open, sit the debug panel beside it instead of on
+   top of it. (Phones stack them instead; see the max-width: 768px block.) */
+html.filter-drawer-open #debug-panel {
+    right: calc(min(400px, 92vw) + 16px);
+    max-width: calc(100vw - min(400px, 92vw) - 32px);
+}
+
 .dbg-header {
     display: flex;
     justify-content: space-between;
@@ -1678,6 +1685,18 @@ a.cache-refresh-btn {
         width: calc(100vw - 24px);
         left: 12px;
         right: 12px;
+    }
+
+    /* No room beside the drawer here, so stack: the drawer ends above the
+       debug panel (its height is kept in --debug-panel-h by strava.js). */
+    html.filter-drawer-open #debug-panel {
+        right: 12px;
+        max-width: calc(100vw - 32px);
+    }
+    html.filter-drawer-open:has(#debug-panel:not([hidden])) .filter-drawer-panel {
+        bottom: calc(var(--debug-panel-h, 0px) + 28px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom-left-radius: 8px;
     }
 }
 
