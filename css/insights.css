@@ -535,3 +535,9 @@ body:not(.app-page) .ins-root .ins-cal-legend { max-width: 720px; margin-left: a
 @media (max-width: 520px) {
     .ins-root ul.ins-legend.ins-hr-legend { grid-template-columns: minmax(0, 1fr); gap: 5px; }
 }
+
+/* Heart rate stacks: the tapped / hovered week or year stands out and the
+   rest dim, like the other bar charts. */
+.ins-root [data-ins^="hr-"] .ins-svg:has(.ins-hit.is-hover) .ins-hit:not(.is-hover) rect:not([fill="transparent"]) { opacity: 0.4; }
+.ins-root [data-ins^="hr-"] .ins-hit.is-hover rect:not([fill="transparent"]) { filter: brightness(1.2); }
+.ins-root [data-ins^="hr-"] .ins-hit.is-hover rect[fill="transparent"] { fill: var(--ins-text); fill-opacity: 0.06; }
