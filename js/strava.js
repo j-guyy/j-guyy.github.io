@@ -9594,6 +9594,13 @@ function renderDebugPanel() {
         <ul id="debug-log" style="display:none"></ul>
     `;
     document.body.appendChild(panel);
+
+    // On phones the filter drawer stops above this panel; the CSS needs its height.
+    if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+            document.documentElement.style.setProperty('--debug-panel-h', `${panel.offsetHeight}px`);
+        }).observe(panel);
+    }
 }
 
 // ── Status / cache helpers ────────────────────────────────────────────────────
