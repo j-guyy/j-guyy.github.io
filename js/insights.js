@@ -171,24 +171,55 @@ function renderInsights(filtered) {
     // Filters that match nothing would otherwise just make the charts vanish.
     const empty = list.length ? '' : insCard('No activities match the filters',
         '<p class="ins-note">Switch on a sport or a year above to bring the charts back. Eddington, Best Efforts and Goals below don\'t follow the filters.</p>', '', 'ins-empty');
-    mount.innerHTML = [
-        empty,
-        insCompareCard(list, today),
-        insPaceCard(list, today),
-        insYearsCard(list, today),
-        insDonutCard(list, today),
-        insCalendarCard(list, today),
-        insHrWeeksCard(list, today),
-        insHrYearsCard(list, today),
-        insEddingtonCard(today),
-        insBestCard(today),
-        insGoalsCard(),
-    ].join('');
+    // Each card is tagged with a name so insKeepPlace can find it again.
+    const cards = [
+        ['empty', empty],
+        ['compare', insCompareCard(list, today)],
+        ['pace', insPaceCard(list, today)],
+        ['years', insYearsCard(list, today)],
+        ['donut', insDonutCard(list, today)],
+        ['calendar', insCalendarCard(list, today)],
+        ['hr-weeks', insHrWeeksCard(list, today)],
+        ['hr-years', insHrYearsCard(list, today)],
+        ['eddington', insEddingtonCard(today)],
+        ['best', insBestCard(today)],
+        ['goals', insGoalsCard()],
+    ].map(([key, html]) => html.replace('<section class="ins-card"', `<section data-ins="${key}" class="ins-card"`));
+    insKeepPlace(mount, () => { mount.innerHTML = cards.join(''); });
 
     insBindTooltips(mount);
     insRevealActivePills(mount);
     if (!insState.goals && !insState.goalsLoading) insLoadGoals();
     if (!insState.hr && !insState.hrLoading) insLoadHr();
+}
+
+// Every tap on a card (a year pill, a legend chip, a bar) redraws all the
+// cards from scratch. Chrome keeps your place through that by itself, but
+// iPhone Safari doesn't, and it put the page back at the top. So note where
+// the tapped card (or the first card on screen) sits, redraw, and scroll it
+// back to the same spot.
+function insKeepPlace(mount, draw) {
+    const tapped = insState.lastTap && mount.contains(insState.lastTap)
+        ? insState.lastTap.closest('.ins-card[data-ins]') : null;
+    const anchor = tapped || [...mount.querySelectorAll('.ins-card[data-ins]')]
+        .find(c => c.getBoundingClientRect().bottom > 0);
+    const key = anchor?.dataset.ins;
+    const top = anchor ? anchor.getBoundingClientRect().top : 0;
+    const y = window.scrollY;
+    draw();
+    const now = key && mount.querySelector(`.ins-card[data-ins="${key}"]`);
+    if (now) {
+        const d = now.getBoundingClientRect().top - top;
+        if (Math.abs(d) > 0.5) window.scrollBy(0, d);
+    } else if (Math.abs(window.scrollY - y) > 0.5) {
+        window.scrollTo(0, y);
+    }
+    // Safari can still jump once the tap finishes; put it back if it does.
+    const want = window.scrollY;
+    if (!(want > 0)) return;
+    const check = () => { if (window.scrollY < want - 40) window.scrollTo(0, want); };
+    requestAnimationFrame(() => { check(); requestAnimationFrame(check); });
+    setTimeout(check, 120);
 }
 
 function insCard(title, body, sub = '', id = '') {
@@ -1218,6 +1249,20 @@ function insShowTip(html, x, top, { bottom = top, touchY = null } = {}) {
     tip.style.top = `${y}px`;
 }
 
+// Screen box around what a tip points at: the drawn marks of a bar group,
+// or the element itself (a calendar cell, a goal row). null when a group
+// draws nothing.
+function insMarkBox(hit) {
+    if (hit.tagName.toLowerCase() !== 'g') return hit.getBoundingClientRect();
+    const marks = [...hit.querySelectorAll('path, circle, rect')]
+        .filter(el => el.getAttribute('fill') !== 'transparent')
+        .map(el => el.getBoundingClientRect())
+        .filter(r => r.width || r.height);
+    if (!marks.length) return null;
+    const left = Math.min(...marks.map(r => r.left)), right = Math.max(...marks.map(r => r.right));
+    return { left, width: right - left, top: Math.min(...marks.map(r => r.top)), bottom: Math.max(...marks.map(r => r.bottom)) };
+}
+
 function insHideTip() {
     const tip = document.getElementById('ins-tooltip');
     if (tip) tip.hidden = true;
@@ -1244,16 +1289,20 @@ function insBindTooltips(root) {
             if (!document.body.classList.contains('app-page') && hit.closest('.ins-donut')) { insHideTip(); return; }
             // Anchor on the drawn mark (a bar's rounded top, a cell, a goal
             // row), not the pointer, so the tip sits above what you touch.
-            const mark = hit.querySelector('path, circle') || hit;
-            const r = mark.getBoundingClientRect();
-            insShowTip(insEsc(hit.dataset.tip), r.left + r.width / 2, r.top, {
-                bottom: r.bottom,
-                touchY: ev.pointerType === 'mouse' ? null : ev.clientY,
-            });
+            // A bar group holds a full-height transparent hit area plus the
+            // bar(s): anchor on the bars (a heart rate stack's top segment
+            // included), never the hit area, or the tip sits at the top of
+            // the chart, far from the bar. A group with nothing drawn (the
+            // heart rate month lines) anchors on the finger / pointer.
+            const touchY = ev.pointerType === 'mouse' ? null : ev.clientY;
+            const r = insMarkBox(hit) || { left: ev.clientX, width: 0, top: ev.clientY, bottom: ev.clientY };
+            insShowTip(insEsc(hit.dataset.tip), r.left + r.width / 2, r.top, { bottom: r.bottom, touchY });
         } else {
             insHideTip();
         }
     };
+    // Remember what was tapped, so a redraw keeps that card in place.
+    root.addEventListener('pointerdown', ev => { insState.lastTap = ev.target; }, true);
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerdown', onMove);
     // A touch pointer "leaves" as the finger lifts, so on touch the tip stays

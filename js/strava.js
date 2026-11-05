@@ -1232,6 +1232,9 @@ function filterDrawer() {
 function openFilterDrawer() {
     const el = filterDrawer();
     el.hidden = false;
+    // Locking the page scroll can send iPhone Safari back to the top; the
+    // spot is put back on close.
+    el._scrollY = window.scrollY;
     document.documentElement.classList.add('filter-drawer-open');
     requestAnimationFrame(() => el.classList.add('is-open'));
     el.querySelector('.filter-drawer-close').focus({ preventScroll: true });
@@ -1242,6 +1245,7 @@ function closeFilterDrawer() {
     if (!el || el.hidden) return;
     el.classList.remove('is-open');
     document.documentElement.classList.remove('filter-drawer-open');
+    if (el._scrollY > 40 && window.scrollY < 5) window.scrollTo(0, el._scrollY);
     setTimeout(() => { if (!el.classList.contains('is-open')) el.hidden = true; }, 220);
 }
 
