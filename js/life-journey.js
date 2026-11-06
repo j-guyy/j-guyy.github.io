@@ -47,6 +47,7 @@
 
     let Cesium = null;
     let viewer = null;
+    let tileset = null;   // Google's 3D tiles, when they loaded
     let ready = false;    // the camera has its first pose; until then cards only update `wanted`
     let flat = false;     // true when showing the flat satellite globe instead of 3D tiles
     let pose = null;      // where the camera is now (see setPose)
@@ -57,6 +58,10 @@
     // ---- Small maths helpers ----
     const D = deg => deg * Math.PI / 180;
     const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Quick start, long gentle finish: the last stretch of a flight drifts in
+    // slowly so the city's tiles stream in before the camera settles.
+    // (Quadratic over the first 40%, cubic over the rest, joined smoothly.)
+    const arrive = t => t < 0.4 ? 0.5 * (t / 0.4) * (t / 0.4) : 1 - 0.5 * Math.pow((1 - t) / 0.6, 3);
     const smooth = t => t * t * (3 - 2 * t);
     const lerp = (a, b, t) => a + (b - a) * t;
     const lerpAngle = (a, b, t) => a + ((((b - a) % 360) + 540) % 360 - 180) * t;
@@ -169,7 +174,7 @@
         const arc = (a.stop !== undefined && b.stop !== undefined && dist > 0) ? drawArc(a, b) : null;
 
         return animate(seconds, myJob, t => {
-            const e = ease(t), bump = Math.sin(Math.PI * e);
+            const e = (b.stop !== undefined ? arrive : ease)(t), bump = Math.sin(Math.PI * e);
             let lat = a.lat, lon = a.lon;
             if (geo) {
                 const c = geo.interpolateUsingFraction(e);
@@ -292,10 +297,35 @@
     // ---- Cards ----
     async function goTo(step) {
         const myJob = ++job;
+        const started = performance.now();
         showOverview(step === 'overview');
         const target = poseFor(step, pose);
         const done = await travel(pose, target, myJob);
-        if (done && typeof step === 'number') circle(STOPS[step].speed, myJob);
+        if (done && typeof step === 'number') {
+            circle(STOPS[step].speed, myJob);
+            if (timings) timeTiles(step, started, myJob);
+        }
+    }
+
+    // ?journeyDebug: record how long each place takes to look sharp, in
+    // window.journeyTimings (seconds: flight, then arrival → all tiles loaded)
+    const timings = /[?&]journeyDebug\b/.test(location.search) ? [] : null;
+    if (timings) window.journeyTimings = timings;
+    function timeTiles(step, started, myJob) {
+        if (!tileset) return;
+        const arrived = performance.now();
+        const remove = viewer.scene.postRender.addEventListener(() => {
+            const now = performance.now();
+            if (myJob !== job || tileset.tilesLoaded || now - arrived > 60000) {
+                remove();
+                timings.push({
+                    place: STOPS[step].name, interrupted: myJob !== job,
+                    flight: +((arrived - started) / 1000).toFixed(1),
+                    sharp: +((now - arrived) / 1000).toFixed(1),
+                    total: +((now - started) / 1000).toFixed(1)
+                });
+            }
+        });
     }
 
     function parseStep(el) {
@@ -361,9 +391,21 @@
                 Cesium.GoogleMaps.defaultApiKey = await keyPromise;
                 tiles = await Cesium.createGooglePhotorealistic3DTileset(undefined, {
                     showCreditsOnScreen: true,
-                    maximumScreenSpaceError: window.matchMedia('(max-width: 768px)').matches ? 24 : 16
+                    maximumScreenSpaceError: window.matchMedia('(max-width: 768px)').matches ? 24 : 16,
+                    // Keep downloading while the camera flies (Cesium's default
+                    // pauses requests during fast moves, so a city only started
+                    // loading once we arrived)
+                    cullRequestsWhileMoving: false,
+                    // Jump towards full detail instead of sharpening one level
+                    // at a time
+                    skipLevelOfDetail: true,
+                    baseScreenSpaceError: 1024,
+                    skipScreenSpaceErrorFactor: 16,
+                    skipLevels: 1,
+                    loadSiblings: false
                 });
                 scene.primitives.add(tiles);
+                tileset = tiles;
                 scene.globe.show = false; // the tiles include the ground
             } catch (e) {
                 console.warn('Google 3D tiles unavailable, using the flat globe', e);
