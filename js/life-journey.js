@@ -47,6 +47,7 @@
 
     let Cesium = null;
     let viewer = null;
+    let ready = false;    // the camera has its first pose; until then cards only update `wanted`
     let flat = false;     // true when showing the flat satellite globe instead of 3D tiles
     let pose = null;      // where the camera is now (see setPose)
     let job = 0;          // bumped on every card change; running moves stop when it changes
@@ -319,7 +320,7 @@
                 if (step === wanted) return;
                 wanted = step;
                 updateDots(step);
-                if (viewer) goTo(step);
+                if (ready) goTo(step);
             });
         }, { rootMargin: '-45% 0px -45% 0px' }); // a card is "on" when it crosses the middle band
         steps.forEach(s => observer.observe(s));
@@ -386,6 +387,7 @@
         }).observe(stage);
 
         setPose(Object.assign({}, INTRO));
+        ready = true;
         if (wanted !== 'intro') goTo(wanted);
     }
 
