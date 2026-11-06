@@ -20,7 +20,6 @@
     <link rel="stylesheet" href="css/about.css">
     <link rel="stylesheet" href="css/life-journey.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <script src="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
     <link rel="canonical" href="https://j-guyy.github.io/about.html">
@@ -37,25 +36,76 @@
         <section class="hero">
             <h1>About Me</h1>
         </section>
-        <section class="life-journey-section">
-            <div id="life-journey-globe">
-                <!-- Pre-animation hint -->
-                <div class="journey-scroll-hint">
-                    <p>Scroll down to begin animation</p>
+        <!-- Life journey: the globe stays pinned while the cards scroll past it;
+             each card flies the camera to its place (js/life-journey.js). -->
+        <section class="journey" id="journey">
+            <div class="journey-stage">
+                <div id="life-journey-globe" aria-hidden="true"></div>
+                <div class="journey-progress" aria-hidden="true"></div>
+                <p class="journey-status" hidden></p>
+            </div>
+            <div class="journey-steps">
+                <div class="journey-step" data-step="intro">
+                    <div class="journey-card">
+                        <h2>Where I've lived</h2>
+                        <p>Seven homes, from upstate New York to the Front Range. Scroll to follow along.</p>
+                    </div>
                 </div>
-
-                <!-- Progress dots -->
-                <div class="journey-progress"></div>
-
-                <!-- Location info overlay -->
-                <div class="journey-overlay hidden">
-                    <p class="journey-location-name"></p>
-                    <p class="journey-location-detail"></p>
+                <div class="journey-step" data-step="0">
+                    <div class="journey-card">
+                        <p class="journey-years">1998</p>
+                        <h2>Rochester, NY</h2>
+                        <p>Born</p>
+                    </div>
                 </div>
-
-                <!-- Skip / Replay buttons -->
-                <button class="journey-skip-btn">Skip</button>
-                <button class="journey-replay-btn">Replay</button>
+                <div class="journey-step" data-step="1">
+                    <div class="journey-card">
+                        <p class="journey-years">2001–2016</p>
+                        <h2>Albany, NY</h2>
+                        <p>Childhood</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="2">
+                    <div class="journey-card">
+                        <p class="journey-years">2016–2020</p>
+                        <h2>Newark, DE</h2>
+                        <p>University of Delaware · Electrical Engineering</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="3">
+                    <div class="journey-card">
+                        <p class="journey-years">2020–2021</p>
+                        <h2>Houston, TX</h2>
+                        <p>ExxonMobil Field Engineering</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="4">
+                    <div class="journey-card">
+                        <p class="journey-years">2021–2022</p>
+                        <h2>Richland, WA</h2>
+                        <p>AWS Controls Engineering</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="5">
+                    <div class="journey-card">
+                        <p class="journey-years">2022–2026</p>
+                        <h2>Boulder, CO</h2>
+                        <p>AWS Systems Development Engineering</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="6">
+                    <div class="journey-card">
+                        <p class="journey-years">2026–Present</p>
+                        <h2>Superior, CO</h2>
+                        <p>Bought a house · AWS Systems Development Engineering</p>
+                    </div>
+                </div>
+                <div class="journey-step" data-step="overview">
+                    <div class="journey-card">
+                        <h2>The route so far</h2>
+                        <p>7 homes · 5 states · about 4,300 miles of moving</p>
+                    </div>
+                </div>
             </div>
         </section>
 

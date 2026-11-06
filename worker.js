@@ -6,7 +6,7 @@
 //
 // Deploy: wrangler deploy
 // Bindings: STRAVA_DATA (KV), STRAVA_KV (KV), MUSIC_DB (D1), CLIENT_ID,
-//           CLIENT_SECRET, TRAVEL_PASSWORD, MUSIC_SYNC_TOKEN (secrets)
+//           CLIENT_SECRET, TRAVEL_PASSWORD, MUSIC_SYNC_TOKEN, GOOGLE_MAPS_KEY (secrets)
 
 const ALLOWED_ORIGIN = 'https://j-guyy.github.io';
 
@@ -433,6 +433,15 @@ export default {
 
             if (path === '/summary' && request.method === 'GET') {
                 return await handleSummary(env);
+            }
+
+            // ── Google Maps key for the About page's 3D globe ──
+            // Kept as the GOOGLE_MAPS_KEY secret so it isn't in the public repo.
+            // The browser still sees it, so Google's own limits are the real
+            // protection (Map Tiles API only, site-restricted, 30 loads a day);
+            // the Origin check just keeps casual scrapers out.
+            if (path === '/maps/key' && request.method === 'GET') {
+                return handleMapsKey(request, env);
             }
 
             // ── Music (YouTube Music song leaderboard) ──
@@ -3289,6 +3298,17 @@ async function getAccessToken(env) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+const MAPS_KEY_ORIGINS = ['https://j-guyy.github.io', 'http://localhost:8000'];
+
+function handleMapsKey(request, env) {
+    const origin = request.headers.get('Origin') || '';
+    if (!MAPS_KEY_ORIGINS.includes(origin)) return json({ error: 'Forbidden' }, 403);
+    // localhost needs its own CORS origin (CORS_HEADERS only allows the site)
+    const headers = { 'Access-Control-Allow-Origin': origin, 'Cache-Control': 'private, max-age=3600', Vary: 'Origin' };
+    if (!env.GOOGLE_MAPS_KEY) return json({ error: 'GOOGLE_MAPS_KEY is not set' }, 404, headers);
+    return json({ key: env.GOOGLE_MAPS_KEY }, 200, headers);
+}
 
 function json(data, status = 200, extraHeaders = {}) {
     return new Response(JSON.stringify(data), {
