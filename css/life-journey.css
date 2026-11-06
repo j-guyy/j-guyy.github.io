@@ -1,101 +1,100 @@
-/* Life Journey 3D Globe */
-.life-journey-section {
+/* Life journey (about.html): a full-screen globe pinned in place while one
+   card per place scrolls over it. js/life-journey.js moves the camera as each
+   card reaches the middle of the screen. */
+
+.journey {
     position: relative;
-    width: 100%;
     margin: 40px 0;
+    --stage-h: 100vh;
+}
+
+@supports (height: 100svh) {
+    .journey { --stage-h: 100svh; }
+}
+
+.journey-stage {
+    position: sticky;
+    top: 0;
+    height: var(--stage-h);
     overflow: hidden;
-}
-
-.life-journey-section h2 {
-    text-align: center;
-    font-size: 2.2em;
-    margin-bottom: 10px;
-    color: var(--text-color);
-}
-
-.life-journey-section .section-subtitle {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 20px;
-    font-size: 1.1em;
-}
-
-#life-journey-globe {
-    width: 100%;
-    height: 70vh;
-    min-height: 500px;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
     background: #000;
 }
 
-.journey-scroll-hint {
+#life-journey-globe {
     position: absolute;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: 0;
+    pointer-events: none; /* the page scrolls; the camera follows the cards */
+}
+
+/* Cards scroll over the pinned stage */
+.journey-steps {
+    position: relative;
     z-index: 2;
-    text-align: center;
+    margin-top: calc(-1 * var(--stage-h));
     pointer-events: none;
-    animation: pulse-text 2.5s ease-in-out infinite;
 }
 
-.journey-scroll-hint p {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 1.1em;
+.journey-step {
+    min-height: var(--stage-h);
+    display: flex;
+    align-items: center;
+    padding: 0 5%;
+    box-sizing: border-box;
+}
+
+.journey-card {
+    pointer-events: auto;
+    max-width: 380px;
+    background: var(--surface);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 22px;
+    color: var(--text);
+    opacity: 0.4;
+    transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.journey-step.is-active .journey-card {
+    opacity: 1;
+}
+
+.journey-card h2 {
+    margin: 0 0 6px;
+    font-size: 1.6em;
+    color: var(--text);
+}
+
+.journey-card p {
     margin: 0;
+    color: var(--text-dim);
 }
 
-/* Location info overlay */
-.journey-overlay {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    text-align: center;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 12px 24px;
-    border-radius: 8px;
-    backdrop-filter: blur(6px);
+.journey-card .journey-years {
+    color: #81C784;
+    font-size: var(--text-sm);
+    margin-bottom: 4px;
 }
 
-.journey-overlay.hidden {
-    opacity: 0;
-}
-
-.journey-location-name {
-    font-size: 2em;
-    font-weight: bold;
-    color: #fff;
-    margin: 0;
-    letter-spacing: 1px;
-}
-
-.journey-location-detail {
-    font-size: 1.1em;
-    color: rgba(255, 255, 255, 0.85);
-    margin: 5px 0 0 0;
-}
-
-/* Progress dots */
+/* One dot per place, down the right edge */
 .journey-progress {
     position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
     display: flex;
+    flex-direction: column;
     gap: 12px;
     pointer-events: none;
 }
 
 .journey-dot {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.3);
     border: 2px solid rgba(255, 255, 255, 0.5);
@@ -103,137 +102,68 @@
         box-shadow var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
 }
 
-.journey-dot.active {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 10px var(--primary-color);
-    transform: scale(1.2);
-}
-
 .journey-dot.visited {
     background: rgba(76, 175, 80, 0.5);
     border-color: rgba(76, 175, 80, 0.7);
 }
 
-/* Interaction prompt */
-.journey-interact-prompt {
+.journey-dot.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px var(--primary-color);
+    transform: scale(1.25);
+}
+
+.journey-status {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 10;
-    text-align: center;
+    z-index: 3;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: var(--text-sm);
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 1s ease;
 }
 
-.journey-interact-prompt.visible {
-    opacity: 1;
-}
-
-.journey-interact-prompt p {
-    font-size: 1.3em;
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-    animation: pulse-text 2s ease-in-out infinite;
-}
-
-@keyframes pulse-text {
-
-    0%,
-    100% {
-        opacity: 0.7;
-    }
-
-    50% {
-        opacity: 1;
-    }
-}
-
-/* Skip button */
-.journey-skip-btn {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    z-index: 10;
-    padding: 8px 18px;
-    font-size: 0.9em;
-    background: rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
-}
-
-.journey-skip-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: #fff;
-}
-
-.journey-skip-btn.hidden {
-    display: none;
-}
-
-/* Replay button */
-.journey-replay-btn {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    z-index: 10;
-    padding: 8px 18px;
-    font-size: 0.9em;
-    background: rgba(76, 175, 80, 0.3);
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--primary-color);
-    border-radius: 20px;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
-    display: none;
-}
-
-.journey-replay-btn:hover {
-    background: rgba(76, 175, 80, 0.5);
-}
-
-/* Hide Cesium default UI clutter */
+/* Cesium: no widgets, but keep the data credits (Google requires them) */
 #life-journey-globe .cesium-viewer-toolbar,
 #life-journey-globe .cesium-viewer-animationContainer,
 #life-journey-globe .cesium-viewer-timelineContainer,
-#life-journey-globe .cesium-viewer-fullscreenContainer,
+#life-journey-globe .cesium-viewer-fullscreenContainer {
+    display: none !important;
+}
+
 #life-journey-globe .cesium-viewer-bottom {
-    display: none !important;
-}
-
-#life-journey-globe .cesium-credit-logoContainer,
-#life-journey-globe .cesium-credit-textContainer {
-    display: none !important;
-}
-
-#life-journey-globe .cesium-widget-credits {
-    display: none !important;
+    pointer-events: auto;
 }
 
 @media (max-width: 768px) {
-    #life-journey-globe {
-        height: 50vh;
-        min-height: 350px;
+    .journey-step {
+        align-items: flex-end;
+        padding: 0 16px 56px;
     }
 
-    .journey-location-name {
-        font-size: 1.1em;
+    .journey-card {
+        max-width: none;
+        width: 100%;
+        padding: 14px 18px;
     }
 
-    .journey-location-detail {
-        font-size: 0.8em;
+    .journey-card h2 {
+        font-size: 1.3em;
+    }
+
+    .journey-progress {
+        top: 76px; /* below the navbar */
+        right: 50%;
+        transform: translateX(50%);
+        flex-direction: row;
+        gap: 10px;
     }
 
     .journey-dot {
-        width: 9px;
-        height: 9px;
-        gap: 8px;
+        width: 8px;
+        height: 8px;
     }
 }

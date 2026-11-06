@@ -1,511 +1,417 @@
+// Life journey on about.html: a Cesium globe pinned behind a column of cards,
+// one per place I've lived. As a card reaches the middle of the screen the
+// camera flies there (a chase cam along the great circle, with a glowing arc
+// in the sky) and slowly circles the place. The last card pulls back to show
+// the whole route.
+//
+// 3D buildings and terrain are Google Photorealistic 3D Tiles. The Google key
+// isn't in the repo: the worker hands it out from its GOOGLE_MAPS_KEY secret
+// (/maps/key). Google only accepts it from j-guyy.github.io and localhost:8000,
+// only for the Map Tiles API, and caps it at 30 page loads a day (each visit
+// that opens the globe uses one). When the tiles can't load (no key, cap
+// reached, error, low-memory phone) the page falls back to a flat satellite
+// globe with the same camera moves.
 (function () {
     'use strict';
 
-    const LOCATIONS = [
-        { name: 'Rochester, NY', detail: 'Born', lat: 43.1566, lon: -77.6088, years: '1998' },
-        { name: 'Albany, NY', detail: 'Childhood', lat: 42.6526, lon: -73.7562, years: '2001–2016' },
-        { name: 'Newark, DE', detail: 'University of Delaware · Electrical Engineering', lat: 39.6837, lon: -75.7497, years: '2016–2020' },
-        { name: 'Houston, TX', detail: 'ExxonMobil Field Engineering', lat: 29.7604, lon: -95.3698, years: '2020–2021' },
-        { name: 'Richland, WA', detail: 'AWS Controls Engineering', lat: 46.2856, lon: -119.2845, years: '2021–2022' },
-        { name: 'Boulder, CO', detail: 'AWS Systems Development Engineering', lat: 40.0150, lon: -105.2705, years: '2022–2026' },
-        { name: 'Superior, CO', detail: 'Purchased a house · AWS Systems Development Engineering', lat: 39.9528, lon: -105.1686, years: '2026–Present' }
+    const KEY_URL = 'https://strava-worker.justinguyette.workers.dev/maps/key';
+    const CESIUM_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js';
+
+    // Each place: the landmark the camera circles, how far away (m) and how
+    // steep (deg), the circling speed (deg/s), and the ground height there (m).
+    // `label` moves a label left, right or below where places sit close together.
+    // Superior circles the town center, never the house.
+    const STOPS = [
+        { name: 'Rochester, NY', lat: 43.1590, lon: -77.6150, elev: 160, label: 'left',
+          range: 3200, pitch: -25, speed: 10 },
+        { name: 'Albany, NY', lat: 42.6510, lon: -73.7590, elev: 60, label: 'right',
+          range: 3000, pitch: -24, speed: 10 },
+        { name: 'Newark, DE', lat: 39.6780, lon: -75.7510, elev: 35, label: 'below',
+          range: 2400, pitch: -26, speed: 10 },
+        { name: 'Houston, TX', lat: 29.7580, lon: -95.3670, elev: 15,
+          range: 3600, pitch: -20, speed: 12 },
+        { name: 'Richland, WA', lat: 46.2790, lon: -119.2760, elev: 110,
+          range: 5000, pitch: -18, speed: 9 },
+        { name: 'Boulder, CO', lat: 40.0035, lon: -105.2790, elev: 1650, label: 'left',
+          range: 4200, pitch: -22, speed: 12 },
+        { name: 'Superior, CO', lat: 39.9528, lon: -105.1686, elev: 1700, label: 'right',
+          range: 2600, pitch: -20, speed: 8 }
     ];
+    // Camera poses for the first and last cards: what we look at, from where
+    const INTRO = { lat: 39, lon: -96, ground: 0, heading: 0, pitch: -89, range: 10000000 };
+    // (centered west of the route so it clears the card on the left)
+    const OVERVIEW = { lat: 39.5, lon: -104, ground: 0, heading: 0, pitch: -72, range: 4900000 };
 
-    const FLIGHT_DURATION = 2.5;
-    const PAUSE_DURATION = 2500;
-    const ZOOM_HEIGHT = 80000;
-    const OVERVIEW_HEIGHT = 15000000;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lowMemory = navigator.deviceMemory !== undefined && navigator.deviceMemory < 4;
 
+    let Cesium = null;
     let viewer = null;
-    let animationRunning = false;
-    let skipRequested = false;
-    let entities = [];
+    let flat = false;     // true when showing the flat satellite globe instead of 3D tiles
+    let pose = null;      // where the camera is now (see setPose)
+    let job = 0;          // bumped on every card change; running moves stop when it changes
+    let wanted = 'intro'; // the card in the middle of the screen
+    let overviewLayer = null;
 
-    function initGlobe() {
-        const container = document.getElementById('life-journey-globe');
-        if (!container) return;
+    // ---- Small maths helpers ----
+    const D = deg => deg * Math.PI / 180;
+    const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const smooth = t => t * t * (3 - 2 * t);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const lerpAngle = (a, b, t) => a + ((((b - a) % 360) + 540) % 360 - 180) * t;
 
-        if (typeof Cesium === 'undefined') {
-            container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px;">Failed to load 3D globe library.</p>';
-            return;
-        }
+    // Compass bearing (deg) from a to b along the great circle
+    function bearing(a, b) {
+        const p1 = D(a.lat), p2 = D(b.lat), dl = D(b.lon - a.lon);
+        const y = Math.sin(dl) * Math.cos(p2);
+        const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+    // Direction of travel on arriving at b from a
+    const arrivalBearing = (a, b) => (bearing(b, a) + 180) % 360;
 
+    // The Google key, from the worker (gives up after 5 s)
+    async function fetchGoogleKey() {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
         try {
-            // Hide the scroll hint
-            const hint = container.querySelector('.journey-scroll-hint');
-            if (hint) hint.style.display = 'none';
+            const res = await fetch(KEY_URL, { signal: ctrl.signal });
+            if (!res.ok) throw new Error('Key request failed: ' + res.status);
+            const { key } = await res.json();
+            if (!key) throw new Error('No key in response');
+            return key;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
 
-            // Prevent Cesium from trying to reach Ion at all
-            Cesium.Ion.defaultAccessToken = '';
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('Could not load ' + src));
+            document.head.appendChild(s);
+        });
+    }
 
-            // Create the viewer with NO default imagery (we add our own after)
-            viewer = new Cesium.Viewer('life-journey-globe', {
-                baseLayer: false,  // no default layer — we add OSM manually
-                terrain: Cesium.Terrain.fromWorldTerrain ? undefined : undefined,
-                baseLayerPicker: false,
-                geocoder: false,
-                homeButton: false,
-                sceneModePicker: false,
-                selectionIndicator: false,
-                navigationHelpButton: false,
-                animation: false,
-                timeline: false,
-                fullscreenButton: false,
-                infoBox: false,
-                creditContainer: document.createElement('div'),
-                skyBox: false,
-                scene3DOnly: true,
-                requestRenderMode: false,
-                maximumRenderTimeChange: Infinity
+    // ---- Camera ----
+    // A pose is the point we look at (lat, lon, ground height) plus heading,
+    // pitch and distance. Every move goes through here, so a move interrupted
+    // by the next card can start from wherever the camera is.
+    function setPose(p) {
+        pose = p;
+        viewer.camera.lookAt(
+            Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ground),
+            new Cesium.HeadingPitchRange(D(p.heading), D(p.pitch), p.range));
+    }
+
+    function poseFor(step, from) {
+        if (step === 'intro') return Object.assign({}, INTRO);
+        if (step === 'overview') {
+            // A tall phone screen shows less width: centre the route and pull back
+            if (window.innerWidth < window.innerHeight) {
+                return Object.assign({}, OVERVIEW, { lon: -93, lat: 38, pitch: -80,
+                    range: OVERVIEW.range * Math.min(2.0, 0.95 * window.innerHeight / window.innerWidth) });
+            }
+            return Object.assign({}, OVERVIEW);
+        }
+        const s = STOPS[step];
+        const far = from && surfaceDistance(from, s) > 20000;
+        return {
+            lat: s.lat, lon: s.lon, ground: flat ? 0 : s.elev, stop: step,
+            // Arrive facing the way we travelled; a short hop keeps its heading
+            heading: far ? arrivalBearing(from, s) : (from ? from.heading : 200),
+            pitch: s.pitch, range: s.range
+        };
+    }
+
+    function surfaceDistance(a, b) {
+        if (a.lat === b.lat && a.lon === b.lon) return 0;
+        return new Cesium.EllipsoidGeodesic(
+            Cesium.Cartographic.fromDegrees(a.lon, a.lat),
+            Cesium.Cartographic.fromDegrees(b.lon, b.lat)).surfaceDistance;
+    }
+
+    // Run fn(t) each frame for `seconds`, t from 0 to 1. Resolves true when it
+    // finished, false when a newer card took over first.
+    function animate(seconds, myJob, fn) {
+        return new Promise(resolve => {
+            if (seconds <= 0) { fn(1); resolve(true); return; }
+            const start = performance.now();
+            function tick() {
+                if (myJob !== job) { resolve(false); return; }
+                const t = Math.min((performance.now() - start) / (seconds * 1000), 1);
+                fn(t);
+                if (t < 1) requestAnimationFrame(tick); else resolve(true);
+            }
+            requestAnimationFrame(tick);
+        });
+    }
+
+    // Chase-cam flight from pose a to pose b: the point we look at slides along
+    // the great circle while the camera pulls back and tilts down mid-way,
+    // turning to face the direction of travel and then the arrival view.
+    // A long hop climbs high enough to see the curve of the earth; a short one
+    // (Boulder → Superior) stays a low glide.
+    function travel(a, b, myJob) {
+        const dist = surfaceDistance(a, b);
+        const far = dist > 20000, near = dist < 50000;
+        const seconds = reduceMotion ? 0 : near ? 6 : Math.min(3.5 + dist / 450000, 9);
+        const lift = near ? 1800
+            : Math.max(0, Math.min(Math.max(dist * 0.55, 1800), 1400000) - Math.max(a.range, b.range));
+        const tilt = near ? 8 : 30;
+        const dep = far ? bearing(a, b) : 0, arr = far ? arrivalBearing(a, b) : 0;
+        const geo = dist > 0 ? new Cesium.EllipsoidGeodesic(
+            Cesium.Cartographic.fromDegrees(a.lon, a.lat),
+            Cesium.Cartographic.fromDegrees(b.lon, b.lat)) : null;
+        const arc = (a.stop !== undefined && b.stop !== undefined && dist > 0) ? drawArc(a, b) : null;
+
+        return animate(seconds, myJob, t => {
+            const e = ease(t), bump = Math.sin(Math.PI * e);
+            let lat = a.lat, lon = a.lon;
+            if (geo) {
+                const c = geo.interpolateUsingFraction(e);
+                lat = Cesium.Math.toDegrees(c.latitude);
+                lon = Cesium.Math.toDegrees(c.longitude);
+            }
+            let heading;
+            if (!far) heading = lerpAngle(a.heading, b.heading, e);
+            else if (e < 0.2) heading = lerpAngle(a.heading, dep, smooth(e / 0.2));
+            else if (e > 0.8) heading = lerpAngle(arr, b.heading, smooth((e - 0.8) / 0.2));
+            else heading = lerpAngle(dep, arr, (e - 0.2) / 0.6);
+            setPose({
+                lat, lon, ground: lerp(a.ground, b.ground, e), stop: e === 1 ? b.stop : undefined,
+                heading,
+                pitch: Math.max(-89, lerp(a.pitch, b.pitch, e) - bump * tilt),
+                // Distance changes on a log scale so a dive from space feels even
+                range: Math.exp(lerp(Math.log(a.range), Math.log(b.range), e)) + bump * lift
             });
+            if (arc) arc.progress(Math.min(e * 1.15 + 0.02, 1));
+        }).then(done => {
+            if (arc) arc.remove();
+            return done;
+        });
+    }
 
-            // Add ESRI World Imagery (satellite) tiles
-            viewer.imageryLayers.addImageryProvider(
-                new Cesium.UrlTemplateImageryProvider({
-                    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                    maximumLevel: 19,
-                    credit: new Cesium.Credit('Esri, Maxar, Earthstar Geographics')
+    // Circle the current place until the next card takes over
+    function circle(speed, myJob) {
+        if (reduceMotion) return;
+        const start = performance.now();
+        let last = start;
+        function tick(now) {
+            if (myJob !== job) return;
+            const ramp = Math.min((now - start) / 1500, 1); // ease into the turn
+            pose.heading += speed * ramp * (now - last) / 1000;
+            last = now;
+            setPose(pose);
+            requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+
+    // ---- Route arcs and labels ----
+    function arcPoints(a, b, progress) {
+        const g = new Cesium.EllipsoidGeodesic(
+            Cesium.Cartographic.fromDegrees(a.lon, a.lat),
+            Cesium.Cartographic.fromDegrees(b.lon, b.lat));
+        const peak = Math.max(g.surfaceDistance * 0.12, 1200);
+        const n = 64, last = Math.max(1, Math.round(n * progress)), pts = [];
+        for (let i = 0; i <= last; i++) {
+            const f = i / n;
+            const c = g.interpolateUsingFraction(f);
+            pts.push(Cesium.Cartesian3.fromRadians(c.longitude, c.latitude,
+                lerp(a.ground, b.ground, f) + Math.sin(Math.PI * f) * peak));
+        }
+        return pts;
+    }
+
+    function arcLine(positions) {
+        return {
+            polyline: {
+                positions, width: 5, arcType: Cesium.ArcType.NONE,
+                material: new Cesium.PolylineGlowMaterialProperty({
+                    glowPower: 0.2, color: Cesium.Color.fromCssColorString('#4CAF50')
                 })
-            );
-
-            // Style the scene
-            viewer.scene.backgroundColor = Cesium.Color.BLACK;
-            viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#1a1a2e');
-            viewer.scene.globe.enableLighting = false;
-            viewer.scene.globe.showGroundAtmosphere = true;
-
-            // Add atmosphere
-            if (viewer.scene.skyAtmosphere) {
-                viewer.scene.skyAtmosphere.show = true;
             }
+        };
+    }
 
-            // Force a render to make sure the globe appears
-            viewer.scene.requestRender();
+    // The arc drawn during a flight, growing as `progress` goes 0 → 1
+    function drawArc(a, b) {
+        let p = 0;
+        const entity = viewer.entities.add(arcLine(
+            new Cesium.CallbackProperty(() => arcPoints(a, b, p), false)));
+        return {
+            progress(v) { p = v; },
+            remove() { viewer.entities.remove(entity); }
+        };
+    }
 
-            // Add a transparent overlay that lets wheel events scroll the page.
-            // Clicking the overlay removes it so the user can interact with the globe.
-            const scrollGuard = document.createElement('div');
-            scrollGuard.className = 'journey-scroll-guard';
-            scrollGuard.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;cursor:grab;';
-            container.style.position = 'relative';
-            container.appendChild(scrollGuard);
-
-            // "Click to interact" prompt on the guard
-            const guardPrompt = document.createElement('div');
-            const isMobile = window.matchMedia('(max-width: 768px)').matches;
-            guardPrompt.textContent = isMobile ? 'Tap to interact' : 'Click to interact';
-            guardPrompt.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
-                'color:rgba(255,255,255,0.8);font-size:1.2em;background:rgba(0,0,0,0.5);' +
-                'padding:10px 22px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity 0.3s ease;';
-            scrollGuard.appendChild(guardPrompt);
-
-            let guardPromptTimeout = null;
-            function showGuardPrompt() {
-                if (animationRunning) return;
-                guardPrompt.style.opacity = '1';
-                clearTimeout(guardPromptTimeout);
-                guardPromptTimeout = setTimeout(() => { guardPrompt.style.opacity = '0'; }, 1500);
-            }
-
-            scrollGuard.addEventListener('wheel', showGuardPrompt, { passive: true });
-            scrollGuard.addEventListener('mousemove', showGuardPrompt);
-
-            scrollGuard.addEventListener('click', function () {
-                scrollGuard.style.pointerEvents = 'none';
-                guardPrompt.style.opacity = '0';
-            });
-
-            // Re-enable guard when mouse leaves the container
-            container.addEventListener('mouseleave', function () {
-                if (!animationRunning) {
-                    scrollGuard.style.pointerEvents = 'auto';
+    // The whole route with labels, shown only on the last card (labels draw
+    // over everything, so they'd float over the city views)
+    function showOverview(show) {
+        if (show && !overviewLayer) {
+            overviewLayer = new Cesium.CustomDataSource('route');
+            const green = Cesium.Color.fromCssColorString('#4CAF50');
+            const phone = window.matchMedia('(max-width: 768px)').matches;
+            STOPS.forEach((s, i) => {
+                const here = { lat: s.lat, lon: s.lon, ground: flat ? 0 : s.elev };
+                const next = STOPS[i + 1];
+                if (next) {
+                    overviewLayer.entities.add(arcLine(arcPoints(here,
+                        { lat: next.lat, lon: next.lon, ground: flat ? 0 : next.elev }, 1)));
                 }
+                const side = s.label === 'left' ? -1 : s.label === 'right' ? 1 : 0;
+                const below = s.label === 'below';
+                overviewLayer.entities.add({
+                    position: Cesium.Cartesian3.fromDegrees(s.lon, s.lat, here.ground),
+                    point: {
+                        pixelSize: 9, color: green, outlineColor: Cesium.Color.WHITE, outlineWidth: 2,
+                        disableDepthTestDistance: Number.POSITIVE_INFINITY
+                    },
+                    label: {
+                        text: s.name, font: (phone ? '12px' : '14px') + ' system-ui, sans-serif',
+                        fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 2,
+                        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                        verticalOrigin: below ? Cesium.VerticalOrigin.TOP : Cesium.VerticalOrigin.BOTTOM,
+                        horizontalOrigin: side < 0 ? Cesium.HorizontalOrigin.RIGHT
+                            : side > 0 ? Cesium.HorizontalOrigin.LEFT : Cesium.HorizontalOrigin.CENTER,
+                        pixelOffset: new Cesium.Cartesian2(side * 4, below ? 12 : -12),
+                        showBackground: true, backgroundColor: new Cesium.Color(0, 0, 0, 0.6),
+                        disableDepthTestDistance: Number.POSITIVE_INFINITY
+                    }
+                });
             });
+            viewer.dataSources.add(overviewLayer);
+        }
+        if (overviewLayer) overviewLayer.show = show;
+    }
 
+    // ---- Cards ----
+    async function goTo(step) {
+        const myJob = ++job;
+        showOverview(step === 'overview');
+        const target = poseFor(step, pose);
+        const done = await travel(pose, target, myJob);
+        if (done && typeof step === 'number') circle(STOPS[step].speed, myJob);
+    }
+
+    function parseStep(el) {
+        const v = el.dataset.step;
+        return v === 'intro' || v === 'overview' ? v : Number(v);
+    }
+
+    function updateDots(step) {
+        const idx = step === 'intro' ? -1 : step === 'overview' ? STOPS.length : step;
+        document.querySelectorAll('.journey-dot').forEach((dot, i) => {
+            dot.className = 'journey-dot' + (i === idx ? ' active' : i < idx ? ' visited' : '');
+        });
+    }
+
+    function watchCards() {
+        const steps = document.querySelectorAll('.journey-step');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                steps.forEach(s => s.classList.toggle('is-active', s === entry.target));
+                const step = parseStep(entry.target);
+                if (step === wanted) return;
+                wanted = step;
+                updateDots(step);
+                if (viewer) goTo(step);
+            });
+        }, { rootMargin: '-45% 0px -45% 0px' }); // a card is "on" when it crosses the middle band
+        steps.forEach(s => observer.observe(s));
+    }
+
+    // ---- Setup ----
+    async function startGlobe(stage) {
+        const status = stage.querySelector('.journey-status');
+        status.hidden = false;
+        status.textContent = 'Loading globe…';
+        // Ask for the key while Cesium downloads (not at all on low-memory phones)
+        const keyPromise = lowMemory ? null : fetchGoogleKey();
+        if (keyPromise) keyPromise.catch(() => {}); // handled where it's awaited
+        try {
+            await loadScript(CESIUM_URL);
+            Cesium = window.Cesium;
+            Cesium.Ion.defaultAccessToken = '';
+            viewer = new Cesium.Viewer('life-journey-globe', {
+                baseLayer: false, baseLayerPicker: false, geocoder: false, homeButton: false,
+                sceneModePicker: false, selectionIndicator: false, navigationHelpButton: false,
+                animation: false, timeline: false, fullscreenButton: false, infoBox: false,
+                skyBox: false, scene3DOnly: true
+            });
         } catch (e) {
-            console.error('Cesium Viewer init failed:', e);
-            container.innerHTML = '<p style="color:#f66;text-align:center;padding:40px;">Error initializing 3D globe. Check console.</p>';
+            console.error('Life journey globe failed to start', e);
+            status.textContent = 'The 3D globe could not load in this browser.';
             return;
         }
+        const scene = viewer.scene;
+        scene.backgroundColor = Cesium.Color.BLACK;
+        scene.skyAtmosphere.show = true;
+        const ctrl = scene.screenSpaceCameraController;
+        ctrl.enableInputs = false; // the page scroll drives the camera
 
-        setInteraction(false);
-        addLocationPins();
-        buildProgressDots();
-        startJourney();
-    }
-
-    function setInteraction(enabled) {
-        const ctrl = viewer.scene.screenSpaceCameraController;
-        ctrl.enableRotate = enabled;
-        ctrl.enableTranslate = enabled;
-        ctrl.enableTilt = enabled;
-        ctrl.enableLook = enabled;
-        ctrl.enableZoom = enabled;
-    }
-
-    function addLocationPins() {
-        LOCATIONS.forEach((loc, i) => {
-            // Offset nearby labels so they don't overlap
-            let labelPixelOffset = new Cesium.Cartesian2(0, -15);
-            let labelHAlign = Cesium.HorizontalOrigin.CENTER;
-            if (loc.name === 'Rochester, NY') {
-                labelPixelOffset = new Cesium.Cartesian2(-1, -15);
-                labelHAlign = Cesium.HorizontalOrigin.RIGHT;
-            } else if (loc.name === 'Albany, NY') {
-                labelPixelOffset = new Cesium.Cartesian2(1, -15);
-                labelHAlign = Cesium.HorizontalOrigin.LEFT;
-            } else if (loc.name === 'Boulder, CO') {
-                labelPixelOffset = new Cesium.Cartesian2(-6, -15);
-                labelHAlign = Cesium.HorizontalOrigin.RIGHT;
-            } else if (loc.name === 'Superior, CO') {
-                labelPixelOffset = new Cesium.Cartesian2(6, -15);
-                labelHAlign = Cesium.HorizontalOrigin.LEFT;
-            }
-
-            const entity = viewer.entities.add({
-                position: Cesium.Cartesian3.fromDegrees(loc.lon, loc.lat),
-                point: {
-                    pixelSize: 0,
-                    color: Cesium.Color.fromCssColorString('#4CAF50'),
-                    outlineColor: Cesium.Color.WHITE,
-                    outlineWidth: 2,
-                    disableDepthTestDistance: Number.POSITIVE_INFINITY,
-                    eyeOffset: new Cesium.Cartesian3(0, 0, -1) // behind labels
-                },
-                label: {
-                    text: '',
-                    font: '14px Arial',
-                    fillColor: Cesium.Color.WHITE,
-                    outlineColor: Cesium.Color.BLACK,
-                    outlineWidth: 2,
-                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                    horizontalOrigin: labelHAlign,
-                    pixelOffset: labelPixelOffset,
-                    disableDepthTestDistance: Number.POSITIVE_INFINITY,
-                    eyeOffset: new Cesium.Cartesian3(0, 0, -2), // in front of pins
-                    showBackground: true,
-                    backgroundColor: new Cesium.Color(0, 0, 0, 0.7),
-                    backgroundPadding: new Cesium.Cartesian2(8, 5),
-                    show: false
-                }
-            });
-            entities.push(entity);
-        });
-    }
-
-    function revealPin(index) {
-        const entity = entities[index];
-        const loc = LOCATIONS[index];
-        entity.point.pixelSize = 10;
-        entity.label.text = loc.name;
-        entity.label.show = true;
-    }
-
-    function addArcLine(fromIndex, toIndex) {
-        const from = LOCATIONS[fromIndex];
-        const to = LOCATIONS[toIndex];
-        // Static line (used for ensure-all-visible at the end)
-        viewer.entities.add({
-            polyline: {
-                positions: Cesium.Cartesian3.fromDegreesArray([
-                    from.lon, from.lat, to.lon, to.lat
-                ]),
-                width: 2,
-                material: new Cesium.PolylineGlowMaterialProperty({
-                    glowPower: 0.15,
-                    color: Cesium.Color.fromCssColorString('#4CAF50').withAlpha(0.6)
-                }),
-                clampToGround: true
-            }
-        });
-    }
-
-    function animateArcLine(fromIndex, toIndex, durationMs) {
-        return new Promise((resolve) => {
-            const from = LOCATIONS[fromIndex];
-            const to = LOCATIONS[toIndex];
-            const startTime = performance.now();
-            let entity = null;
-
-            function interpolate(t) {
-                const lon = from.lon + (to.lon - from.lon) * t;
-                const lat = from.lat + (to.lat - from.lat) * t;
-                return [lon, lat];
-            }
-
-            // Use a CallbackProperty so the line grows each frame
-            let progress = 0;
-            entity = viewer.entities.add({
-                polyline: {
-                    positions: new Cesium.CallbackProperty(() => {
-                        const steps = Math.max(2, Math.floor(progress * 20) + 2);
-                        const coords = [];
-                        for (let s = 0; s <= steps - 1; s++) {
-                            const t = (s / (steps - 1)) * progress;
-                            const [lon, lat] = interpolate(t);
-                            coords.push(lon, lat);
-                        }
-                        return Cesium.Cartesian3.fromDegreesArray(coords);
-                    }, false),
-                    width: 2,
-                    material: new Cesium.PolylineGlowMaterialProperty({
-                        glowPower: 0.15,
-                        color: Cesium.Color.fromCssColorString('#4CAF50').withAlpha(0.6)
-                    }),
-                    clampToGround: true
-                }
-            });
-
-            function tick() {
-                const elapsed = performance.now() - startTime;
-                progress = Math.min(elapsed / durationMs, 1);
-                if (progress < 1 && !skipRequested) {
-                    requestAnimationFrame(tick);
-                } else {
-                    // Replace with a static line so CallbackProperty stops
-                    viewer.entities.remove(entity);
-                    addArcLine(fromIndex, toIndex);
-                    resolve();
-                }
-            }
-            requestAnimationFrame(tick);
-        });
-    }
-
-    function buildProgressDots() {
-        const container = document.querySelector('.journey-progress');
-        if (!container) return;
-        container.innerHTML = '';
-        LOCATIONS.forEach((loc) => {
-            const dot = document.createElement('div');
-            dot.className = 'journey-dot';
-            dot.title = loc.name;
-            container.appendChild(dot);
-        });
-    }
-
-    function updateProgressDot(index) {
-        document.querySelectorAll('.journey-dot').forEach((dot, i) => {
-            if (i < index) dot.className = 'journey-dot visited';
-            else if (i === index) dot.className = 'journey-dot active';
-            else dot.className = 'journey-dot';
-        });
-    }
-
-    function updateOverlay(index) {
-        const nameEl = document.querySelector('.journey-location-name');
-        const detailEl = document.querySelector('.journey-location-detail');
-        const overlay = document.querySelector('.journey-overlay');
-        if (!nameEl || !overlay) return;
-        overlay.classList.remove('hidden');
-        const loc = LOCATIONS[index];
-        nameEl.textContent = loc.name;
-        detailEl.textContent = loc.detail + ' · ' + loc.years;
-    }
-
-    function hideOverlay() {
-        const overlay = document.querySelector('.journey-overlay');
-        if (overlay) overlay.classList.add('hidden');
-    }
-
-    function flyTo(lat, lon, height, duration) {
-        return new Promise((resolve) => {
-            viewer.camera.flyTo({
-                destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
-                orientation: {
-                    heading: Cesium.Math.toRadians(0),
-                    pitch: Cesium.Math.toRadians(-90),
-                    roll: 0
-                },
-                duration: duration,
-                complete: resolve,
-                cancel: resolve
-            });
-        });
-    }
-
-    function wait(ms) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-
-    function spinGlobe(durationMs) {
-        return new Promise((resolve) => {
-            const startTime = performance.now();
-            const startLon = -98; // start over the US
-            const lat = 40;
-            const height = 12000000;
-
-            function tick() {
-                if (skipRequested) { resolve(); return; }
-                const elapsed = performance.now() - startTime;
-                const progress = Math.min(elapsed / durationMs, 1);
-                // Ease in-out for smooth start/stop
-                const eased = progress < 0.5
-                    ? 2 * progress * progress
-                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                const lon = startLon - 360 * eased;
-
-                viewer.camera.setView({
-                    destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
-                    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 }
+        let tiles = null;
+        if (!lowMemory) {
+            try {
+                Cesium.GoogleMaps.defaultApiKey = await keyPromise;
+                tiles = await Cesium.createGooglePhotorealistic3DTileset(undefined, {
+                    showCreditsOnScreen: true,
+                    maximumScreenSpaceError: window.matchMedia('(max-width: 768px)').matches ? 24 : 16
                 });
-
-                if (progress < 1) {
-                    requestAnimationFrame(tick);
-                } else {
-                    resolve();
-                }
+                scene.primitives.add(tiles);
+                scene.globe.show = false; // the tiles include the ground
+            } catch (e) {
+                console.warn('Google 3D tiles unavailable, using the flat globe', e);
+                tiles = null;
             }
-            requestAnimationFrame(tick);
-        });
-    }
-
-    async function startJourney() {
-        animationRunning = true;
-        skipRequested = false;
-
-        const skipBtn = document.querySelector('.journey-skip-btn');
-        const replayBtn = document.querySelector('.journey-replay-btn');
-        if (skipBtn) skipBtn.classList.remove('hidden');
-        if (replayBtn) replayBtn.style.display = 'none';
-
-        // Reset pins
-        entities.forEach((e) => {
-            e.point.pixelSize = 0;
-            e.label.show = false;
-        });
-
-        // Remove old arc lines
-        const toRemove = [];
-        viewer.entities.values.forEach(e => { if (e.polyline) toRemove.push(e); });
-        toRemove.forEach(e => viewer.entities.remove(e));
-
-        // Start zoomed out with Earth visible, tilted at an angle
-        viewer.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(-75, 0, 25000000),
-            orientation: {
-                heading: Cesium.Math.toRadians(350),
-                pitch: Cesium.Math.toRadians(-80),
-                roll: 0
-            }
-        });
-
-        await wait(600);
-
-        // Slow cinematic dive into Rochester, straightening out as we descend
-        if (!skipRequested) {
-            await new Promise((resolve) => {
-                viewer.camera.flyTo({
-                    destination: Cesium.Cartesian3.fromDegrees(
-                        LOCATIONS[0].lon, LOCATIONS[0].lat, ZOOM_HEIGHT
-                    ),
-                    orientation: {
-                        heading: Cesium.Math.toRadians(0),
-                        pitch: Cesium.Math.toRadians(-90),
-                        roll: 0
-                    },
-                    duration: 5,
-                    complete: resolve,
-                    cancel: resolve
-                });
-            });
         }
-
-        // Reveal first pin and pause
-        if (!skipRequested) {
-            revealPin(0);
-            updateProgressDot(0);
-            updateOverlay(0);
-            await wait(skipRequested ? 300 : PAUSE_DURATION);
+        if (!tiles) {
+            flat = true;
+            viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                maximumLevel: 19,
+                credit: new Cesium.Credit('Esri, Maxar, Earthstar Geographics')
+            }));
+            scene.globe.baseColor = Cesium.Color.fromCssColorString('#1a1a2e');
         }
+        status.hidden = true;
 
-        // Continue with remaining locations (start from index 1)
-        for (let i = 1; i < LOCATIONS.length; i++) {
-            if (skipRequested) break;
-            const loc = LOCATIONS[i];
-            hideOverlay();
-            await flyTo(loc.lat, loc.lon, ZOOM_HEIGHT, skipRequested ? 0.3 : FLIGHT_DURATION);
-            if (skipRequested) break;
-            revealPin(i);
-            updateProgressDot(i);
-            updateOverlay(i);
-            // Show the arc line from previous location
-            addArcLine(i - 1, i);
-            await wait(skipRequested ? 300 : PAUSE_DURATION);
-        }
+        // Stop drawing while the section is off screen
+        new IntersectionObserver(entries => {
+            viewer.useDefaultRenderLoop = entries[0].isIntersecting;
+        }).observe(stage);
 
-        // Ensure all pins visible
-        LOCATIONS.forEach((_, i) => {
-            revealPin(i);
-            if (i > 0) addArcLine(i - 1, i);
-        });
-        updateProgressDot(LOCATIONS.length - 1);
-
-        hideOverlay();
-        await flyTo(39, -98, OVERVIEW_HEIGHT, skipRequested ? 0.5 : 3);
-
-        document.querySelectorAll('.journey-dot').forEach(d => d.className = 'journey-dot visited');
-
-        setInteraction(true);
-        animationRunning = false;
-
-        if (skipBtn) skipBtn.classList.add('hidden');
-        if (replayBtn) replayBtn.style.display = 'block';
-    }
-
-    function skipAnimation() { skipRequested = true; }
-
-    function replayAnimation() {
-        if (animationRunning) return;
-        setInteraction(false);
-        // Re-enable the scroll guard so "click to interact" is required again after replay
-        const guard = document.querySelector('.journey-scroll-guard');
-        if (guard) guard.style.pointerEvents = 'auto';
-        startJourney();
+        setPose(Object.assign({}, INTRO));
+        if (wanted !== 'intro') goTo(wanted);
     }
 
     function init() {
-        const section = document.querySelector('.life-journey-section');
+        const section = document.getElementById('journey');
         if (!section) return;
+        const stage = section.querySelector('.journey-stage');
 
-        const skipBtn = document.querySelector('.journey-skip-btn');
-        const replayBtn = document.querySelector('.journey-replay-btn');
-        if (skipBtn) {
-            skipBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                skipAnimation();
-            });
-        }
-        if (replayBtn) {
-            replayBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                replayAnimation();
-            });
-        }
+        const dots = section.querySelector('.journey-progress');
+        STOPS.forEach(() => {
+            const dot = document.createElement('div');
+            dot.className = 'journey-dot';
+            dots.appendChild(dot);
+        });
 
-        // Place a sentinel element right after the globe container (not inside it,
-        // since the globe has overflow:hidden). When this 1px element scrolls into
-        // view, the full globe container is visible and we start the animation.
-        const sentinel = document.createElement('div');
-        sentinel.style.height = '1px';
-        sentinel.style.width = '100%';
-        sentinel.style.pointerEvents = 'none';
-        const globeEl = document.getElementById('life-journey-globe');
-        if (globeEl && globeEl.parentNode) {
-            globeEl.parentNode.insertBefore(sentinel, globeEl.nextSibling);
-        }
+        watchCards();
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !viewer) {
-                    initGlobe();
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 1.0 });
-
-        observer.observe(sentinel);
+        // Start the globe (and use one of the day's Google tile loads) only
+        // when the section is about to come into view
+        const starter = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) {
+                starter.disconnect();
+                startGlobe(stage);
+            }
+        }, { rootMargin: '600px 0px' });
+        starter.observe(section);
     }
 
     if (document.readyState === 'loading') {
