@@ -98,8 +98,6 @@ function loadWorldMapData() {
         TravelAPI.fetchPeaksWithFallback('colorado14ers', 'data/colorado14ers.json'),
         TravelAPI.fetchPeaksWithFallback('countryHighpoints', 'data/country-highpoints.json'),
         fetch('data/forbes100cities.json').then(response => response.json()),
-        fetch('data/interstateHighways.json').then(response => response.json()),
-        fetch('data/highways.json').then(response => response.json()),
         fetch('data/world-countries.geojson').then(response => response.json()),
         loadBucketLists().catch(err => { console.warn('Bucket lists unavailable:', err); return null; }),
         // Fills Alaska / Hawaii. The worker (what the dashboards edit) is the
@@ -108,14 +106,27 @@ function loadWorldMapData() {
             .catch(() => fetch('data/visitedStates.json').then(response => response.json()))
             .catch(() => ({}))
     ])
-        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, interstateData, highwaysData, countriesGeojson, bucketLists, visitedStates]) => ({
+        .then(([citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data, countriesGeojson, bucketLists, visitedStates]) => ({
             countriesGeojson, visitedStates,
             places: collectPlaces({ citiesData, metrosData, highPointsData, familyTravelsData, stateHighPointsData, nationalParksData, skiResortsData, sevenWondersData, britishIslesData, adk46ersData, colorado14ersData, countryHighpointsData, forbes100Data }),
             todoPlaces: collectTodoPlaces(bucketLists),
-            drivenSegments: collectDrivenSegments(interstateData, highwaysData),
         }));
     worldMapDataPromise.catch(() => { worldMapDataPromise = null; });  // let a later call retry
     return worldMapDataPromise;
+}
+
+// The highways I've driven, for the map only: the two highway files are large,
+// so they are fetched apart from loadWorldMapData() and the Countries table's
+// Regions bar never downloads them.
+let drivenSegmentsPromise = null;
+function loadDrivenSegments() {
+    if (drivenSegmentsPromise) return drivenSegmentsPromise;
+    drivenSegmentsPromise = Promise.all([
+        fetch('data/interstateHighways.json').then(response => response.json()),
+        fetch('data/highways.json').then(response => response.json()),
+    ]).then(([interstateData, highwaysData]) => collectDrivenSegments(interstateData, highwaysData));
+    drivenSegmentsPromise.catch(() => { drivenSegmentsPromise = null; });  // let a later call retry
+    return drivenSegmentsPromise;
 }
 
 // Every Strava route as an encoded polyline (the worker's /polylines/all),
@@ -136,7 +147,8 @@ function fetchStravaPolylines() {
 // countries data (shared, so Edit Mode toggles reach the map through refresh()).
 // Resolves to createWorldMap()'s { map, refresh }.
 function initWorldMap(worldData) {
-    return loadWorldMapData().then(data => createWorldMap('world-map', { worldData, ...data }));
+    return Promise.all([loadWorldMapData(), loadDrivenSegments()])
+        .then(([data, drivenSegments]) => createWorldMap('world-map', { worldData, ...data, drivenSegments }));
 }
 
 // ── Data → places / routes ────────────────────────────────────────────────────
