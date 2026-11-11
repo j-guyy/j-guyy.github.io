@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="../css/responsive.css">
     <link rel="stylesheet" href="../css/tripreports.css">
     <link rel="stylesheet" href="../css/3dmap.css">
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js" integrity="sha384-wjsPzEO+lXOf7d9csIDfAQpPt2OKuUU3m0K9qsdKIuzX4N8czSF6hdh23eAbZa3p" crossorigin="anonymous"></script>
     <link rel="canonical" href="https://j-guyy.github.io/trip-reports/pico-de-orizaba.html">
     <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Climbing Pico de Orizaba — Trip Report", "description": "Summiting Pico de Orizaba (18,491 ft), the highest peak in Mexico and North America's tallest volcano, via glacier travel and extreme altitude.", "image": "https://j-guyy.github.io/images/mountaineering/pico/summit_cropped.jpg", "url": "https://j-guyy.github.io/trip-reports/pico-de-orizaba.html", "mainEntityOfPage": "https://j-guyy.github.io/trip-reports/pico-de-orizaba.html", "author": {"@type": "Person", "name": "Justin Guyette", "url": "https://j-guyy.github.io/"}}</script>
 </head>
@@ -70,8 +70,13 @@
                 <model-viewer src="../data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
                     camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
                     background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
-                    field-of-view="30deg">
-                    <div class="model-loading">Loading 3D model...</div>
+                    field-of-view="30deg" loading="lazy" reveal="manual">
+                    <!-- The 38 MB model downloads only after the visitor asks for it. -->
+                    <div class="model-loading" slot="poster">
+                        <button type="button"
+                            style="padding:12px 20px;font:inherit;color:#fff;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.4);border-radius:8px;cursor:pointer;"
+                            onclick="this.disabled=true;this.textContent='Loading 3D model...';this.closest('model-viewer').dismissPoster();">Tap to load 3D model (38 MB)</button>
+                    </div>
                 </model-viewer>
             </div>
             <p class="model-description">Interactive 3D model of Pico de Orizaba. Click and drag to rotate, scroll to

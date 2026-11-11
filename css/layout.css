@@ -135,6 +135,26 @@
     }
 }
 
+/* Keyboard focus: the hover look plus a visible ring */
+.navbar-brand a:focus-visible {
+    color: var(--text-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.nav-menu li a:focus-visible {
+    color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.nav-menu .dropdown-content a:focus-visible {
+    background-color: var(--primary-color);
+    color: white;
+    outline: 2px solid var(--text-color);
+    outline-offset: -2px;
+}
+
 .dropdown::after {
     content: '';
     position: absolute;
