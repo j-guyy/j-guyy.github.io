@@ -17,6 +17,12 @@ body {
   color: #e8e8f0;
   font-family: monospace, monospace;
   overflow: hidden;
+  /* Mobile guards: no text selection or long-press callout while playing, and
+     no double-tap zoom (pinch zoom stays available for accessibility). */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #game-shell {
@@ -42,6 +48,7 @@ body {
      (renderer.js) setting an explicit pixel size. */
   max-width: 100%;
   height: auto;
+  touch-action: none;
 }
 
 #controls-hint {
@@ -56,16 +63,27 @@ body {
   color: #aeb6d8;
 }
 
-/* Touch mode (set by main.js): the hint block is keyboard instructions plus
-   editor links that would land directly under the d-pad — hide it entirely and
-   let the canvas have the whole screen. */
-body.touch-mode #controls-hint {
+#controls-hint a {
+  color: #7ddc82;
+}
+
+/* Touch mode (set by main.js): the keyboard instructions and editor links are
+   useless on a phone, so they give way to a one-line hint that names the
+   on-screen buttons and keeps the Battle Simulator reachable. renderer.js
+   reserves this line's height, so it never pushes the canvas off screen. */
+#controls-hint .hint-touch {
   display: none;
+}
+body.touch-mode #controls-hint .hint-keyboard {
+  display: none;
+}
+body.touch-mode #controls-hint .hint-touch {
+  display: block;
 }
 
 body.touch-mode #game-shell {
   padding: 4px;
-  gap: 0;
+  gap: 4px;
 }
 
 /* ---- On-screen touch controls (coarse pointers, or force with ?touch=1) --- */
@@ -80,11 +98,32 @@ body.touch-mode #game-shell {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 18px 18px;
+  padding: 0 max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   pointer-events: none;
   z-index: 10;
   /* no scrolling/zooming when a finger slides across the pad */
   touch-action: none;
+  -webkit-touch-callout: none;
+}
+
+/* Base button look first: the A/B and mute rules below refine it, and they
+   have the same specificity, so they must come later to win. */
+#touch-controls button {
+  border: 2px solid #3a4368;
+  background: rgba(28, 32, 48, 0.85);
+  color: #aeb6d8;
+  font-family: inherit;
+  font-size: 18px;
+  border-radius: 10px;
+  padding: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#touch-controls button.pressed {
+  background: #4caf50;
+  color: #0c1410;
+  border-color: #7ddC82;
 }
 
 #touch-dpad {
@@ -113,19 +152,51 @@ body.touch-mode #game-shell {
   font-size: 22px;
 }
 
-#touch-controls button {
-  border: 2px solid #3a4368;
-  background: rgba(28, 32, 48, 0.85);
-  color: #aeb6d8;
-  font-family: inherit;
-  font-size: 18px;
-  border-radius: 10px;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
+/* Sound toggle: top-right corner, clear of the pad and (in landscape) of the
+   canvas. aria-pressed="true" means muted. */
+#touch-controls #touch-mute {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+  pointer-events: auto;
+  opacity: 0.85;
 }
-#touch-controls button.pressed {
-  background: #4caf50;
-  color: #0c1410;
-  border-color: #7ddC82;
+#touch-controls #touch-mute[aria-pressed="true"] {
+  text-decoration: line-through;
+  color: #7d84a3;
+  opacity: 0.6;
+}
+
+/* Phone landscape: the canvas is height-limited and leaves a letterbox on each
+   side (about 150px at 844x390). Shrink the pad and pull it into the corners
+   so it sits in that letterbox instead of over the dialogue and battle panels;
+   on narrower phones, where some overlap is unavoidable, it is see-through. */
+@media (orientation: landscape) and (max-height: 480px) {
+  #touch-controls {
+    padding: 0 max(4px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+    opacity: 0.8;
+  }
+  #touch-dpad {
+    grid-template-columns: repeat(3, 46px);
+    grid-template-rows: repeat(3, 46px);
+  }
+  #touch-ab {
+    gap: 10px;
+  }
+  #touch-ab button {
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+  #touch-controls #touch-mute {
+    top: max(4px, env(safe-area-inset-top));
+    right: max(4px, env(safe-area-inset-right));
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
 }

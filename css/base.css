@@ -4,6 +4,13 @@
     --text-color: white;
     --bg-color: black;
     --bg-transparent: rgba(0, 0, 0, 0.7);
+    /* Text on a filled green (--primary-color) surface. White on #4CAF50 is
+       only 2.8:1; this dark ink is about 7:1. */
+    --on-accent: #0e1410;
+
+    /* The site is dark everywhere, so native selects, inputs, checkboxes and
+       scrollbars should render dark too. */
+    color-scheme: dark;
 
     /* ── Design tokens ────────────────────────────────────────────────────
        The website's version of the phone app's system (css/app.css): dark,
@@ -87,6 +94,7 @@ html {
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     position: relative;
     background-color: var(--bg-color);
     background-size: cover;
@@ -109,7 +117,7 @@ button {
     font-size: 1em;
     cursor: pointer;
     background-color: var(--primary-color);
-    color: var(--text-color);
+    color: var(--on-accent);
     border: none;
     border-radius: 5px;
     transition: background-color var(--dur) var(--ease-out);
@@ -117,6 +125,12 @@ button {
 
 button:hover {
     background-color: var(--primary-hover-color);
+}
+
+button:focus-visible,
+.cross-nav-link:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
 }
 
 
@@ -139,7 +153,7 @@ button:hover {
 
 .cross-nav-link:hover {
     background-color: var(--primary-color);
-    color: var(--text-color);
+    color: var(--on-accent);
 }
 
 /* Tables | Map switch between a dashboard and its map (US: one page, two views; World: two pages).
@@ -179,7 +193,7 @@ button:hover {
 }
 
 .view-switch-option[aria-current="page"] {
-    color: #fff;
+    color: var(--on-accent);
     background: var(--primary-color);
 }
 

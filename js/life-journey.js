@@ -16,6 +16,8 @@
 
     const KEY_URL = 'https://strava-worker.justinguyette.workers.dev/maps/key';
     const CESIUM_URL = 'https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js';
+    // sha384 of exactly that file; update together with the version above
+    const CESIUM_SRI = 'sha384-5oazsHA45lZs9jgvxUv40qbMATfjwmtR/wQePfqDAeIDIhGmSK2V0gpRoCpZVBzJ';
 
     // Each place: the landmark the camera circles, how far away (m) and how
     // steep (deg), the circling speed (deg/s), and the ground height there (m).
@@ -91,9 +93,24 @@
         }
     }
 
-    function loadScript(src) {
+    // Cesium needs WebGL; without it Cesium draws its own pink error dialog.
+    function hasWebGL() {
+        try {
+            const canvas = document.createElement('canvas');
+            return !!(window.WebGLRenderingContext &&
+                (canvas.getContext('webgl2') || canvas.getContext('webgl')));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function loadScript(src, integrity) {
         return new Promise((resolve, reject) => {
             const s = document.createElement('script');
+            if (integrity) {
+                s.integrity = integrity;
+                s.crossOrigin = 'anonymous';
+            }
             s.src = src;
             s.onload = resolve;
             s.onerror = () => reject(new Error('Could not load ' + src));
@@ -368,11 +385,18 @@
         const status = stage.querySelector('.journey-status');
         status.hidden = false;
         status.textContent = 'Loading globe…';
+        // No WebGL: same message as a failed start, and neither Cesium nor the
+        // Google key is downloaded.
+        if (!hasWebGL()) {
+            console.warn('Life journey globe skipped: WebGL is not available');
+            status.textContent = 'The 3D globe could not load in this browser.';
+            return;
+        }
         // Ask for the key while Cesium downloads (not at all on low-memory phones)
         const keyPromise = lowMemory ? null : fetchGoogleKey();
         if (keyPromise) keyPromise.catch(() => {}); // handled where it's awaited
         try {
-            await loadScript(CESIUM_URL);
+            await loadScript(CESIUM_URL, CESIUM_SRI);
             Cesium = window.Cesium;
             Cesium.Ion.defaultAccessToken = '';
             viewer = new Cesium.Viewer('life-journey-globe', {
@@ -461,13 +485,21 @@
 
         // Start the globe (and use one of the day's Google tile loads) only
         // when the section is about to come into view
+        let started = false;
+        const start = () => {
+            if (started) return;
+            started = true;
+            starter.disconnect();
+            startGlobe(stage);
+        };
         const starter = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting) {
-                starter.disconnect();
-                startGlobe(stage);
-            }
+            if (entries[0].isIntersecting) start();
         }, { rootMargin: '600px 0px' });
         starter.observe(section);
+        // Already in (or near) view at load: do not wait for the observer,
+        // which some browsers deliver late or not at all.
+        const box = section.getBoundingClientRect();
+        if (box.top < window.innerHeight + 600 && box.bottom > -600) start();
     }
 
     if (document.readyState === 'loading') {

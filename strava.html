@@ -4,14 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Activity Dashboard &amp; Maps — Justin Guyette</title>
     <meta name="description" content="Activity dashboard — charts, goals and Strava stats and lists: countries, regions, counties, parks, metros, ecoregions, tiles, peaks and more.">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/strava.css?v=20261105a">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="css/insights.css?v=20261105a">
+    <link rel="stylesheet" href="css/strava.css?v=20261110d">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
+    <link rel="stylesheet" href="css/insights.css?v=20261110b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous" rel="stylesheet" />
     <link rel="canonical" href="https://j-guyy.github.io/strava.html">
@@ -32,7 +35,7 @@
         <!-- Loading -->
         <div id="loading-section" class="strava-loading">
             <div class="loading-spinner"></div>
-            <p id="loading-status">Loading activities…</p>
+            <p id="loading-status" role="status" aria-live="polite">Loading activities…</p>
         </div>
 
 
@@ -61,7 +64,7 @@
             <div id="map-section" style="display:none">
                 <div id="strava-map"></div>
                 <div id="map-legend" class="map-legend"></div>
-                <p id="map-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="map-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -73,7 +76,7 @@
                 <div id="county-map"></div>
                 <div id="county-recent-table"></div>
                 <div id="county-state-table"></div>
-                <p id="county-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="county-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -88,7 +91,7 @@
                 <div id="park-recent-national-monuments"></div>
                 <div id="park-recent-seashores-lakeshores"></div>
                 <div id="park-recent-other"></div>
-                <p id="park-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="park-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -101,7 +104,7 @@
                 <div id="metro-map"></div>
                 <div id="metro-comparison"></div>
                 <div id="metro-recent-table"></div>
-                <p id="metro-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="metro-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -114,7 +117,7 @@
                 <div id="ecoregion-legend" class="map-legend"></div>
                 <div id="ecoregion-l3-table"></div>
                 <div id="ecoregion-recent-table"></div>
-                <p id="ecoregion-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="ecoregion-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -124,7 +127,7 @@
             <div id="tile-section" style="display:none">
                 <div id="tile-stats-bar" class="county-stats-bar"></div>
                 <div id="tile-map"></div>
-                <p id="tile-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="tile-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -146,7 +149,7 @@
                     <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
                     <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
                 </div>
-                <p id="city-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="city-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -178,7 +181,7 @@
                 <div id="mountain-progress-bar"></div>
                 <p id="mountain-progress-label" class="no-location-note"></p>
             </div>
-            <p id="mountain-status" class="no-location-note" style="margin-top:4px"></p>
+            <p id="mountain-status" class="no-location-note" role="status" style="margin-top:4px"></p>
         </div>
 
         <!-- Pass Hunter (Colorado cycling passes, auto-initialises after activities load) -->
@@ -198,7 +201,7 @@
                     <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet climbed</span>
                 </div>
             </div>
-            <p id="pass-status" class="no-location-note" style="margin-top:8px"></p>
+            <p id="pass-status" class="no-location-note" role="status" style="margin-top:8px"></p>
         </div>
 
         <!-- Trail Hunter (region-based, lazy-loaded) -->
@@ -219,7 +222,7 @@
                     <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
                     <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
                 </div>
-                <p id="trail-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="trail-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
@@ -242,7 +245,7 @@
                 <div id="statshunters-embed">
                     <iframe id="statshunters-frame" title="StatsHunters activity map" allowfullscreen></iframe>
                 </div>
-                <p id="statshunters-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="statshunters-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
     </div>
@@ -251,8 +254,8 @@
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
-    <script src="js/strava.js?v=20261110a"></script>
-    <script src="js/insights.js?v=20261105a"></script>
+    <script src="js/strava.js?v=20261110e"></script>
+    <script src="js/insights.js?v=20261110b"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 

@@ -21,13 +21,129 @@ const DEFAULT_PHASES = [
 
 let weeks = [];
 let copiedWorkout = null;
-let phases = [...DEFAULT_PHASES];
+let phases = DEFAULT_PHASES.map(p => ({ ...p })); // copies: phase edits must not change the defaults
 let startDate = null; // Start date for the training plan
 
 // "YYYY-MM-DD" from the local date parts (toISOString() is UTC and can be a day off).
 function localDateString(d) {
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Escape a stored / imported string before it goes into HTML or an attribute.
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ── Saved plan (this browser only) ───────────────────────────────────────────
+// The plan (weeks, phases, start date) is written to localStorage after every
+// change and read back on load, so a reload does not lose it. Excel export is
+// still the way to move a plan to another device.
+const PLAN_KEY = 'training_plan_v1';
+
+function savePlan() {
+    try {
+        localStorage.setItem(PLAN_KEY, JSON.stringify({
+            v: 1,
+            weeks,
+            phases,
+            startDate: startDate ? localDateString(startDate) : null
+        }));
+    } catch { /* storage full or unavailable: the plan stays in memory only */ }
+}
+
+// Rebuild a plan from stored data, keeping only fields of the expected type.
+// Returns null when the data is not a usable plan (older shape, edited by hand).
+function sanitizePlan(raw) {
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.weeks) || raw.weeks.length === 0) return null;
+    const str = v => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+
+    // Every stored phase keeps its position (weeks refer to phases by index);
+    // a bad name or colour is replaced, not dropped.
+    let cleanPhases = Array.isArray(raw.phases)
+        ? raw.phases.map(p => ({
+            name: str(p?.name) || 'Phase',
+            color: /^#[0-9a-f]{6}$/i.test(p?.color) ? p.color : '#2196F3'
+        }))
+        : [];
+    if (cleanPhases.length === 0) cleanPhases = DEFAULT_PHASES.map(p => ({ ...p }));
+
+    const base = Date.now();
+    const seen = new Set();
+    const cleanWeeks = [];
+    for (const [i, w] of raw.weeks.entries()) {
+        if (!w || typeof w !== 'object' || !Array.isArray(w.days)) return null;
+        let id = Number.isSafeInteger(w.id) ? w.id : base + i;
+        while (seen.has(id)) id++;
+        seen.add(id);
+        const phaseIndex = Number.isInteger(w.phaseIndex) && w.phaseIndex >= 0 && w.phaseIndex < cleanPhases.length
+            ? w.phaseIndex : 0;
+        cleanWeeks.push({
+            id,
+            number: i + 1,
+            phaseIndex,
+            days: DAYS.map((name, d) => {
+                const slots = Array.isArray(w.days[d]?.workouts) ? w.days[d].workouts : [];
+                return {
+                    name,
+                    workouts: [0, 1].map(k => {
+                        const wo = slots[k];
+                        if (!wo || typeof wo !== 'object' || !str(wo.activity)) return null;
+                        return {
+                            activity: str(wo.activity),
+                            distance: str(wo.distance),
+                            type: str(wo.type),
+                            description: str(wo.description)
+                        };
+                    })
+                };
+            })
+        });
+    }
+
+    let cleanStart = null;
+    if (typeof raw.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.startDate)) {
+        const d = new Date(raw.startDate + 'T00:00:00');
+        if (!isNaN(d.getTime())) cleanStart = d;
+    }
+    return { weeks: cleanWeeks, phases: cleanPhases, startDate: cleanStart };
+}
+
+// True when a saved plan was found and applied.
+function restorePlan() {
+    let plan = null;
+    try {
+        plan = sanitizePlan(JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'));
+    } catch { /* unreadable: start a new plan */ }
+    if (!plan) return false;
+    weeks = plan.weeks;
+    phases = plan.phases;
+    startDate = plan.startDate;
+    document.getElementById('startDateInput').value = startDate ? localDateString(startDate) : '';
+    return true;
+}
+
+function clearPlan() {
+    if (!confirm('Clear the whole plan and start again? This also removes the copy saved in this browser.')) return;
+    try { localStorage.removeItem(PLAN_KEY); } catch { /* nothing stored */ }
+    weeks = [];
+    phases = DEFAULT_PHASES.map(p => ({ ...p }));
+    startDate = null;
+    copiedWorkout = null;
+    document.getElementById('startDateInput').value = '';
+    addWeek();
+    notify('Plan cleared.');
+}
+
+// Short status line (bottom of the screen) used for feedback, not pop-ups.
+let notifyTimer = null;
+function notify(msg) {
+    const el = document.getElementById('planStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('visible');
+    clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(() => el.classList.remove('visible'), 4000);
 }
 
 // Initialize
@@ -43,11 +159,25 @@ document.addEventListener('DOMContentLoaded', () => {
         renderWeeks();
     });
 
-    // Add first week by default
-    addWeek();
-
     // Setup phase management
     setupPhaseManagement();
+
+    // Clear plan: discards the plan, including the saved copy
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = 'Clear Plan';
+    clearBtn.className = 'secondary-btn clear-plan-btn';
+    clearBtn.onclick = clearPlan;
+    document.querySelector('.controls').appendChild(clearBtn);
+
+    // Show the saved plan, or start with one empty week
+    if (restorePlan()) {
+        renderWeeks();
+        // Say so only when there is something to restore, not for an untouched empty week.
+        const hasContent = weeks.length > 1 || weeks.some(w => w.days.some(d => d.workouts.some(Boolean)));
+        if (hasContent) notify('Restored the plan saved in this browser.');
+    } else {
+        addWeek();
+    }
 });
 
 function setupPhaseManagement() {
@@ -56,9 +186,9 @@ function setupPhaseManagement() {
     modal.id = 'phaseModal';
     modal.className = 'modal';
     modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Manage Training Phases</h2>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="phaseModalTitle">
+            <button type="button" class="close" aria-label="Close">&times;</button>
+            <h2 id="phaseModalTitle">Manage Training Phases</h2>
             <div id="phasesList"></div>
             <button id="addPhaseBtn" class="primary-btn">+ Add Phase</button>
         </div>
@@ -73,8 +203,11 @@ function setupPhaseManagement() {
     document.querySelector('.controls').appendChild(manageBtn);
 
     // Modal close handler
-    modal.querySelector('.close').onclick = () => modal.style.display = 'none';
-    window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+    modal.querySelector('.close').onclick = hidePhaseModal;
+    window.onclick = (e) => { if (e.target === modal) hidePhaseModal(); };
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') hidePhaseModal();
+    });
 
     // Add phase button handler
     document.getElementById('addPhaseBtn').onclick = addPhase;
@@ -83,15 +216,25 @@ function setupPhaseManagement() {
 function showPhaseModal() {
     const modal = document.getElementById('phaseModal');
     renderPhasesList();
+    phaseModalOpener = document.activeElement;
     modal.style.display = 'block';
+    modal.querySelector('.close').focus();
+}
+
+// Close the dialog and put focus back on the control that opened it.
+let phaseModalOpener = null;
+function hidePhaseModal() {
+    document.getElementById('phaseModal').style.display = 'none';
+    if (phaseModalOpener && document.contains(phaseModalOpener)) phaseModalOpener.focus();
+    phaseModalOpener = null;
 }
 
 function renderPhasesList() {
     const container = document.getElementById('phasesList');
     container.innerHTML = phases.map((phase, index) => `
         <div class="phase-item">
-            <input type="text" value="${phase.name}" onchange="updatePhaseName(${index}, this.value)" class="phase-name-input">
-            <input type="color" value="${phase.color}" onchange="updatePhaseColor(${index}, this.value)" class="phase-color-input">
+            <input type="text" value="${esc(phase.name)}" aria-label="Phase name" onchange="updatePhaseName(${index}, this.value)" class="phase-name-input">
+            <input type="color" value="${esc(phase.color)}" aria-label="Phase colour" onchange="updatePhaseColor(${index}, this.value)" class="phase-color-input">
             <button onclick="deletePhase(${index})" class="delete-btn">Delete</button>
         </div>
     `).join('');
@@ -100,6 +243,7 @@ function renderPhasesList() {
 function addPhase() {
     phases.push({ name: 'New Phase', color: '#607D8B' });
     renderPhasesList();
+    savePlan();
 }
 
 function updatePhaseName(index, name) {
@@ -114,7 +258,7 @@ function updatePhaseColor(index, color) {
 
 function deletePhase(index) {
     if (phases.length === 1) {
-        alert('You must have at least one phase!');
+        notify('You must have at least one phase!');
         return;
     }
     if (confirm('Delete this phase? Weeks using it will be set to the first phase.')) {
@@ -130,10 +274,18 @@ function deletePhase(index) {
     }
 }
 
+// Week ids go into inline handlers and must be unique numbers; two weeks made
+// in the same millisecond would otherwise share Date.now().
+function newWeekId() {
+    let id = Date.now();
+    while (weeks.some(w => w.id === id)) id++;
+    return id;
+}
+
 function addWeek() {
     const weekNumber = weeks.length + 1;
     const week = {
-        id: Date.now(),
+        id: newWeekId(),
         number: weekNumber,
         phaseIndex: 0, // Default to first phase
         days: DAYS.map(day => ({
@@ -160,7 +312,7 @@ function duplicateWeek(weekId) {
 
     const originalWeek = weeks[weekIndex];
     const newWeek = {
-        id: Date.now(),
+        id: newWeekId(),
         number: weeks.length + 1,
         phaseIndex: originalWeek.phaseIndex,
         days: originalWeek.days.map(day => ({
@@ -175,7 +327,7 @@ function duplicateWeek(weekId) {
 
 function deleteWeek(weekId) {
     if (weeks.length === 1) {
-        alert('You must have at least one week!');
+        notify('You must have at least one week!');
         return;
     }
 
@@ -219,17 +371,18 @@ function copyWorkout(weekId, dayIndex, slotIndex) {
 
     const workout = week.days[dayIndex].workouts[slotIndex];
     if (!workout) {
-        alert('No workout to copy!');
+        notify('No workout to copy!');
         return;
     }
 
     copiedWorkout = { ...workout };
-    alert('Workout copied! Click Paste on another workout slot.');
+    renderWeeks(); // the Paste controls exist only once something is copied
+    notify('Workout copied! Click Paste on another workout slot.');
 }
 
 function pasteWorkout(weekId, dayIndex, slotIndex) {
     if (!copiedWorkout) {
-        alert('No workout copied yet!');
+        notify('No workout copied yet!');
         return;
     }
 
@@ -337,6 +490,7 @@ function renderWeeks() {
         const weekEl = createWeekElement(week);
         container.appendChild(weekEl);
     });
+    savePlan();
 }
 
 function createWeekElement(week) {
@@ -346,7 +500,7 @@ function createWeekElement(week) {
 
     const weekDiv = document.createElement('div');
     weekDiv.className = 'week-container';
-    weekDiv.style.borderLeft = `8px solid ${phase.color}`;
+    weekDiv.style.borderLeft = `8px solid ${/^#[0-9a-f]{6}$/i.test(phase.color) ? phase.color : '#2196F3'}`;
 
     weekDiv.innerHTML = `
         <div class="week-header">
@@ -355,10 +509,10 @@ function createWeekElement(week) {
                     <h3 class="week-title">Week ${week.number}</h3>
                     ${dateRange ? `<span class="week-dates">${dateRange}</span>` : ''}
                 </div>
-                <select class="phase-selector" onchange="updateWeekPhase(${week.id}, parseInt(this.value))">
+                <select class="phase-selector" aria-label="Training phase" onchange="updateWeekPhase(${week.id}, parseInt(this.value))">
                     ${phases.map((p, idx) => `
                         <option value="${idx}" ${idx === week.phaseIndex ? 'selected' : ''}>
-                            ${p.name}
+                            ${esc(p.name)}
                         </option>
                     `).join('')}
                 </select>
@@ -451,7 +605,7 @@ function createWorkoutCard(weekId, dayIndex, slotIndex, workout) {
     }
 
     const needsDistance = !['Strength', 'Yoga'].includes(workout.activity);
-    const workoutTypes = WORKOUT_TYPES[workout.activity] || [];
+    const workoutTypes = Object.prototype.hasOwnProperty.call(WORKOUT_TYPES, workout.activity) ? WORKOUT_TYPES[workout.activity] : [];
 
     return `
         <div class="workout-card filled">
@@ -472,13 +626,13 @@ function createWorkoutCard(weekId, dayIndex, slotIndex, workout) {
                            class="workout-distance-input"
                            step="${getDistanceStep(workout.activity)}" 
                            placeholder="${getDistancePlaceholder(workout.activity)}" 
-                           value="${workout.distance || ''}"
+                           value="${esc(workout.distance || '')}"
                            onchange="updateWorkout(${weekId}, ${dayIndex}, ${slotIndex}, 'distance', this.value)">
                 ` : ''}
                 
                 <textarea class="workout-description" 
                           placeholder="Description (e.g., 5x800m intervals, easy recovery pace, hill repeats...)"
-                          onchange="updateWorkout(${weekId}, ${dayIndex}, ${slotIndex}, 'description', this.value)">${workout.description || ''}</textarea>
+                          onchange="updateWorkout(${weekId}, ${dayIndex}, ${slotIndex}, 'description', this.value)">${esc(workout.description || '')}</textarea>
                 
                 ${workoutTypes.length > 0 ? `
                     <div class="workout-type-buttons">
@@ -505,7 +659,7 @@ function createWorkoutCard(weekId, dayIndex, slotIndex, workout) {
 
 function exportToExcel() {
     if (weeks.length === 0) {
-        alert('No weeks to export!');
+        notify('No weeks to export!');
         return;
     }
 
@@ -683,7 +837,7 @@ async function importFromExcel(event) {
 
         const worksheet = workbook.getWorksheet('Training Plan');
         if (!worksheet) {
-            alert('Could not find "Training Plan" worksheet. Please use a file exported from this tool.');
+            notify('Could not find "Training Plan" worksheet. Please use a file exported from this tool.');
             return;
         }
 
@@ -695,6 +849,8 @@ async function importFromExcel(event) {
         // Clear existing data
         weeks = [];
         startDate = null;
+        // A file without a start date must not keep the previous plan's date.
+        document.getElementById('startDateInput').value = '';
 
         // Check for start date in first row
         const firstRow = worksheet.getRow(1);
@@ -801,11 +957,11 @@ async function importFromExcel(event) {
 
         // Render the imported data
         renderWeeks();
-        alert(`Successfully imported ${weeks.length} weeks!`);
+        notify(`Successfully imported ${weeks.length} weeks!`);
 
     } catch (error) {
         console.error('Import error:', error);
-        alert('Error importing file. Please make sure it\'s a valid training plan Excel file.');
+        notify('Error importing file. Please make sure it\'s a valid training plan Excel file.');
         event.target.value = '';
     }
 }

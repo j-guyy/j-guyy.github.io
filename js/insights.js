@@ -41,7 +41,7 @@ const INS_FAMILIES = [
     { key: 'Hike',  color: '#199e70', types: ['Hike', 'Snowshoe'] },
     { key: 'Walk',  color: '#c98500', types: ['Walk'] },
     { key: 'Ski',   color: '#d55181', types: ['AlpineSki', 'BackcountrySki', 'NordicSki', 'Snowboard', 'Snowkite'] },
-    { key: 'Water', color: '#008300', types: ['Swim', 'OpenWaterSwim', 'Kayaking', 'Rowing', 'Surfing', 'Windsurf', 'Kitesurf', 'Canoeing', 'StandUpPaddling', 'Sail'] },
+    { key: 'Water', color: '#00a3ad', types: ['Swim', 'OpenWaterSwim', 'Kayaking', 'Rowing', 'Surfing', 'Windsurf', 'Kitesurf', 'Canoeing', 'StandUpPaddling', 'Sail'] },
     { key: 'Other', color: '#9085e9', types: [] },
 ];
 

@@ -34,7 +34,8 @@
 }
 
 .date-input:focus {
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
     border-color: var(--primary-color);
 }
 
@@ -45,7 +46,7 @@
 
 .primary-btn {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--on-accent);
     padding: 12px 24px;
     border: none;
     border-radius: 5px;
@@ -59,7 +60,7 @@
 }
 
 .secondary-btn {
-    background-color: #2196F3;
+    background-color: #1976D2;
     color: white;
     padding: 12px 24px;
     border: none;
@@ -70,7 +71,7 @@
 }
 
 .secondary-btn:hover {
-    background-color: #0b7dda;
+    background-color: #1565C0;
 }
 
 .week-container {
@@ -124,16 +125,20 @@
     font-size: 0.9em;
 }
 
+/* Text colours here are set on purpose (the base button colour is dark ink
+   for green fills): white on the darker red and blue, dark ink on orange. */
 .delete-week-btn {
-    background-color: #f44336;
+    background-color: #D32F2F;
+    color: #fff;
 }
 
 .delete-week-btn:hover {
-    background-color: #da190b;
+    background-color: #B71C1C;
 }
 
 .duplicate-week-btn {
     background-color: #FF9800;
+    color: var(--on-accent);
 }
 
 .duplicate-week-btn:hover {
@@ -266,7 +271,8 @@
 }
 
 .workout-activity-select:focus {
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
     border-color: var(--primary-color);
 }
 
@@ -290,7 +296,8 @@
 }
 
 .workout-distance-input:focus {
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
     border-color: var(--primary-color);
 }
 
@@ -309,12 +316,13 @@
 }
 
 .workout-description:focus {
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
     border-color: var(--primary-color);
 }
 
 .workout-description::placeholder {
-    color: #666;
+    color: #9a9a9a;
 }
 
 .workout-type-buttons {
@@ -342,7 +350,7 @@
 
 .type-btn.active {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--on-accent);
     border-color: var(--primary-color);
 }
 
@@ -361,23 +369,26 @@
 }
 
 .copy-workout-btn {
-    background-color: #2196F3;
+    background-color: #1976D2;
+    color: #fff;
 }
 
 .copy-workout-btn:hover {
-    background-color: #0b7dda;
+    background-color: #1565C0;
 }
 
 .clear-workout-btn {
-    background-color: #f44336;
+    background-color: #D32F2F;
+    color: #fff;
 }
 
 .clear-workout-btn:hover {
-    background-color: #da190b;
+    background-color: #B71C1C;
 }
 
 .paste-workout-btn {
     background-color: #FF9800;
+    color: var(--on-accent);
 }
 
 .paste-workout-btn:hover {
@@ -386,7 +397,7 @@
 
 .empty-slot {
     text-align: center;
-    color: #666;
+    color: #a0a0a0;
     font-style: italic;
     padding: 15px 5px;
     font-size: 0.85em;
@@ -409,9 +420,35 @@
         align-items: flex-start;
     }
 
+    /* Two columns, left-aligned, in place of one long right-aligned stack. */
     .week-summary {
-        flex-direction: column;
-        gap: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+        gap: 12px 16px;
+    }
+
+    .summary-item {
+        align-items: flex-start;
+    }
+
+    .summary-item-large {
+        padding: 0;
+        border-right: 0;
+    }
+
+    .summary-value-large {
+        font-size: 1.6em;
+    }
+
+    /* 16px stops iOS Safari from zooming the page when a field gets focus. */
+    .date-input,
+    .workout-activity-select,
+    .workout-distance-input,
+    .workout-description,
+    .phase-selector,
+    .phase-name-input {
+        font-size: 16px;
     }
 
     .controls {
@@ -431,6 +468,15 @@
 @media (max-width: 480px) {
     .calendar-grid {
         grid-template-columns: 1fr;
+    }
+
+    /* One day per row: let each day be as tall as its workouts. */
+    .day-column {
+        min-height: 0;
+    }
+
+    .week-container {
+        padding: 16px;
     }
 }
 
@@ -459,6 +505,10 @@
 }
 
 .close {
+    background: none;
+    border: 0;
+    padding: 4px 8px;
+    margin: -4px -8px 0 0;
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -469,7 +519,51 @@
 
 .close:hover,
 .close:focus {
+    background: none;
     color: white;
+}
+
+.close:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Clear Plan: a quieter, destructive control next to the blue actions. */
+.clear-plan-btn {
+    background-color: transparent;
+    border: 1px solid #f44336;
+    color: #ff8a80;
+}
+
+.clear-plan-btn:hover {
+    background-color: rgba(244, 67, 54, 0.2);
+}
+
+/* Feedback line: fixed at the bottom so it is visible from any week. */
+.plan-status {
+    position: fixed;
+    left: 50%;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 2100;
+    max-width: calc(100vw - 32px);
+    margin: 0;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--primary-color);
+    background-color: rgba(20, 20, 20, 0.96);
+    color: white;
+    font-size: 0.95em;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s;
+}
+
+.plan-status.visible {
+    opacity: 1;
+    visibility: visible;
 }
 
 .modal-content h2 {
@@ -511,7 +605,7 @@
 }
 
 .delete-btn {
-    background-color: #f44336;
+    background-color: #D32F2F;
     color: white;
     padding: 8px 16px;
     border: none;
@@ -521,7 +615,7 @@
 }
 
 .delete-btn:hover {
-    background-color: #da190b;
+    background-color: #B71C1C;
 }
 
 /* Week Title Section */
@@ -544,7 +638,9 @@
 }
 
 .phase-selector:focus {
-    outline: none;
+    /* The border is already green; white stands out against it. */
+    outline: 2px solid #fff;
+    outline-offset: 2px;
     border-color: var(--primary-hover-color);
 }
 

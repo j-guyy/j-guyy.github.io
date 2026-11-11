@@ -60,14 +60,19 @@ const TravelAPI = {
     // from visited metros named after their capital).
     async fetchCapitals() {
         const file = await fetch(new URL('stateCapitals.json', TRAVEL_DATA_URL)).then(r => r.json());
+        let answered = false;
         try {
             const res = await fetch(`${TRAVEL_WORKER_URL}/travel/capitals`);
             const stored = res.ok ? await res.json() : null;
-            if (Array.isArray(stored) && stored.length) {
+            answered = Array.isArray(stored);
+            if (answered && stored.length) {
                 const done = new Map(stored.map(c => [c.state, Boolean(c.visited)]));
                 file.forEach(c => { if (done.has(c.state)) c.visited = done.get(c.state); });
             }
         } catch { /* worker unreachable: keep the file's flags */ }
+        // The worker did not answer with a list: the flags on show are the
+        // file's, so saveList() must not write them over the stored list.
+        if (!answered) this._fromFile.add('capitals');
         return file;
     },
 
@@ -111,13 +116,17 @@ const TravelAPI = {
         return parks;
     },
 
+    // Countries and visited states have no /data fallback (both are edited
+    // whole from the dashboards), so a bad answer is an error the page shows.
     async fetchCountries() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/countries`);
+        if (!res.ok) throw new Error(`countries: HTTP ${res.status}`);
         return res.json();
     },
 
     async fetchVisitedStates() {
         const res = await fetch(`${TRAVEL_WORKER_URL}/travel/visited-states`);
+        if (!res.ok) throw new Error(`visited-states: HTTP ${res.status}`);
         return res.json();
     },
 
@@ -299,5 +308,83 @@ const TravelAdmin = {
         });
         render();
         return render;
+    },
+};
+
+// ── Dashboard UI helpers ────────────────────────────────────────────────────
+// Shared by the US, World and Peaks dashboards.
+const TravelUI = {
+    // The first load failed: say so where the "Loading…" placeholder still
+    // stands (the summary, or the table if the summary already drew), with a
+    // Retry button that reloads. Other placeholders are cleared.
+    showLoadError() {
+        const pending = ['travel-summary', 'travel-table-container']
+            .map(id => document.getElementById(id))
+            .filter(el => el && el.querySelector('.dash-loading'));
+        pending.forEach((el, i) => {
+            if (i > 0) { el.innerHTML = ''; return; }
+            el.innerHTML = `
+                <div class="dash-error" role="alert">
+                    <p>Could not load travel data. Reload to try again.</p>
+                    <button type="button" class="table-action-btn">Retry</button>
+                </div>`;
+            el.querySelector('button').addEventListener('click', () => location.reload());
+        });
+    },
+
+    // One table's own load failed (the rest of the page is up): say so in its
+    // container, in showLoadError()'s style, with a Retry that runs onRetry.
+    showTableError(container, message, onRetry) {
+        container.innerHTML = `
+            <div class="dash-error" role="alert">
+                <p></p>
+                <button type="button" class="table-action-btn">Retry</button>
+            </div>`;
+        container.querySelector('p').textContent = message;
+        container.querySelector('button').addEventListener('click', onRetry);
+    },
+
+    // Runs render() (a table rebuild not started by the user, e.g. more data
+    // arrived) and, if a sortable header had keyboard focus, puts focus back
+    // on the same column (by its sort key) of the rebuilt table. Focus never
+    // moves when the user was not on a header.
+    keepHeaderFocus(render) {
+        const container = document.getElementById('travel-table-container');
+        const th = document.activeElement;
+        const onHeader = container && th && th.matches('th.sortable') && container.contains(th);
+        const key = onHeader ? th.dataset.sortKey : null;
+        const index = onHeader ? [...th.parentNode.children].indexOf(th) : -1;
+        render();
+        if (!onHeader) return;
+        // The rebuild dropped the focused header, so focus is on the body
+        // now; if it is anywhere else, something else took it: leave it.
+        if (document.activeElement && document.activeElement !== document.body) return;
+        const headers = [...container.querySelectorAll('thead th.sortable')];
+        const sameKey = key == null ? [] : headers.filter(h => h.dataset.sortKey === key);
+        // Two columns can share a key (Rank and Elevation): keep the position.
+        const again = sameKey.find(h => [...h.parentNode.children].indexOf(h) === index) || sameKey[0]
+            || (key == null ? headers[index] : null);
+        // A background rebuild must not scroll the page back to the header.
+        if (again) again.focus({ preventScroll: true });
+    },
+
+    // Makes a sortable <th> (one with a click handler that re-renders the
+    // table) work from the keyboard: focusable, Enter / Space sort, and
+    // aria-sort on the active column. Focus returns to the same column of
+    // the rebuilt table. key (the column's sort key) lets keepHeaderFocus()
+    // find the column again after a rebuild.
+    sortableHeader(th, isActive, dir, key) {
+        th.tabIndex = 0;
+        if (key != null) th.dataset.sortKey = key;
+        if (isActive) th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+        th.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            const index = [...th.parentNode.children].indexOf(th);
+            const container = th.closest('#travel-table-container');
+            th.click();
+            const again = container && container.querySelector(`thead th:nth-child(${index + 1})`);
+            if (again) again.focus();
+        });
     },
 };

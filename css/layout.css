@@ -1,3 +1,32 @@
+/* "Skip to content": the first focusable element on every page (added by
+   js/navbar-component.js). Off screen until it gets keyboard focus. */
+.skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 1100;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    background-color: var(--primary-color);
+    color: var(--on-accent);
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: var(--shadow);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: none;
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+}
+
+/* The skip target takes focus without a ring around the whole page body */
+main:focus,
+#main-content:focus {
+    outline: none;
+}
+
 /* Navbar base styles */
 .navbar {
     background-color: var(--bg-transparent);
@@ -8,6 +37,11 @@
     left: 0;
     z-index: 1000;
     backdrop-filter: blur(10px);
+    /* Notched phones (only applies on pages with viewport-fit=cover; env() is
+       0 otherwise): keep the brand and menu button out of the cut-outs. */
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
 }
 
 .navbar-container {
@@ -131,7 +165,7 @@
 @media (hover: hover) {
     .dropdown-content a:hover {
         background-color: var(--primary-color);
-        color: white;
+        color: var(--on-accent);
     }
 }
 
@@ -150,9 +184,14 @@
 
 .nav-menu .dropdown-content a:focus-visible {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--on-accent);
     outline: 2px solid var(--text-color);
     outline-offset: -2px;
+}
+
+.hamburger:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -4px;
 }
 
 .dropdown::after {
@@ -200,13 +239,18 @@
     }
 }
 
-/* Hide tools dropdown by default */
-.tools-dropdown {
+/* Hide tools dropdown by default. The selector has to outrank the phone
+   accordion's `.nav-menu li.dropdown { display: flex }` further down, which
+   used to show the hidden menu on phones. */
+.tools-dropdown,
+.nav-menu li.dropdown.tools-dropdown {
     display: none;
 }
 
-/* Show tools dropdown when body has show-tools class */
-body.show-tools .tools-dropdown {
+/* Show tools dropdown when body has show-tools class (Ctrl/Alt+Shift+T, kept
+   in localStorage by js/navbar-component.js) */
+body.show-tools .tools-dropdown,
+body.show-tools .nav-menu li.dropdown.tools-dropdown {
     display: inline-block;
 }
 
@@ -394,6 +438,19 @@ body {
     }
 }
 
+/* Touch screens wider than the phone layout (tablets): the bar's links grow
+   to a 44px touch target. Mouse layouts are unchanged. The dropdown links
+   already get a 44px minimum from js/navbar-component.js. */
+@media (min-width: 769px) and (pointer: coarse) {
+    .nav-menu > li > a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+}
+
 /* Mobile hamburger menu styles */
 @media (max-width: 768px) {
     /* A real 48px bar (menu button left, "JG" right) rather than a bare
@@ -401,8 +458,11 @@ body {
        table rows. It slides away while scrolling down and returns on the first
        scroll up (js/navbar-component.js toggles .navbar-hidden). */
     .navbar {
-        height: 48px;
+        height: calc(48px + env(safe-area-inset-top, 0px));
         padding: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
         box-sizing: border-box;
         background-color: rgba(10, 13, 11, 0.78);
         backdrop-filter: blur(12px);
@@ -439,9 +499,20 @@ body {
         border-bottom-color: transparent;
     }
 
-    .home-page .navbar.navbar-at-top .hamburger,
-    .home-page .navbar.navbar-at-top .navbar-brand a {
+    .home-page .navbar.navbar-at-top .hamburger {
         filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+    }
+
+    /* Green "JG" disappears on bright sky: white with a soft shadow while the
+       bar is clear, back to green once it turns solid. */
+    .home-page .navbar.navbar-at-top .navbar-brand a {
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75), 0 0 10px rgba(0, 0, 0, 0.35);
+    }
+
+    .home-page .navbar.navbar-at-top:has(.nav-menu-active) .navbar-brand a {
+        color: var(--primary-color);
+        text-shadow: none;
     }
 
     /* With the menu open the bar matches the solid sheet below it, even at
@@ -544,8 +615,13 @@ body {
         flex-direction: column;
     }
 
+    body.show-tools .nav-menu li.dropdown.tools-dropdown {
+        display: flex;
+    }
+
     .nav-menu li a {
         padding: 1rem 1.5rem 1rem 3.5rem;
+        min-height: 44px; /* touch target */
         font-size: 1.1rem;
         display: block;
         width: 100%;
@@ -601,9 +677,12 @@ body {
         max-height: 400px;
     }
 
-    .dropdown-content a {
+    /* `.nav-menu` in the selector so this outranks `.nav-menu li a` above;
+       without it the sub-items lost their indent and smaller size. */
+    .nav-menu .dropdown-content a {
         padding: 0.75rem 1.5rem;
         padding-left: 4.5rem;
+        min-height: 44px; /* touch target */
         font-size: 0.95rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         transition: all 0.2s ease;
@@ -614,14 +693,13 @@ body {
         background-color: transparent;
     }
 
-    .dropdown-content a:last-child {
+    .nav-menu .dropdown-content a:last-child {
         border-bottom: none;
     }
 
-    .dropdown-content a:focus,
-    .dropdown-content a:active {
+    .nav-menu .dropdown-content a:focus,
+    .nav-menu .dropdown-content a:active {
         background-color: rgba(0, 128, 0, 0.3);
-        padding-left: 3.5rem;
     }
 
     /* Disable desktop hover on mobile — iOS makes :hover sticky on tap,
@@ -644,4 +722,10 @@ body {
     .navbar {
         transition: none;
     }
+}
+
+/* About page: if WebGL is missing or the globe fails, js/life-journey.js shows
+   its own short message; Cesium's pink error dialog stays hidden. */
+#life-journey-globe .cesium-widget-errorPanel {
+    display: none !important;
 }

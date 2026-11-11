@@ -4,15 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Rocky Mountain Sub-Ranges Map — Justin Guyette</title>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
+    <link rel="stylesheet" href="css/leaflet.css?v=20261110d">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous" />
-    <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css'
+    <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css' integrity='sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO' crossorigin='anonymous'
         rel='stylesheet' />
     <meta name="description" content="Interactive map of every sub-range of the Rocky Mountains.">
     <link rel="canonical" href="https://j-guyy.github.io/mountain-mapping.html">
@@ -32,6 +35,7 @@
         <div class="section">
             <h2>Interactive Mountain Map</h2>
             <p>Map of all sub-ranges of the Rocky Mountains</p>
+            <p class="map-key map-key--always"><span class="map-key-item"><span class="map-key-swatch map-key-dot" style="background:#4A90E2"></span>Northern Rockies</span> <span class="map-key-item"><span class="map-key-swatch map-key-dot" style="background:#4CAF50"></span>Central Rockies</span> <span class="map-key-item"><span class="map-key-swatch map-key-dot" style="background:#FF6B6B"></span>Southern Rockies</span></p>
             <div id="rocky-mountains-map" class="map-container"></div>
         </div>
     </div>
@@ -40,9 +44,9 @@
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js"></script>
     <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
-    <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
+    <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js' integrity='sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F' crossorigin='anonymous'></script>
     <script src="js/travel-api.js"></script>
-    <script src="js/leaflet.js"></script>
+    <script src="js/leaflet.js?v=20261110d"></script>
     <script src="js/mountain-mapping.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>

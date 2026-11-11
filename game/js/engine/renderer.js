@@ -14,8 +14,13 @@ export const COLS = VIEW_W / TILE; // 15
 export const ROWS = VIEW_H / TILE; // 10
 
 export class Renderer {
-  constructor(canvas) {
+  // opts.touch: on-screen-controls mode — use a thinner margin so the canvas is
+  // as large as a phone screen allows. opts.below: an element stacked under
+  // the canvas (the one-line touch hint) whose height is kept free.
+  constructor(canvas, opts = {}) {
     this.canvas = canvas;
+    this.touch = !!opts.touch;
+    this.below = opts.below || null;
     this.canvas.width = VIEW_W;
     this.canvas.height = VIEW_H;
     this.ctx = canvas.getContext('2d');
@@ -26,15 +31,20 @@ export class Renderer {
   }
 
   _resize() {
-    const pad = 24;
+    const pad = this.touch ? 8 : 24;
+    const reserved = this.touch && this.below ? (this.below.offsetHeight || 0) + 4 : 0;
     const maxW = window.innerWidth - pad;
-    const maxH = window.innerHeight - pad;
+    const maxH = window.innerHeight - pad - reserved;
     const rawScale = Math.min(maxW / VIEW_W, maxH / VIEW_H);
     // Integer-scale when the viewport is roomy enough (keeps pixel art crisp),
     // but fall back to a fractional scale on small/mobile screens so the
     // canvas shrinks to fit instead of overflowing the viewport width.
     const scale = rawScale >= 1 ? Math.floor(rawScale) : rawScale;
     this.scale = scale;
+    // Below 1x, nearest-neighbour drops pixel rows and columns and the text
+    // turns jagged, so let the browser smooth it. '' hands control back to the
+    // stylesheet (pixelated) for crisp integer scales.
+    this.canvas.style.imageRendering = scale < 1 ? 'auto' : '';
     this.canvas.style.width = VIEW_W * scale + 'px';
     this.canvas.style.height = VIEW_H * scale + 'px';
   }
@@ -138,6 +148,24 @@ export class Renderer {
       if (!isLastAndCut && g.measureText(line).width <= maxWidth) return line;
       return shrinkToFit(line);
     });
+  }
+
+  // Width of `str` at `size`, as text() would draw it.
+  textWidth(str, size) {
+    this.ctx.font = size + 'px monospace';
+    return this.ctx.measureText(str).width;
+  }
+
+  // Fit one line of text into `maxWidth`: try `size`, then step the font down
+  // to `minSize`, and only if it is still too wide cut it with an ellipsis
+  // (via wrapClamped). Returns { text, size } to hand to text(). For short
+  // labels in fixed cells — a move name beside its PP count.
+  fitText(str, maxWidth, size, minSize = size) {
+    for (let s = size; s >= minSize; s--) {
+      if (this.textWidth(str, s) <= maxWidth) return { text: str, size: s };
+    }
+    const floor = Math.min(size, minSize);
+    return { text: this.wrapClamped(str, maxWidth, floor, 1)[0], size: floor };
   }
 
   bar(x, y, w, h, pct, color, bg = '#3a3a4a') {

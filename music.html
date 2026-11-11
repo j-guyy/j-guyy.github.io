@@ -4,13 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Song Leaderboard — Justin Guyette</title>
     <meta name="description" content="Most-played songs from YouTube Music listening history.">
     <meta name="robots" content="noindex">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
 </head>
 
 <body class="page">
@@ -32,7 +35,7 @@
                 <input id="music-import-file" type="file" accept=".json,application/json" hidden>
                 <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
-            <p id="music-status">Loading…</p>
+            <p id="music-status" role="status">Loading…</p>
             <div class="table-scroll-wrapper">
                 <table class="travel-table" id="music-leaderboard" hidden>
                     <thead>

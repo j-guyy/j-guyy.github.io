@@ -87,7 +87,9 @@
 
 /* Table Controls */
 .table-controls {
-    margin: 30px 0;
+    /* The bottom margin also clears peaks-dashboard.css's .peaks-source,
+       which pulls itself up 16px under this row. */
+    margin: 16px 0 24px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -155,7 +157,7 @@
 
 #table-selector {
     background-color: var(--primary-color);
-    color: var(--text-color);
+    color: var(--on-accent);
     padding: 8px 16px;
     border: none;
     border-radius: 5px;
@@ -177,6 +179,12 @@
 
 .travel-table th.sortable:hover {
     background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Sortable headers take keyboard focus (TravelUI.sortableHeader). */
+.travel-table th.sortable:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
 }
 
 .travel-table th.sort-active {
@@ -1079,4 +1087,54 @@ a.summary-stat-link:focus-visible {
 
 .eco-date {
     white-space: nowrap;
+}
+
+/* Loading and error states (the dashboards' summary and table containers).
+   The placeholder holds roughly the height of what replaces it, so the page
+   below moves little when the data lands. */
+.dash-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
+    margin: 0;
+    color: var(--text-dim);
+}
+
+.dash-loading--summary {
+    min-height: 460px;
+}
+
+.dash-loading--peaks {
+    min-height: 330px;
+}
+
+.dash-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 20px 0;
+    padding: 28px 20px;
+    text-align: center;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.dash-error p {
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .dash-loading--summary {
+        min-height: 380px;
+    }
+
+    /* A finger-sized owner lock (it was about 28px at half opacity). */
+    .table-action-btn.owner-lock {
+        min-width: 40px;
+        min-height: 40px;
+        opacity: 0.7;
+    }
 }
