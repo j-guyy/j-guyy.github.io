@@ -59,6 +59,24 @@ function migrateV3(d) {
   };
 }
 
+// Shape check for what continueGame() dereferences. Species / move / map ids
+// are checked against the loaded data by the caller, which has the dex.
+function isValidMember(m) {
+  return !!m && typeof m === 'object' && typeof m.species === 'string' &&
+    Number.isFinite(m.level) && m.level >= 1;
+}
+function isValidSave(d) {
+  if (!d || typeof d !== 'object') return false;
+  if (!Array.isArray(d.party) || !d.party.length || !d.party.every(isValidMember)) return false;
+  if (d.storage != null && !(Array.isArray(d.storage) && d.storage.every(isValidMember))) return false;
+  const p = d.player;
+  if (!p || typeof p !== 'object' || typeof p.map !== 'string' || !p.map) return false;
+  if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+  return true;
+}
+
+// Returns the migrated save, or null when there is none or it is unreadable.
+// A bad save is left in storage untouched (never deleted here).
 export function loadSave() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -68,6 +86,7 @@ export function loadSave() {
     if (data.version === 2) data = migrateV2(data);
     if (data.version === 3) data = migrateV3(data);
     if (data.version !== SAVE_VERSION) return null;
+    if (!isValidSave(data)) return null;
     return data;
   } catch {
     return null;
