@@ -3989,7 +3989,7 @@ async function initEcoregionMap() {
     // first so routes draw (and hit-test) on top of them. Half a screen of
     // padding keeps the ~5,800 polygons drawn while dragging (Leaflet's
     // default 10% leaves the leading edge blank).
-    const renderer = L.canvas({ padding: 0.5 });
+    const renderer = routeRenderer({ padding: 0.5 });
     renderEcoregionMap(geojson, renderer);
     setEcoStatus('Loading activity routes…');
     await addPolylineOverlay(ecoMap, { interactive: true, renderer });
@@ -4590,6 +4590,55 @@ async function loadPolylines() {
     return cachedPolylines;
 }
 
+// Canvas renderer for activity routes that's forgiving to tap. Routes are
+// 1–2 px lines, so Leaflet's default renderer (tolerance 0, and the last route
+// drawn wins) needed a pixel-perfect tap on a phone. This one counts a tap
+// within a fingertip of a line (ROUTE_TAP_PX on touch screens) and, when
+// several routes are that close, opens the one nearest the finger rather than
+// whichever was drawn last. Fills (polygons sharing the canvas, e.g. the
+// ecoregion map) only win when no route is in reach. Hover keeps Leaflet's
+// own hit test with the same tolerance.
+const ROUTE_TAP_PX = 14;   // touch: about half a fingertip each side of the line
+const ROUTE_CLICK_PX = 4;  // mouse
+const RouteCanvas = L.Canvas.extend({
+    options: { tolerance: L.Browser.touch ? ROUTE_TAP_PX : ROUTE_CLICK_PX },
+
+    _onClick(e) {
+        const map = this._map;
+        const point = map.mouseEventToLayerPoint(e);
+        const isClick = e.type === 'click' || e.type === 'preclick';
+        let nearest = null, nearestD = Infinity, topFill = null;
+        for (let order = this._drawFirst; order; order = order.next) {
+            const layer = order.layer;
+            if (!layer.options.interactive || !layer._containsPoint(point)) continue;
+            if (isClick && map._draggableMoved(layer)) continue;
+            if (layer instanceof L.Polygon || !layer._parts) { topFill = layer; continue; }
+            const d = distanceToParts(point, layer._parts);
+            if (d <= nearestD) { nearest = layer; nearestD = d; }  // ties: drawn last wins
+        }
+        const hit = nearest || topFill;
+        // Let the map's own click handlers know a route took this click (the
+        // map fires 'click' after the route does), e.g. Tile Hunter's tile popup.
+        if (nearest && isClick) e._routeHit = true;
+        this._fireEvent(hit ? [hit] : false, e);
+    },
+});
+
+// Smallest pixel distance from a point to a path's projected parts.
+function distanceToParts(p, parts) {
+    let best = Infinity;
+    for (const part of parts) {
+        if (part.length === 1) { best = Math.min(best, p.distanceTo(part[0])); continue; }
+        for (let k = 1; k < part.length; k++) {
+            const d = L.LineUtil.pointToSegmentDistance(p, part[k - 1], part[k]);
+            if (d < best) best = d;
+        }
+    }
+    return best;
+}
+
+function routeRenderer(options) { return new RouteCanvas(options); }
+
 // Draws all activity polylines onto any Leaflet map instance.
 // Uses the shared cache so the fetch only ever happens once per page load.
 // Options:
@@ -4607,7 +4656,7 @@ async function addPolylineOverlay(targetMap, { color = null, interactive = false
     try { polylines = await loadPolylines(); }
     catch (err) { dbg(`Polyline overlay failed: ${err.message}`); return []; }
 
-    renderer = renderer || L.canvas();
+    renderer = renderer || routeRenderer();
     const layers = [];
     polylines.forEach((encoded, i) => {
         if (!encoded) return;
@@ -4655,8 +4704,8 @@ async function initMap() {
     setMapStatus('Initializing map…');
 
     // Canvas renderer handles thousands of polylines far better than SVG.
-    // Bump click tolerance so the thin (weight 1.5) lines are tappable on touch.
-    const activityRenderer = L.canvas({ tolerance: L.Browser.touch ? 15 : 4 });
+    // routeRenderer makes the thin lines tappable on touch (see RouteCanvas).
+    const activityRenderer = routeRenderer();
     stravaMap = L.map('strava-map', {
         renderer: activityRenderer,
         preferCanvas: true,
@@ -5699,8 +5748,11 @@ async function initTileMap() {
     new TileHunterLayer(visitedTiles).addTo(tileMap);
     toggleTileGrid(true);  // gridlines on by default
 
-    // Click any visited tile → show cluster + square info
+    // Click any visited tile → show cluster + square info. A tap on a route
+    // opens that activity's popup instead (RouteCanvas marks the event); this
+    // used to open over it and replace it straight away.
     tileMap.on('click', e => {
+        if (e.originalEvent && e.originalEvent._routeHit) return;
         const [tx, ty] = latLngToTileXY(e.latlng.lat, e.latlng.lng);
         const key = `${tx},${ty}`;
         if (!visitedTiles.has(key)) return;
