@@ -24,6 +24,12 @@ let copiedWorkout = null;
 let phases = [...DEFAULT_PHASES];
 let startDate = null; // Start date for the training plan
 
+// "YYYY-MM-DD" from the local date parts (toISOString() is UTC and can be a day off).
+function localDateString(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addWeekBtn').addEventListener('click', addWeek);
@@ -658,7 +664,7 @@ function exportToExcel() {
 
     // Generate and download the file
     workbook.xlsx.writeBuffer().then(buffer => {
-        const date = new Date().toISOString().split('T')[0];
+        const date = localDateString(new Date());
         const blob = new Blob([buffer], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         });
@@ -701,7 +707,7 @@ async function importFromExcel(event) {
                     startDate = parsedDate;
                     // Update the date input
                     const dateInput = document.getElementById('startDateInput');
-                    dateInput.value = startDate.toISOString().split('T')[0];
+                    dateInput.value = localDateString(startDate);
                 }
             }
         }

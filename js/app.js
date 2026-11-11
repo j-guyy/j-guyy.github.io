@@ -157,8 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Home grid quick stats ────────────────────────────────────────────────────
 function pollHomeStats() {
+    let tries = 0;
     const timer = setInterval(() => {
-        if (typeof currentTotal === 'undefined' || currentTotal === 0) return;
+        if (typeof currentTotal === 'undefined' || currentTotal === 0) {
+            // Give up after 2 minutes (load failed, or no activities) instead of polling forever.
+            if (++tries >= 300) clearInterval(timer);
+            return;
+        }
         clearInterval(timer);
         const status = document.getElementById('home-status');
         if (status) status.textContent = '';
