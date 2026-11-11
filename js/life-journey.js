@@ -200,13 +200,20 @@
         });
     }
 
-    // Circle the current place until the next card takes over
+    // Circle the current place until the next card takes over. The loop stops
+    // while the section is off screen (the render loop is off then) and the
+    // observer in startGlobe() starts it again through resumeCircle.
+    let resumeCircle = null;
     function circle(speed, myJob) {
         if (reduceMotion) return;
         const start = performance.now();
         let last = start;
         function tick(now) {
             if (myJob !== job) return;
+            if (!viewer.useDefaultRenderLoop) {
+                resumeCircle = () => { last = performance.now(); requestAnimationFrame(tick); };
+                return;
+            }
             const ramp = Math.min((now - start) / 1500, 1); // ease into the turn
             pose.heading += speed * ramp * (now - last) / 1000;
             last = now;
@@ -426,6 +433,11 @@
         // Stop drawing while the section is off screen
         new IntersectionObserver(entries => {
             viewer.useDefaultRenderLoop = entries[0].isIntersecting;
+            if (entries[0].isIntersecting && resumeCircle) {
+                const resume = resumeCircle;
+                resumeCircle = null;
+                resume();
+            }
         }).observe(stage);
 
         setPose(Object.assign({}, INTRO));

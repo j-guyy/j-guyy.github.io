@@ -12,13 +12,35 @@ const TRAVEL_PATHS = {
 const TRAVEL_DATA_URL = new URL('../data/', document.currentScript?.src || location.href);
 
 const TravelAPI = {
+    // A stored list from the worker, or the /data file when the worker is
+    // unreachable, answers with an error status or sends something that
+    // isn't a list (same idea as fetchPeakList below).
+    async _fetchListWithFallback(path, fileName) {
+        try {
+            const res = await fetch(`${TRAVEL_WORKER_URL}/travel/${path}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data)) return data;
+            }
+        } catch (err) { /* offline */ }
+        const file = await fetch(new URL(fileName, TRAVEL_DATA_URL));
+        if (!file.ok) throw new Error(`${fileName}: HTTP ${file.status}`);
+        const data = await file.json();
+        // The page now shows the file, not the stored list: saveList() must
+        // not write it over the stored list (the path is the save type here).
+        this._fromFile.add(path);
+        return data;
+    },
+
+    // Lists this page got from the /data file because the worker did not
+    // answer. Kept until the page reloads.
+    _fromFile: new Set(),
+
     // The stored list keeps the names it was seeded with, and nothing edits
     // them, so a peak renamed in the /data file (Clingmans Dome → Kuwohi)
     // would never show. Names are reference data: take them from the file.
     async fetchHighPoints() {
-        const res = await fetch(`${TRAVEL_WORKER_URL}/travel/highpoints`);
-        const points = await res.json();
-        if (!Array.isArray(points)) return points;
+        const points = await this._fetchListWithFallback('highpoints', 'highPoints.json');
         try {
             const file = await fetch(new URL('highPoints.json', TRAVEL_DATA_URL));
             if (file.ok) {
@@ -69,17 +91,15 @@ const TravelAPI = {
     },
 
     async fetchMetros() {
-        const res = await fetch(`${TRAVEL_WORKER_URL}/travel/metros`);
-        return res.json();
+        return this._fetchListWithFallback('metros', 'metros.json');
     },
 
     // The stored list only changes through toggles, so a park added to the
     // /data file (a new designation, e.g. Chiricahua) is appended from it,
     // with the file's visited flag, until the list is re-seeded.
     async fetchNationalParks() {
-        const res = await fetch(`${TRAVEL_WORKER_URL}/travel/parks`);
-        const parks = await res.json();
-        if (!Array.isArray(parks) || !parks.length) return parks;
+        const parks = await this._fetchListWithFallback('parks', 'nationalParks.json');
+        if (!parks.length) return parks;
         try {
             const file = await fetch(new URL('nationalParks.json', TRAVEL_DATA_URL));
             if (file.ok) {
@@ -189,6 +209,11 @@ const TravelAPI = {
     _saveQueue: Promise.resolve(),
 
     saveList(type, getData, password) {
+        // A list shown from the /data file is not the stored list: saving it
+        // whole would replace the stored visited flags with the file's.
+        if (this._fromFile.has(type)) {
+            return Promise.reject(new Error('This list was loaded from the backup file because the server did not answer, so it cannot be saved. Reload the page and try again.'));
+        }
         const run = this._saveQueue.then(() => this.seed(type, getData(), password));
         this._saveQueue = run.catch(() => {});
         return run;

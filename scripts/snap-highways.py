@@ -611,7 +611,7 @@ def main():
                          else f"  [{'; '.join(reasons[i])}]"), flush=True)
         if changed and not args.dry_run:
             with open(path, 'w') as f:
-                f.write(json.dumps(data, indent=4))
+                f.write(json.dumps(data, separators=(',', ':'), ensure_ascii=False))
     with open(args.report, 'w') as f:
         json.dump(report, f)
     snapped = sum(1 for e in report if e['status'] == 'snapped')

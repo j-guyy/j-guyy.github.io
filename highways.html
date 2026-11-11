@@ -10,8 +10,8 @@
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous" />
     <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css'
         rel='stylesheet' />
     <style>
@@ -482,10 +482,10 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js"></script>
-    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
     <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
     <script>
         // ========== DATA & STATE ==========
@@ -495,6 +495,11 @@
         let routeLayer;
         let activeTab = 'interstates';
         let activePerson = 'person1'; // which person's driven status to show
+
+        // Data strings go into popup HTML: escape them first.
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
 
         // ========== PERSON SWITCHING ==========
         function switchPerson(personId) {
@@ -562,6 +567,7 @@
                     fetch('data/highways.json'),
                     fetch('data/familyTravels.json')
                 ]);
+                [intResp, hwResp, ftResp].forEach(r => { if (!r.ok) throw new Error(`${r.url}: HTTP ${r.status}`); });
                 interstateData = await intResp.json();
                 highwayData = await hwResp.json();
                 const ftData = await ftResp.json();
@@ -578,6 +584,16 @@
                 drawRoutes();
             } catch (error) {
                 console.error('Error loading highway data:', error);
+                // Say so on the page too, above the map.
+                const mapContainer = document.querySelector('.map-container');
+                if (mapContainer && !document.getElementById('highway-load-error')) {
+                    const msg = document.createElement('p');
+                    msg.id = 'highway-load-error';
+                    msg.setAttribute('role', 'alert');
+                    msg.style.cssText = 'color:#dc3545;font-weight:bold;margin:10px 0;';
+                    msg.textContent = 'Could not load the highway data. Please reload the page to try again.';
+                    mapContainer.parentNode.insertBefore(msg, mapContainer);
+                }
             }
         }
 
@@ -660,17 +676,20 @@
                     }).addTo(routeLayer);
 
                     const typeLabel = isInterstate ? 'Interstate' : 'Highway';
-                    polyline.bindPopup(`
-                        <div>
-                            <h4>${route.number} - ${segment.description}</h4>
+                    // Built as an element so the button gets a real click
+                    // handler (no route number inside an onclick string).
+                    const popup = document.createElement('div');
+                    popup.innerHTML = `
+                            <h4>${escapeHtml(route.number)} - ${escapeHtml(segment.description)}</h4>
                             <p><strong>Type:</strong> ${typeLabel}</p>
-                            <p><strong>Distance:</strong> ${segment.miles} miles</p>
-                            <p><strong>Status (${activePerson}):</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
-                            <button onclick="toggleSegment('${route.number}', ${index}, ${isInterstate})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                            <p><strong>Distance:</strong> ${escapeHtml(segment.miles)} miles</p>
+                            <p><strong>Status (${escapeHtml(activePerson)}):</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
+                            <button class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
                                 ${driven ? 'Mark as Not Driven' : 'Mark as Driven'}
                             </button>
-                        </div>
-                    `);
+                    `;
+                    popup.querySelector('button').addEventListener('click', () => toggleSegment(route.number, index, isInterstate));
+                    polyline.bindPopup(popup);
                 });
             } else if (route.coordinates && route.coordinates.length > 0) {
                 const driven = isRouteDrivenByPerson(route, activePerson);
@@ -683,10 +702,10 @@
 
                 polyline.bindPopup(`
                     <div>
-                        <h4>${route.name}</h4>
-                        <p>${route.description}</p>
+                        <h4>${escapeHtml(route.name)}</h4>
+                        <p>${escapeHtml(route.description)}</p>
                         <p><strong>Length:</strong> ${route.length.toLocaleString()} miles</p>
-                        <p><strong>States:</strong> ${route.states.join(', ')}</p>
+                        <p><strong>States:</strong> ${escapeHtml(route.states.join(', '))}</p>
                         <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                     </div>
                 `);
@@ -1514,7 +1533,8 @@
                 textarea.value = JSON.stringify(editingRoute, null, 4);
             } else {
                 // Export the full highways.json for non-interstates
-                textarea.value = JSON.stringify(highwayData, null, 4);
+                // Compact, like the file itself (data/highways.json is minified).
+                textarea.value = JSON.stringify(highwayData);
             }
             modal.classList.add('visible');
         }
