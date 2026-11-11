@@ -19,7 +19,7 @@ import {
   createBattle, resolveTurn, activePlayer, activeEnemy, STATUS_INFO,
   needsReplacement, replacementOptions, sendInReplacement,
 } from './battle/battle.js';
-import { hasSave, loadSave, writeSave, clearSave, STARTING_KIT, STARTING_MACHINES, STARTING_MONEY } from './save.js';
+import { hasSave, loadSave, writeSave, STARTING_KIT, STARTING_MACHINES, STARTING_MONEY } from './save.js';
 import { initAudio, playMusic, playSfx, toggleMute } from './engine/audio.js';
 
 const STEP_MS = 140; // per-tile walk duration
@@ -68,7 +68,7 @@ const game = {
   flags: {},
   sprites: {},
   // scene-scoped holders
-  title: { index: 0, hasSave: false },
+  title: { index: 0, hasSave: false, message: null },
   starter: { index: 0, ids: [] },
   dialogue: null,
   menu: null,
@@ -236,8 +236,9 @@ function beginStarterSelect() {
   setState('STARTER');
 }
 
+// An existing save is NOT cleared here: it stays until the new game's first
+// manual save overwrites it, so backing out to the title can still Continue.
 async function startNewGame(starterId) {
-  clearSave();
   game.starterChosen = starterId;
   game.party = [game.dex.makeInstance(starterId, 5)];
   game.storage = [];
@@ -254,16 +255,33 @@ async function startNewGame(starterId) {
 
 async function continueGame() {
   const data = loadSave();
-  if (!data) return;
+  if (!data) {
+    game.title.message = 'Save could not be loaded.';
+    return;
+  }
+  // Everything that can throw on a bad save (unknown species, unknown map)
+  // runs before any game state is touched. The save itself is left in place.
+  let party, storage, dexData;
+  try {
+    party = data.party.map((m) => game.dex.deserializeMember(m));
+    storage = (data.storage || []).map((m) => game.dex.deserializeMember(m));
+    const ds = data.dexState || {};
+    dexData = { seen: new Set(ds.seen || []), caught: new Set(ds.caught || []) };
+    await getMap(data.player.map);
+  } catch (e) {
+    console.error('Save could not be loaded', e);
+    game.title.message = 'Save could not be loaded.';
+    return;
+  }
+  game.title.message = null;
   game.starterChosen = data.starterChosen;
   game.flags = data.flags || {};
-  game.party = data.party.map((m) => game.dex.deserializeMember(m));
-  game.storage = (data.storage || []).map((m) => game.dex.deserializeMember(m));
+  game.party = party;
+  game.storage = storage;
   game.money = data.money != null ? data.money : STARTING_MONEY;
   game.inventory = data.inventory ? { ...data.inventory } : { ...STARTING_KIT };
   game.machines = data.machines ? { ...data.machines } : { ...STARTING_MACHINES };
-  const ds = data.dexState || { seen: [], caught: [] };
-  game.dexData = { seen: new Set(ds.seen), caught: new Set(ds.caught) };
+  game.dexData = dexData;
   // Migration safety: everything in the party is by definition caught.
   for (const m of game.party) markCaught(m.species);
   const p = data.player;
@@ -335,6 +353,7 @@ function updateTitle() {
   if (game.input.consume('up')) t.index = (t.index + options.length - 1) % options.length;
   if (game.input.consume('down')) t.index = (t.index + 1) % options.length;
   if (game.input.consume('confirm')) {
+    t.message = null;
     if (t.index === 0) beginStarterSelect();
     else if (t.index === 1 && t.hasSave) continueGame();
   }
@@ -354,6 +373,7 @@ function updateStarter() {
 
 function updateOverworld(dt) {
   const p = game.player;
+  if (p.warping) return; // mid-warp: the destination map is still loading
 
   // open menu
   if (!p.moving && game.input.consume('cancel')) {
@@ -412,7 +432,16 @@ async function onArriveTile() {
   // warp first (so doors don't roll encounters)
   const warp = game.map.warpAt(p.tx, p.ty);
   if (warp) {
-    await placePlayer(warp.toMap, warp.toX, warp.toY, warp.toFacing || p.facing);
+    // Lock input while the destination map loads (updateOverworld bails on
+    // p.warping), and don't leave a failed fetch as an unhandled rejection.
+    p.warping = true;
+    try {
+      await placePlayer(warp.toMap, warp.toX, warp.toY, warp.toFacing || p.facing);
+    } catch (e) {
+      console.error('Warp failed', e);
+      p.warping = false;
+      showBanner('The way is blocked.');
+    }
     return;
   }
   // random encounter on grass (per-patch zones override the map default)
@@ -675,7 +704,7 @@ function attemptTeach(m, monIndex) {
     return;
   }
   if (mon.moves.length < 4) {
-    mon.moves.push(game.dex.move(move));
+    mon.moves.push(game.dex.instanceMove(move));
     consumeMachineIfTM(m.teach.machineId);
     m.message = `${mon.name} learned ${moveName}!`;
     m.view = 'machines';
@@ -880,7 +909,7 @@ function updateMenu() {
       const moveName = game.dex.move(m.teach.move).name;
       if (m.machineLearnIndex < mon.moves.length) {
         const forgot = mon.moves[m.machineLearnIndex].name;
-        mon.moves[m.machineLearnIndex] = game.dex.move(m.teach.move);
+        mon.moves[m.machineLearnIndex] = game.dex.instanceMove(m.teach.move);
         consumeMachineIfTM(m.teach.machineId);
         m.message = `${mon.name} forgot ${forgot} and learned ${moveName}!`;
         m.view = 'machines';
@@ -1286,7 +1315,7 @@ function updateBattle(dt) {
       let msgs;
       if (b.learnIndex < pl.mon.moves.length) {
         const forgot = pl.mon.moves[b.learnIndex].name;
-        pl.mon.moves[b.learnIndex] = game.dex.move(pl.move);
+        pl.mon.moves[b.learnIndex] = game.dex.instanceMove(pl.move);
         msgs = [
           { type: 'msg', text: `${pl.mon.name} forgot ${forgot}...` },
           { type: 'msg', text: `And learned ${moveName}!` },
@@ -1496,6 +1525,9 @@ function renderTitle() {
     }
     r.text(o, VIEW_W / 2 - 126, y, { size: 30, color: disabled ? '#6b7a94' : (i === game.title.index ? '#ffe08a' : '#fff') });
   });
+  if (game.title.message) {
+    r.text(game.title.message, VIEW_W / 2, y0 + 2 * 52 + 8, { align: 'center', size: 21, color: '#ff9a8a' });
+  }
   r.text('Arrows/WASD move   Z/Enter confirm   X/Esc back', VIEW_W / 2, VIEW_H - 40, { align: 'center', size: 21, color: '#9fb4d8' });
 }
 

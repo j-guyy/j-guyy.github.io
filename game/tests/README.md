@@ -22,6 +22,7 @@ quotes, so Node expands it) or a file list, as the npm scripts do.
 |---|---|
 | `data.test.mjs` | The JSON the game is built from: learnsets, evolutions, machines, shops, trainers, encounter tables, warps, map reachability. Guards against an editor or a hand edit shipping a file that boots into a crash, strands the player, or defines content nothing can reach. |
 | `dex.test.mjs` | Progression: stat computation, the XP curve, levelling and move learning, evolution, and the save round-trip. |
+| `save.test.mjs` | `save.js`: the version migrations (v1 to v4) and that a corrupt or misshapen save loads as `null` without being deleted. |
 | `battle.test.mjs` | The battle engine: type effectiveness, STAB, accuracy, statuses, Leech Seed, hazards, Protect, priority, PP and Struggle, switching, faints, catching, fleeing, weather, drain, recoil, multi-hit and stat stages. |
 | `renderer.test.mjs` | The text-fitting primitives every panel draws through — lines stay inside the width they were given, the ellipsis counts toward that width, empty and unbreakable input come back safe. |
 | `draw-audit.test.mjs` | The layout auditor's own rules (see below), so the browser suite can be trusted when it says a screen is clean. |
@@ -106,7 +107,7 @@ exact damage, so retuning a creature's stats does not break the suite.
 Two things to watch, both of which have bitten these tests already: a type may be
 immune to what you are testing (Electric creatures cannot be paralysed, Ground
 ignores Electric moves), and `withRandom(0)` gives sleep the shortest possible
-duration, so the sleeper wakes on its next action.
+duration: the sleeper loses one action, then wakes on the one after.
 
 ### Browser tests
 

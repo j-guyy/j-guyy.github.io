@@ -17,6 +17,8 @@ export class Input {
     this.pressQueue = []; // edge-triggered presses awaiting consumption
 
     window.addEventListener('keydown', (e) => {
+      // Leave browser/OS shortcuts (Ctrl+S, Cmd+A, Alt+Left...) alone.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const action = KEYMAP[e.code];
       if (!action) return;
       // prevent page scroll / back-navigation on game keys
