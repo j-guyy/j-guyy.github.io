@@ -237,7 +237,8 @@ export class Dex {
     inst.ability = s.ability || null;
     inst.stats = this.computeStats(s.baseStats, inst.level);
     inst.maxHP = inst.stats.hp;
-    inst.curHP = Math.min(inst.maxHP, Math.max(1, inst.curHP + (inst.maxHP - oldMax)));
+    // A fainted creature stays fainted — evolving is not a revive.
+    inst.curHP = inst.curHP <= 0 ? 0 : Math.min(inst.maxHP, Math.max(1, inst.curHP + (inst.maxHP - oldMax)));
     inst.sprite = this.spriteFor(to);
     inst.spriteBack = this.spriteBackFor(to);
     return inst;

@@ -44,6 +44,11 @@ function mkVol() {
 export function createBattle(playerParty, enemyParty, opts = {}) {
   let playerIndex = playerParty.findIndex((m) => m.curHP > 0);
   if (playerIndex < 0) playerIndex = 0;
+  // Toxic's escalation is per-stay: it starts over each battle (and on each
+  // send-in, see sendIn) instead of carrying a counter in from a save.
+  for (const m of [...playerParty, ...enemyParty]) {
+    if (m.status === 'toxic') m.statusCounter = 1;
+  }
   return {
     mode: opts.mode || 'wild', // 'wild' | 'trainer'
     trainerName: opts.trainerName || null,
@@ -142,7 +147,9 @@ function applyStatus(target, status, ctx, beats, announceBlocked) {
     return false;
   }
   target.status = status;
-  if (status === 'sleep') target.statusCounter = 1 + Math.floor(Math.random() * 3); // 1-3 turns
+  // 2-4: canAct decrements first and the sleeper acts on the turn the counter
+  // reaches 0, so this is 1-3 lost actions. (A roll of 1 would cost nothing.)
+  if (status === 'sleep') target.statusCounter = 2 + Math.floor(Math.random() * 3);
   else if (status === 'toxic') target.statusCounter = 1;
   else target.statusCounter = 0;
   beats.push({ type: 'msg', text: statusInflictedMsg(target, status) });
@@ -596,9 +603,11 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
     return { defenderFainted: false, attackerFainted: false };
   }
 
-  // Accuracy (self-targeted moves never miss; stages modify the roll).
+  // Accuracy (non-damaging self-targeted moves never miss; a damaging move
+  // whose secondary effect targets the user still has to hit the defender;
+  // stages modify the roll).
   const selfTarget = move.effect && move.effect.target === 'self';
-  if (!selfTarget) {
+  if (isDamaging || !selfTarget) {
     const acc = move.accuracy != null ? move.accuracy : 100;
     const stageB = clampStage(battle.vol[atkSide].stages.accuracy - battle.vol[defSide].stages.evasion);
     if (Math.random() * 100 >= acc * accStageMult(stageB)) {
@@ -652,7 +661,9 @@ function performMove(battle, attacker, atkSide, defender, defSide, move, ctx, be
 
   let attackerFainted = false;
 
-  if (!defenderFainted && move.effect) {
+  // A knockout cancels effects aimed at the defender (and drain), but not ones
+  // the attacker applies to itself (stat changes, clearing its own hazards).
+  if (move.effect && (!defenderFainted || selfTarget)) {
     applyMoveEffect(battle, move, attacker, atkSide, defender, defSide, ctx, beats, false, totalDamage);
   }
 
@@ -778,6 +789,7 @@ function sendIn(battle, side, index, ctx, beats) {
   else battle.enemyIndex = index;
   battle.vol[side] = mkVol();
   const next = side === 'player' ? activePlayer(battle) : activeEnemy(battle);
+  if (next.status === 'toxic') next.statusCounter = 1; // escalation restarts on send-in
   beats.push({ type: 'switch', side, index });
   beats.push({
     type: 'msg',

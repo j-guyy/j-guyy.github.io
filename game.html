@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Water Gun World</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -110,7 +111,7 @@ body { overflow: hidden; background: #000; }
 <script>
 window._threeLoaded = false;
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"
         onload="window._threeLoaded=true"
         onerror="loadFallbackThree()"></script>
 <script>
@@ -421,12 +422,13 @@ camera.add(gunGroup);
 // ── PROJECTILES ──────────────────────────────────────────────────────────────
 const projectiles = [];
 const waterMat = new THREE.MeshBasicMaterial({color:0x44bbff});
+const shotGeo = new THREE.SphereGeometry(0.1,6,6); // shared by every shot
 
 function shoot() {
   if (shootCooldown > 0 || !gameRunning) return;
   shootCooldown = 0.13;
   const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6), waterMat);
+  const mesh = new THREE.Mesh(shotGeo, waterMat);
   mesh.position.copy(camera.position).addScaledVector(dir, 0.9);
   scene.add(mesh);
   projectiles.push({mesh, vel:dir.clone().multiplyScalar(26), speed:26, dist:0});
@@ -512,10 +514,13 @@ function updatePlayer(dt) {
   const right   = new THREE.Vector3( Math.cos(yaw),0,-Math.sin(yaw));
   const moving = keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']
               || keys['ArrowUp']||keys['ArrowDown']||keys['ArrowLeft']||keys['ArrowRight'];
-  if (keys['KeyW']||keys['ArrowUp'])    camera.position.addScaledVector(forward,  MOVE_SPEED*dt);
-  if (keys['KeyS']||keys['ArrowDown'])  camera.position.addScaledVector(forward, -MOVE_SPEED*dt);
-  if (keys['KeyA']||keys['ArrowLeft'])  camera.position.addScaledVector(right,   -MOVE_SPEED*dt);
-  if (keys['KeyD']||keys['ArrowRight']) camera.position.addScaledVector(right,    MOVE_SPEED*dt);
+  // Sum the held directions, then normalise so a diagonal is not ~1.41x faster.
+  const move = new THREE.Vector3();
+  if (keys['KeyW']||keys['ArrowUp'])    move.add(forward);
+  if (keys['KeyS']||keys['ArrowDown'])  move.sub(forward);
+  if (keys['KeyA']||keys['ArrowLeft'])  move.sub(right);
+  if (keys['KeyD']||keys['ArrowRight']) move.add(right);
+  if (move.lengthSq() > 0) camera.position.addScaledVector(move.normalize(), MOVE_SPEED*dt);
   camera.position.x = Math.max(-48,Math.min(48,camera.position.x));
   camera.position.z = Math.max(-48,Math.min(48,camera.position.z));
   resolvePlayerCollisions();

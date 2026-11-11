@@ -118,6 +118,27 @@ test('evolution triggers at its level and carries the creature over', () => {
   assert.ok(ready.curHP <= ready.maxHP);
 });
 
+test('evolution does not revive a fainted creature', () => {
+  const species = dex.order.find((id) => dex.species(id).evolvesTo);
+  const fainted = dex.makeInstance(species, dex.species(species).evolvesTo.level);
+  fainted.curHP = 0;
+  dex.evolveMember(fainted);
+  assert.equal(fainted.curHP, 0, 'a fainted creature should stay fainted');
+
+  const barely = dex.makeInstance(species, dex.species(species).evolvesTo.level);
+  barely.curHP = 1;
+  dex.evolveMember(barely);
+  assert.ok(barely.curHP >= 1, 'a living creature should stay alive');
+});
+
+test('instanceMove gives a taught move a full PP counter', () => {
+  const id = dex.makeInstance('emberling', 5).moves[0].id;
+  const mv = dex.instanceMove(id);
+  assert.equal(typeof mv.curPP, 'number');
+  assert.equal(mv.curPP, mv.pp);
+  assert.equal(dex.move(id).curPP, undefined, 'the bare definition carries no counter');
+});
+
 test('a save round-trip preserves level, XP, HP, PP and status', () => {
   const mon = dex.makeInstance('gyreshell', 24);
   mon.curHP = 7;
