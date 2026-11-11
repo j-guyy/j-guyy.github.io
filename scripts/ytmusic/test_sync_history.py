@@ -4,6 +4,7 @@ import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).parent))
 from sync_history import auth_json, build_payload, new_play_count  # noqa: E402
@@ -50,6 +51,14 @@ class BuildPayload(unittest.TestCase):
         # oldest first, with dates only where the label pins one down
         self.assertEqual([(x["video_id"], x["played_date"]) for x in p["plays"]],
                          [("c", None), ("b", "2026-10-02"), ("a", "2026-10-03")])
+
+    def test_dates_follow_the_listener_zone(self):
+        # 03:00 UTC on Oct 4 is still the evening of Oct 3 in Denver.
+        late = datetime(2026, 10, 4, 3, tzinfo=timezone.utc)
+        p = build_payload([item("a"), item("b", "Yesterday")], {}, late, ZoneInfo("America/Denver"))
+        self.assertEqual([(x["video_id"], x["played_date"]) for x in p["plays"]],
+                         [("b", "2026-10-02"), ("a", "2026-10-03")])
+        self.assertEqual(p["synced_at"], "2026-10-04T03:00:00+00:00")
 
     def test_no_new_plays(self):
         state = {"snapshot": ["a", "b", "c"], "last_sync": "2026-10-02T09:17:00+00:00"}

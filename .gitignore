@@ -19,5 +19,8 @@ browser.json
 ytmusic-auth.json
 
 __pycache__/
+
+# Claude Code per-machine settings (shows a local user path).
+.claude/settings.local.json
 scripts/.osrm-cache/
 scripts/snap-highways-report.json
