@@ -1,0 +1,22 @@
+# Weekly dependency update PRs. The workflows pin actions to commit SHAs;
+# Dependabot moves the SHA and the version comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  # Root package.json (Capacitor shell). game/ has no dependencies or lockfile.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: pip
+    directory: /scripts/ytmusic
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

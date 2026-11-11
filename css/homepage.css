@@ -60,12 +60,17 @@
 }
 
 .home-page .content {
+    /* More see-through than --surface on purpose: the photo is the point of
+       the first screen. */
     background-color: rgba(0, 0, 0, 0.6);
-    padding: 3rem 5rem;
-    border-radius: 15px;
+    /* Fluid, so the box is roomy on a desktop and tight on a phone without a
+       breakpoint. */
+    padding: clamp(1.25rem, 5vw, 3rem) clamp(1.25rem, 6vw, 5rem);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     text-align: center;
     backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow);
     max-width: 100%;
     /* Ensure content does not exceed container width */
     box-sizing: border-box;
@@ -74,12 +79,18 @@
 
 .home-page .content h1 {
     margin: 0;
-    font-size: 3.5em;
+    /* Scales with the screen so "THE ADVENTURES OF" always fits on one line
+       (it is about 11.3em wide; the box's inner width is at least 0.88vw-32px),
+       from a 320px phone up to the 3.5rem desktop size. */
+    font-size: clamp(1.1rem, 6.6vw, 3.5rem);
     font-weight: 800;
     color: white;
-    letter-spacing: 2px;
+    letter-spacing: 0.035em;
     line-height: 1.2;
     text-transform: uppercase;
+    /* If a line ever has to wrap, split it evenly rather than leave one word
+       alone. */
+    text-wrap: balance;
 }
 
 .home-page .content h1 span {
@@ -133,7 +144,7 @@
     display: inline-block;
     padding: 12px 24px;
     background-color: var(--primary-color);
-    color: var(--text-color);
+    color: var(--on-accent);
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
@@ -159,6 +170,13 @@
 .nav-button:active {
     transform: translateY(0);
     box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+/* White ring with a dark halo: shows on the green button and on any photo. */
+.nav-button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 7px rgba(0, 0, 0, 0.55);
 }
 
 /* Scroll cue at the bottom of the hero */
@@ -256,12 +274,12 @@
 .home-card {
     display: block;
     box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.62);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow);
     color: var(--text-color);
     text-decoration: none;
 }
@@ -371,6 +389,7 @@ a.home-card:focus-visible,
     padding: 3px 10px;
     border-radius: 999px;
     background: rgba(76, 175, 80, 0.85);
+    color: var(--on-accent);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 1px;
@@ -489,6 +508,28 @@ a.home-card:focus-visible,
         gap: 12px;
     }
 
+    /* One column of equal-width buttons */
+    .hero-buttons .nav-button {
+        width: 100%;
+        max-width: 220px;
+        box-sizing: border-box;
+        text-align: center;
+    }
+
+    /* Stacked, three solid green slabs compete with the title: the first
+       stays filled, the other two are outlined. */
+    .hero-buttons .nav-button:not(:first-child) {
+        background-color: rgba(10, 13, 11, 0.6);
+        border-color: var(--primary-color);
+        color: #fff;
+        box-shadow: none;
+    }
+
+    .hero-buttons .nav-button:not(:first-child):hover {
+        background-color: var(--primary-hover-color);
+        color: var(--on-accent);
+    }
+
     .home-main {
         padding: 40px 16px 56px;
     }
@@ -554,11 +595,6 @@ a.home-card:focus-visible,
         font-size: 1.05rem;
     }
 
-    .home-hunters .home-hunters-primary {
-        width: auto;
-        max-width: none;
-    }
-
     .home-hunters {
         padding: 18px;
     }
@@ -581,10 +617,6 @@ a.home-card:focus-visible,
 
     .home-page .content {
         background-color: rgba(0, 0, 0, 0.68);
-    }
-
-    .home-card {
-        background: rgba(0, 0, 0, 0.72);
     }
 
     /* Same for the bar once it turns solid after scrolling. */

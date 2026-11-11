@@ -290,9 +290,14 @@ async function handleGeoSave(request, env, id) {
     if (!geo || typeof geo !== 'object' || Array.isArray(geo)) return jsonRes(env, { error: 'Bad geo cache' }, 400);
     // worker.js stores it (merged, so a page's older cache never undoes the
     // lookups made after a sync).
+    // worker.js requires admin on every save; the caller's session token was
+    // checked in fetch() below, so pass it through as the scoped password.
+    const password = request.headers.get('X-Admin-Password');
     const saved = await base.fetch(new Request('https://user-strava/geo/save', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(geo),
-    }), scopedEnv(env, id));
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password },
+        body: JSON.stringify(geo),
+    }), scopedEnv(env, id, password));
     if (!saved.ok) return saved;
     // Add newly resolved cells to the pool for everyone else.
     const pool = (await env.STRAVA_KV.get(SHARED_GEO_KEY, 'json')) || {};

@@ -20,11 +20,21 @@ const CORS_HEADERS = {
 // Destructive / expensive endpoints (manual force-sync, rebuild, ride-elev
 // backfill, and every hunter reset) require the admin password, supplied via the
 // X-Admin-Password header. Same secret as travel edits (TRAVEL_PASSWORD).
-// Read-only GETs and the incremental /save endpoints stay open so the page
-// renders and persists visitor-driven detection without a login.
+// Every /save endpoint requires it too: a visitor's page still computes its
+// detection locally but does not persist it. Read-only GETs stay open so the
+// page renders without a login.
 function isAdmin(request, env) {
-    const pw = request.headers.get('X-Admin-Password');
-    return Boolean(pw) && pw === env.TRAVEL_PASSWORD;
+    return secretMatches(request.headers.get('X-Admin-Password'), env.TRAVEL_PASSWORD);
+}
+
+// Compares in time that depends only on the lengths, not on where the first
+// difference is.
+function secretMatches(given, secret) {
+    if (typeof given !== 'string' || typeof secret !== 'string' || !given || !secret) return false;
+    if (given.length !== secret.length) return false;
+    let diff = 0;
+    for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ secret.charCodeAt(i);
+    return diff === 0;
 }
 
 function unauthorized() {
@@ -41,7 +51,7 @@ const TILES_KEY      = 'strava_tiles';
 const PEAKS_KEY      = 'strava_peaks';
 const HIDDEN_PEAKS_KEY = 'strava_hidden_peaks';
 const PEAKS_META_KEY = 'strava_peaks_meta';   // { cells } of the last peak cache save
-// Any visitor's page saves the Mountain Hunter caches, and a page whose load
+// A page saves the Mountain Hunter caches, and a page whose load
 // failed would save an almost empty copy over them (on 2026-10-22 one wiped
 // 166 peak cells). A page only ever adds cells and summits, so a save holding
 // far fewer than the stored copy is refused (409); /peaks/reset and
@@ -50,6 +60,55 @@ const SHRINK_GUARD_RATIO = 0.9;
 const SHRINK_GUARD_MIN = 10;
 function shrinksTooMuch(stored, incoming) {
     return stored >= SHRINK_GUARD_MIN && incoming < stored * SHRINK_GUARD_RATIO;
+}
+
+// ── /save body checks ──
+// Every /save body must be a JSON object of a bounded size. The peak cell cache
+// (~190k peaks) is the one large blob; its limit is KV's own value limit.
+const SAVE_MAX_CHARS = 5 * 1024 * 1024;
+const PEAKS_SAVE_MAX_CHARS = 25 * 1024 * 1024;
+const SAVE_NAME_MAX = 200;   // activity names shown by the page and /mcp
+
+// The parsed body, or null when it is too large, not JSON or not a plain object.
+async function readSaveBody(request, maxChars = SAVE_MAX_CHARS) {
+    const text = await request.text();
+    if (text.length > maxChars) return null;
+    let data;
+    try { data = JSON.parse(text); } catch { return null; }
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
+}
+
+function badSaveBody() {
+    return json({ error: 'Expected a JSON object within the size limit' }, 400);
+}
+
+function capActName(entry) {
+    if (entry && typeof entry === 'object' && typeof entry.actName === 'string' && entry.actName.length > SAVE_NAME_MAX) {
+        entry.actName = entry.actName.slice(0, SAVE_NAME_MAX);
+    }
+}
+
+// discoveries: { id: { actId, actName, date } }
+function capDiscoveryNames(discoveries) {
+    if (!discoveries || typeof discoveries !== 'object') return;
+    for (const d of Object.values(discoveries)) capActName(d);
+}
+
+// Save for the hunters stored as { <idsField>: [...], processedIds: [...],
+// discoveries: {...} }. `rescans` marks the hunters whose page can rescan from
+// scratch by design (ecoregions, passes): for them only an empty list is
+// refused, where the others refuse any large shrink (see shrinksTooMuch).
+async function saveHunterBlob(env, kvKey, data, idsField, { rescans = false } = {}) {
+    if (!Array.isArray(data[idsField])) return { error: json({ error: `Expected { ${idsField}: [] }` }, 400) };
+    capDiscoveryNames(data.discoveries);
+    const stored = await env.STRAVA_DATA.get(kvKey, 'json');
+    const before = Array.isArray(stored?.[idsField]) ? stored[idsField].length : 0;
+    const after = data[idsField].length;
+    if (rescans ? (before >= SHRINK_GUARD_MIN && after === 0) : shrinksTooMuch(before, after)) {
+        return { error: json({ ok: false, error: `refused: ${after} ${idsField} would replace ${before}` }, 409) };
+    }
+    await env.STRAVA_DATA.put(kvKey, JSON.stringify(data));
+    return { count: after };
 }
 const SUMMITS_KEY    = 'strava_summits';
 const PARKS_KEY       = 'strava_parks';
@@ -102,7 +161,8 @@ export default {
             try {
                 return await handleMcp(request, env);
             } catch (err) {
-                return mcpJson(rpcError(null, -32603, err.message), 500);
+                console.error(`mcp failed: ${err.stack || err.message}`);
+                return mcpJson(rpcError(null, -32603, 'Internal error'), 500);
             }
         }
 
@@ -160,8 +220,9 @@ export default {
             }
             if (path === '/activities/rebuild' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
-                await env.STRAVA_DATA.delete(ACTIVITIES_KEY);
-                return await handleSync(env);
+                // The stored list stays until the new one is fetched, so a
+                // Strava failure cannot leave the store empty.
+                return await handleSync(env, { rebuild: true });
             }
             if (path === '/activities/backfill-elev' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -183,7 +244,11 @@ export default {
                 return json(geo || {});
             }
             if (path === '/geo/save' && request.method === 'POST') {
-                const geo = mergeGeo(await env.STRAVA_DATA.get(GEO_KEY, 'json'), await request.json());
+                if (!isAdmin(request, env)) return unauthorized();
+                const incoming = await readSaveBody(request);
+                if (!incoming) return badSaveBody();
+                // Merged, never replaced, so an empty body cannot wipe the cache.
+                const geo = mergeGeo(await env.STRAVA_DATA.get(GEO_KEY, 'json'), incoming);
                 await env.STRAVA_DATA.put(GEO_KEY, JSON.stringify(geo));
                 return json({ ok: true, keys: Object.keys(geo).length });
             }
@@ -201,9 +266,11 @@ export default {
                 return json(data || { fips: [], processedIds: [], discoveries: {} });
             }
             if (path === '/counties/save' && request.method === 'POST') {
-                const data = await request.json();
-                await env.STRAVA_DATA.put(COUNTIES_KEY, JSON.stringify(data));
-                return json({ ok: true, counties: (data.fips || []).length });
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                const saved = await saveHunterBlob(env, COUNTIES_KEY, data, 'fips');
+                return saved.error || json({ ok: true, counties: saved.count });
             }
             if (path === '/counties/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -219,16 +286,24 @@ export default {
                 return json(data || { tiles: [], processedIds: [] });
             }
             if (path === '/tiles/save' && request.method === 'POST') {
-                const data = await request.json();
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                if (!Array.isArray(data.tiles)) return json({ error: 'Expected { tiles: [] }' }, 400);
+                const storedTiles = await env.STRAVA_DATA.get(TILES_KEY, 'json');
+                const tilesBefore = Array.isArray(storedTiles?.tiles) ? storedTiles.tiles.length : 0;
+                if (shrinksTooMuch(tilesBefore, data.tiles.length)) {
+                    return json({ ok: false, error: `refused: ${data.tiles.length} tiles would replace ${tilesBefore}` }, 409);
+                }
                 await env.STRAVA_DATA.put(TILES_KEY, JSON.stringify(data));
                 // The page computes max cluster / square anyway, so it sends
                 // them along and /summary never has to. A save without valid
                 // stats (an older cached page) must drop the previous ones or
                 // they would describe a tile list that no longer exists.
-                const stats = cleanTileStats(data.stats, (data.tiles || []).length);
+                const stats = cleanTileStats(data.stats, data.tiles.length);
                 if (stats) await env.STRAVA_DATA.put(TILE_STATS_KEY, JSON.stringify(stats));
                 else await env.STRAVA_DATA.delete(TILE_STATS_KEY);
-                return json({ ok: true, tiles: (data.tiles || []).length });
+                return json({ ok: true, tiles: data.tiles.length });
             }
             if (path === '/tiles/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -248,6 +323,7 @@ export default {
                 return json(data || { city: {}, trail: {} });
             }
             if (path === '/progress/save' && request.method === 'POST') {
+                if (!isAdmin(request, env)) return unauthorized();
                 return await handleProgressSave(request, env);
             }
             if (path === '/progress/reset' && request.method === 'POST') {
@@ -268,7 +344,9 @@ export default {
                 });
             }
             if (path === '/peaks/save' && request.method === 'POST') {
-                const data = await request.json();
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request, PEAKS_SAVE_MAX_CHARS);
+                if (!data) return badSaveBody();
                 const cells = Object.keys(data.cells || {}).length;
                 const meta = await env.STRAVA_DATA.get(PEAKS_META_KEY, 'json');
                 if (shrinksTooMuch(meta?.cells || 0, cells)) {
@@ -293,8 +371,7 @@ export default {
                 return json(data || { ids: [] });
             }
             if (path === '/peaks/hidden/save' && request.method === 'POST') {
-                // Hiding sub-peaks is an owner edit (Mountain Hunter edit mode),
-                // unlike the detection caches above that any visitor's page saves.
+                // Hiding sub-peaks is an owner edit (Mountain Hunter edit mode).
                 if (!isAdmin(request, env)) return unauthorized();
                 const data = await request.json();
                 await env.STRAVA_DATA.put(HIDDEN_PEAKS_KEY, JSON.stringify({ ids: data.ids || [] }));
@@ -309,9 +386,11 @@ export default {
                 return json(data || { ids: [], processedIds: [], discoveries: {} });
             }
             if (path === '/parks/save' && request.method === 'POST') {
-                const data = await request.json();
-                await env.STRAVA_DATA.put(PARKS_KEY, JSON.stringify(data));
-                return json({ ok: true, parks: (data.ids || []).length });
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                const saved = await saveHunterBlob(env, PARKS_KEY, data, 'ids');
+                return saved.error || json({ ok: true, parks: saved.count });
             }
             if (path === '/parks/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -325,9 +404,11 @@ export default {
                 return json(data || { ids: [], processedIds: [], discoveries: {} });
             }
             if (path === '/state-parks/save' && request.method === 'POST') {
-                const data = await request.json();
-                await env.STRAVA_DATA.put(STATE_PARKS_KEY, JSON.stringify(data));
-                return json({ ok: true, parks: (data.ids || []).length });
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                const saved = await saveHunterBlob(env, STATE_PARKS_KEY, data, 'ids');
+                return saved.error || json({ ok: true, parks: saved.count });
             }
             if (path === '/state-parks/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -343,9 +424,11 @@ export default {
                 return json(data || { ids: [], processedIds: [], discoveries: {} });
             }
             if (path === '/metro-hunter/save' && request.method === 'POST') {
-                const data = await request.json();
-                await env.STRAVA_DATA.put(METRO_HUNTER_KEY, JSON.stringify(data));
-                return json({ ok: true, metros: (data.ids || []).length });
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                const saved = await saveHunterBlob(env, METRO_HUNTER_KEY, data, 'ids');
+                return saved.error || json({ ok: true, metros: saved.count });
             }
             if (path === '/metro-hunter/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -361,13 +444,14 @@ export default {
                 return json(data || { codes: [], processedIds: [], discoveries: {} });
             }
             if (path === '/ecoregions/save' && request.method === 'POST') {
-                const data = await request.json();
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
                 if (!data || !Array.isArray(data.codes) || !Array.isArray(data.processedIds)
                     || typeof data.discoveries !== 'object' || data.discoveries === null) {
                     return json({ error: 'Expected { codes: [], processedIds: [], discoveries: {} }' }, 400);
                 }
-                await env.STRAVA_DATA.put(ECOREGIONS_KEY, JSON.stringify(data));
-                return json({ ok: true, ecoregions: data.codes.length });
+                const saved = await saveHunterBlob(env, ECOREGIONS_KEY, data, 'codes', { rescans: true });
+                return saved.error || json({ ok: true, ecoregions: saved.count });
             }
             if (path === '/ecoregions/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -383,9 +467,11 @@ export default {
                 return json(data || { ids: [], processedIds: [], discoveries: {} });
             }
             if (path === '/passes/save' && request.method === 'POST') {
-                const data = await request.json();
-                await env.STRAVA_DATA.put(PASSES_KEY, JSON.stringify(data));
-                return json({ ok: true, passes: (data.ids || []).length });
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                const saved = await saveHunterBlob(env, PASSES_KEY, data, 'ids', { rescans: true });
+                return saved.error || json({ ok: true, passes: saved.count });
             }
             if (path === '/passes/reset' && request.method === 'POST') {
                 if (!isAdmin(request, env)) return unauthorized();
@@ -401,7 +487,13 @@ export default {
                 return json(data || { visits: {}, processedIds: [] });
             }
             if (path === '/summits/save' && request.method === 'POST') {
-                const data = await request.json();
+                if (!isAdmin(request, env)) return unauthorized();
+                const data = await readSaveBody(request);
+                if (!data) return badSaveBody();
+                // visits: { peakId: [{ actId, actName, actType, date }] }
+                for (const list of Object.values(data.visits || {})) {
+                    if (Array.isArray(list)) list.forEach(capActName);
+                }
                 const stored = await env.STRAVA_DATA.get(SUMMITS_KEY, 'json');
                 const before = Object.keys(stored?.visits || {}).length;
                 const after = Object.keys(data.visits || {}).length;
@@ -476,23 +568,12 @@ export default {
                 return await handlePeaksFetch(url);
             }
 
-            // ── Legacy Strava proxy (keep for /athlete, /athlete/stats) ──
-
-            const allowed = ['/athlete', '/athlete/stats'];
-            if (!allowed.includes(path)) {
-                return json({ error: 'Not found' }, 404);
-            }
-
-            const token = await getAccessToken(env);
-            const params = url.searchParams.toString();
-            const stravaUrl = `https://www.strava.com/api/v3${path}${params ? '?' + params : ''}`;
-            const res = await fetch(stravaUrl, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            return json(await res.json());
+            return json({ error: 'Not found' }, 404);
 
         } catch (err) {
-            return json({ error: err.message }, 500);
+            // The detail stays in the worker log; callers get no internal text.
+            console.error(`${request.method} ${path} failed: ${err.stack || err.message}`);
+            return json({ error: 'Internal error' }, 500);
         }
     },
 
@@ -642,10 +723,11 @@ function cleanTileStats(stats, tileCount) {
 const PROGRESS_KINDS = ['city', 'trail'];
 
 // Merge one { kind, key, name, complete, partial, total, pct } report into the
-// stored summaries. Public like the other /save endpoints, so every field is
-// validated and the blob stays tiny (bounded number of short keys).
+// stored summaries. Admin-only like the other /save endpoints; every field is
+// still validated and the blob stays tiny (bounded number of short keys).
 async function handleProgressSave(request, env) {
-    const body = await request.json();
+    const body = await readSaveBody(request);
+    if (!body) return badSaveBody();
     const key = typeof body.key === 'string' && /^[a-z0-9-]{1,40}$/.test(body.key) ? body.key : null;
     const int = (v) => (Number.isInteger(v) && v >= 0 && v <= 1e7 ? v : null);
     const complete = int(body.complete), partial = int(body.partial), total = int(body.total);
@@ -844,12 +926,27 @@ async function tryOverpass(mirror, query, cell) {
     }
 }
 
+// The page asks for 2.5° cells with a 0.5° pad on each side (3.5° boxes, see
+// planMountainCells in js/strava.js) and splits them smaller on failure. The
+// pad can put a box up to 0.5° past the ±90 / ±180 edges.
+const PEAKS_FETCH_MAX_DEG = 5;
+const PEAKS_FETCH_EDGE_PAD = 1;
+const PEAKS_FETCH_EPSILON = 1e-6;
+
 async function handlePeaksFetch(url) {
-    const s = url.searchParams.get('south');
-    const w = url.searchParams.get('west');
-    const n = url.searchParams.get('north');
-    const e = url.searchParams.get('east');
-    if (!s || !w || !n || !e) return json({ error: 'missing bounds' }, 400);
+    const bound = (name) => {
+        const raw = url.searchParams.get(name);
+        return raw === null || raw.trim() === '' ? NaN : Number(raw);
+    };
+    const s = bound('south'), w = bound('west'), n = bound('north'), e = bound('east');
+    if (![s, w, n, e].every(Number.isFinite)) return json({ error: 'missing or invalid bounds' }, 400);
+    const maxLat = 90 + PEAKS_FETCH_EDGE_PAD, maxLon = 180 + PEAKS_FETCH_EDGE_PAD;
+    if (s < -maxLat || n > maxLat || w < -maxLon || e > maxLon || s >= n || w >= e) {
+        return json({ error: 'bounds out of range' }, 400);
+    }
+    if (n - s > PEAKS_FETCH_MAX_DEG + PEAKS_FETCH_EPSILON || e - w > PEAKS_FETCH_MAX_DEG + PEAKS_FETCH_EPSILON) {
+        return json({ error: `bounds larger than ${PEAKS_FETCH_MAX_DEG} degrees` }, 400);
+    }
 
     const cell = `(${s},${w},${n},${e})`;
     // Race every mirror in parallel — first success wins. Wall clock max is one
@@ -906,7 +1003,7 @@ async function handleTravelToggle(request, env) {
     const body = await request.json();
     const { password, type, key, continent } = body;
 
-    if (!password || password !== env.TRAVEL_PASSWORD) {
+    if (!secretMatches(password, env.TRAVEL_PASSWORD)) {
         return json({ error: 'Invalid password' }, 401);
     }
 
@@ -994,7 +1091,7 @@ async function handleTravelSeed(request, env) {
     const body = await request.json();
     const { password, type, data } = body;
 
-    if (!password || password !== env.TRAVEL_PASSWORD) {
+    if (!secretMatches(password, env.TRAVEL_PASSWORD)) {
         return json({ error: 'Invalid password' }, 401);
     }
 
@@ -1007,6 +1104,10 @@ async function handleTravelSeed(request, env) {
 }
 
 // ── Strava activity handlers ─────────────────────────────────────────────────
+
+const SYNC_MAX_PAGES = 500;        // 100,000 activities at 200 per page
+const SYNC_SHRINK_SHARE = 0.1;     // a sync that drops more than this share …
+const SYNC_SHRINK_MIN = 20;        // … and more than this many activities is skipped
 
 async function handleGetAll(env) {
     const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
@@ -1026,7 +1127,9 @@ async function handleGetAll(env) {
 // callers can stream progress. Returns the stored record plus new/updated/removed
 // tallies. Throws (without writing) on any list error so a partial fetch can
 // never clobber good data.
-async function syncActivities(env, onProgress) {
+// `rebuild` (/activities/rebuild) starts every ride's `eh` afresh and may
+// shrink the list by any amount; it still never stores an empty one.
+async function syncActivities(env, onProgress, { rebuild = false } = {}) {
     const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json')
         || { slim: [], total: 0, lastActivityTime: null };
 
@@ -1034,7 +1137,9 @@ async function syncActivities(env, onProgress) {
 
     const all = [];
     let page = 1;
-    while (true) {
+    // Strava can return a short page that is not the last, so only an empty
+    // page ends the list. The page bound stops a list that never ends.
+    while (page <= SYNC_MAX_PAGES) {
         const params = new URLSearchParams({ per_page: '200', page: String(page) });
         const res = await fetch(`https://www.strava.com/api/v3/activities?${params}`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -1045,13 +1150,24 @@ async function syncActivities(env, onProgress) {
         if (batch.length === 0) break;
         all.push(...batch);
         if (onProgress) onProgress(all.length, page);
-        if (batch.length < 200) break; // last (short) page — no need for one more call
         page++;
     }
+    if (page > SYNC_MAX_PAGES) throw new Error(`Strava list did not end after ${SYNC_MAX_PAGES} pages`);
 
     // Safety net: never let an unexpectedly empty response wipe a populated store.
     if (all.length === 0 && stored.slim.length > 0) {
         return { ...stored, newActivities: 0, updated: 0, removed: 0, skipped: 'empty response' };
+    }
+    // Same for a list that comes back much shorter (a partial answer from
+    // Strava): keep the stored one. /activities/rebuild is the deliberate way
+    // to accept a large drop.
+    // `all` holds every activity and stored.slim only those with GPS, so the
+    // stored count to compare with is `total`.
+    const storedCount = Math.max(Number(stored.total) || 0, stored.slim.length);
+    const lost = storedCount - all.length;
+    if (!rebuild && lost > SYNC_SHRINK_MIN && lost > storedCount * SYNC_SHRINK_SHARE) {
+        console.log(`sync skipped: ${all.length} activities would replace ${storedCount}`);
+        return { ...stored, newActivities: 0, updated: 0, removed: 0, skipped: `list shrank from ${storedCount} to ${all.length}` };
     }
 
     const total = all.length;
@@ -1063,7 +1179,7 @@ async function syncActivities(env, onProgress) {
     const prevById = new Map(stored.slim.map(a => [a.i, a]));
     for (const a of slim) {
         const prev = prevById.get(a.i);
-        if (prev && prev.eh !== undefined) a.eh = prev.eh;
+        if (!rebuild && prev && prev.eh !== undefined) a.eh = prev.eh;
     }
 
     let newestTime = null;
@@ -1113,8 +1229,8 @@ async function syncActivities(env, onProgress) {
 }
 
 // Non-streaming entry point (used by /activities/rebuild).
-async function handleSync(env) {
-    return json(await syncActivities(env));
+async function handleSync(env, options) {
+    return json(await syncActivities(env, undefined, options));
 }
 
 // Streaming entry point for the manual force-sync: emits one NDJSON line per
@@ -1256,6 +1372,7 @@ export class SyncRunner {
                 state: 'done', startedAt, updatedAt: now, finishedAt: now,
                 fetched: result.total, total: result.total, syncedAt: result.syncedAt,
                 newActivities: result.newActivities, updated: result.updated, removed: result.removed,
+                ...(result.skipped ? { skipped: result.skipped } : {}),
             });
             console.log(`sync: ${result.newActivities} new, ${result.updated} updated, ${result.removed} removed`);
             this.broadcast({ type: 'done', ...result });
@@ -2175,8 +2292,7 @@ let musicSchemaReady = false;
 
 function isMusicWriter(request, env) {
     const token = request.headers.get('X-Music-Token');
-    return (Boolean(token) && Boolean(env.MUSIC_SYNC_TOKEN) && token === env.MUSIC_SYNC_TOKEN)
-        || isAdmin(request, env);
+    return secretMatches(token, env.MUSIC_SYNC_TOKEN) || isAdmin(request, env);
 }
 
 async function musicDb(env) {
@@ -2405,6 +2521,10 @@ const MCP_CORS_HEADERS = {
     'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version',
 };
 
+// Each tools/call re-reads the stored blobs, so one request carries a bounded
+// number of messages.
+const MCP_MAX_BATCH = 20;
+
 class McpRpcError extends Error {
     constructor(code, message) { super(message); this.code = code; }
 }
@@ -2423,6 +2543,9 @@ async function handleMcp(request, env) {
     const batch = Array.isArray(body);
     const messages = batch ? body : [body];
     if (!messages.length) return mcpJson(rpcError(null, -32600, 'Invalid Request'), 400);
+    if (messages.length > MCP_MAX_BATCH) {
+        return mcpJson(rpcError(null, -32600, `Batch too large (max ${MCP_MAX_BATCH})`), 400);
+    }
 
     const replies = [];
     for (const msg of messages) {
@@ -2461,7 +2584,9 @@ async function mcpDispatch(msg, env) {
                 return rpcError(id, -32601, `Method not found: ${method}`);
         }
     } catch (e) {
-        return rpcError(id, e instanceof McpRpcError ? e.code : -32603, e.message);
+        if (e instanceof McpRpcError) return rpcError(id, e.code, e.message);
+        console.error(`mcp ${method} failed: ${e.stack || e.message}`);
+        return rpcError(id, -32603, 'Internal error');
     }
 }
 
@@ -3285,7 +3410,10 @@ async function getAccessToken(env) {
 
     const tokens = await res.json();
     if (!tokens.access_token) {
-        throw new Error('Token refresh failed: ' + JSON.stringify(tokens));
+        // Strava's answer goes to the worker log only: this error's message
+        // reaches the page through the sync stream and status.
+        console.error(`Token refresh failed (HTTP ${res.status}): ${JSON.stringify(tokens)}`);
+        throw new Error(`Strava token refresh failed (HTTP ${res.status})`);
     }
 
     await env.STRAVA_KV.put('tokens', JSON.stringify({

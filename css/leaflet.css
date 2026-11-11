@@ -29,8 +29,10 @@
     color: #4CAF50;
 }
 
+/* Grey, not red (as on the US map): climbed vs not must not rest on telling
+   red from green. The legend in js/leaflet.js uses the same colour. */
 .peak-marker.not-climbed {
-    color: #f44336;
+    color: #6b6b6b;
 }
 
 .info.legend {
@@ -67,8 +69,47 @@
     font-size: 14px;
 }
 
+/* A one-line text key under a map's description. Phones only, where the
+   in-map legend is hidden (below); .map-key--always shows it at every width
+   (a map with no legend control). */
+.map-key {
+    display: none;
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+.map-key--always {
+    display: block;
+}
+
+.map-key-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 4px;
+    margin: 0 5px 0 8px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.map-key-item {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.map-key-swatch.map-key-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
+    .map-key {
+        display: block;
+    }
+
     .section {
         width: 95%;
         padding: 20px;

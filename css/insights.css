@@ -509,6 +509,11 @@ body:not(.app-page) .ins-root .ins-cal-legend { max-width: 720px; margin-left: a
     body:not(.app-page) .ins-root .ins-legend-bar > span { display: block; height: 100%; border-radius: 999px; }
 }
 
+/* Under 16px, iOS Safari zooms the page when a select gets focus. */
+@media (max-width: 768px) {
+    .ins-root .ins-select { min-height: 36px; font-size: 16px; }
+}
+
 @media (max-width: 600px) {
     body:not(.app-page) .ins-root { width: auto; margin: 20px 12px; gap: 12px; }
     body:not(.app-page) .ins-root .ins-card { padding: 14px 14px 16px; }

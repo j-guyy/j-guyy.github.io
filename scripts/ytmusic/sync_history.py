@@ -11,6 +11,8 @@ Environment:
                     also works (or --auth PATH).
   MUSIC_SYNC_TOKEN  matches the worker secret of the same name
   WORKER_URL        optional, defaults to the production worker
+  YTMUSIC_TZ        optional IANA time zone the "Today" / "Yesterday" labels
+                    are read in, defaults to America/Denver
 
 What get_history() gives us, and why plays are diffed rather than copied:
   * Only the most recent ~200 items, newest first.
@@ -38,8 +40,13 @@ import os
 import shlex
 import sys
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DEFAULT_WORKER_URL = "https://strava-worker.justinguyette.workers.dev"
+
+# YouTube Music labels plays "Today" / "Yesterday" by the listener's local day,
+# so the date is taken in this zone, not in UTC (the runner's clock).
+DEFAULT_TZ = "America/Denver"
 
 # How many consecutive items must line up with the previous snapshot before we
 # trust that we've reached already-counted history.
@@ -73,12 +80,23 @@ def new_play_count(current, previous):
     return len(current)
 
 
-def played_date(label, now):
+def local_zone():
+    """The zone named by YTMUSIC_TZ (default DEFAULT_TZ)."""
+    name = os.environ.get("YTMUSIC_TZ") or DEFAULT_TZ
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        sys.exit(f"YTMUSIC_TZ={name!r} is not a known time zone (use an IANA name such as {DEFAULT_TZ}).")
+
+
+def played_date(label, now, tz=None):
+    """The calendar date a "Today" / "Yesterday" label means, in `tz` (or in `now`'s own zone)."""
+    today = (now.astimezone(tz) if tz else now).date()
     label = (label or "").strip().lower()
     if label == "today":
-        return now.date().isoformat()
+        return today.isoformat()
     if label == "yesterday":
-        return (now - timedelta(days=1)).date().isoformat()
+        return (today - timedelta(days=1)).isoformat()
     return None
 
 
@@ -98,7 +116,7 @@ def parse_item(item):
     }
 
 
-def build_payload(history, state, now):
+def build_payload(history, state, now, tz=None):
     """The POST /music/plays body for the plays since `state`, or None if there are none."""
     items = [p for p in (parse_item(i) for i in history) if p]
     current = [i["video_id"] for i in items]
@@ -118,7 +136,7 @@ def build_payload(history, state, now):
         "songs": list(songs.values()),
         # Oldest first, so ascending play ids follow listening order.
         "plays": [{"video_id": i["video_id"], "played_label": i["played_label"],
-                   "played_date": played_date(i["played_label"], now)} for i in reversed(new)],
+                   "played_date": played_date(i["played_label"], now, tz)} for i in reversed(new)],
     }
 
 
@@ -184,7 +202,7 @@ def main():
 
     res = requests.get(f"{worker}/music/state", headers=headers, timeout=30)
     res.raise_for_status()
-    payload = build_payload(history, res.json(), datetime.now(timezone.utc))
+    payload = build_payload(history, res.json(), datetime.now(timezone.utc), local_zone())
 
     if payload is None:
         print(f"No new plays ({len(history)} history items read).")

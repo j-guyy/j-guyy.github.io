@@ -4,15 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>US Interstates Driven — Justin Guyette</title>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
+    <link rel="stylesheet" href="css/leaflet.css?v=20261110d">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" />
-    <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css'
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous" />
+    <link href='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css' integrity='sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO' crossorigin='anonymous'
         rel='stylesheet' />
     <style>
         .list-item.driven {
@@ -58,8 +61,10 @@
             opacity: 0.85;
         }
 
+        /* Dark ink on the orange and green fills, white on the rest (4.5:1). */
         .btn-edit.toggle-on {
             background: #e67e22;
+            color: #0e1410;
         }
 
         .btn-edit.toggle-off {
@@ -67,11 +72,12 @@
         }
 
         .btn-edit.export {
-            background: #3498db;
+            background: #1565C0; /* still 4.5:1 at the hover opacity */
         }
 
         .btn-edit.add-wp {
             background: #27ae60;
+            color: #0e1410;
         }
 
         .btn-edit.del-wp {
@@ -183,6 +189,31 @@
             outline: none;
             border-color: #e67e22;
         }
+        /* Owner-only editor switch: shown once TravelAdmin (js/travel-api.js)
+           says the owner is logged in (the lock on any dashboard). */
+        .owner-edit-control {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .owner-edit-control[hidden],
+        .editor-toolbar[hidden] {
+            display: none;
+        }
+
+        /* Filter buttons: only the active one is filled, so the current filter is clear */
+        .btn.btn-secondary {
+            background: transparent;
+            color: var(--text, #eef2ef);
+            border: 1px solid var(--primary-color, #4CAF50);
+        }
+
+        .btn.btn-secondary:hover {
+            background: rgba(76, 175, 80, 0.18);
+            color: var(--text, #eef2ef);
+        }
     </style>
     <meta name="description" content="Interactive map tracking my progress driving the major US interstate highways, segment by segment.">
     <link rel="canonical" href="https://j-guyy.github.io/interstate-highways.html">
@@ -202,21 +233,21 @@
         <!-- Progress Summary Cards -->
         <div class="section">
             <h2>Progress Overview</h2>
-            <p>Track your progress driving the major interstate highways across the United States</p>
-            <div class="stats-grid">
-                <div class="stat-card">
+            <p>My progress driving the major interstate highways of the United States</p>
+            <div class="stats-grid other-stats other-stats-quad">
+                <div class="stat-card summary-stat">
                     <div class="stat-number" id="total-interstates">0</div>
                     <div class="stat-label">Total Interstates</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card summary-stat">
                     <div class="stat-number" id="driven-interstates">0</div>
                     <div class="stat-label">Driven</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card summary-stat">
                     <div class="stat-number" id="completion-percentage">0%</div>
                     <div class="stat-label">Completion</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card summary-stat">
                     <div class="stat-number" id="total-miles">0</div>
                     <div class="stat-label">Total Miles</div>
                 </div>
@@ -226,6 +257,7 @@
         <div class="section">
             <h2>Interstate Highway Map</h2>
             <p>Interactive map showing major US interstate highways</p>
+            <p class="map-key"><span class="map-key-item"><span class="map-key-swatch" style="background:#28a745"></span>Driven</span> <span class="map-key-item"><span class="map-key-swatch" style="background:#6c757d"></span>Not driven</span></p>
             <div class="controls-panel">
                 <div class="filter-controls">
                     <span>Filter:</span>
@@ -235,15 +267,15 @@
                     <button class="btn btn-secondary" data-filter="transcontinental">Transcontinental</button>
                 </div>
             </div>
-            <div class="editor-toolbar">
+            <div class="editor-toolbar" data-owner-only hidden>
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
                     <span>Edit Waypoints:</span>
                     <button id="edit-toggle" class="btn-edit toggle-off" onclick="toggleEditMode()">OFF</button>
                 </label>
-                <select id="interstate-select" onchange="onInterstateSelect()" disabled>
+                <select id="interstate-select" aria-label="Interstate" onchange="onInterstateSelect()" disabled>
                     <option value="">Select an interstate...</option>
                 </select>
-                <select id="segment-select" onchange="onSegmentSelect()" disabled>
+                <select id="segment-select" aria-label="Segment" onchange="onSegmentSelect()" disabled>
                     <option value="">Select a segment...</option>
                 </select>
                 <button id="add-wp-btn" class="btn-edit add-wp" onclick="addWaypoint()" disabled
@@ -258,11 +290,11 @@
                 add a waypoint at that spot.
             </p>
             <div class="segment-name-row" id="segment-name-row">
-                <label>From:</label>
+                <label for="seg-from-city">From:</label>
                 <input type="text" id="seg-from-city" placeholder="From city" onchange="onSegmentNameChange()">
-                <label>To:</label>
+                <label for="seg-to-city">To:</label>
                 <input type="text" id="seg-to-city" placeholder="To city" onchange="onSegmentNameChange()">
-                <label>Desc:</label>
+                <label for="seg-description">Desc:</label>
                 <input type="text" id="seg-description" placeholder="Description" style="width:280px;"
                     onchange="onSegmentNameChange()">
             </div>
@@ -280,23 +312,29 @@
             <h3>Export Interstate JSON</h3>
             <p style="margin:0;font-size:0.85em;opacity:0.7;">Copy this JSON and replace the corresponding interstate
                 entry in <code>data/interstateHighways.json</code></p>
-            <textarea id="export-textarea" readonly></textarea>
+            <textarea id="export-textarea" aria-label="Exported JSON" readonly></textarea>
             <div class="export-modal-buttons">
                 <button class="btn-edit" style="background:#555;" onclick="closeExport()">Close</button>
-                <button class="btn-edit" style="background:#3498db;" onclick="copyExport()">Copy to Clipboard</button>
+                <button class="btn-edit" style="background:#1565C0;" onclick="copyExport()">Copy to Clipboard</button>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js"></script>
-    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
-    <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js'></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
+    <script src='https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js' integrity='sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F' crossorigin='anonymous'></script>
+    <script src="js/travel-api.js?v=20261110e"></script>
     <script>
         let interstateData = {};
         let map;
         let interstateLayer;
+
+        // Data strings go into popup HTML: escape them first.
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
 
         // Initialize the map
         function initMap() {
@@ -324,7 +362,7 @@
                 const div = L.DomUtil.create('div', 'info legend');
                 div.innerHTML = `
                     <div><span class="legend-swatch" style="background-color: #28a745; border-radius: 2px; height: 4px;"></span> Driven</div>
-                    <div><span class="legend-swatch" style="background-color: #dc3545; border-radius: 2px; height: 4px;"></span> Not Driven</div>
+                    <div><span class="legend-swatch" style="background-color: #6c757d; border-radius: 2px; height: 4px;"></span> Not Driven</div>
                 `;
                 return div;
             };
@@ -381,7 +419,7 @@
                     // Draw each segment individually
                     interstate.routeSegments.forEach((segment, index) => {
                         const driven = isSegmentDrivenByPerson(segment, 'person1');
-                        const color = driven ? '#28a745' : '#dc3545';
+                        const color = driven ? '#28a745' : '#6c757d';
                         // Use waypoints if available, otherwise fall back to from/to
                         const coordinates = segment.waypoints && segment.waypoints.length > 0
                             ? segment.waypoints
@@ -392,22 +430,31 @@
                             opacity: 0.8
                         }).addTo(interstateLayer);
 
-                        // Add popup with segment info
-                        polyline.bindPopup(`
-                            <div>
-                                <h4>${interstate.number} - ${segment.description}</h4>
-                                <p><strong>Distance:</strong> ${segment.miles} miles</p>
+                        // Add popup with segment info. Built as an element
+                        // so the button gets a real click handler (no route
+                        // number inside an onclick string), as highways.html does.
+                        const popup = document.createElement('div');
+                        popup.innerHTML = `
+                                <h4>${escapeHtml(interstate.number)} - ${escapeHtml(segment.description)}</h4>
+                                <p><strong>Distance:</strong> ${escapeHtml(segment.miles)} miles</p>
                                 <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
-                                <button onclick="toggleSegment('${interstate.number}', ${index})" class="btn btn-sm" style="margin-top: 5px; padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                                    ${driven ? 'Mark as Not Driven' : 'Mark as Driven'}
-                                </button>
-                            </div>
-                        `);
+                        `;
+                        // Owner only (TravelAdmin): the button changes this
+                        // page's copy alone.
+                        if (TravelAdmin.isLoggedIn()) {
+                            const btn = document.createElement('button');
+                            btn.className = 'btn btn-sm';
+                            btn.style.cssText = 'margin-top: 5px; padding: 4px 8px; background: #1976D2; color: white; border: none; border-radius: 3px; cursor: pointer;';
+                            btn.textContent = driven ? 'Mark as Not Driven' : 'Mark as Driven';
+                            btn.addEventListener('click', () => toggleSegment(interstate.number, index));
+                            popup.appendChild(btn);
+                        }
+                        polyline.bindPopup(popup);
                     });
                 } else if (interstate.coordinates && interstate.coordinates.length > 0) {
                     // Fallback for interstates that haven't been converted to segments yet
                     const driven = isRouteDrivenByPerson(interstate, 'person1');
-                    const color = driven ? '#28a745' : '#dc3545';
+                    const color = driven ? '#28a745' : '#6c757d';
                     const polyline = L.polyline(interstate.coordinates, {
                         color: color,
                         weight: 4,
@@ -416,10 +463,10 @@
 
                     polyline.bindPopup(`
                         <div>
-                            <h4>${interstate.name}</h4>
-                            <p>${interstate.description}</p>
+                            <h4>${escapeHtml(interstate.name)}</h4>
+                            <p>${escapeHtml(interstate.description)}</p>
                             <p><strong>Length:</strong> ${interstate.length.toLocaleString()} miles</p>
-                            <p><strong>States:</strong> ${interstate.states.join(', ')}</p>
+                            <p><strong>States:</strong> ${escapeHtml(interstate.states.join(', '))}</p>
                             <p><strong>Status:</strong> ${driven ? 'Driven' : 'Not Driven'}</p>
                         </div>
                     `);
@@ -454,7 +501,7 @@
             document.getElementById('total-interstates').textContent = total;
             document.getElementById('driven-interstates').textContent = driven;
             document.getElementById('completion-percentage').textContent = percentage + '%';
-            document.getElementById('total-miles').textContent = totalMiles.toLocaleString();
+            document.getElementById('total-miles').textContent = Math.round(totalMiles).toLocaleString();
         }
 
 
@@ -972,6 +1019,12 @@
 
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', init);
+        // The waypoint editor is the owner's tool: its switch stays hidden
+        // unless the owner is logged in (TravelAdmin, as on the dashboards).
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!TravelAdmin.isLoggedIn()) return;
+            document.querySelectorAll('[data-owner-only]').forEach(el => { el.hidden = false; });
+        });
     </script>
     <script src="js/navbar-component.js"></script>
 </body>

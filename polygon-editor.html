@@ -4,9 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Mountain Range Polygon Editor</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" integrity="sha384-NZLkVuBRMEeB4VeZz27WwTRvlhec30biQ8Xx7zG7JJnkvEKRg5qi6BNbEXo9ydwv" crossorigin="anonymous" />
     <style>
         body {
             margin: 0;
@@ -45,14 +48,14 @@
         }
 
         button {
-            background: #3498db;
+            background: #1976D2;
             color: white;
             cursor: pointer;
             border: none;
         }
 
         button:hover {
-            background: #2980b9;
+            background: #1565C0;
         }
 
         button:disabled {
@@ -62,6 +65,7 @@
 
         .export-btn {
             background: #27ae60;
+            color: #0e1410;
         }
 
         .export-btn:hover {
@@ -69,7 +73,7 @@
         }
 
         .clear-btn {
-            background: #e74c3c;
+            background: #D32F2F;
         }
 
         .clear-btn:hover {
@@ -166,17 +170,17 @@
     <div class="overlay" id="overlay"></div>
     <div class="export-area" id="exportArea">
         <h3>Exported JSON</h3>
-        <textarea id="exportText" readonly></textarea>
+        <textarea id="exportText" aria-label="Exported polygon data" readonly></textarea>
         <div style="margin-top: 1rem; text-align: right;">
             <button onclick="copyToClipboard()">Copy to Clipboard</button>
             <button onclick="closeExport()">Close</button>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js"></script>
-    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" integrity="sha384-JP5UPxIO2Tm2o79Fb0tGYMa44jkWar53aBoCbd8ah0+LcCDoohTIYr+zIXyfGIJN" crossorigin="anonymous"></script>
     <script>
         // Simple error handling
         window.addEventListener('error', function (e) {

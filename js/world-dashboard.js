@@ -30,6 +30,9 @@ let countryFlags = {};
 // country high points list (TravelAPI.fetchPeakList: { data, source, reason }).
 let worldCapitals = null;
 let countryHighpoints = null;
+// Their own load failed: the table then shows a message with a Retry.
+let worldCapitalsFailed = false;
+let bucketListsFailed = false;
 // The Regions bar (computeRegionProgress in js/world-map.js): null until
 // computed, then { byCountry, capitalHints }. regionsState: idle | loading |
 // ready | error.
@@ -58,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
         worldData = updatedData;
         displayWorldTravelSummary();
         renderPopulationSourceBadge();
-        updateTable(currentTable());
+        refreshTable();
     })
         .then(data => {
             worldData = data;
@@ -69,28 +72,58 @@ document.addEventListener('DOMContentLoaded', function () {
             setupEditMode();
             setupCsvExport();
         });
-    dataReady.catch(error => console.error('Error loading the JSON file:', error));
+    dataReady.catch(error => {
+        console.error('Error loading the JSON file:', error);
+        TravelUI.showLoadError();
+    });
     // Each of these fills in more of the Countries table as it lands.
-    const rerender = () => {
-        if (!worldData) return;
-        displayWorldTravelSummary();
-        updateTable(currentTable());
-    };
     Promise.all([dataReady, fetch('data/country-flags.json').then(r => r.json())])
         .then(([, flags]) => { countryFlags = flags; rerender(); })
         .catch(err => console.warn('Flags unavailable:', err));
-    loadBucketLists()
-        .then(b => { bucketLists = b; displayBucketSummary(); rerender(); })
-        .catch(error => console.error('Error loading the bucket lists:', error));
-    TravelAPI.fetchWorldCapitals()
-        .then(c => { worldCapitals = c; displayBucketSummary(); rerender(); })
-        .catch(err => console.error('Error loading the world capitals:', err));
+    loadBucketTables();
+    loadCapitalsTable();
     loadCountryHighpoints()
         .then(list => { countryHighpoints = list; rerender(); })
         .catch(err => console.error('Error loading the country high points:', err));
     setupWorldViewSwitch(dataReady);
-    dataReady.then(() => scheduleRegionProgress());
+    dataReady.then(() => scheduleRegionProgress()).catch(() => { /* the load error is shown above */ });
 });
+
+// A table rebuild the user did not start (more data arrived): a sortable
+// header with keyboard focus keeps it.
+function refreshTable() {
+    TravelUI.keepHeaderFocus(() => updateTable(currentTable()));
+}
+
+function rerender() {
+    if (!worldData) return;
+    displayWorldTravelSummary();
+    refreshTable();
+}
+
+// The bucket lists and the world capitals each load on their own. A failure
+// shows in that table, whose Retry runs the load again.
+function loadBucketTables() {
+    bucketListsFailed = false;
+    loadBucketLists()
+        .then(b => { bucketLists = b; displayBucketSummary(); rerender(); })
+        .catch(error => {
+            console.error('Error loading the bucket lists:', error);
+            bucketListsFailed = !bucketLists;
+            rerender();
+        });
+}
+
+function loadCapitalsTable() {
+    worldCapitalsFailed = false;
+    TravelAPI.fetchWorldCapitals()
+        .then(c => { worldCapitals = c; displayBucketSummary(); rerender(); })
+        .catch(err => {
+            console.error('Error loading the world capitals:', err);
+            worldCapitalsFailed = !worldCapitals;
+            rerender();
+        });
+}
 
 // The country high points list as the Peaks dashboard shows it: KV once
 // seeded (else the /data file), with names and coordinates always from the
@@ -111,14 +144,19 @@ async function loadCountryHighpoints() {
 
 // Map view (js/view-switch.js). Leaflet, its plugins and js/world-map.js load
 // the first time the map is shown, so the Tables view never downloads them.
+// The third-party files carry the same hashes as the site's <script> tags
+// for them (loadScriptsInOrder in js/view-switch.js checks them).
 const WORLD_MAP_SCRIPTS = [
-    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+      integrity: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH' },
     'js/fluid-zoom.js?v=20261025b',
     'js/map-fixes.js?v=20261025',
-    'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
-    'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
+    { src: 'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
+      integrity: 'sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8' },
+    { src: 'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
+      integrity: 'sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F' },
     'js/map-controls.js?v=20261025',
-    'js/world-map.js?v=20261025x'
+    'js/world-map.js?v=20261110a'
 ];
 let worldMap = null;          // { map, refresh } once built
 let worldMapLoading = null;
@@ -179,13 +217,13 @@ function readRegionCache() {
 function scheduleRegionProgress() {
     if (regionsState !== 'idle') return;
     regionProgress = readRegionCache();
-    if (regionProgress) updateTable(currentTable());
+    if (regionProgress) refreshTable();
     regionsState = 'loading';
     // Let the page finish drawing first; the work below is a few seconds.
     const start = () => computeRegions().catch(err => {
         console.warn('Regions unavailable:', err);
         regionsState = 'error';
-        updateTable(currentTable());
+        refreshTable();
     });
     if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
     else setTimeout(start, 500);
@@ -216,7 +254,7 @@ async function computeRegions() {
         const slim = Object.fromEntries(Object.entries(byCountry).map(([k, v]) => [k, v]));
         localStorage.setItem(REGIONS_CACHE_KEY, JSON.stringify({ byCountry: slim, capitalHints: [...capitalHints] }));
     } catch { /* storage full or blocked: just don't remember */ }
-    updateTable(currentTable());
+    refreshTable();
 }
 
 // Resolves once the capitals have loaded (or failed to).
@@ -702,6 +740,7 @@ function sortableHeader(table, tableType, columns) {
                 : { col: c.key, dir: DESC_FIRST.has(c.key) ? 'desc' : 'asc' };
             updateTable(tableType);
         });
+        TravelUI.sortableHeader(th, isActive, dir, c.key);
         headerRow.appendChild(th);
     });
     const thead = document.createElement('thead');
@@ -776,7 +815,14 @@ function updateTable(tableType) {
 // decides).
 function updateCapitalsTable(tableContainer) {
     if (!worldCapitals) {
-        tableContainer.innerHTML = '<p class="map-description">Loading…</p>';
+        if (worldCapitalsFailed) {
+            TravelUI.showTableError(tableContainer, 'Could not load the world capitals.', () => {
+                loadCapitalsTable();
+                updateTable(currentTable());
+            });
+        } else {
+            tableContainer.innerHTML = '<p class="map-description" role="status">Loading…</p>';
+        }
         return;
     }
     const table = document.createElement('table');
@@ -812,7 +858,14 @@ function updateCapitalsTable(tableContainer) {
 // US metros), so Edit Mode has nothing to toggle here.
 function updateBucketTable(listId, tableContainer) {
     if (!bucketLists) {
-        tableContainer.innerHTML = '<p class="map-description">Loading…</p>';
+        if (bucketListsFailed) {
+            TravelUI.showTableError(tableContainer, 'Could not load this list.', () => {
+                loadBucketTables();
+                updateTable(currentTable());
+            });
+        } else {
+            tableContainer.innerHTML = '<p class="map-description" role="status">Loading…</p>';
+        }
         return;
     }
     const withRank = listId === 'forbes100';
@@ -842,6 +895,7 @@ function updateBucketTable(listId, tableContainer) {
                 : { col: c.key, dir: c.key === 'visited' ? 'desc' : 'asc' };
             updateTable(listId);
         });
+        TravelUI.sortableHeader(th, isActive, dir, c.key);
         headerRow.appendChild(th);
     });
     const thead = document.createElement('thead');

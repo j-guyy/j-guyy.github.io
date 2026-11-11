@@ -54,6 +54,45 @@
     to { transform: rotate(360deg); }
 }
 
+/* Load failed (strava.js showLoadError): no spinner, a message and Retry. */
+.strava-loading.load-failed .loading-spinner {
+    display: none;
+}
+
+.strava-loading.load-failed #loading-status {
+    color: var(--text);
+    text-align: center;
+    max-width: 30em;
+}
+
+/* Two classes: this has to outrank `.cache-refresh-btn` (the button's other
+   class, defined further down), which made Retry small and faint. */
+.cache-refresh-btn.load-retry-btn {
+    min-height: 40px;
+    padding: 8px 20px;
+    font-size: var(--text-sm);
+    color: var(--text);
+    font-weight: 600;
+    background-color: var(--surface-2);
+    border-color: rgba(255,255,255,0.7);
+}
+
+.cache-refresh-btn.load-retry-btn:hover,
+.cache-refresh-btn.load-retry-btn:focus-visible {
+    color: var(--on-accent);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Mount points are empty until the activities arrive; keep the empty cards
+   off the page while it loads (or when the load fails). */
+#strava-filters:empty,
+#strava-summary-section:has(> #strava-summary:empty):has(> #cache-info:empty),
+.section:has(> #strava-table-container:empty),
+.county-stats-bar:empty {
+    display: none;
+}
+
 #loading-status {
     color: rgba(255,255,255,0.65);
     font-size: 0.95rem;
@@ -75,7 +114,7 @@
 
 .no-location-note {
     text-align: center;
-    color: rgba(255,255,255,0.4);
+    color: var(--text-dim);
     font-size: 0.8rem;
     margin-top: 4px;
 }
@@ -94,7 +133,7 @@
 
 .cache-meta {
     font-size: var(--text-xs);
-    color: rgba(255,255,255,0.35);
+    color: var(--text-dim);
 }
 
 .cache-refresh-btn {
@@ -327,7 +366,7 @@ html.filter-drawer-open #debug-panel {
 
 .county-stat-label {
     font-size: var(--text-xs);
-    color: rgba(255,255,255,0.4);
+    color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -359,6 +398,12 @@ html.filter-drawer-open #debug-panel {
 .city-select:focus {
     border-color: var(--primary-color);
     outline: none;
+}
+
+/* Keyboard focus: a ring as well as the 1px border colour. */
+.city-select:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
 }
 
 .city-select option {
@@ -1165,7 +1210,7 @@ body:not(.app-page) .metric-toggle-btn:focus-visible {
     padding: 0;
     cursor: pointer;
     font-size: var(--text-xs);
-    color: rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.6);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: left;
@@ -1173,7 +1218,7 @@ body:not(.app-page) .metric-toggle-btn:focus-visible {
 }
 
 .filter-group-label.active {
-    color: rgba(255,255,255,0.6);
+    color: var(--text);
 }
 
 .filter-group-label:hover {
@@ -1189,7 +1234,7 @@ body:not(.app-page) .metric-toggle-btn:focus-visible {
 .filter-pill {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.35);
+    color: var(--text-dim);
     border-radius: 999px;
     padding: 3px 10px;
     cursor: pointer;
@@ -1545,10 +1590,13 @@ a.cache-refresh-btn {
         margin-top: 0;
     }
 
-    /* Small controls are hard to hit on a phone: give them a ~32px target. */
+    /* Small controls are hard to hit and read on a phone: a 40px target and
+       full-strength text ("Show map" was a dim 32px chip). */
     .cache-refresh-btn {
-        min-height: 32px;
-        padding: 6px 12px;
+        min-height: 40px;
+        padding: 8px 14px;
+        color: var(--text);
+        border-color: rgba(255,255,255,0.35);
     }
 
     a.cache-refresh-btn {
@@ -1595,10 +1643,11 @@ a.cache-refresh-btn {
 
     /* Select dropdowns in headings */
     .city-select {
-        font-size: 0.8rem;
+        font-size: 16px; /* under 16px, iOS Safari zooms the page on focus */
         padding: 6px 8px;
-        min-height: 32px;
-        max-width: 160px;
+        min-height: 40px;
+        max-width: 100%;
+        margin: 0;
     }
 
     /* Stats bars — tighter on mobile */
@@ -1729,5 +1778,20 @@ a.cache-refresh-btn {
         width: 100%;
         flex-direction: row !important;
         align-items: center !important;
+    }
+}
+
+/* Touch screens: filter pills were 20-22px tall. Give them a real tap height;
+   the rows already wrap, so only the row height changes. */
+@media (pointer: coarse) {
+    .filter-pill,
+    .filter-all-btn {
+        min-height: 34px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+
+    .filter-pills {
+        gap: 6px;
     }
 }

@@ -105,9 +105,9 @@ test('a type immune to a status cannot be given it', () => {
 });
 
 test('sleep stops a creature acting until it wakes', () => {
-  // Sleep runs 1 + floor(random * 3) turns and ticks down on the sleeper's own
-  // action, so with two turns it loses exactly the action it would have taken
-  // on the turn it was put under.
+  // Sleep's counter is 2 + floor(random * 3) and ticks down on the sleeper's
+  // own action; it acts again on the turn the counter reaches 0. So it always
+  // loses at least the action it would have taken on the turn it was put under.
   withRandom(0.5, () => {
     const b = startBattle(game, [withMoves('sproutle', 40, ['spore_puff'])], [withMoves('mudpad', 20, ['aqua_tap'])]);
     const before = b.player.curHP;
@@ -116,6 +116,74 @@ test('sleep stops a creature acting until it wakes', () => {
     assert.ok(b.said('is fast asleep.'), b.dump());
     assert.equal(b.player.curHP, before, 'a sleeping foe should not have attacked');
     assert.ok(!b.said('used Aqua Tap!'), b.dump());
+  });
+});
+
+test('sleep costs at least one action even on the shortest roll', () => {
+  // withRandom(0) rolls the minimum counter. The sleeper must still lose the
+  // action of the turn it fell asleep, and only wake (and act) on the next one.
+  withRandom(0, () => {
+    const b = startBattle(game, [withMoves('sproutle', 40, ['spore_puff'])], [withMoves('mudpad', 20, ['aqua_tap'])]);
+    const before = b.player.curHP;
+    b.move('spore_puff');
+    assert.equal(b.enemy.status, 'sleep', b.dump());
+    assert.ok(b.said('is fast asleep.'), b.dump());
+    assert.ok(!b.said('woke up!'), b.dump());
+    assert.ok(!b.said('used Aqua Tap!'), b.dump());
+    assert.equal(b.player.curHP, before, 'a sleeping foe should not have attacked');
+
+    b.move('spore_puff'); // fails (already asleep); the foe's own action wakes it
+    assert.ok(b.said('woke up!'), b.dump());
+    assert.equal(b.enemy.status, null, b.dump());
+    assert.ok(b.said('used Aqua Tap!'), b.dump());
+  });
+});
+
+test('a damaging move with a self-targeted effect can still miss', () => {
+  // Steel Claw: 95 accuracy, with a chance to raise the user's own Attack.
+  withRandom(0.999, () => {
+    const b = startBattle(game, [withMoves('thornback', 20, ['steel_claw'])], [withMoves('mudpad', 20, ['curl_up'])]);
+    const before = b.enemy.curHP;
+    b.move('steel_claw');
+    assert.ok(b.said('attack missed!'), b.dump());
+    assert.equal(b.enemy.curHP, before);
+  });
+});
+
+test('a non-damaging self-targeted move never rolls accuracy', () => {
+  withRandom(0.999, () => {
+    const b = startBattle(game, [withMoves('mudpad', 20, ['curl_up'])], [withMoves('mudpad', 20, ['curl_up'])]);
+    b.move('curl_up');
+    assert.ok(!b.said('attack missed!'), b.dump());
+  });
+});
+
+test('a self-targeted effect still applies when the hit knocks the target out', () => {
+  withRandom(0, () => {
+    const b = startBattle(game, [withMoves('emberling', 30, ['quick_spin'])], [withMoves('mudpad', 20, ['curl_up'])]);
+    b.data.hazards.player = 2;
+    b.enemy.curHP = 1;
+    b.move('quick_spin');
+    assert.equal(b.outcome, 'win', b.dump());
+    assert.equal(b.data.hazards.player, 0, b.dump());
+    assert.ok(b.said('The hazards on the field were blown away!'), b.dump());
+  });
+});
+
+test('the toxic counter restarts at battle start and on send-in', () => {
+  withRandom(0.5, () => {
+    const b = startBattle(
+      game,
+      [withMoves('emberling', 30, ['nudge']), withMoves('mudpad', 30, ['nudge'], { status: 'toxic', statusCounter: 5 })],
+      [withMoves('mudpad', 30, ['curl_up'], { status: 'toxic', statusCounter: 7 })],
+    );
+    assert.equal(b.playerParty[1].statusCounter, 1, 'a saved counter should not carry into a battle');
+    assert.equal(b.enemy.statusCounter, 1);
+
+    b.playerParty[1].statusCounter = 4; // as if it had been out for a while
+    b.switchTo(1);
+    // 1 on the way in, then +1 after this turn's poison tick.
+    assert.equal(b.player.statusCounter, 2, b.dump());
   });
 });
 

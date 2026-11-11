@@ -43,8 +43,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - name: Syntax check
@@ -59,18 +59,19 @@ jobs:
     concurrency:
       group: deploy-user-worker
       cancel-in-progress: false
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
-      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
-      USER_INVITE: ${{ secrets.USER_INVITE }}
+    # Secrets are set on the steps that use them, not on the job, so the
+    # checkout / setup-node actions and the syntax check never see them.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - name: Require secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
         run: |
           missing=0
           for s in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID STRAVA_CLIENT_ID STRAVA_CLIENT_SECRET; do
@@ -80,11 +81,24 @@ jobs:
       - name: Syntax check
         run: node --check worker.js && node --check user-worker.js
       - name: Find or create the KV namespace
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          # The exact title wins. A "<worker name>-user-strava" title (what
+          # older wrangler versions created) is accepted only when it is the
+          # one such namespace; two or more stop the deploy instead of
+          # picking one of them.
           find_id() {
             $WRANGLER kv namespace list 2>/dev/null \
               | sed -n '/^\[/,$p' \
-              | jq -r --arg t "$KV_TITLE" '[.[] | select(.title == $t or (.title | endswith("-" + $t)))][0].id // empty'
+              | jq -r --arg t "$KV_TITLE" '
+                  [.[] | select(.title == $t)] as $exact
+                  | [.[] | select(.title | endswith("-" + $t))] as $suffix
+                  | if ($exact | length) > 0 then $exact[0].id
+                    elif ($suffix | length) == 1 then $suffix[0].id
+                    elif ($suffix | length) > 1 then error("more than one KV namespace title ends with -" + $t + "; rename or delete the extra ones")
+                    else empty end'
           }
           id=$(find_id)
           if [ -z "$id" ]; then
@@ -95,8 +109,17 @@ jobs:
           echo "KV namespace id: $id"
           sed "s/USER_KV_ID/$id/g" wrangler.user.toml > wrangler.user.deploy.toml
       - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: $WRANGLER deploy --config wrangler.user.deploy.toml
       - name: Upload secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          USER_INVITE: ${{ secrets.USER_INVITE }}
         run: |
           node -e '
             const s = { CLIENT_ID: process.env.STRAVA_CLIENT_ID, CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET };
@@ -105,3 +128,17 @@ jobs:
           '
           $WRANGLER secret bulk "$RUNNER_TEMP/user-secrets.json" --config wrangler.user.deploy.toml
           rm -f "$RUNNER_TEMP/user-secrets.json"
+          # No USER_INVITE repository secret: remove it from the Worker too, so
+          # deleting the repository secret really turns the invite off. With no
+          # terminal, wrangler takes the default answer (yes) to its prompt.
+          if [ -z "$USER_INVITE" ]; then
+            if out=$($WRANGLER secret delete USER_INVITE --config wrangler.user.deploy.toml 2>&1 </dev/null); then
+              echo "USER_INVITE removed from the Worker (or was not set)."
+            elif echo "$out" | grep -qiE 'not found|10056'; then
+              echo "USER_INVITE is not set on the Worker; nothing to remove."
+            else
+              echo "$out"
+              echo "::error::Could not remove USER_INVITE from the Worker."
+              exit 1
+            fi
+          fi

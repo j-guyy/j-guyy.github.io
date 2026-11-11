@@ -4,13 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>3D Map Viewer - My Travels</title>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110d">
+    <link rel="stylesheet" href="css/layout.css?v=20261110d">
     <link rel="stylesheet" href="css/map.css">
     <link rel="stylesheet" href="css/3dmap.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <link rel="stylesheet" href="css/responsive.css?v=20261110d">
+    <script type="module" src="https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js" integrity="sha384-wjsPzEO+lXOf7d9csIDfAQpPt2OKuUU3m0K9qsdKIuzX4N8czSF6hdh23eAbZa3p" crossorigin="anonymous"></script>
     <meta name="robots" content="noindex">
 </head>
 
@@ -47,7 +50,13 @@
                 <model-viewer src="data/pico_de_orizaba.glb" alt="A 3D model of Pico de Orizaba" auto-rotate
                     camera-controls environment-image="neutral" shadow-intensity="1" exposure="1"
                     background-color="transparent" camera-orbit="45deg 55deg 2m" camera-target="0m 0.5m 0m"
-                    field-of-view="30deg">
+                    field-of-view="30deg" loading="lazy" reveal="manual">
+                    <!-- The 38 MB model downloads only after the visitor asks for it. -->
+                    <div slot="poster" style="display:flex;align-items:center;justify-content:center;height:100%;">
+                        <button type="button"
+                            style="padding:12px 20px;font:inherit;color:#fff;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.4);border-radius:8px;cursor:pointer;"
+                            onclick="this.disabled=true;this.textContent='Loading 3D model...';this.closest('model-viewer').dismissPoster();">Tap to load 3D model (38 MB)</button>
+                    </div>
                 </model-viewer>
             </div>
             <div class="model-controls">

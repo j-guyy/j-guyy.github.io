@@ -4,11 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Training Plan Builder — Justin Guyette</title>
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/training-plan.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
+    <link rel="stylesheet" href="css/training-plan.css?v=20261110d">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
     <meta name="description" content="Build a week-by-week endurance training plan for running, cycling and triathlon races.">
     <link rel="canonical" href="https://j-guyy.github.io/training-plan.html">
 </head>
@@ -38,13 +41,15 @@
             <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
 
             <div id="weeksContainer"></div>
+            <!-- Feedback line (js/training-plan.js notify()): copy/paste, import, restore -->
+            <p id="planStatus" class="plan-status" role="status" aria-live="polite"></p>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js" integrity="sha384-P7KKlGD3Ng66Ds7oTliLzTnol6DbK+k7PafNYXIBDQ4b5eFWtmqctplDVOxslglR" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" integrity="sha384-PlRSzpewlarQuj5alIadXwjNUX+2eNMKwr0f07ShWYLy8B6TjEbm7ZlcN/ScSbwy" crossorigin="anonymous"></script>
     <script src="js/navbar-component.js"></script>
-    <script src="js/training-plan.js"></script>
+    <script src="js/training-plan.js?v=20261110d"></script>
 </body>
 
 </html>

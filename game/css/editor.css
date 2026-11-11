@@ -56,6 +56,8 @@ button, #btn-play {
   text-decoration: none;
 }
 button:hover, #btn-play:hover { background: #3d475f; }
+/* Plain cross-links between the editors: light green, not default link blue. */
+#btn-routes, #btn-creatures { color: #7ddc82; }
 #btn-save { background: #2f6a33; border-color: #4CAF50; }
 #btn-save:hover { background: #3c8a41; }
 button.danger { border-color: #7a3a3a; }

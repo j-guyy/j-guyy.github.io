@@ -26,6 +26,11 @@ const TYPE_LABELS = {
     MountainBikeRide: 'Mountain Bike', GravelRide: 'Gravel Ride',
 };
 // Anything unlisted is split at its capitals: "WeightTraining" → "Weight Training".
+// Escape a stored / remote string before it goes into HTML or an HTML attribute.
+function escHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function typeLabel(t) { return TYPE_LABELS[t] || String(t).replace(/([a-z])([A-Z])/g, '$1 $2'); }
 
 // True on /app/ (the Capacitor shell), false on strava.html. Lets shared code
@@ -90,6 +95,8 @@ let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the con
 let syncing = false;       // true while a manual force-sync is in flight (drives the button state)
 let syncProgress = null;   // { fetched, pct } during a sync, for the progress bar
 let lastSyncResult = null; // transient "Synced — N new, M updated" line shown after a sync
+let rebuildOffered = false; // the worker's shrink guard refused the last sync: offer "Rebuild from Strava"
+let rebuilding = false;     // true while that rebuild is in flight (with `syncing`)
 
 // ── Admin auth ──────────────────────────────────────────────────────────────
 // The Strava admin controls (manual force-sync + the debug-menu resets) are
@@ -99,6 +106,11 @@ let lastSyncResult = null; // transient "Synced — N new, M updated" line shown
 // protected worker calls. The worker is the real gate — it rejects those calls
 // without a valid password, so hiding the buttons is just UX.
 const ADMIN_PW_KEY = window.STRAVA_ADMIN_PW_KEY || 'strava_admin_pw';
+// User mode (/app/?user=1, js/user-mode.js): the person's session token sits
+// under ADMIN_PW_KEY so the user worker accepts their saves and syncs. They are
+// not the site owner, so the owner's controls (admin login prompt, Log out,
+// Debug) are not offered; their Account row on Home has Disconnect.
+const IS_USER_MODE = Boolean(window.STRAVA_USER);
 
 function getAdminPw() { return localStorage.getItem(ADMIN_PW_KEY) || ''; }
 function isLoggedIn() { return Boolean(getAdminPw()); }
@@ -117,7 +129,23 @@ function adminPost(path, body = null) {
     return fetch(`${WORKER_URL}${path}`, opts);
 }
 
+// Every POST …/save route on the worker needs the admin password. A visitor
+// who is not logged in still sees the locally computed results; the save is
+// skipped (resolves null) with one debug line per visit.
+let saveSkipLogged = false;
+function savePost(path, body) {
+    if (!isLoggedIn()) {
+        if (!saveSkipLogged) {
+            saveSkipLogged = true;
+            dbg('Not logged in — results are not saved to the server');
+        }
+        return Promise.resolve(null);
+    }
+    return adminPost(path, body);
+}
+
 async function adminLogin() {
+    if (IS_USER_MODE) return; // no owner login in user mode
     const pw = prompt('Enter Strava admin password:');
     if (!pw) return;
     try {
@@ -135,6 +163,7 @@ async function adminLogin() {
 }
 
 function adminLogout() {
+    if (IS_USER_MODE) return; // would drop the session token; Disconnect is on Home
     localStorage.removeItem(ADMIN_PW_KEY);
     const panel = document.getElementById('debug-panel');
     if (panel) panel.hidden = true;
@@ -526,6 +555,8 @@ async function syncWithWorker({ join = false } = {}) {
             : null,
     });
     lastSyncResult = formatSyncResult(data);
+    // Refused by the worker's shrink guard: the way out is a rebuild.
+    rebuildOffered = /shrank/.test(data.skipped || '');
     setStatus(lastSyncResult);
     return data;
 }
@@ -601,7 +632,7 @@ async function streamSync(join, estTotal) {
 async function syncResultFromStatus(status) {
     if (status?.state === 'error') throw syncError(status.error || 'sync failed', true);
     if (status?.state !== 'done') throw syncError('sync was interrupted — tap Sync now to run it again', true);
-    const tallies = { newActivities: status.newActivities, updated: status.updated, removed: status.removed };
+    const tallies = { newActivities: status.newActivities, updated: status.updated, removed: status.removed, skipped: status.skipped };
     if (lastSyncedAt && status.syncedAt && lastSyncedAt >= status.syncedAt) {
         // This page already shows what the run stored.
         return { ...tallies, unchanged: true };
@@ -675,6 +706,8 @@ async function resumeBackgroundSync(loaded) {
 
 // Human-readable one-liner for the post-sync summary shown in the controls bar.
 function formatSyncResult(r) {
+    // The worker kept the stored list (its shrink guard, see syncActivities).
+    if (r.skipped) return `Sync failed: ${r.skipped} — kept the stored activities`;
     const parts = [];
     if (r.newActivities) parts.push(`${r.newActivities} new`);
     if (r.updated)       parts.push(`${r.updated} updated`);
@@ -789,11 +822,9 @@ async function loadGeoCache() {
 
 async function saveGeoToWorker(cache) {
     try {
-        const res = await fetch(`${WORKER_URL}/geo/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cache)
-        });
+        const res = await savePost('/geo/save', cache);
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Geo cache saved to server (${data.keys} entries)`);
     } catch (err) {
@@ -1149,14 +1180,18 @@ function renderFilters() {
                 <div class="metric-toggle" role="group" aria-labelledby="metric-toggle-label">${metricHtml}</div>
             </div>
             <div class="filter-summary" id="filter-summary">
-                <span class="filter-summary-text"><span class="filter-summary-label">Showing</span> ${filterSummaryText(sortedTypes)}</span>
+                <span class="filter-summary-text"><span class="filter-summary-label">Showing</span> ${escHtml(filterSummaryText(sortedTypes))}</span>
                 ${nOff ? '<button type="button" class="filter-all-btn" onclick="resetDashboardFilters()">Reset</button>' : ''}
                 <button type="button" class="filter-open-btn${nOff ? ' is-filtered' : ''}" onclick="openFilterDrawer()" aria-haspopup="dialog">${FILTER_ICON} Filters</button>
             </div>
         </div>`;
 
     const drawer = filterDrawer();
-    drawer.querySelector('.filter-drawer-body').innerHTML = `
+    // A pill that is pressed is replaced by this render: remember its place
+    // so the keyboard focus goes to the new one, not back to <body>.
+    const drawerBody = drawer.querySelector('.filter-drawer-body');
+    const focusIdx = [...drawerBody.querySelectorAll('button')].indexOf(document.activeElement);
+    drawerBody.innerHTML = `
         <section class="filter-drawer-section">
             <h3>Sports</h3>
             <div class="filter-controls">
@@ -1167,6 +1202,7 @@ function renderFilters() {
             <div class="filter-pills">${pillsHtml}</div>
         </section>
         ${renderYearFilterHtml()}`;
+    if (focusIdx >= 0) drawerBody.querySelectorAll('button')[focusIdx]?.focus({ preventScroll: true });
     drawer.querySelector('.filter-drawer-summary').textContent = filterSummaryText(sortedTypes);
     updateFilterFab(nOff);
 }
@@ -1226,11 +1262,31 @@ function filterDrawer() {
     if (isAppPage()) el.classList.add('app-drawer');
     document.body.appendChild(el);
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !el.hidden) closeFilterDrawer(); });
+    // Keep Tab / Shift+Tab inside the panel while it is open. On document,
+    // not the panel: focus can be on <body> (after a re-render, or a tap on
+    // the panel's text) and Tab must still go into the panel.
+    document.addEventListener('keydown', ev => {
+        if (ev.key !== 'Tab' || el.hidden || !el.classList.contains('is-open')) return;
+        const items = [...el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+            .filter(n => !n.disabled && n.getClientRects().length > 0);
+        if (!items.length) { ev.preventDefault(); return; }
+        const first = items[0], last = items[items.length - 1];
+        const inside = items.includes(document.activeElement);
+        if (ev.shiftKey && (!inside || document.activeElement === first)) {
+            ev.preventDefault();
+            last.focus();
+        } else if (!ev.shiftKey && (!inside || document.activeElement === last)) {
+            ev.preventDefault();
+            first.focus();
+        }
+    });
     return el;
 }
 
 function openFilterDrawer() {
     const el = filterDrawer();
+    // The control that opened the panel gets the focus back on close.
+    if (el.hidden) el._opener = document.activeElement;
     el.hidden = false;
     // Locking the page scroll can send iPhone Safari back to the top; the
     // spot is put back on close.
@@ -1246,6 +1302,15 @@ function closeFilterDrawer() {
     el.classList.remove('is-open');
     document.documentElement.classList.remove('filter-drawer-open');
     if (el._scrollY > 40 && window.scrollY < 5) window.scrollTo(0, el._scrollY);
+    // Focus back to the opener, or to the page's Filters button when the
+    // opener is gone (re-rendered) or hidden (the floating button).
+    const opener = el._opener;
+    el._opener = null;
+    const back = opener && opener.isConnected && opener.getClientRects().length > 0
+        ? opener
+        : document.querySelector('#filter-summary .filter-open-btn');
+    const at = document.activeElement;
+    if (back && (!at || at === document.body || el.contains(at))) back.focus({ preventScroll: true });
     setTimeout(() => { if (!el.classList.contains('is-open')) el.hidden = true; }, 220);
 }
 
@@ -1411,7 +1476,7 @@ function buildSortableTable(data, state, nameCol, onSort) {
     sortedEntries(data, state, nameCol.toLowerCase()).forEach(([name, d]) => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${name}</td>
+            <td>${escHtml(name)}</td>
             <td style="text-align:center"><strong>${formatMetric(metricValue(d, 'total'))}</strong></td>
             ${GROUP_KEYS.map(g => `<td style="text-align:center">${formatMetric(metricValue(d, g))}</td>`).join('')}
         `;
@@ -1818,7 +1883,7 @@ function regionPopupHtml(cfg, feature) {
         return `
             <div class="activity-popup-inner">
                 <div class="activity-popup-type" style="color:#aaa">${cfg.flag} ${cfg.colLabel}</div>
-                <div class="activity-popup-name">${name}</div>
+                <div class="activity-popup-name">${escHtml(name)}</div>
                 <div class="activity-popup-date" style="color:#888">No activities yet</div>
             </div>`;
     }
@@ -1832,7 +1897,7 @@ function regionPopupHtml(cfg, feature) {
     return `
         <div class="activity-popup-inner">
             <div class="activity-popup-type" style="color:${REGION_COLOR}">${cfg.flag} ${cfg.colLabel}</div>
-            <div class="activity-popup-name">${name}</div>
+            <div class="activity-popup-name">${escHtml(name)}</div>
             <div class="activity-popup-date">${totalLine}</div>
             ${breakdown ? `<div class="activity-popup-date">${breakdown}</div>` : ''}
         </div>`;
@@ -1987,6 +2052,18 @@ let stateFocusLayer = null;    // currently-focused state outline overlay (clear
 let countyGeoJsonLayer = null; // GeoJSON layer reference so we can restyle on basemap change
 let countyMapIsDark = true;    // tracks active basemap so unvisited county strokes contrast
 
+// One init in flight per map hunter: a hide-then-show (or a post-sync rebuild)
+// while the first init still loads reuses it instead of starting a second.
+const hunterInits = {};
+function initOnce(key, init) {
+    if (!hunterInits[key]) {
+        hunterInits[key] = init()
+            .catch(err => dbg(`${key} init error: ${err.message}`))
+            .finally(() => { delete hunterInits[key]; });
+    }
+    return hunterInits[key];
+}
+
 function toggleCountyMap() {
     const section = document.getElementById('county-section');
     const btn = document.getElementById('county-toggle-btn');
@@ -1997,7 +2074,7 @@ function toggleCountyMap() {
     if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
 
     if (opening && !countyMapInitialized) {
-        initCountyMap();
+        initOnce('county', initCountyMap);
     } else if (opening && countyMap) {
         setTimeout(() => countyMap.invalidateSize(), 50);
     }
@@ -2289,15 +2366,15 @@ function renderCountyMap(geojson) {
             if (visited) {
                 const disc = countyDiscoveries[GEOID];
                 const discLine = disc
-                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
-                    : `<div class="activity-popup-date">FIPS ${GEOID}</div>`;
+                    ? `<div class="activity-popup-date">First visited: ${escHtml(disc.date || '?')}<br>${escHtml(disc.actName)}</div>`
+                    : `<div class="activity-popup-date">FIPS ${escHtml(GEOID)}</div>`;
                 const tagColor = goldState ? '#FFD700' : '#4CAF50';
                 const baseFill = goldState ? 0.55 : 0.45;
                 const hoverFill = goldState ? 0.85 : 0.72;
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:${tagColor}">${state}${goldState ? ' ★' : ''}</div>
-                        <div class="activity-popup-name">${NAME} ${lsad}</div>
+                        <div class="activity-popup-type" style="color:${tagColor}">${escHtml(state)}${goldState ? ' ★' : ''}</div>
+                        <div class="activity-popup-name">${escHtml(NAME)} ${lsad}</div>
                         ${discLine}
                     </div>`, { className: 'activity-popup' });
                 layer.on('mouseover', function () { this.setStyle({ fillOpacity: hoverFill }); });
@@ -2305,8 +2382,8 @@ function renderCountyMap(geojson) {
             } else {
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:#aaa">${state}</div>
-                        <div class="activity-popup-name">${NAME} ${lsad}</div>
+                        <div class="activity-popup-type" style="color:#aaa">${escHtml(state)}</div>
+                        <div class="activity-popup-name">${escHtml(NAME)} ${lsad}</div>
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
                 layer.on('mouseover', function () {
@@ -2425,11 +2502,11 @@ function renderRecentCounties(geojson) {
         const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${info.name} ${info.lsad}</td>
-            <td>${info.state}</td>
+            <td>${escHtml(info.name)} ${escHtml(info.lsad)}</td>
+            <td>${escHtml(info.state)}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
-                : disc.actName}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>`
+                : escHtml(disc.actName)}</td>
             <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
     }
@@ -2446,16 +2523,14 @@ function renderRecentCounties(geojson) {
 
 async function saveCountiesToWorker() {
     try {
-        const res = await fetch(`${WORKER_URL}/counties/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                fips: [...visitedFips],
-                processedIds: [...countyProcessedIds],
-                discoveries: countyDiscoveries,
-                order: discoveryOrderStamp(),
-            }),
+        const res = await savePost('/counties/save', {
+            fips: [...visitedFips],
+            processedIds: [...countyProcessedIds],
+            discoveries: countyDiscoveries,
+            order: discoveryOrderStamp(),
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`County data saved: ${data.counties} counties`);
     } catch (err) {
@@ -2632,7 +2707,7 @@ function toggleParkMap() {
     section.style.display = opening ? 'block' : 'none';
     if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
     if (opening && !parkMapInitialized) {
-        initParkMap();
+        initOnce('park', initParkMap);
     } else if (opening && parkMap) {
         setTimeout(() => parkMap.invalidateSize(), 50);
     }
@@ -2846,12 +2921,12 @@ function renderParkMapLayer(geojson, visitedSet, discoveries) {
             if (visited) {
                 const disc = discoveries[id];
                 const discLine = disc
-                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
+                    ? `<div class="activity-popup-date">First visited: ${escHtml(disc.date || '?')}<br>${escHtml(disc.actName)}</div>`
                     : '';
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:${color}">${agency} · ${type}</div>
-                        <div class="activity-popup-name">${name}</div>
+                        <div class="activity-popup-type" style="color:${color}">${escHtml(agency)} · ${escHtml(type)}</div>
+                        <div class="activity-popup-name">${escHtml(name)}</div>
                         ${discLine}
                     </div>`, { className: 'activity-popup' });
                 layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.72 }); });
@@ -2859,8 +2934,8 @@ function renderParkMapLayer(geojson, visitedSet, discoveries) {
             } else {
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:#aaa">${agency} · ${type}</div>
-                        <div class="activity-popup-name">${name}</div>
+                        <div class="activity-popup-type" style="color:#aaa">${escHtml(agency)} · ${escHtml(type)}</div>
+                        <div class="activity-popup-name">${escHtml(name)}</div>
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
                 layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.18 }); });
@@ -3043,12 +3118,12 @@ function renderParkCategoryTable(cat) {
         const color = PARK_AGENCY_COLORS[info.agency] || '#FF7043';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${info.name}</td>
-            <td>${info.type}</td>
-            <td style="color:${color};font-weight:600">${info.agency}</td>
+            <td>${escHtml(info.name)}</td>
+            <td>${escHtml(info.type)}</td>
+            <td style="color:${color};font-weight:600">${escHtml(info.agency)}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
-                : (disc.actName || '—')}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>`
+                : escHtml(disc.actName || '—')}</td>
             <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
     }
@@ -3065,16 +3140,14 @@ function renderParkCategoryTable(cat) {
 
 async function saveParksToWorker() {
     try {
-        const res = await fetch(`${WORKER_URL}/parks/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ids:          [...visitedParkIds],
-                processedIds: [...parkProcessedIds],
-                discoveries:  parkDiscoveries,
-                order:        discoveryOrderStamp(),
-            }),
+        const res = await savePost('/parks/save', {
+            ids:          [...visitedParkIds],
+            processedIds: [...parkProcessedIds],
+            discoveries:  parkDiscoveries,
+            order:        discoveryOrderStamp(),
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Park data saved: ${data.parks} parks`);
     } catch (err) {
@@ -3084,16 +3157,14 @@ async function saveParksToWorker() {
 
 async function saveStateParkData() {
     try {
-        const res = await fetch(`${WORKER_URL}/state-parks/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ids:          [...visitedStateParkIds],
-                processedIds: [...stateParkProcessedIds],
-                discoveries:  stateParkDiscoveries,
-                order:        discoveryOrderStamp(),
-            }),
+        const res = await savePost('/state-parks/save', {
+            ids:          [...visitedStateParkIds],
+            processedIds: [...stateParkProcessedIds],
+            discoveries:  stateParkDiscoveries,
+            order:        discoveryOrderStamp(),
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`State park data saved: ${data.parks} parks`);
     } catch (err) {
@@ -3160,7 +3231,7 @@ function toggleMetroMap() {
     section.style.display = opening ? 'block' : 'none';
     if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
     if (opening && !metroMapInitialized) {
-        initMetroMap();
+        initOnce('metro', initMetroMap);
     } else if (opening && metroMap) {
         setTimeout(() => metroMap.invalidateSize(), 50);
     }
@@ -3372,13 +3443,13 @@ function renderMetroMap(geojson) {
             if (visited) {
                 const disc = metroDiscoveries[id];
                 const discLine = disc
-                    ? `<div class="activity-popup-date">First visited: ${disc.date || '?'}<br>${disc.actName || ''}</div>`
+                    ? `<div class="activity-popup-date">First visited: ${escHtml(disc.date || '?')}<br>${escHtml(disc.actName)}</div>`
                     : '';
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:${METRO_COLOR}">#${rank} · ${state}</div>
-                        <div class="activity-popup-name">${name}</div>
-                        <div class="activity-popup-date">${census_name}</div>
+                        <div class="activity-popup-type" style="color:${METRO_COLOR}">#${escHtml(rank)} · ${escHtml(state)}</div>
+                        <div class="activity-popup-name">${escHtml(name)}</div>
+                        <div class="activity-popup-date">${escHtml(census_name)}</div>
                         ${popStr}${discLine}
                     </div>`, { className: 'activity-popup' });
                 layer.on('mouseover', function () { this.setStyle({ fillOpacity: 0.6 }); });
@@ -3386,9 +3457,9 @@ function renderMetroMap(geojson) {
             } else {
                 layer.bindPopup(`
                     <div class="activity-popup-inner">
-                        <div class="activity-popup-type" style="color:#aaa">#${rank} · ${state}</div>
-                        <div class="activity-popup-name">${name}</div>
-                        <div class="activity-popup-date">${census_name}</div>
+                        <div class="activity-popup-type" style="color:#aaa">#${escHtml(rank)} · ${escHtml(state)}</div>
+                        <div class="activity-popup-name">${escHtml(name)}</div>
+                        <div class="activity-popup-date">${escHtml(census_name)}</div>
                         ${popStr}
                         <div class="activity-popup-date" style="color:#888">Not yet visited</div>
                     </div>`, { className: 'activity-popup' });
@@ -3499,12 +3570,12 @@ function renderRecentMetros(geojson) {
         const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="color:${METRO_COLOR};font-weight:600">#${info.rank}</td>
-            <td>${info.name}</td>
-            <td>${info.state}</td>
+            <td style="color:${METRO_COLOR};font-weight:600">#${escHtml(info.rank)}</td>
+            <td>${escHtml(info.name)}</td>
+            <td>${escHtml(info.state)}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
-                : (disc.actName || '—')}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>`
+                : escHtml(disc.actName || '—')}</td>
             <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
     }
@@ -3671,10 +3742,10 @@ function buildMetroComparisonTable(metros, rankColor, state, onSort) {
     rows.forEach(m => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="color:${rankColor};font-weight:600">#${m.rank}</td>
-            <td>${m.name}</td>
-            <td>${m.state}</td>
-            <td>${m.metro_name}</td>`;
+            <td style="color:${rankColor};font-weight:600">#${escHtml(m.rank)}</td>
+            <td>${escHtml(m.name)}</td>
+            <td>${escHtml(m.state)}</td>
+            <td>${escHtml(m.metro_name)}</td>`;
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -3683,16 +3754,14 @@ function buildMetroComparisonTable(metros, rankColor, state, onSort) {
 
 async function saveMetrosToWorker() {
     try {
-        const res = await fetch(`${WORKER_URL}/metro-hunter/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ids:          [...visitedMetroIds],
-                processedIds: [...metroProcessedIds],
-                discoveries:  metroDiscoveries,
-                order:        discoveryOrderStamp(),
-            }),
+        const res = await savePost('/metro-hunter/save', {
+            ids:          [...visitedMetroIds],
+            processedIds: [...metroProcessedIds],
+            discoveries:  metroDiscoveries,
+            order:        discoveryOrderStamp(),
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Metro data saved: ${data.metros} metros`);
     } catch (err) {
@@ -3740,6 +3809,8 @@ function setMetroStatus(msg) {
 const ECO_TOPOJSON_URL = '/data/us-ecoregions.topojson';
 const ECO_AK_URL       = '/data/ak-ecoregions.geojson';
 const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
+// Same hash as the <script> tag for this file in us-ecoregions.html.
+const ECO_TOPOJSON_SRI = 'sha384-9dCJK6nh7skY14HrcvlLYlFga9/MehJjL9ONWRflmiXNRuf8p2jiF4Y5PR881PTq';
 const ECO_COLORS_JS    = '/js/eco-colors.js';
 // Bump when detection changes: a saved blob from another version is discarded
 // and every activity is scanned again. v2 records patches (see ecoPatchFirst).
@@ -3784,12 +3855,17 @@ let ecoPatchFirst = new Map();   // patch id → id of the first activity that e
 let ecoProcessedIds = new Set();
 const ecoExpandedL3 = new Set(); // Level III rows opened in the progress table
 
-// Inject a <script> once and resolve when it has run.
+// Inject a <script> once and resolve when it has run. `integrity` (an SRI
+// hash) is for exact-version third-party files.
 const scriptLoads = {};
-function loadScriptOnce(src) {
+function loadScriptOnce(src, integrity = '') {
     if (!scriptLoads[src]) {
         scriptLoads[src] = new Promise((resolve, reject) => {
             const s = document.createElement('script');
+            if (integrity) {
+                s.integrity = integrity;
+                s.crossOrigin = 'anonymous';
+            }
             s.src = src;
             s.onload = resolve;
             s.onerror = () => { delete scriptLoads[src]; reject(new Error(`Failed to load ${src}`)); };
@@ -3845,7 +3921,7 @@ async function initEcoregionMap() {
             // A worker without the endpoints yet (or offline) just means no saved
             // progress: detect from scratch and let the save fail quietly.
             fetch(`${WORKER_URL}/ecoregions/all`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-            loadScriptOnce(ECO_TOPOJSON_LIB),
+            loadScriptOnce(ECO_TOPOJSON_LIB, ECO_TOPOJSON_SRI),
             loadScriptOnce(ECO_COLORS_JS),
         ]);
     } catch (err) {
@@ -4418,7 +4494,7 @@ function renderRecentEcoregions() {
             <td><span class="eco-swatch" style="background:${ecoRegionColor(code)}"></span>${escapeEcoHtml(code)} ${escapeEcoHtml(info.name)}</td>
             <td>${escapeEcoHtml(l3?.name || info.l3)}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escapeEcoHtml(disc.actName)}</a>`
                 : escapeEcoHtml(disc.actName || '—')}</td>
             <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
@@ -4436,19 +4512,16 @@ function renderRecentEcoregions() {
 
 async function saveEcoregionsToWorker() {
     try {
-        const res = await fetch(`${WORKER_URL}/ecoregions/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                v:            ECO_DETECT_VERSION,
-                patchCount:   ecoFeatures.length,
-                patches:      Object.fromEntries(ecoPatchFirst),
-                codes:        [...visitedEcoCodes],
-                processedIds: [...ecoProcessedIds],
-                discoveries:  ecoDiscoveries,
-                order:        discoveryOrderStamp(),
-            }),
+        const res = await savePost('/ecoregions/save', {
+            v:            ECO_DETECT_VERSION,
+            patchCount:   ecoFeatures.length,
+            patches:      Object.fromEntries(ecoPatchFirst),
+            codes:        [...visitedEcoCodes],
+            processedIds: [...ecoProcessedIds],
+            discoveries:  ecoDiscoveries,
+            order:        discoveryOrderStamp(),
         });
+        if (!res) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Ecoregion data saved: ${data.ecoregions} Level IV`);
@@ -4503,14 +4576,17 @@ let mapLayers = [];
 
 // Shared polyline cache — fetched once, reused by Activity Map, County Hunter, Tile Hunter
 let cachedPolylines = null;
+let cachedPolylinesFor = null;  // the currentSlim array that cachedPolylines was derived from
 
+// Each slim entry carries its own polyline (`p`), so this list is derived from
+// currentSlim and index i always belongs to currentSlim[i]. (Stays async: the
+// callers await it.)
 async function loadPolylines() {
-    if (cachedPolylines !== null) return cachedPolylines;
-    dbg('GET /polylines/all…');
-    const res = await fetch(`${WORKER_URL}/polylines/all`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    cachedPolylines = await res.json();
-    dbg(`Polylines: ${cachedPolylines.length} total, ${cachedPolylines.filter(Boolean).length} with GPS`);
+    if (cachedPolylines === null || cachedPolylinesFor !== currentSlim) {
+        cachedPolylines = currentSlim.map(a => a.p || '');
+        cachedPolylinesFor = currentSlim;
+        dbg(`Polylines: ${cachedPolylines.length} total, ${cachedPolylines.filter(Boolean).length} with GPS`);
+    }
     return cachedPolylines;
 }
 
@@ -4613,7 +4689,7 @@ function toggleMap() {
     if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
 
     if (opening && !mapInitialized) {
-        initMap();
+        initOnce('activity-map', initMap);
     } else if (opening && stravaMap) {
         // Leaflet loses track of its size when hidden; recalculate on reveal
         setTimeout(() => stravaMap.invalidateSize(), 50);
@@ -4644,7 +4720,7 @@ async function initMap() {
     });
     new LocationControl().addTo(stravaMap);
 
-    // Lazy-fetch polylines via shared cache
+    // Polylines via shared cache (derived from currentSlim)
     setMapStatus('Fetching routes…');
     let polylines;
     try {
@@ -4742,14 +4818,14 @@ function setMapStatus(msg) {
 }
 
 function buildActivityPopup(slim) {
-    const name = slim.n || 'Untitled Activity';
-    const type = typeLabel(slim.t);
+    const name = escHtml(slim.n || 'Untitled Activity');
+    const type = escHtml(typeLabel(slim.t));
     const date = slim.d ? formatActivityDate(slim.d) : '';
     const group = getGroup(slim.t);
     const color = GROUP_COLORS[group] || GROUP_COLORS['Other'];
     const href = slim.i ? `https://www.strava.com/activities/${slim.i}` : null;
     const nameHtml = href
-        ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${name}</a>`
+        ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${name}</a>`
         : name;
     return `
         <div class="activity-popup-inner">
@@ -4953,6 +5029,7 @@ function cacheAgeText(ts) {
 
 let cityMap = null;
 let cityMapInitialized = false;
+let cityInitGen = 0;            // bumped by each init start and each city switch; a stale init bails
 let cityNodeLayer = null;       // L.LayerGroup of unvisited node markers
 let cityActivityLayer = null;   // L.LayerGroup of activity polylines
 let cityMapIsDark = true;       // tracks active basemap so not-started roads + boundary contrast
@@ -4978,6 +5055,7 @@ function toggleCityMap() {
 function switchCity(cityKey) {
     if (!CITY_CONFIGS[cityKey] || cityKey === ACTIVE_CITY) return;
     ACTIVE_CITY = cityKey;
+    cityInitGen++;  // an init still in flight for the old city is now stale
 
     // Tear down existing map and state
     if (cityMap) { cityMap.remove(); cityMap = null; }
@@ -5013,11 +5091,8 @@ async function reportHunterProgress(kind, key, name, completedWays) {
     const sigValue = `${report.complete}|${report.partial}|${report.total}|${report.pct}`;
     try { if (localStorage.getItem(sig) === sigValue) return; } catch {}
     try {
-        const res = await fetch(`${WORKER_URL}/progress/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(report),
-        });
+        const res = await savePost('/progress/save', report);
+        if (!res) return;
         if (!res.ok) return;
         try { localStorage.setItem(sig, sigValue); } catch {}
         dbg(`${kind} progress saved: ${report.pct}% of ${name}`);
@@ -5027,7 +5102,11 @@ async function reportHunterProgress(kind, key, name, completedWays) {
 }
 
 async function initCityMap() {
-    const cfg = CITY_CONFIGS[ACTIVE_CITY];
+    // A newer init (city switch, hide-then-show, post-sync rebuild) makes this
+    // one stale: it stops after its next await and draws / saves nothing.
+    const gen = ++cityInitGen;
+    const cityKey = ACTIVE_CITY;
+    const cfg = CITY_CONFIGS[cityKey];
     setCityStatus('Loading road network…');
     dbg(`City Hunter: initialising for ${cfg.name}`);
 
@@ -5039,10 +5118,12 @@ async function initCityMap() {
             fetchCityBoundary(cfg),
         ]);
     } catch (err) {
+        if (gen !== cityInitGen) return;
         dbg(`City Hunter error: ${err.message}`);
         setCityStatus('Failed to load city data.');
         return;
     }
+    if (gen !== cityInitGen) return;
 
     // Assemble raw boundary way-segments into closed polygon rings, then
     // clip every OSM way so only nodes inside the city limits are counted.
@@ -5064,6 +5145,7 @@ async function initCityMap() {
 
     setCityStatus('Analysing coverage…');
     await new Promise(r => setTimeout(r, 0)); // yield before heavy computation
+    if (gen !== cityInitGen) return;
 
     const pointIndex = buildPointIndex(polylines);
     const completedWays = computeWayCompletion(ways, pointIndex);
@@ -5101,7 +5183,7 @@ async function initCityMap() {
     const done = completedWays.filter(w => w.pct === 1).length;
     setCityStatus('');
     dbg(`City Hunter: ${done}/${completedWays.length} ways complete`);
-    reportHunterProgress('city', ACTIVE_CITY, cfg.name, completedWays);
+    reportHunterProgress('city', cityKey, cfg.name, completedWays);
 }
 
 // ── OSM road data ─────────────────────────────────────────────────────────────
@@ -5408,14 +5490,14 @@ function renderCityMap(completedWays) {
 
         const pctLabel = (way.pct * 100).toFixed(0) + '%';
         const nameHtml = way.name
-            ? way.name
-            : `<em style="opacity:0.6">${way.highway}</em>`;
+            ? escHtml(way.name)
+            : `<em style="opacity:0.6">${escHtml(way.highway)}</em>`;
         // Popup heading uses a fixed readable colour (popup bg is always dark) so
         // a not-started road's dark-grey line colour doesn't vanish in the popup.
         const headColor = way.pct === 0 ? '#bbb' : color;
         layer.bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${headColor}">${way.highway}</div>
+                <div class="activity-popup-type" style="color:${headColor}">${escHtml(way.highway)}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
@@ -5602,7 +5684,7 @@ function toggleTileMap() {
     section.style.display = opening ? 'block' : 'none';
     if (btn) btn.textContent = opening ? 'Hide map' : 'Show map';
     if (opening && !tileMapInitialized) {
-        initTileMap();
+        initOnce('tile', initTileMap);
     } else if (opening && tileMap) {
         setTimeout(() => tileMap.invalidateSize(), 50);
     }
@@ -6152,15 +6234,13 @@ async function saveTilesToWorker() {
         let maxCluster = 0, maxSquare = 0;
         for (const v of computeClusters(visitedTiles).values()) if (v > maxCluster) maxCluster = v;
         for (const v of computeSquares(visitedTiles).values())  if (v > maxSquare)  maxSquare  = v;
-        const res = await fetch(`${WORKER_URL}/tiles/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tiles: [...visitedTiles],
-                processedIds: [...tileProcessedIds],
-                stats: { visited: visitedTiles.size, maxCluster, maxSquare },
-            }),
+        const res = await savePost('/tiles/save', {
+            tiles: [...visitedTiles],
+            processedIds: [...tileProcessedIds],
+            stats: { visited: visitedTiles.size, maxCluster, maxSquare },
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Tile data saved: ${data.tiles} tiles`);
     } catch (err) {
@@ -6472,6 +6552,7 @@ let ACTIVE_TRAIL = 'boulder-county';
 
 let trailMap = null;
 let trailMapInitialized = false;
+let trailInitGen = 0;           // bumped by each init start and each area switch; a stale init bails
 let trailNodeLayers = [];      // [{group: L.layerGroup, surface}] — one per surface type
 let trailActivityLayer = null;
 let trailNodesVisible = false;
@@ -6499,6 +6580,7 @@ function toggleTrailMap() {
 function switchTrail(trailKey) {
     if (!TRAIL_CONFIGS[trailKey] || trailKey === ACTIVE_TRAIL) return;
     ACTIVE_TRAIL = trailKey;
+    trailInitGen++;  // an init still in flight for the old area is now stale
     if (trailMap) { trailMap.remove(); trailMap = null; }
     trailMapInitialized = false;
     trailNodeLayers = [];
@@ -6513,7 +6595,10 @@ function switchTrail(trailKey) {
 }
 
 async function initTrailMap() {
-    const cfg = TRAIL_CONFIGS[ACTIVE_TRAIL];
+    // Same stale-init guard as initCityMap.
+    const gen = ++trailInitGen;
+    const trailKey = ACTIVE_TRAIL;
+    const cfg = TRAIL_CONFIGS[trailKey];
     setTrailStatus('Loading trail network…');
     dbg(`Trail Hunter: initialising for ${cfg.name}`);
 
@@ -6522,13 +6607,15 @@ async function initTrailMap() {
         [ways, polylines, boundarySegments] = await Promise.all([
             fetchCOTrexTrails(cfg),
             loadPolylines(),
-            fetchCityBoundary(cfg, `trail_boundary_${ACTIVE_TRAIL}`),
+            fetchCityBoundary(cfg, `trail_boundary_${trailKey}`),
         ]);
     } catch (err) {
+        if (gen !== trailInitGen) return;
         dbg(`Trail Hunter error: ${err.message}`);
         setTrailStatus('Failed to load trail data.');
         return;
     }
+    if (gen !== trailInitGen) return;
 
     const boundaryPolygons = boundarySegments && boundarySegments.length
         ? assembleRings(boundarySegments) : [];
@@ -6548,6 +6635,7 @@ async function initTrailMap() {
 
     setTrailStatus('Analysing coverage…');
     await new Promise(r => setTimeout(r, 0));
+    if (gen !== trailInitGen) return;
 
     const pointIndex = buildPointIndex(polylines);
     const completedWays = computeWayCompletion(ways, pointIndex);
@@ -6586,7 +6674,7 @@ async function initTrailMap() {
     const done = completedWays.filter(w => w.pct === 1).length;
     setTrailStatus('');
     dbg(`Trail Hunter: ${done}/${completedWays.length} trails complete`);
-    reportHunterProgress('trail', ACTIVE_TRAIL, cfg.name, completedWays);
+    reportHunterProgress('trail', trailKey, cfg.name, completedWays);
 }
 
 // Fetch hiking trails from the COTrex ArcGIS MapServer, paginating 2 000 records
@@ -6710,15 +6798,15 @@ function renderTrailMap(completedWays) {
 
         const pctLabel = (way.pct * 100).toFixed(0) + '%';
         const nameHtml = way.name
-            ? way.name
-            : `<em style="opacity:0.6">${way.highway}</em>`;
-        const surfaceNote = way.surface ? ` · ${way.surface}` : '';
+            ? escHtml(way.name)
+            : `<em style="opacity:0.6">${escHtml(way.highway)}</em>`;
+        const surfaceNote = way.surface ? ` · ${escHtml(way.surface)}` : '';
         // Fixed readable heading colour so a not-started trail's dark-grey line
         // colour doesn't vanish against the always-dark popup background.
         const headColor = way.pct === 0 ? '#bbb' : color;
         hitLayer.bindPopup(`
             <div class="activity-popup-inner">
-                <div class="activity-popup-type" style="color:${headColor}">${way.highway}${surfaceNote}</div>
+                <div class="activity-popup-type" style="color:${headColor}">${escHtml(way.highway)}${surfaceNote}</div>
                 <div class="activity-popup-name">${nameHtml}</div>
                 <div class="activity-popup-date">${pctLabel} complete · ${way.visited} / ${way.total} nodes</div>
             </div>`, { className: 'activity-popup' });
@@ -6810,8 +6898,8 @@ function renderTrailSurfaceFilters() {
 
     const pills = surfaces.map(s => {
         const active = !deactivatedTrailSurfaces.has(s);
-        const label  = s || '(unknown)';
-        return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleTrailSurface('${s.replace(/'/g, "\\'")}')">${label} <span class="filter-pill-count">${surfaceCounts[s]}</span></button>`;
+        const label  = escHtml(s || '(unknown)');
+        return `<button class="filter-pill${active ? ' active' : ''}" onclick="toggleTrailSurface('${escHtml(s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"))}')">${label} <span class="filter-pill-count">${surfaceCounts[s]}</span></button>`;
     }).join('');
 
     el.innerHTML = `
@@ -6979,6 +7067,7 @@ let mountainMapInstance = null;
 let mountainMapInitialized = false;
 let mountainMapIsDark = true;   // tracks active basemap so un-summited peak markers contrast
 let mountainHunterReady = false;
+let mountainRescanQueued = false;   // a call that arrived during a run; honoured when the run ends
 let mountainHunterRunning = false;  // concurrency guard — only one run at a time
 
 function mToFt(m) { return Math.round(m * 3.28084); }
@@ -7116,19 +7205,16 @@ async function saveSummitCache() {
         for (const [peakId, pvs] of mountainVisits) {
             visits[peakId] = pvs;
         }
-        const res = await fetch(`${WORKER_URL}/summits/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                visits,
-                processedIds: [...summitProcessedIds],
-                cells: summitScannedCells,
-                hikers: summitScannedHikers,
-                // Hiker summits aren't in the peak cell cache; /summits/peaks reads them here
-                extraPeaks: mountainPeaks.filter(p => p.hiker)
-                    .map(({ id, name, lat, lng, ele }) => ({ id, name, lat, lng, ele })),
-            }),
+        const res = await savePost('/summits/save', {
+            visits,
+            processedIds: [...summitProcessedIds],
+            cells: summitScannedCells,
+            hikers: summitScannedHikers,
+            // Hiker summits aren't in the peak cell cache; /summits/peaks reads them here
+            extraPeaks: mountainPeaks.filter(p => p.hiker)
+                .map(({ id, name, lat, lng, ele }) => ({ id, name, lat, lng, ele })),
         });
+        if (!res) return;
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         dbg(`Summit cache saved (${data.peaks} peaks)`);
@@ -7143,11 +7229,8 @@ async function savePeakCache() {
         return;
     }
     try {
-        const res = await fetch(`${WORKER_URL}/peaks/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cells: peakCellCache }),
-        });
+        const res = await savePost('/peaks/save', { cells: peakCellCache });
+        if (!res) return;
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         dbg(`Peak cache saved to server (${data.cells} cells)`);
@@ -7649,7 +7732,7 @@ function renderMountainQuickStats() {
         <div class="county-stat-item">
             <span class="county-stat-number">${topGain ? mToFt(topGain.e).toLocaleString() + ' ft' : '—'}</span>
             <span class="county-stat-label">Most Elev. Gain${topGain
-                ? `<br><span class="mh-sublabel">${topGain.n || 'Untitled'}</span>`
+                ? `<br><span class="mh-sublabel">${escHtml(topGain.n || 'Untitled')}</span>`
                 : ''}</span>
         </div>`;
 
@@ -7676,7 +7759,7 @@ function renderMountainStats() {
     if (tallestEl && tallestPeak) {
         tallestEl.querySelector('.county-stat-number').textContent = mToFt(tallestPeak.ele).toLocaleString() + ' ft';
         tallestEl.querySelector('.county-stat-label').innerHTML =
-            `Tallest Peak<br><span class="mh-sublabel">${tallestPeak.name || 'Unnamed Peak'}</span>`;
+            `Tallest Peak<br><span class="mh-sublabel">${escHtml(tallestPeak.name || 'Unnamed Peak')}</span>`;
     } else if (tallestEl) {
         tallestEl.querySelector('.county-stat-number').textContent = '—';
     }
@@ -7685,7 +7768,7 @@ function renderMountainStats() {
     if (mostEl && mostClimbedPeak) {
         mostEl.querySelector('.county-stat-number').textContent = mostClimbedCount + '×';
         mostEl.querySelector('.county-stat-label').innerHTML =
-            `Most Climbed<br><span class="mh-sublabel">${mostClimbedPeak.name || 'Unnamed Peak'}</span>`;
+            `Most Climbed<br><span class="mh-sublabel">${escHtml(mostClimbedPeak.name || 'Unnamed Peak')}</span>`;
     } else if (mostEl) {
         mostEl.querySelector('.county-stat-number').textContent = '—';
     }
@@ -7911,7 +7994,7 @@ function renderNearMissList() {
     rows.forEach(({ peak, visits, closest }) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><button type="button" class="peak-name-link">${peak.name || 'Unnamed'}</button></td>
+            <td><button type="button" class="peak-name-link">${escHtml(peak.name || 'Unnamed')}</button></td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td>${closest.distance}m</td>
             <td>${visits.length}</td>`;
@@ -7997,7 +8080,7 @@ function renderHiddenPeaksList() {
     rows.forEach(peak => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${peak.name || 'Unnamed'}</td>
+            <td>${escHtml(peak.name || 'Unnamed')}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:right"><button type="button" class="peak-restore-btn">Restore</button></td>`;
         tr.querySelector('.peak-restore-btn').addEventListener('click', () => unhidePeak(peak.id));
@@ -8091,7 +8174,7 @@ function showPeakMapPopup(peak, visits) {
 
     L.circleMarker([peak.lat, peak.lng], {
         radius: 8, color: '#FF5722', fillColor: '#FF5722', fillOpacity: 0.85, weight: 2,
-    }).addTo(mapInstance).bindTooltip(peak.name || 'Unnamed Peak', { permanent: false });
+    }).addTo(mapInstance).bindTooltip(escHtml(peak.name || 'Unnamed Peak'), { permanent: false });
 
     // Two radii so the user can see what triggers a summit and what's
     // required to "really leave" before the next lap is counted.
@@ -8310,21 +8393,21 @@ function renderMountainTable() {
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
         const peakNameCell = mountainEditMode
-            ? `<button type="button" class="peak-name-link">${peak.name}</button>`
-            : peak.name;
+            ? `<button type="button" class="peak-name-link">${escHtml(peak.name)}</button>`
+            : escHtml(peak.name);
         const hideCell = mountainEditMode
-            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${peak.name}">×</button></td>`
+            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${escHtml(peak.name)}">×</button></td>`
             : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${peakNameCell}</td>
-            <td class="peak-country" title="${country || ''}">${flag}</td>
+            <td class="peak-country" title="${escHtml(country)}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}</button></td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
-                : (last.actName || '—')}
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(last.actName)}</a>`
+                : escHtml(last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
             </td>${hideCell}`;
         tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
@@ -8443,21 +8526,21 @@ function renderRepeatSummitLeaderboard() {
         const country = peakCountry(peak, pvs);
         const flag = countryFlag(country);
         const peakNameCell = mountainEditMode
-            ? `<button type="button" class="peak-name-link">${peak.name}</button>`
-            : peak.name;
+            ? `<button type="button" class="peak-name-link">${escHtml(peak.name)}</button>`
+            : escHtml(peak.name);
         const hideCell = mountainEditMode
-            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${peak.name}">×</button></td>`
+            ? `<td style="text-align:right"><button type="button" class="peak-hide-btn" aria-label="Hide ${escHtml(peak.name)}">×</button></td>`
             : '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${peakNameCell}</td>
-            <td class="peak-country" title="${country || ''}">${flag}</td>
+            <td class="peak-country" title="${escHtml(country)}">${flag}</td>
             <td>${mToFt(peak.ele).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(peak.ele).toLocaleString()}m)</span></td>
             <td style="text-align:center"><button type="button" class="summit-count-link">${pvs.length}×</button></td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>`
-                : (last.actName || '—')}
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(last.actName)}</a>`
+                : escHtml(last.actName || '—')}
                 ${last.date ? `<div class="activity-popup-date">${formatActivityDate(last.date)}</div>` : ''}
             </td>${hideCell}`;
         tr.querySelector('.summit-count-link').addEventListener('click', () => showSummitListPopup(peak, pvs));
@@ -8555,9 +8638,9 @@ function renderElevationLeaderboard() {
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${a.n || 'Untitled'}</a>`
-                : (a.n || 'Untitled')}</td>
-            <td>${typeLabel(a.t)}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(a.n || 'Untitled')}</a>`
+                : escHtml(a.n || 'Untitled')}</td>
+            <td>${escHtml(typeLabel(a.t))}</td>
             <td>${mToFt(a.e).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(a.e).toLocaleString()}m)</span></td>
             <td>${a.d ? formatActivityDate(a.d) : '—'}</td>`;
         tbody.appendChild(tr);
@@ -8634,11 +8717,11 @@ function renderMountainMap() {
                 <div class="activity-popup-type" style="color:${stroke}">
                     ▲ ${mToFt(peak.ele).toLocaleString()} ft (${Math.round(peak.ele).toLocaleString()}m)
                 </div>
-                <div class="activity-popup-name">${peak.name || 'Unnamed Peak'}</div>
+                <div class="activity-popup-name">${escHtml(peak.name || 'Unnamed Peak')}</div>
                 <div class="activity-popup-date">
                     ${visited
                         ? `Summited ${pvs.length}× · Last: ${last.date ? formatActivityDate(last.date) : '?'}
-                           ${href ? `<br><a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${last.actName}</a>` : ''}`
+                           ${href ? `<br><a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(last.actName)}</a>` : ''}`
                         : isNearMiss
                             ? `Near miss — closest pass: ${closestMiss.distance}m
                                <br><span class="mh-sublabel">${nearMissVisits.length} activit${nearMissVisits.length === 1 ? 'y' : 'ies'} came within ${NEAR_MISS_RADIUS_M}m</span>`
@@ -8747,9 +8830,11 @@ async function initMountainHunter() {
     renderMountainQuickStats();
 
     // Concurrency guard — if already running (e.g. from a prior geocodeAndRender),
-    // skip this call. The in-progress run will finish and set mountainHunterReady.
+    // queue one more run for when it ends (a sync may have brought new
+    // activities since the in-progress run read currentSlim).
     if (mountainHunterRunning) {
-        dbg('Mountain Hunter: already running — skipping duplicate');
+        mountainRescanQueued = true;
+        dbg('Mountain Hunter: already running — rescan queued');
         return;
     }
 
@@ -8789,7 +8874,12 @@ async function initMountainHunter() {
 
         // Then refresh stale cells in the background. A cell that gained peaks
         // makes detectMountainSummits re-scan everything against them.
-        if (plan.stale.length) {
+        // Only a logged-in page can save the refreshed cells (/peaks/save needs
+        // the admin password), so a visitor's page would repeat the same
+        // Overpass queries on every visit: it shows the cached peaks instead.
+        if (plan.stale.length && !isLoggedIn()) {
+            dbg(`Mountain peaks: ${plan.stale.length} stale cell(s) left for a logged-in visit (not logged in — nothing would be saved)`);
+        } else if (plan.stale.length) {
             await refreshStaleCells(plan.cells, plan.stale, async () => {
                 mountainPeaks = await peaksFromCache(plan.cells);
                 await scanMountainSummits(summitActs);
@@ -8806,6 +8896,10 @@ async function initMountainHunter() {
         dbg(`Mountain Hunter error: ${err.message}`);
     } finally {
         mountainHunterRunning = false;
+        if (mountainRescanQueued) {
+            mountainRescanQueued = false;
+            initMountainHunter().catch(err => dbg(`Mountain Hunter rescan error: ${err.message}`));
+        }
     }
 }
 
@@ -8934,17 +9028,15 @@ function detectPassCrossings(passes, activities) {
 
 async function savePassData(catalogIds) {
     try {
-        const res = await fetch(`${WORKER_URL}/passes/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ids: Object.keys(passDiscoveries),
-                processedIds: [...passProcessedIds],
-                discoveries: passDiscoveries,
-                order: discoveryOrderStamp(),
-                catalogIds: catalogIds || coloradoPasses.map(p => p.id),
-            }),
+        const res = await savePost('/passes/save', {
+            ids: Object.keys(passDiscoveries),
+            processedIds: [...passProcessedIds],
+            discoveries: passDiscoveries,
+            order: discoveryOrderStamp(),
+            catalogIds: catalogIds || coloradoPasses.map(p => p.id),
         });
+        if (!res) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         dbg(`Pass data saved: ${data.passes} passes`);
     } catch (err) {
@@ -9083,7 +9175,7 @@ function renderPassStats() {
         <div class="county-stat-item">
             <span class="county-stat-number">${highest ? highest.ele.toLocaleString() + ' ft' : '—'}</span>
             <span class="county-stat-label">Highest Climbed${highest
-                ? `<br><span class="mh-sublabel">${highest.name}</span>`
+                ? `<br><span class="mh-sublabel">${escHtml(highest.name)}</span>`
                 : ''}</span>
         </div>
         <div class="county-stat-item">
@@ -9167,11 +9259,11 @@ function renderRecentPasses() {
         const href = disc.actId ? `https://www.strava.com/activities/${disc.actId}` : null;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${pass.name}${pass.road ? ` <span class="mh-sublabel">${pass.road}</span>` : ''}</td>
+            <td>${escHtml(pass.name)}${pass.road ? ` <span class="mh-sublabel">${escHtml(pass.road)}</span>` : ''}</td>
             <td>${pass.ele.toLocaleString()} ft <span class="mh-ele-m">(${ftToM(pass.ele).toLocaleString()}m)</span></td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
-                : (disc.actName || '—')}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>`
+                : escHtml(disc.actName || '—')}</td>
             <td>${disc.date ? formatActivityDate(disc.date) : '—'}</td>`;
         tbody.appendChild(tr);
     }
@@ -9259,12 +9351,12 @@ function renderHighestPasses() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${i + 1}</td>
-            <td>${pass.name}</td>
-            <td>${pass.road || '—'}</td>
+            <td>${escHtml(pass.name)}</td>
+            <td>${escHtml(pass.road || '—')}</td>
             <td>${pass.ele.toLocaleString()} ft <span class="mh-ele-m">(${ftToM(pass.ele).toLocaleString()}m)</span></td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>`
-                : (disc.actName || '—')}
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>`
+                : escHtml(disc.actName || '—')}
                 ${disc.date ? `<div class="activity-popup-date">${formatActivityDate(disc.date)}</div>` : ''}
             </td>`;
         tbody.appendChild(tr);
@@ -9363,9 +9455,9 @@ function renderRideElevLeaderboard({ elId, metric, valueLabel, title }) {
         tr.innerHTML = `
             <td>${i + 1}</td>
             <td>${href
-                ? `<a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${a.n || 'Untitled'}</a>`
-                : (a.n || 'Untitled')}</td>
-            <td>${typeLabel(a.t)}</td>
+                ? `<a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(a.n || 'Untitled')}</a>`
+                : escHtml(a.n || 'Untitled')}</td>
+            <td>${escHtml(typeLabel(a.t))}</td>
             <td>${mToFt(m).toLocaleString()} ft <span class="mh-ele-m">(${Math.round(m).toLocaleString()}m)</span></td>
             <td>${a.d ? formatActivityDate(a.d) : '—'}</td>`;
         tbody.appendChild(tr);
@@ -9488,13 +9580,13 @@ function renderPassMap() {
         }).bindPopup(`
             <div class="activity-popup-inner">
                 <div class="activity-popup-type" style="color:${headColor}">
-                    ▲ ${pass.ele.toLocaleString()} ft (${ftToM(pass.ele).toLocaleString()}m)${pass.road ? ` · ${pass.road}` : ''}
+                    ▲ ${pass.ele.toLocaleString()} ft (${ftToM(pass.ele).toLocaleString()}m)${pass.road ? ` · ${escHtml(pass.road)}` : ''}
                 </div>
-                <div class="activity-popup-name">${pass.name}</div>
+                <div class="activity-popup-name">${escHtml(pass.name)}</div>
                 <div class="activity-popup-date">
                     ${climbed
                         ? `Climbed ${disc.date ? formatActivityDate(disc.date) : ''}
-                           ${href ? `<br><a class="activity-popup-link" href="${href}" target="_blank" rel="noopener">${disc.actName}</a>` : ''}`
+                           ${href ? `<br><a class="activity-popup-link" href="${escHtml(href)}" target="_blank" rel="noopener">${escHtml(disc.actName)}</a>` : ''}`
                         : 'Not yet climbed'}
                 </div>
             </div>`, { className: 'activity-popup' });
@@ -9593,7 +9685,7 @@ function dbg(msg, data = null) {
     if (!list) return;
 
     const li = document.createElement('li');
-    li.innerHTML = `<span class="dbg-ts">${ts}</span> ${msg}`;
+    li.innerHTML = `<span class="dbg-ts">${ts}</span> ${escHtml(msg)}`;
     if (data !== null) {
         const pre = document.createElement('pre');
         pre.className = 'dbg-data';
@@ -9667,6 +9759,43 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
+// Tell other UI (the app's Home header, js/app.js) how the first load is
+// going: a 'stravaload' event on document with detail.state 'loading' (a Retry
+// started) | 'loaded' (activities rendered, also after a sync) | 'error'.
+function notifyLoadState(state) {
+    document.dispatchEvent(new CustomEvent('stravaload', { detail: { state } }));
+}
+
+// The first load failed (offline, worker unreachable): stop the spinner and
+// offer Retry in the loader. The technical reason stays in the debug log and
+// the console. Does nothing once the page has rendered (the loader is hidden).
+function showLoadError() {
+    const el = document.getElementById('loading-section');
+    if (!el || el.style.display === 'none') return;
+    el.classList.add('load-failed');
+    setStatus('Could not load activities. Check your connection and try again.');
+    if (!document.getElementById('load-retry-btn')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'load-retry-btn';
+        btn.className = 'cache-refresh-btn load-retry-btn';
+        btn.textContent = 'Retry';
+        btn.addEventListener('click', retryLoad);
+        el.appendChild(btn);
+    }
+    notifyLoadState('error');
+}
+
+function retryLoad() {
+    if (pipelineRunning) return;
+    const el = document.getElementById('loading-section');
+    if (el) el.classList.remove('load-failed');
+    document.getElementById('load-retry-btn')?.remove();
+    setStatus('Loading activities…');
+    notifyLoadState('loading');
+    runPipeline(false);
+}
+
 function relativeTime(ts) {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
@@ -9690,21 +9819,35 @@ function setCacheInfo(gpsCount, total, syncedAt) {
     // While a sync is in flight the button shows a disabled "Syncing…" state — a
     // full refresh re-fetches every page from Strava, so it's not instant.
     const syncBtn = syncing
-        ? `<button class="cache-refresh-btn" id="refresh-btn" disabled>⏳ Syncing…</button>`
+        ? `<button class="cache-refresh-btn" id="refresh-btn" disabled>⏳ ${rebuilding ? 'Rebuilding…' : 'Syncing…'}</button>`
         : `<button class="cache-refresh-btn" id="refresh-btn">Sync now</button>`;
-    const controls = isLoggedIn()
-        ? `${syncBtn}
+    // In user mode the bar has the sync control only (see IS_USER_MODE).
+    let controls;
+    if (IS_USER_MODE) {
+        controls = isLoggedIn() ? syncBtn : '';
+    } else if (isLoggedIn()) {
+        controls = `${syncBtn}
            <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
-           <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`
-        : `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login">🔒</button>`;
+           <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`;
+    } else {
+        controls = `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login" aria-label="Admin login">🔒</button>`;
+    }
     // A full-width progress bar (its own flex row) while syncing, or a transient
     // result line once a sync finishes.
     let extra = '';
-    if (syncing) {
+    if (rebuilding) {
+        // One long request with no progress to report.
+        extra = `<span class="sync-result" role="status">Rebuilding from Strava — fetching every activity again…</span>`;
+    } else if (syncing) {
         const pct = syncProgress?.pct ?? 0;
         extra = `<div class="sync-progress"><div class="sync-progress-fill" id="sync-progress-fill" style="width:${pct}%"></div></div>`;
     } else if (lastSyncResult) {
-        extra = `<span class="sync-result">${lastSyncResult}</span>`;
+        extra = `<span class="sync-result">${escHtml(lastSyncResult)}</span>`;
+        // Only for someone the worker will accept (owner password or, in user
+        // mode, the person's session token); never for anonymous visitors.
+        if (rebuildOffered && isLoggedIn()) {
+            extra += `<button type="button" class="cache-refresh-btn" id="rebuild-btn" title="Fetch every activity again and replace the stored list">Rebuild from Strava</button>`;
+        }
     }
     el.innerHTML = `
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
@@ -9712,6 +9855,59 @@ function setCacheInfo(gpsCount, total, syncedAt) {
         ${extra}
     `;
     document.getElementById('refresh-btn')?.addEventListener('click', () => runManualSync());
+    document.getElementById('rebuild-btn')?.addEventListener('click', () => runRebuild());
+}
+
+// The way out of a sync the worker's shrink guard refused ("list shrank…"):
+// POST /activities/rebuild fetches the whole list again and stores it whatever
+// its size (the worker keeps the stored list if Strava answers with nothing).
+// One plain request (no progress stream) that answers with the same record as
+// a finished sync, so it is rendered the way runPipeline renders a sync.
+async function runRebuild() {
+    if (syncing || pipelineRunning || !isLoggedIn()) return;
+    // The worker also clears every ride's stored high point (`eh`). The owner's
+    // page fetches them again (backfillRideElev, one Strava call per ride);
+    // user mode has no backfill, so there they are gone.
+    const highPoints = IS_USER_MODE
+        ? (currentSlim.some(a => a.eh !== undefined) ? ' Stored ride high points are lost.' : '')
+        : ' Ride high points are fetched again after (one Strava call per ride).';
+    if (!confirm(`Rebuild from Strava?\n\nThis fetches every activity again and replaces the stored list, even if the new list is much shorter.${highPoints} It can take a minute or more.`)) return;
+    syncing = true;
+    rebuilding = true;
+    pipelineRunning = true;
+    syncProgress = null;
+    lastSyncResult = null;
+    rebuildOffered = false;
+    try {
+        refreshAdminUI();
+        dbg('POST /activities/rebuild — fetching every activity from Strava…');
+        const res = await adminPost('/activities/rebuild');
+        if (!res.ok) throw new Error(res.status === 401 ? 'not authorised' : `worker error ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data.slim)) throw new Error('unexpected answer from the worker');
+        if (data.skipped) throw new Error(`${data.skipped} — kept the stored activities`);
+        dbg(`Rebuild complete — ${data.total} activities`);
+        cachedPolylines = null;
+        await geocodeAndRender(data.slim, data.total, data.syncedAt, currentCache);
+        refreshOpenMapHunters();
+        lastSyncResult = `Rebuilt — ${Number(data.total).toLocaleString()} activities`;
+    } catch (err) {
+        dbg(`ERROR: rebuild — ${err.message}`);
+        console.error(err);
+        lastSyncResult = `Rebuild failed: ${err.message}`;
+        rebuildOffered = true; // leave the action there to try again
+    } finally {
+        syncing = false;
+        rebuilding = false;
+        pipelineRunning = false;
+        refreshAdminUI();
+        if (lastSyncResult && !rebuildOffered) {
+            const shown = lastSyncResult;
+            setTimeout(() => {
+                if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
+            }, 8000);
+        }
+    }
 }
 
 // Manual force-sync wrapper that drives the button's in-flight state so the user
@@ -9721,9 +9917,11 @@ function setCacheInfo(gpsCount, total, syncedAt) {
 let syncTask = null;
 function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
     if (syncTask) return syncTask;
+    if (rebuilding) return Promise.resolve(); // runRebuild owns the sync state
     syncing = true;
     syncProgress = { fetched, pct: 0 };
     lastSyncResult = null;
+    rebuildOffered = false;
     refreshAdminUI(); // repaint the button as "Syncing…" with the progress bar
     syncTask = (async () => {
         try {
@@ -9735,8 +9933,9 @@ function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
             syncProgress = null;
             syncTask = null;
             refreshAdminUI(); // back to "Sync now", showing the result line + "Synced just now"
-            // Clear the transient result line after a few seconds.
-            if (lastSyncResult) {
+            // Clear the transient result line after a few seconds; a refused
+            // sync stays, with its "Rebuild from Strava" action.
+            if (lastSyncResult && !rebuildOffered) {
                 const shown = lastSyncResult;
                 setTimeout(() => {
                     if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
@@ -9770,6 +9969,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     currentSlim = slim;
     currentTotal = total;
     currentCache = cache;
+    notifyLoadState('loaded');
 
     const { countries, subdivisions } = buildData(slim, cache);
     const subCounts = SUBDIVISION_CONFIG
@@ -9855,22 +10055,22 @@ function refreshOpenMapHunters() {
     if (countyMapInitialized) {
         resyncMapHunter(() => countyMap,
             () => { countyMap.remove(); countyMap = null; countyMapInitialized = false; },
-            initCountyMap);
+            () => initOnce('county', initCountyMap));
     }
     if (parkMapInitialized) {
         resyncMapHunter(() => parkMap,
             () => { parkMap.remove(); parkMap = null; parkMapInitialized = false; },
-            initParkMap);
+            () => initOnce('park', initParkMap));
     }
     if (metroMapInitialized) {
         resyncMapHunter(() => metroMap,
             () => { metroMap.remove(); metroMap = null; metroMapInitialized = false; },
-            initMetroMap);
+            () => initOnce('metro', initMetroMap));
     }
     if (tileMapInitialized) {
         resyncMapHunter(() => tileMap,
             () => { tileMap.remove(); tileMap = null; tileMapInitialized = false; tileGridLayer = null; },
-            initTileMap);
+            () => initOnce('tile', initTileMap));
     }
     if (cityMapInitialized) {
         resyncMapHunter(() => cityMap,
@@ -9895,7 +10095,7 @@ function refreshOpenMapHunters() {
     if (mapInitialized && stravaMap) {
         resyncMapHunter(() => stravaMap,
             () => { stravaMap.remove(); stravaMap = null; mapInitialized = false; mapLayers = []; },
-            initMap);
+            () => initOnce('activity-map', initMap));
     }
     rebuildOpenRegionMaps();
 }
@@ -9953,7 +10153,7 @@ async function runPipeline(forceSync = false, { join = false } = {}) {
 
     } catch (err) {
         dbg(`ERROR: ${err.message}`);
-        setStatus('Error: ' + err.message);
+        showLoadError();
         // The loader is gone once the page has rendered, so put a failed sync
         // where the button is.
         if (forceSync) lastSyncResult = `Sync failed: ${err.message}`;

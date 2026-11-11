@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0d0b">
+<link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/connect/icon-192.png">
+<meta name="robots" content="noindex">
+<meta name="description" content="Water Gun World: a small first-person browser game. Put out all the fires with your water gun.">
 <title>Water Gun World</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -44,7 +50,14 @@ body { overflow: hidden; background: #000; }
   background: rgba(8, 18, 38, 0.92);
   z-index: 10; user-select: none;
 }
-#overlay h1 { font-size: 52px; letter-spacing: 3px; margin-bottom: 14px; }
+#overlay h1 { font-size: clamp(30px, 9vw, 52px); letter-spacing: 3px; margin-bottom: 14px; text-align: center; padding: 0 16px; }
+#back-link {
+  position: absolute; top: 52px; left: 20px; /* below the timer HUD that shows through */
+  font-size: 14px; color: #99bbdd; text-decoration: none;
+}
+#back-link:hover, #back-link:focus { color: #fff; text-decoration: underline; }
+#overlay .touch-note { display: none; margin-top: 18px; padding: 0 16px; font-size: 14px; color: #ffcc66; text-align: center; }
+@media (pointer: coarse) { #overlay .touch-note { display: block; } }
 #overlay .sub { font-size: 18px; color: #99bbdd; margin-bottom: 30px; }
 #overlay .controls { font-size: 15px; color: #7a9ab2; line-height: 2.4; text-align: center; }
 #start-btn {
@@ -72,11 +85,11 @@ body { overflow: hidden; background: #000; }
 #win-screen .stat { font-size: 22px; color: #aaffcc; margin: 6px; }
 #win-screen button {
   margin-top: 34px; padding: 14px 38px; font-size: 20px;
-  font-family: 'Courier New', monospace; background: #00aa55;
+  font-family: 'Courier New', monospace; background: #007a3d;
   color: #fff; border: none; border-radius: 6px; cursor: pointer;
   transition: background 0.18s, transform 0.12s;
 }
-#win-screen button:hover { background: #00cc66; transform: scale(1.05); }
+#win-screen button:hover { background: #008542; transform: scale(1.05); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
 </style>
 </head>
@@ -88,6 +101,7 @@ body { overflow: hidden; background: #000; }
 <div id="lock-hint">Click game to capture mouse for smooth look</div>
 
 <div id="overlay">
+  <a id="back-link" href="/">← Back to site</a>
   <h1>💧 WATER GUN WORLD</h1>
   <div class="sub">Put out all the fires to win!</div>
   <div class="controls">
@@ -96,6 +110,7 @@ body { overflow: hidden; background: #000; }
     Left Click &nbsp;—&nbsp; Shoot water
   </div>
   <button id="start-btn">▶ Play</button>
+  <div class="touch-note">Best played on desktop with keyboard and mouse</div>
   <div id="err-msg"></div>
 </div>
 
@@ -110,7 +125,7 @@ body { overflow: hidden; background: #000; }
 <script>
 window._threeLoaded = false;
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"
         onload="window._threeLoaded=true"
         onerror="loadFallbackThree()"></script>
 <script>
@@ -421,12 +436,13 @@ camera.add(gunGroup);
 // ── PROJECTILES ──────────────────────────────────────────────────────────────
 const projectiles = [];
 const waterMat = new THREE.MeshBasicMaterial({color:0x44bbff});
+const shotGeo = new THREE.SphereGeometry(0.1,6,6); // shared by every shot
 
 function shoot() {
   if (shootCooldown > 0 || !gameRunning) return;
   shootCooldown = 0.13;
   const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6), waterMat);
+  const mesh = new THREE.Mesh(shotGeo, waterMat);
   mesh.position.copy(camera.position).addScaledVector(dir, 0.9);
   scene.add(mesh);
   projectiles.push({mesh, vel:dir.clone().multiplyScalar(26), speed:26, dist:0});
@@ -512,10 +528,13 @@ function updatePlayer(dt) {
   const right   = new THREE.Vector3( Math.cos(yaw),0,-Math.sin(yaw));
   const moving = keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']
               || keys['ArrowUp']||keys['ArrowDown']||keys['ArrowLeft']||keys['ArrowRight'];
-  if (keys['KeyW']||keys['ArrowUp'])    camera.position.addScaledVector(forward,  MOVE_SPEED*dt);
-  if (keys['KeyS']||keys['ArrowDown'])  camera.position.addScaledVector(forward, -MOVE_SPEED*dt);
-  if (keys['KeyA']||keys['ArrowLeft'])  camera.position.addScaledVector(right,   -MOVE_SPEED*dt);
-  if (keys['KeyD']||keys['ArrowRight']) camera.position.addScaledVector(right,    MOVE_SPEED*dt);
+  // Sum the held directions, then normalise so a diagonal is not ~1.41x faster.
+  const move = new THREE.Vector3();
+  if (keys['KeyW']||keys['ArrowUp'])    move.add(forward);
+  if (keys['KeyS']||keys['ArrowDown'])  move.sub(forward);
+  if (keys['KeyA']||keys['ArrowLeft'])  move.sub(right);
+  if (keys['KeyD']||keys['ArrowRight']) move.add(right);
+  if (move.lengthSq() > 0) camera.position.addScaledVector(move.normalize(), MOVE_SPEED*dt);
   camera.position.x = Math.max(-48,Math.min(48,camera.position.x));
   camera.position.z = Math.max(-48,Math.min(48,camera.position.z));
   resolvePlayerCollisions();

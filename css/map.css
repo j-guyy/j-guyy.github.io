@@ -80,8 +80,9 @@
     cursor: pointer;
 }
 
+/* Grey, not red: visited vs not must not rest on telling red from green. */
 .not-visited {
-    fill: #f44336;
+    fill: #6b6b6b;
 }
 
 .city-dot.top-100 {
@@ -124,6 +125,12 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Hidden until the US map has drawn (js/map.js). */
+#map-legend[hidden],
+.map-controls[hidden] {
+    display: none;
+}
+
 #map-legend svg {
     font-family: Arial, sans-serif;
     width: 150px;
@@ -153,7 +160,7 @@
     font-size: 1em;
     cursor: pointer;
     background-color: var(--primary-color);
-    color: var(--text-color);
+    color: var(--on-accent);
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s ease, opacity 0.3s ease;
@@ -373,7 +380,7 @@
 
 .view-mode-btn.active {
     background-color: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .radius-control {
@@ -405,4 +412,10 @@
 
 .fog-of-war-svg {
     display: block;
+}
+
+/* Links in a map's description (globe.html) take the accent colour, not the
+   browser's default blue on the dark page. */
+.map-description a {
+    color: var(--primary-color);
 }

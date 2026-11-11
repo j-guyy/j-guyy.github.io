@@ -41,6 +41,13 @@ const SCREENS = {
 // for it rather than initializing against an empty list. Mountain and Pass map
 // layers wait for their own detection to finish (`ready`), since their toggle
 // leaves the panel open but empty if it fires early.
+// User mode (/app/?user=1) leaves out what only works for the site owner:
+// Travel and StatsHunters are the owner's own pages, and City, Pass and Trail
+// Hunter are fixed to Colorado areas (CITY_CONFIGS / TRAIL_CONFIGS /
+// data/colorado-passes.json in strava.js). Their Home cards carry
+// data-user-hide; this keeps the map layers and deep links in step.
+const USER_HIDDEN = new Set(window.STRAVA_USER ? ['travel', 'statshunters', 'city', 'pass', 'trail'] : []);
+
 let pendingOpen = null;
 const activitiesLoaded = () => currentSlim.length > 0;
 
@@ -88,7 +95,7 @@ const MAP_LAYERS = [
     { key: 'pass',         label: 'Pass' },
     { key: 'trail',        label: 'Trail' },
     { key: 'statshunters', label: 'StatsHunters', detail: false },
-].filter(l => !(window.STRAVA_USER && l.key === 'statshunters')); // user mode: the owner's StatsHunters only
+].filter(l => !USER_HIDDEN.has(l.key));
 const layerRoute = key => (key === 'map' ? 'map' : `map/${key}`);
 const isMapRoute = route => route === 'map' || route.startsWith('map/');
 const screenOf = route => (isMapRoute(route) ? route.replace(/^map\/?/, '') || 'map' : route);
@@ -98,7 +105,7 @@ const screenOf = route => (isMapRoute(route) ? route.replace(/^map\/?/, '') || '
 function normalizeRoute(raw) {
     const route = (raw || '').replace(/^#/, '');
     if (route.startsWith('map/')) return MAP_LAYERS.some(l => l.key !== 'map' && layerRoute(l.key) === route) ? route : 'map';
-    return SCREENS[route] ? route : 'home';
+    return SCREENS[route] && !USER_HIDDEN.has(route) ? route : 'home';
 }
 
 function currentRoute() {
@@ -119,6 +126,18 @@ function rememberMapRoute(route) {
     try { localStorage.setItem(LAST_LAYER_KEY, screenOf(route)); } catch { /* not critical */ }
 }
 
+// Scroll position per route, so coming back to a screen (Home's card grid, a
+// long table) returns to where it was left. Map layers always start at the top.
+// Recorded as the page scrolls, not at 'hashchange': on Back the browser puts
+// the destination's own scroll position back before that event fires. The
+// address check drops a scroll that belongs to the route being entered.
+const scrollByRoute = new Map();
+let shownRoute = null;
+window.addEventListener('scroll', () => {
+    if (shownRoute === null || isMapRoute(shownRoute) || currentRoute() !== shownRoute) return;
+    scrollByRoute.set(shownRoute, window.scrollY);
+}, { passive: true });
+
 function showScreen(route) {
     const name = screenOf(route);
     const mapMode = isMapRoute(route);
@@ -132,7 +151,8 @@ function showScreen(route) {
     target.classList.add('screen-enter');
     document.body.classList.toggle('app-map-mode', mapMode);
     updateMapSwitcher(route);
-    window.scrollTo(0, 0);
+    shownRoute = route;
+    window.scrollTo(0, mapMode ? 0 : scrollByRoute.get(route) || 0);
     pendingOpen = null; // navigating away cancels a queued auto-open
     SCREENS[name]?.open?.();
     if (mapMode) SCREENS[name]?.openInMap?.();
@@ -156,15 +176,57 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Home grid quick stats ────────────────────────────────────────────────────
-function pollHomeStats() {
-    const timer = setInterval(() => {
-        if (typeof currentTotal === 'undefined' || currentTotal === 0) return;
-        clearInterval(timer);
-        const status = document.getElementById('home-status');
-        if (status) status.textContent = '';
-        setStat('stat-dashboard', `${currentTotal.toLocaleString()} activities`);
-        setStat('stat-map', `${currentSlim.length.toLocaleString()} with GPS`);
+// Wait for the activity pipeline, then fill the Home header and the first two
+// cards. Started on page load and again by a Retry after a failed load.
+let activityWatch = null;
+function watchForActivities() {
+    clearInterval(activityWatch);
+    let tries = 0;
+    activityWatch = setInterval(() => {
+        if (typeof currentTotal === 'undefined' || currentTotal === 0) {
+            // Give up after 2 minutes (load failed, or no activities) instead of polling forever.
+            if (++tries >= 300) clearInterval(activityWatch);
+            return;
+        }
+        showActivityStats();
     }, 400);
+}
+
+// The activities are in: clear the Home status line and fill the two counts.
+function showActivityStats() {
+    clearInterval(activityWatch);
+    const status = document.getElementById('home-status');
+    if (status) status.textContent = '';
+    if (typeof currentTotal === 'undefined' || currentTotal === 0) return;
+    setStat('stat-dashboard', `${currentTotal.toLocaleString()} activities`);
+    setStat('stat-map', `${currentSlim.length.toLocaleString()} with GPS`);
+}
+
+// strava.js reports the load on document as 'stravaload' ('loading', 'loaded'
+// or 'error'). On an error Home says so and offers the same Retry as the
+// Dashboard's loader, in place of "Loading activities…" for ever. 'loaded'
+// (also after a sync) clears that line, however long the load took.
+document.addEventListener('stravaload', e => {
+    const status = document.getElementById('home-status');
+    if (!status) return;
+    if (e.detail?.state === 'error') {
+        status.textContent = 'Could not load activities. ';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'home-status-retry';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', () => retryLoad());
+        status.appendChild(retry);
+    } else if (e.detail?.state === 'loaded') {
+        showActivityStats();
+    } else {
+        status.textContent = 'Loading activities…';
+        watchForActivities();
+    }
+});
+
+function pollHomeStats() {
+    watchForActivities();
 
     // Every hunter's headline number comes from one small worker read,
     // /summary, derived server-side from the hunters' saved state (shared with
@@ -395,14 +457,21 @@ function renderHomeSync() {
     btn.disabled = state === 'syncing';
     bar.hidden = state !== 'syncing';
 
-    if (state === 'locked') {
+    if (state === 'locked' && window.STRAVA_USER) {
+        // User mode has no owner login: the session token is missing on this
+        // device (storage blocked or cleared), so the way back is /connect/.
+        label.textContent = 'Reconnect to sync';
+        meta.textContent = lastSync || 'Sign in with Strava again';
+    } else if (state === 'locked') {
         label.textContent = 'Log in to sync';
         meta.textContent = lastSync || 'Owner only';
     } else if (state === 'syncing') {
         const fetched = syncProgress?.fetched || 0;
         const pct = syncProgress?.pct || 0;
-        label.textContent = 'Syncing…';
-        meta.textContent = fetched
+        // A rebuild (strava.js runRebuild) is one request with no progress.
+        const rebuild = typeof rebuilding !== 'undefined' && rebuilding;
+        label.textContent = rebuild ? 'Rebuilding…' : 'Syncing…';
+        meta.textContent = rebuild ? 'Fetching every activity from Strava…' : fetched
             ? `${fetched.toLocaleString()}${currentTotal ? ` of ~${currentTotal.toLocaleString()}` : ''} activities checked`
             : 'Contacting Strava…';
         fill.style.width = `${Math.max(pct, 4)}%`;
@@ -411,7 +480,10 @@ function renderHomeSync() {
         meta.textContent = 'Synced just now';
     } else if (state === 'error') {
         label.textContent = 'Sync failed — tap to retry';
-        meta.textContent = lastSyncResult.replace(/^Sync failed: /, '');
+        // A refused sync ("list shrank…") has "Rebuild from Strava" beside
+        // the Dashboard's Sync now.
+        meta.textContent = lastSyncResult.replace(/^Sync failed: /, '')
+            + (typeof rebuildOffered !== 'undefined' && rebuildOffered ? ' · Rebuild from Strava is on the Dashboard' : '');
     } else {
         label.textContent = 'Sync now';
         meta.textContent = lastSync || 'Fetch new activities from Strava';
@@ -420,7 +492,11 @@ function renderHomeSync() {
 
 function onHomeSyncTap() {
     if (typeof isLoggedIn !== 'function') return;
-    if (!isLoggedIn()) { adminLogin(); return; } // a successful login fires 'stravasync'
+    if (!isLoggedIn()) {
+        if (window.STRAVA_USER) location.href = '/connect/'; // no owner login in user mode
+        else adminLogin(); // a successful login fires 'stravasync'
+        return;
+    }
     if (syncing) return;
     runManualSync();
 }

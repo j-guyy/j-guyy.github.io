@@ -20,11 +20,13 @@
 .ski-filter-btn.active,
 .continent-btn.active {
     background-color: var(--primary-color);
+    color: var(--on-accent);
 }
 
 .ski-filter-btn:hover,
 .continent-btn:hover {
     background-color: var(--primary-hover-color);
+    color: var(--on-accent);
 }
 
 .ski-continent-filter {

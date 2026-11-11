@@ -56,7 +56,7 @@ const adventureData = {
                 category: 'Mountaineering',
                 completed: true,
                 date: '2024',
-                link: ''
+                link: 'trip-reports/mount-rainier.html'
             },
             {
                 id: 'iztaccihuatl',
@@ -211,6 +211,7 @@ const adventureData = {
             {
                 id: 'backcountry',
                 title: 'Backcountry',
+                navTitle: 'Backcountry Skiing', // prev/next links on trip reports (js/report-nav.js)
                 image: 'images/skiing/tom.jpg',
                 category: 'Skiing',
                 completed: true,
@@ -219,6 +220,7 @@ const adventureData = {
             {
                 id: 'resort',
                 title: 'Resort',
+                navTitle: 'Resort Skiing',
                 image: 'images/skiing/snowbird.jpg',
                 category: 'Skiing',
                 completed: true,

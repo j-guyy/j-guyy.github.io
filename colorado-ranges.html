@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Colorado Mountain Ranges — Justin Guyette</title>
     <meta name="description" content="Tracking exploration of Colorado's 44+ mountain ranges — best hikes, best bike rides, and interactive map.">
     <meta property="og:title" content="Colorado Mountain Ranges — Justin Guyette">
@@ -15,14 +18,14 @@
     <meta name="twitter:title" content="Colorado Mountain Ranges — Justin Guyette">
     <meta name="twitter:description" content="Tracking exploration of Colorado's 44+ mountain ranges — best hikes, best bike rides, and interactive map.">
     <meta name="twitter:image" content="https://j-guyy.github.io/images/hiking/huron.jpg">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110e">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/colorado-ranges.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css"/>
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous"/>
     <link rel="canonical" href="https://j-guyy.github.io/colorado-ranges.html">
 </head>
 
@@ -69,7 +72,7 @@
 
             <div class="range-table-controls">
                 <span class="range-filter-label">Filter by region:</span>
-                <select id="region-filter">
+                <select id="region-filter" aria-label="Filter by region">
                     <option value="">All Regions</option>
                     <option value="Northwest Colorado">Northwest Colorado</option>
                     <option value="North-Central Colorado &amp; Front Range">North-Central Colorado &amp; Front Range</option>
@@ -85,11 +88,11 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
     <script src="js/fluid-zoom.js?v=20261025b"></script>
     <script src="js/map-fixes.js"></script>
-    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
-    <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
     <script src="js/colorado-ranges.js"></script>
     <script src="js/navbar-component.js"></script>
 </body>

@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>US Travel: States, Parks &amp; High Points — Justin Guyette</title>
     <meta name="description" content="Tracking US travel progress across high points, metropolitan areas, national parks, and ecoregions with interactive data tables.">
     <meta property="og:title" content="US Travel: States, Parks &amp; High Points — Justin Guyette">
@@ -15,11 +18,11 @@
     <meta name="twitter:title" content="US Travel: States, Parks &amp; High Points — Justin Guyette">
     <meta name="twitter:description" content="Tracking US travel progress across high points, metropolitan areas, national parks, and ecoregions with interactive data tables.">
     <meta name="twitter:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
-    <link rel="stylesheet" href="css/base.css?v=20261022">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/map.css?v=20261025">
-    <link rel="stylesheet" href="css/dashboard.css?v=20261025eco2">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110b">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
+    <link rel="stylesheet" href="css/map.css?v=20261110d">
+    <link rel="stylesheet" href="css/dashboard.css?v=20261110c">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
     <link rel="canonical" href="https://j-guyy.github.io/us-dashboard.html">
 </head>
 
@@ -41,14 +44,15 @@
             <a href="#map" class="view-switch-option" data-view="map">Map</a>
         </nav>
 
-        <div class="section">
+        <!-- Hidden in the Map view (js/view-switch.js). -->
+        <div class="section" data-tables-only>
             <h2>Progress Report</h2>
-            <div id="travel-summary"></div>
+            <div id="travel-summary"><p class="dash-loading dash-loading--summary" role="status">Loading…</p></div>
         </div>
 
         <div class="section" id="tables-view">
             <div class="table-controls">
-                <select id="table-selector">
+                <select id="table-selector" aria-label="Table to show">
                     <option value="states">States</option>
                     <option value="highpoints">High Points</option>
                     <option value="capitals">Capitals</option>
@@ -60,7 +64,7 @@
                 <button id="edit-mode-btn" class="table-action-btn" data-owner-only hidden>Edit Mode</button>
                 <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
-            <div id="travel-table-container"></div>
+            <div id="travel-table-container"><p class="dash-loading" role="status">Loading…</p></div>
         </div>
 
         <!-- Built by js/map.js the first time the Map view is opened. -->
@@ -71,9 +75,9 @@
                 <div class="map-container">
                     <div id="combined-map"></div>
                 </div>
-                <div id="map-legend"></div>
+                <div id="map-legend" hidden></div>
             </div>
-            <div class="map-controls">
+            <div class="map-controls" hidden>
                 <button id="toggle-metros">Hide Top 100 Metros</button>
                 <button id="toggle-additional-metros">Hide Additional Metros</button>
                 <button id="toggle-highpoints">Hide High Points</button>
@@ -83,11 +87,11 @@
         </div>
     </div>
 
-    <script src="js/travel-api.js?v=20261025eco"></script>
-    <script src="js/view-switch.js?v=20261022"></script>
-    <script src="js/map.js?v=20261105"></script>
-    <script src="js/dashboard.js?v=20261104seo"></script>
-    <script src="js/navbar-component.js?v=20261104seo"></script>
+    <script src="js/travel-api.js?v=20261110e"></script>
+    <script src="js/view-switch.js?v=20261110d"></script>
+    <script src="js/map.js?v=20261110d"></script>
+    <script src="js/dashboard.js?v=20261110d"></script>
+    <script src="js/navbar-component.js?v=20261110c"></script>
 </body>
 
 </html>

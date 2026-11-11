@@ -16,6 +16,11 @@ let fogMarkerCache = [];
 const createdPatterns = new Set();
 let patternDefs = null;
 
+// Names from the data files go into innerHTML / popup HTML: escape them first.
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // Person colors — single source of truth (matches CSS custom properties)
 const PERSON_COLORS = {
     person1: '#9b59b6',
@@ -133,7 +138,7 @@ function generateTravelerToggles() {
 
     const personIds = Object.keys(familyTravelsData.persons);
     container.innerHTML = personIds.map(id => {
-        const name = familyTravelsData.persons[id];
+        const name = escapeHtml(familyTravelsData.persons[id]);
         const num = id.replace('person', '');
         return `
             <label class="traveler-toggle">
@@ -336,16 +341,16 @@ function renderMarkers() {
 function createPopupContent(location, visitors) {
     const allPersonIds = Object.keys(familyTravelsData.persons);
     const visitorTags = visitors.map(v => {
-        return `<span class="popup-visitor ${v}">${familyTravelsData.persons[v]}</span>`;
+        return `<span class="popup-visitor ${v}">${escapeHtml(familyTravelsData.persons[v])}</span>`;
     }).join('');
 
     const notVisited = allPersonIds.filter(id => !location.visitors.includes(id));
     const notVisitedText = notVisited.length > 0 && notVisited.length < allPersonIds.length
-        ? `<div class="popup-not-visited">Not yet: ${notVisited.map(v => familyTravelsData.persons[v]).join(', ')}</div>`
+        ? `<div class="popup-not-visited">Not yet: ${escapeHtml(notVisited.map(v => familyTravelsData.persons[v]).join(', '))}</div>`
         : '';
 
     return `
-        <div class="popup-location-name">${location.name}</div>
+        <div class="popup-location-name">${escapeHtml(location.name)}</div>
         <div class="popup-visitors">
             <strong>Visited by:</strong><br>
             ${visitorTags}
@@ -382,7 +387,7 @@ function updateStats() {
     if (personStatsEl) {
         const personIds = Object.keys(familyTravelsData.persons);
         personStatsEl.innerHTML = personIds.map(id => {
-            const name = familyTravelsData.persons[id];
+            const name = escapeHtml(familyTravelsData.persons[id]);
             const color = getSiblingColor(id);
             const count = familyTravelsData.locations.filter(loc => loc.visitors.includes(id)).length;
             const isVisible = visibleSiblings.includes(id);
@@ -482,13 +487,13 @@ function setupSearch() {
 
             resultsContainer.innerHTML = matches.map((loc, i) => {
                 const dots = loc.visitors.map(v =>
-                    `<span class="search-result-dot" style="background-color:${getSiblingColor(v)}" title="${familyTravelsData.persons[v]}"></span>`
+                    `<span class="search-result-dot" style="background-color:${getSiblingColor(v)}" title="${escapeHtml(familyTravelsData.persons[v])}"></span>`
                 ).join('');
                 return `
                     <div class="search-result-item" role="option" tabindex="0" data-index="${i}" data-lat="${loc.lat}" data-lng="${loc.lng}">
                         <div>
-                            <span class="search-result-name">${loc.name}</span>
-                            <span class="search-result-country"> — ${loc.country}</span>
+                            <span class="search-result-name">${escapeHtml(loc.name)}</span>
+                            <span class="search-result-country"> — ${escapeHtml(loc.country)}</span>
                         </div>
                         <div class="search-result-visitors">${dots}</div>
                     </div>
@@ -744,6 +749,9 @@ async function enableFamilyFogMode(radiusKm) {
     if (countryLayer) { countryLayer.setStyle({ fillOpacity: 0, opacity: 0.1, weight: 0.5 }); }
     hideFamilyMarkers();
     await loadHighwayDataForFog();
+    // The mode may have changed during the load (refreshMap() ran again and
+    // put the markers back): don't lay the fog over another mode.
+    if (mapMode !== 'fog') return;
     createFamilyFogOverlay(radiusKm);
 }
 
@@ -787,7 +795,7 @@ document.addEventListener('DOMContentLoaded', initMap);
 // Using 110m resolution for faster loading (was 50m)
 async function loadCountries() {
     try {
-        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson');
+        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/9380cca83db5f9aef52d5e762765100745f84b27/geojson/ne_110m_admin_0_countries.geojson');
         const geojson = await response.json();
         landGeoJSON = geojson;
 
@@ -801,10 +809,10 @@ async function loadCountries() {
                     const visibleVisitors = visitors.filter(v => getVisibleSiblings().includes(v));
                     const names = visibleVisitors.map(v => familyTravelsData.persons[v]).join(', ');
                     layer.bindPopup(`
-                        <div class="popup-location-name">${countryName}</div>
+                        <div class="popup-location-name">${escapeHtml(countryName)}</div>
                         <div class="popup-visitors">
                             <strong>Visited by:</strong><br>
-                            ${names || 'None (filtered out)'}
+                            ${escapeHtml(names) || 'None (filtered out)'}
                         </div>
                     `);
                 }
@@ -932,10 +940,10 @@ function applyProximityColoring() {
             }
 
             circle.bindPopup(`
-                <div class="popup-location-name">${loc.name}</div>
+                <div class="popup-location-name">${escapeHtml(loc.name)}</div>
                 <div class="popup-visitors">
                     <strong>100-mile radius</strong><br>
-                    Shared by: ${visibleVisitors.map(v => familyTravelsData.persons[v]).join(', ')}
+                    Shared by: ${escapeHtml(visibleVisitors.map(v => familyTravelsData.persons[v]).join(', '))}
                 </div>
             `);
             circle.addTo(map);
