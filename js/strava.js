@@ -119,6 +119,18 @@ function adminHeaders() {
     return pw ? { 'X-Admin-Password': pw } : {};
 }
 
+// The worker answered 401 to the stored password: it was changed on the
+// worker (TRAVEL_PASSWORD) since this device logged in. Forget it, so the
+// controls offer the login again instead of failing every sync and save with
+// "401". User mode keeps its session token; Home offers Reconnect there.
+function passwordRejected(res) {
+    if (!res || res.status !== 401 || IS_USER_MODE || !isLoggedIn()) return false;
+    localStorage.removeItem(ADMIN_PW_KEY);
+    dbg('Admin: the worker no longer accepts the saved password — log in again');
+    refreshAdminUI();
+    return true;
+}
+
 // POST to a protected worker endpoint with the admin password attached.
 function adminPost(path, body = null) {
     const opts = { method: 'POST', headers: { ...adminHeaders() } };
@@ -126,7 +138,7 @@ function adminPost(path, body = null) {
         opts.headers['Content-Type'] = 'application/json';
         opts.body = JSON.stringify(body);
     }
-    return fetch(`${WORKER_URL}${path}`, opts);
+    return fetch(`${WORKER_URL}${path}`, opts).then(res => { passwordRejected(res); return res; });
 }
 
 // Every POST …/save route on the worker needs the admin password. A visitor
@@ -583,6 +595,7 @@ async function streamSync(join, estTotal) {
         } catch (err) {
             throw ctrl.signal.aborted && ctrl.signal.reason instanceof Error ? ctrl.signal.reason : err;
         }
+        if (passwordRejected(res)) throw syncError('password not accepted — log in again', true);
         if (!res.ok) throw syncError(`Sync error: ${res.status}`, res.status < 500);
 
         const reader = res.body.getReader();
@@ -674,6 +687,7 @@ async function fetchSyncStatus() {
     if (!isLoggedIn()) return null;
     try {
         const res = await fetch(`${WORKER_URL}/activities/sync/status`, { headers: { ...adminHeaders() } });
+        passwordRejected(res);
         return res.ok ? await res.json() : null;
     } catch {
         return null;
