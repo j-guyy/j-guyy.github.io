@@ -24,8 +24,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
           cache: pip
@@ -39,3 +39,31 @@ jobs:
           YTMUSIC_AUTH: ${{ secrets.YTMUSIC_AUTH }}
           MUSIC_SYNC_TOKEN: ${{ secrets.MUSIC_SYNC_TOKEN }}
         run: python scripts/ytmusic/sync_history.py
+
+  # A separate job, so only it holds issues: write; the sync job (which runs
+  # the pip-installed ytmusicapi next to the secrets) keeps a read-only token.
+  # One open issue at a time: a new failure adds a comment to it.
+  report-failure:
+    needs: sync
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="YouTube Music sync failing"
+          body="The YouTube Music sync failed: $RUN_URL
+
+          The usual cause is an expired login in the YTMUSIC_AUTH secret (see scripts/ytmusic/setup_auth.py). get_history() returns only the last ~200 songs, so plays are lost while the sync stays broken. Close this issue after a run succeeds."
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
