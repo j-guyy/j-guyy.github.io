@@ -3,8 +3,11 @@ let metros, highPoints, nationalParks, visitedStates, capitals;
 // or if the worker can't be reached, which leaves the Counties column blank.
 let visitedCountyFips = null;
 // Ecoregion Hunter's regions (TravelAPI.fetchEcoregions); null until loaded or
-// if the worker can't be reached, which leaves the Ecoregions table empty.
+// if the worker can't be reached (ecoregionsFailed: the Ecoregions table then
+// shows a message with a Retry).
 let ecoregionData = null;
+let ecoregionsFailed = false;
+let usDataReady = null; // resolves once the main lists are on the page
 const ecoExpanded = new Set(); // Ecoregions rows opened to list their Level IVs
 let editMode = false;
 let refreshOwnerUI = () => {};
@@ -44,26 +47,44 @@ document.addEventListener('DOMContentLoaded', function () {
             setupEditMode();
             setupCsvExport();
         });
-    dataReady.catch(error => console.error('Error loading the JSON files:', error));
+    dataReady.catch(error => {
+        console.error('Error loading the JSON files:', error);
+        TravelUI.showLoadError();
+    });
+    usDataReady = dataReady;
     // Counties load alongside, without holding up the table.
     Promise.all([dataReady, TravelAPI.fetchVisitedCounties()])
         .then(([, fips]) => {
             visitedCountyFips = fips;
-            if (currentTable() === 'states' || currentTable() === 'capitals') updateTable(currentTable());
+            if (currentTable() === 'states' || currentTable() === 'capitals') refreshTable();
         })
         .catch(err => console.warn('County data unavailable:', err));
-    Promise.all([dataReady, TravelAPI.fetchEcoregions()])
-        .then(([, eco]) => {
-            ecoregionData = eco;
-            displayTravelSummary();
-            if (currentTable() === 'ecoregions') updateTable('ecoregions');
-        })
-        .catch(err => {
-            console.warn('Ecoregion data unavailable:', err);
-            if (currentTable() === 'ecoregions') updateTable('ecoregions');
-        });
+    loadEcoregions();
     setupUSViewSwitch(dataReady);
 });
+
+// A table rebuild the user did not start (more data arrived): a sortable
+// header with keyboard focus keeps it.
+function refreshTable() {
+    TravelUI.keepHeaderFocus(() => updateTable(currentTable()));
+}
+
+// Ecoregions load alongside too. Also the Ecoregions table's Retry.
+function loadEcoregions() {
+    ecoregionsFailed = false;
+    const eco = TravelAPI.fetchEcoregions().then(
+        data => { ecoregionData = data; },
+        err => {
+            console.warn('Ecoregion data unavailable:', err);
+            ecoregionsFailed = true;
+        });
+    Promise.all([usDataReady, eco])
+        .then(() => {
+            if (ecoregionData) displayTravelSummary();
+            if (currentTable() === 'ecoregions') refreshTable();
+        })
+        .catch(() => { /* the main load failed: TravelUI.showLoadError() says so */ });
+}
 
 // Tables | Map switch (js/view-switch.js). The map is only built the first
 // time it is shown, and rebuilt after an edit.
@@ -257,7 +278,11 @@ function setupUSViewSwitch(dataReady) {
         onShow: view => {
             if (view !== 'map' || !mapStale) return;
             mapStale = false;
-            dataReady.then(() => USMap.render()).catch(() => { mapStale = true; });
+            dataReady.then(() => USMap.render()).catch(() => {
+                mapStale = true;
+                // The summary and its error message are hidden in the Map view.
+                document.getElementById('combined-map').textContent = 'Could not load travel data. Reload to try again.';
+            });
         }
     });
 }
@@ -428,50 +453,50 @@ function displayTravelSummary() {
 
     summaryContainer.innerHTML = `
         <div class="summary-stats-container">
-            <div class="summary-stat states-summary">
+            <a class="summary-stat summary-stat-link states-summary" href="?table=states" data-table="states" title="Show the States table">
                 <div class="stat-number-container">
                     <span class="stat-number">${stateCount}</span>
                     <span class="stat-total">/50</span>
                     <span class="stat-percentage">(${statePercentage}%)</span>
                 </div>
                 <span class="stat-label">States Visited</span>
-            </div>
+            </a>
             <div class="other-stats">
-                <div class="summary-stat">
+                <a class="summary-stat summary-stat-link" href="?table=metros" data-table="metros" title="Show the Metros table">
                     <div class="stat-number-container">
                         <span class="stat-number">${metroCount}</span>
                         <span class="stat-total">/100</span>
                         <span class="stat-percentage">(${metroPercentage}%)</span>
                     </div>
                     <span class="stat-label">Largest Metros Visited</span>
-                </div>
-                <div class="summary-stat">
+                </a>
+                <a class="summary-stat summary-stat-link" href="?table=highpoints" data-table="highpoints" title="Show the High Points table">
                     <div class="stat-number-container">
                         <span class="stat-number">${highPointCount}</span>
                         <span class="stat-total">/50</span>
                         <span class="stat-percentage">(${highPointPercentage}%)</span>
                     </div>
                     <span class="stat-label">High Points Summited</span>
-                </div>
-                <div class="summary-stat">
+                </a>
+                <a class="summary-stat summary-stat-link" href="?table=capitals" data-table="capitals" title="Show the Capitals table">
                     <div class="stat-number-container">
                         <span class="stat-number">${capitalCount}</span>
                         <span class="stat-total">/50</span>
                         <span class="stat-percentage">(${capitalPercentage}%)</span>
                     </div>
                     <span class="stat-label">State Capitals Visited</span>
-                </div>
-                <div class="summary-stat">
+                </a>
+                <a class="summary-stat summary-stat-link" href="?table=parks" data-table="parks" title="Show the National Parks table">
                     <div class="stat-number-container">
                         <span class="stat-number">${parkCount}</span>
                         <span class="stat-total">/${nationalParks.length}</span>
                         <span class="stat-percentage">(${parkPercentage}%)</span>
                     </div>
                     <span class="stat-label">National Parks Visited</span>
-                </div>
+                </a>
                 <a class="summary-stat summary-stat-link" href="?table=ecoregions" data-table="ecoregions" title="Show the Ecoregions table">
                     <div class="stat-number-container">${ecoStat(l3Seen, ecoRows.length)}</div>
-                    <span class="stat-label">Ecoregions Seen</span>
+                    <span class="stat-label">Level III Ecoregions</span>
                 </a>
                 <a class="summary-stat summary-stat-link" href="?table=ecoregions" data-table="ecoregions" title="Show the Ecoregions table">
                     <div class="stat-number-container">${ecoStat(l4Seen, l4Total)}</div>
@@ -481,11 +506,13 @@ function displayTravelSummary() {
         </div>
     `;
 
-    // The ecoregion cards open their table in place (Tables view).
+    // Each card opens its table in place (Tables view).
     summaryContainer.querySelectorAll('[data-table]').forEach(card => {
         card.addEventListener('click', e => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // new tab etc.
             e.preventDefault();
             tableSelector.value = card.dataset.table;
+            rememberTable(card.dataset.table);
             updateTable(card.dataset.table);
             const tables = document.querySelector('.view-switch-option[data-view="tables"]');
             if (tables && document.getElementById('tables-view').hidden) tables.click();
@@ -497,9 +524,18 @@ function displayTravelSummary() {
     if (!tableSelector.dataset.bound) {
         tableSelector.dataset.bound = 'true';
         tableSelector.addEventListener('change', function () {
+            rememberTable(this.value);
             updateTable(this.value);
         });
     }
+}
+
+// Keeps ?table= in step with the table on show, so a reload or a shared link
+// opens the same one. Replaces the history entry: Back still leaves the page.
+function rememberTable(tableType) {
+    const params = new URLSearchParams(location.search);
+    params.set('table', tableType);
+    history.replaceState(null, '', `${location.pathname}?${params}${location.hash}`);
 }
 
 function sortTableData(data, col, dir, tableType) {
@@ -577,7 +613,14 @@ function updateTable(tableType) {
         headerTitles = [null, 'Share of its Level IV ecoregions reached by Strava activities', 'Level IV ecoregions seen / total'];
         rawData      = buildEcoregionRows();
         if (!ecoregionData) {
-            tableContainer.innerHTML = '<p class="table-note">Loading ecoregions from Strava…</p>';
+            if (ecoregionsFailed) {
+                TravelUI.showTableError(tableContainer, 'Could not load the ecoregions from Strava.', () => {
+                    loadEcoregions();
+                    updateTable(currentTable());
+                });
+            } else {
+                tableContainer.innerHTML = '<p class="table-note" role="status">Loading ecoregions from Strava…</p>';
+            }
             return;
         }
     }
@@ -592,7 +635,9 @@ function updateTable(tableType) {
     tableHeaders.forEach((header, i) => {
         const th = document.createElement('th');
         const key = sortKeys[i];
-        const isActive = col === key;
+        // Rank and Elevation share a sort key (High Points): only the last
+        // column with the key shows as the active one.
+        const isActive = col === key && sortKeys.lastIndexOf(key) === i;
 
         th.classList.add('sortable');
         if (colClasses[i]) th.classList.add(...colClasses[i].split(' '));
@@ -623,6 +668,7 @@ function updateTable(tableType) {
             }
             updateTable(tableType);
         });
+        TravelUI.sortableHeader(th, isActive, dir, key);
 
         headerRow.appendChild(th);
     });

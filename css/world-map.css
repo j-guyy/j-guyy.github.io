@@ -155,6 +155,11 @@
     #radius-slider {
         width: 140px;
     }
+
+    /* Finger-sized layer chips (about 28px tall otherwise). */
+    .wm-chip {
+        min-height: 36px;
+    }
 }
 
 /* Over a place marker (hit-tested in js/world-map.js). */

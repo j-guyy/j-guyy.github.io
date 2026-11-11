@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>British Isles High Five: 5 Country High Points — Trip Report | Justin Guyette</title>
     <meta name="description" content="Summiting the highest peaks in England, Scotland, Wales, Ireland, and Northern Ireland — the British Isles High Five challenge.">
     <meta property="og:title" content="British Isles High Five: 5 Country High Points — Trip Report | Justin Guyette">
@@ -15,15 +18,15 @@
     <meta name="twitter:title" content="British Isles High Five: 5 Country High Points — Trip Report | Justin Guyette">
     <meta name="twitter:description" content="Summiting the highest peaks in England, Scotland, Wales, Ireland, and Northern Ireland — the British Isles High Five challenge.">
     <meta name="twitter:image" content="https://j-guyy.github.io/images/hiking/carrauntoohil.jpg">
-    <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/layout.css">
-    <link rel="stylesheet" href="../css/responsive.css">
-    <link rel="stylesheet" href="../css/tripreports.css">
-    <link rel="stylesheet" href="../css/multi-adventure.css">
+    <link rel="stylesheet" href="../css/base.css?v=20261110d">
+    <link rel="stylesheet" href="../css/layout.css?v=20261110d">
+    <link rel="stylesheet" href="../css/responsive.css?v=20261110d">
+    <link rel="stylesheet" href="../css/tripreports.css?v=20261110d">
+    <link rel="stylesheet" href="../css/multi-adventure.css?v=20261110d">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous"/>
-    <link rel="stylesheet" href="../css/leaflet.css"/>
+    <link rel="stylesheet" href="../css/leaflet.css?v=20261110d"/>
     <link rel="canonical" href="https://j-guyy.github.io/trip-reports/british-isles-high-five.html">
     <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "British Isles High Five: 5 Country High Points — Trip Report", "description": "Summiting the highest peaks in England, Scotland, Wales, Ireland, and Northern Ireland — the British Isles High Five challenge.", "image": "https://j-guyy.github.io/images/hiking/carrauntoohil.jpg", "url": "https://j-guyy.github.io/trip-reports/british-isles-high-five.html", "mainEntityOfPage": "https://j-guyy.github.io/trip-reports/british-isles-high-five.html", "author": {"@type": "Person", "name": "Justin Guyette", "url": "https://j-guyy.github.io/"}}</script>
 </head>
@@ -34,7 +37,7 @@
 
     <div class="content">
         <div class="hero"
-            style="background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('../images/hiking/carrauntoohil.jpg'); background-size: cover; background-position: center;">
+            style="background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.65)), url('../images/hiking/carrauntoohil.jpg'); background-size: cover; background-position: center;">
             <h1>British Isles High Five</h1>
             <h2>The highest peak in each country of the British Isles</h2>
         </div>
@@ -132,7 +135,7 @@
     <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
     <script src="../js/travel-api.js"></script>
-    <script src="../js/leaflet.js"></script>
+    <script src="../js/leaflet.js?v=20261110d"></script>
     <script src="../js/navbar-component.js"></script>
     <script>
         TravelAPI.fetchPeaksWithFallback('britishIsles', '../data/british-isles-high-five.json')
@@ -144,6 +147,8 @@
                 document.getElementById('progress-bar').textContent = climbed + ' / ' + total;
             });
     </script>
+    <script src="../data/adventures.js?v=20261110d"></script>
+    <script src="../js/report-nav.js?v=20261110d"></script>
 </body>
 
 </html>

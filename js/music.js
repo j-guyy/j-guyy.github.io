@@ -10,6 +10,12 @@
     const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g,
         c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+    // Import feedback goes in the status line, ahead of the totals load() put there.
+    let summary = '';
+    function say(message) {
+        document.getElementById('music-status').textContent = summary ? `${message} · ${summary}` : message;
+    }
+
     async function load() {
         const status = document.getElementById('music-status');
         const table = document.getElementById('music-leaderboard');
@@ -26,6 +32,7 @@
                 ? `${totalPlays} plays of ${totalSongs} songs tracked`
                     + (lastSync ? ` · last synced ${new Date(lastSync).toLocaleString()}` : '')
                 : 'No listening history synced yet.';
+            summary = status.textContent;
         } catch (err) {
             console.error('Song leaderboard failed to load', err);
             status.textContent = 'Could not load listening history.';
@@ -60,12 +67,12 @@
         try {
             parsed = parseTakeout(JSON.parse(await file.text()));
         } catch (err) {
-            alert(`Couldn't read ${file.name}: ${err.message}`);
+            say(`Couldn't read ${file.name}: ${err.message}`);
             return;
         }
         const { plays, skipped } = parsed;
         if (!plays.length) {
-            alert(`No YouTube Music plays found in ${file.name}. Pick watch-history.json (exported as JSON, not HTML).`);
+            say(`No YouTube Music plays found in ${file.name}. Pick watch-history.json (exported as JSON, not HTML).`);
             return;
         }
         const times = plays.map(p => p[3]).sort();
@@ -85,12 +92,11 @@
             if (res.status === 401) { TravelAdmin.logout(); renderOwner(); throw new Error('password rejected — log in again'); }
             if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
             await load();
-            alert(`Imported ${body.plays} plays.`
+            say(`Imported ${body.plays} plays.`
                 + (body.dropped_after_cutoff ? ` ${body.dropped_after_cutoff} newer plays were already counted by the daily sync.` : ''));
         } catch (err) {
             console.error('Takeout import failed', err);
-            status.textContent = 'Import failed.';
-            alert(`Import failed: ${err.message}`);
+            say(`Import failed: ${err.message}`);
         }
     }
 

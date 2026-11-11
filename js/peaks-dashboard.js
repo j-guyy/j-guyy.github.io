@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         await Promise.all(types.map(t => useStaticReference(t)));
     } catch (error) {
         console.error('Error loading peak data:', error);
+        TravelUI.showLoadError();
         return;
     }
     const selector = document.getElementById('table-selector');
@@ -303,9 +304,11 @@ function updateTable(type) {
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     const { col, dir } = sortState[type];
-    columns.forEach(({ label, key, cls }) => {
+    columns.forEach(({ label, key, cls }, i) => {
         const th = document.createElement('th');
-        const isActive = col === key;
+        // Rank and Elevation share a sort key: only the last column with the
+        // key (Elevation) shows as the active one.
+        const isActive = col === key && columns.map(c => c.key).lastIndexOf(key) === i;
         th.classList.add('sortable', cls);
         if (isActive) th.classList.add('sort-active');
 
@@ -325,6 +328,7 @@ function updateTable(type) {
             }
             updateTable(type);
         });
+        TravelUI.sortableHeader(th, isActive, dir);
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);

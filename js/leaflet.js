@@ -107,7 +107,7 @@ function createLegend(map) {
         const div = L.DomUtil.create('div', 'info legend');
         div.innerHTML = `
             <div><span class="legend-symbol" style="color: #4CAF50;">▲</span> Climbed</div>
-            <div><span class="legend-symbol" style="color: #f44336;">▲</span> Not yet climbed</div>
+            <div><span class="legend-symbol" style="color: #6b6b6b;">▲</span> Not yet climbed</div>
         `;
         return div;
     };

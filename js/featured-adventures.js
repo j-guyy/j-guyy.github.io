@@ -15,8 +15,9 @@ class FeaturedAdventuresPage {
             this.renderFeaturedAdventures();
             this.renderAllAdventures();
 
-            // Set up event listeners
-            this.setupEventListeners();
+            // Cards with a report are real links, so the browser handles
+            // click, Enter and focus; the focus ring is in
+            // css/featured-adventures.css.
 
         } catch (error) {
             console.error('Error initializing featured adventures page:', error);
@@ -36,30 +37,53 @@ class FeaturedAdventuresPage {
         });
     }
 
-    createFeaturedAdventureCard(adventure) {
-        const card = document.createElement('div');
-        card.className = 'featured-card';
+    // True when the adventure has a real trip report page to open
+    hasReport(adventure) {
+        return Boolean(adventure.link && adventure.link !== '#');
+    }
+
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    // A card with a report is a real link (keyboard, middle-click and
+    // "open in new tab" all work); one without is a plain, non-clickable card.
+    createCardElement(adventure, className) {
+        const hasReport = this.hasReport(adventure);
+        const card = document.createElement(hasReport ? 'a' : 'div');
+        card.className = className;
         card.setAttribute('data-adventure-id', adventure.id);
 
+        if (hasReport) {
+            card.href = adventure.link;
+        } else {
+            card.classList.add('no-report');
+        }
+
+        return card;
+    }
+
+    createFeaturedAdventureCard(adventure) {
+        const esc = value => this.escapeHtml(value);
+        const card = this.createCardElement(adventure, 'featured-card');
+
         card.innerHTML = `
-            <img src="${adventure.image}" 
-                 alt="${adventure.title}" 
+            <img src="${esc(adventure.image)}" 
+                 alt="${esc(adventure.title)}" 
                  class="featured-card-image"
                  loading="lazy" decoding="async" width="640" height="400"
-                 onerror="this.src='images/placeholder-adventure.svg'">
+                 onerror="this.onerror=null;this.src='images/placeholder-adventure.svg'">
             <div class="featured-card-content">
-                <div class="featured-card-category">${adventure.category}</div>
-                <h3 class="featured-card-title">${adventure.title}</h3>
-                <p class="featured-card-subtitle">${adventure.subtitle}</p>
-                <p class="featured-card-description">${adventure.description}</p>
-                <div class="featured-card-date">${adventure.date}</div>
+                <div class="featured-card-category">${esc(adventure.category)}</div>
+                <h3 class="featured-card-title">${esc(adventure.title)}</h3>
+                <p class="featured-card-subtitle">${esc(adventure.subtitle)}</p>
+                <p class="featured-card-description">${esc(adventure.description)}</p>
+                <div class="featured-card-date">${esc(adventure.date)}</div>
+                ${this.hasReport(adventure) ? '' : '<div class="card-report-coming">Report coming</div>'}
             </div>
         `;
-
-        // Add click handler
-        card.addEventListener('click', () => {
-            this.navigateToAdventure(adventure);
-        });
 
         return card;
     }
@@ -125,26 +149,21 @@ class FeaturedAdventuresPage {
     }
 
     createAdventureCard(adventure) {
-        const card = document.createElement('div');
-        card.className = 'adventure-card';
-        card.setAttribute('data-adventure-id', adventure.id);
+        const esc = value => this.escapeHtml(value);
+        const card = this.createCardElement(adventure, 'adventure-card');
 
         card.innerHTML = `
-            <img src="${adventure.image}" 
-                 alt="${adventure.title}" 
+            <img src="${esc(adventure.image)}" 
+                 alt="${esc(adventure.title)}" 
                  class="adventure-card-image"
                  loading="lazy" decoding="async" width="640" height="360"
-                 onerror="this.src='images/placeholder-adventure.svg'">
+                 onerror="this.onerror=null;this.src='images/placeholder-adventure.svg'">
             <div class="adventure-card-content">
-                <h4 class="adventure-card-title">${adventure.title}</h4>
-                <div class="adventure-card-category">${adventure.category}${adventure.date ? ' · ' + adventure.date : ''}</div>
+                <h4 class="adventure-card-title">${esc(adventure.title)}</h4>
+                <div class="adventure-card-category">${esc(adventure.category)}${adventure.date ? ' · ' + esc(adventure.date) : ''}</div>
+                ${this.hasReport(adventure) ? '' : '<div class="card-report-coming">Report coming</div>'}
             </div>
         `;
-
-        // Add click handler
-        card.addEventListener('click', () => {
-            this.navigateToAdventure(adventure);
-        });
 
         return card;
     }
@@ -171,52 +190,6 @@ class FeaturedAdventuresPage {
             .trim();
     }
 
-    navigateToAdventure(adventure) {
-        if (adventure.link && adventure.link !== '#') {
-            window.location.href = adventure.link;
-        } else {
-            // Show a message for adventures without detailed pages
-            this.showAdventurePreview(adventure);
-        }
-    }
-
-    showAdventurePreview(adventure) {
-        // Simple alert for now - could be enhanced with a modal
-        alert(`${adventure.title}\n\nThis adventure doesn't have a detailed page yet, but stay tuned for more content!`);
-    }
-
-    setupEventListeners() {
-        // Add keyboard navigation support
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                const focusedCard = document.activeElement;
-                if (focusedCard && (focusedCard.classList.contains('featured-card') ||
-                    focusedCard.classList.contains('adventure-card'))) {
-                    e.preventDefault();
-                    focusedCard.click();
-                }
-            }
-        });
-
-        // Make cards focusable for accessibility
-        const allCards = document.querySelectorAll('.featured-card, .adventure-card');
-        allCards.forEach(card => {
-            card.setAttribute('tabindex', '0');
-            card.setAttribute('role', 'button');
-
-            // Add focus styles
-            card.addEventListener('focus', () => {
-                card.style.outline = '2px solid #4CAF50';
-                card.style.outlineOffset = '2px';
-            });
-
-            card.addEventListener('blur', () => {
-                card.style.outline = '';
-                card.style.outlineOffset = '';
-            });
-        });
-    }
-
     showError(message) {
         const containers = [
             document.getElementById('featured-adventures-container'),
@@ -235,7 +208,7 @@ class FeaturedAdventuresPage {
                         <p>${message}</p>
                         <button onclick="location.reload()" style="
                             background: #4CAF50; 
-                            color: white; 
+                            color: #0e1410; 
                             border: none; 
                             padding: 0.5rem 1rem; 
                             border-radius: 4px; 

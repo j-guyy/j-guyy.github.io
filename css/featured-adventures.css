@@ -57,6 +57,10 @@
 
 /* Featured Adventure Cards */
 .featured-card {
+    /* Cards with a report are <a> elements (js/featured-adventures.js) */
+    display: block;
+    color: inherit;
+    text-decoration: none;
     background: rgba(0, 0, 0, 0.7);
     border-radius: 12px;
     overflow: hidden;
@@ -92,7 +96,7 @@
 .featured-card-category {
     display: inline-block;
     background: rgba(76, 175, 80, 0.8);
-    color: white;
+    color: var(--on-accent);
     padding: 0.3rem 0.8rem;
     border-radius: 15px;
     font-size: 0.8rem;
@@ -260,6 +264,9 @@
 
 /* Adventure Cards (smaller format) */
 .adventure-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
     background: rgba(0, 0, 0, 0.6);
     border-radius: 8px;
     overflow: hidden;
@@ -296,6 +303,38 @@
 
 .adventure-card-category {
     font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Keyboard focus ring for the card links */
+.featured-card:focus-visible,
+.adventure-card:focus-visible {
+    outline: 2px solid #4CAF50;
+    outline-offset: 2px;
+}
+
+/* Cards without a trip report yet: not a link, so no pointer or hover lift */
+.featured-card.no-report,
+.adventure-card.no-report {
+    cursor: default;
+}
+
+.featured-card.no-report:hover,
+.adventure-card.no-report:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.card-report-coming {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -460,6 +499,13 @@
         margin-top: auto;
     }
 
+    /* The phone card is 100px tall; keep the label inside it */
+    .adventure-card .card-report-coming {
+        align-self: flex-start;
+        margin-top: 0.2rem;
+        font-size: 0.65rem;
+    }
+
     /* Show only first few cards by default, with expand option */
     .category-grid.collapsed .adventure-card:nth-child(n+4) {
         display: none;
@@ -467,7 +513,7 @@
 
     .category-expand-btn {
         background: rgba(76, 175, 80, 0.8);
-        color: white;
+        color: var(--on-accent);
         border: none;
         padding: 0.5rem 1rem;
         border-radius: 20px;

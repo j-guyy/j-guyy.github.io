@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="icon" href="/favicon.ico">
     <meta name="robots" content="noindex">
     <title>JG Strava</title>
     <meta name="description" content="Strava activity dashboard app shell.">
@@ -11,13 +12,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="/css/base.css">
-    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
+    <link rel="stylesheet" href="/css/base.css?v=20261110e">
+    <link rel="stylesheet" href="/css/layout.css?v=20261110e">
     <link rel="stylesheet" href="/css/dashboard.css">
-    <link rel="stylesheet" href="/css/strava.css?v=20261105a">
-    <link rel="stylesheet" href="/css/responsive.css">
-    <link rel="stylesheet" href="/css/insights.css?v=20261105a">
-    <link rel="stylesheet" href="/css/app.css?v=20261101h">
+    <link rel="stylesheet" href="/css/strava.css?v=20261110d">
+    <link rel="stylesheet" href="/css/responsive.css?v=20261110e">
+    <link rel="stylesheet" href="/css/insights.css?v=20261110b">
+    <link rel="stylesheet" href="/css/app.css?v=20261110b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
     <link href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous" rel="stylesheet" />
 </head>
@@ -30,7 +32,7 @@
              (#map, #map/county, …). Pills are built by js/app.js from MAP_LAYERS. -->
         <header id="map-switcher" class="app-map-switcher" hidden>
             <nav id="map-pills" class="app-map-pills" aria-label="Map layers"></nav>
-            <a id="map-detail" class="app-map-detail" href="#home" hidden>
+            <a id="map-detail" class="app-map-detail" href="#home" aria-label="Stats and tables" hidden>
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
         </header>
@@ -39,7 +41,7 @@
         <div id="screen-home" class="app-screen">
             <header class="app-home-header">
                 <h1>Strava</h1>
-                <p id="home-status">Loading activities…</p>
+                <p id="home-status" role="status" aria-live="polite">Loading activities…</p>
             </header>
 
             <!-- Big Sync now button: drives strava.js's runManualSync() (the
@@ -78,13 +80,13 @@
             <nav class="home-grid">
                 <a class="home-card" href="#county"><span class="home-card-icon">🇺🇸</span><span class="home-card-name">County Hunter</span><em id="stat-county"></em></a>
                 <a class="home-card" href="#metro"><span class="home-card-icon">🏙️</span><span class="home-card-name">Metro Hunter</span><em id="stat-metro"></em></a>
-                <a class="home-card" href="#city"><span class="home-card-icon">🛣️</span><span class="home-card-name">City Hunter</span><em id="stat-city"></em></a>
+                <a class="home-card" href="#city" data-user-hide><span class="home-card-icon">🛣️</span><span class="home-card-name">City Hunter</span><em id="stat-city"></em></a>
                 <a class="home-card" href="#tile"><span class="home-card-icon">🔳</span><span class="home-card-name">Tile Hunter</span><em id="stat-tile"></em></a>
                 <a class="home-card" href="#park"><span class="home-card-icon">🏞️</span><span class="home-card-name">Park Hunter</span><em id="stat-park"></em></a>
                 <a class="home-card" href="#ecoregion"><span class="home-card-icon">🌿</span><span class="home-card-name">Ecoregion Hunter</span><em id="stat-ecoregion"></em></a>
                 <a class="home-card" href="#mountain"><span class="home-card-icon">⛰️</span><span class="home-card-name">Mountain Hunter</span><em id="stat-mountain"></em></a>
-                <a class="home-card" href="#pass"><span class="home-card-icon">🚵</span><span class="home-card-name">Pass Hunter</span><em id="stat-pass"></em></a>
-                <a class="home-card" href="#trail"><span class="home-card-icon">🥾</span><span class="home-card-name">Trail Hunter</span><em id="stat-trail"></em></a>
+                <a class="home-card" href="#pass" data-user-hide><span class="home-card-icon">🚵</span><span class="home-card-name">Pass Hunter</span><em id="stat-pass"></em></a>
+                <a class="home-card" href="#trail" data-user-hide><span class="home-card-icon">🥾</span><span class="home-card-name">Trail Hunter</span><em id="stat-trail"></em></a>
             </nav>
 
             <p class="home-section-label" data-user-hide>More</p>
@@ -113,14 +115,14 @@
         <!-- ============ Dashboard ============ -->
         <div id="screen-dashboard" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Dashboard</h1>
             </header>
 
             <!-- Loading -->
             <div id="loading-section" class="strava-loading">
                 <div class="loading-spinner"></div>
-                <p id="loading-status">Loading activities…</p>
+                <p id="loading-status" role="status" aria-live="polite">Loading activities…</p>
             </div>
 
             <!-- Metric toggle + sport filters: drive everything below -->
@@ -153,7 +155,7 @@
                 <div id="map-section" style="display:none">
                     <div id="strava-map"></div>
                     <div id="map-legend" class="map-legend"></div>
-                    <p id="map-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="map-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -161,7 +163,7 @@
         <!-- ============ County Hunter ============ -->
         <div id="screen-county" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>County Hunter</h1>
             </header>
             <div class="section">
@@ -173,7 +175,7 @@
                     <div id="county-map"></div>
                     <div id="county-recent-table" class="app-detail"></div>
                     <div id="county-state-table" class="app-detail"></div>
-                    <p id="county-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="county-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -181,7 +183,7 @@
         <!-- ============ Park Hunter ============ -->
         <div id="screen-park" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Park Hunter</h1>
             </header>
             <div class="section">
@@ -196,7 +198,7 @@
                     <div id="park-recent-national-monuments" class="app-detail"></div>
                     <div id="park-recent-seashores-lakeshores" class="app-detail"></div>
                     <div id="park-recent-other" class="app-detail"></div>
-                    <p id="park-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="park-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -204,7 +206,7 @@
         <!-- ============ Metro Hunter ============ -->
         <div id="screen-metro" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Metro Hunter</h1>
             </header>
             <div class="section">
@@ -217,7 +219,7 @@
                     <div id="metro-map"></div>
                     <div id="metro-comparison" class="app-detail"></div>
                     <div id="metro-recent-table" class="app-detail"></div>
-                    <p id="metro-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="metro-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -225,7 +227,7 @@
         <!-- ============ Ecoregion Hunter ============ -->
         <div id="screen-ecoregion" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Ecoregion Hunter</h1>
             </header>
             <div class="section">
@@ -238,7 +240,7 @@
                     <div id="ecoregion-legend" class="map-legend"></div>
                     <div id="ecoregion-l3-table" class="app-detail"></div>
                     <div id="ecoregion-recent-table" class="app-detail"></div>
-                    <p id="ecoregion-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="ecoregion-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -246,7 +248,7 @@
         <!-- ============ Tile Hunter ============ -->
         <div id="screen-tile" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Tile Hunter</h1>
             </header>
             <div class="section">
@@ -256,7 +258,7 @@
                 <div id="tile-section" style="display:none">
                     <div id="tile-stats-bar" class="county-stats-bar"></div>
                     <div id="tile-map"></div>
-                    <p id="tile-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="tile-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -264,12 +266,12 @@
         <!-- ============ City Hunter ============ -->
         <div id="screen-city" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>City Hunter</h1>
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <select id="city-select" class="city-select" onchange="switchCity(this.value)">
+                    <select id="city-select" class="city-select" aria-label="City" onchange="switchCity(this.value)">
                         <option value="superior-co">Superior, CO</option>
                         <option value="boulder-co">Boulder, CO</option>
                         <option value="boulder-county-co">Boulder County, CO</option>
@@ -284,7 +286,7 @@
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
                     </div>
-                    <p id="city-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="city-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -292,7 +294,7 @@
         <!-- ============ Mountain Hunter ============ -->
         <div id="screen-mountain" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Mountain Hunter</h1>
             </header>
             <div class="section">
@@ -322,14 +324,14 @@
                     <div id="mountain-progress-bar"></div>
                     <p id="mountain-progress-label" class="no-location-note"></p>
                 </div>
-                <p id="mountain-status" class="no-location-note" style="margin-top:4px"></p>
+                <p id="mountain-status" class="no-location-note" role="status" style="margin-top:4px"></p>
             </div>
         </div>
 
         <!-- ============ Pass Hunter ============ -->
         <div id="screen-pass" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Pass Hunter</h1>
             </header>
             <div class="section">
@@ -348,19 +350,19 @@
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.5)"></span>Not yet climbed</span>
                     </div>
                 </div>
-                <p id="pass-status" class="no-location-note" style="margin-top:8px"></p>
+                <p id="pass-status" class="no-location-note" role="status" style="margin-top:8px"></p>
             </div>
         </div>
 
         <!-- ============ Trail Hunter ============ -->
         <div id="screen-trail" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>Trail Hunter</h1>
             </header>
             <div class="section">
                 <div class="app-controls">
-                    <select id="trail-select" class="city-select" onchange="switchTrail(this.value)">
+                    <select id="trail-select" class="city-select" aria-label="Trail area" onchange="switchTrail(this.value)">
                         <option value="boulder-county">Boulder County, CO</option>
                         <option value="rmnp">Rocky Mountain NP</option>
                     </select>
@@ -375,7 +377,7 @@
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF9800"></span>Partial</span>
                         <span class="map-legend-item"><span class="map-legend-dot" style="background:rgba(255,255,255,0.4)"></span>Not started</span>
                     </div>
-                    <p id="trail-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="trail-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -383,7 +385,7 @@
         <!-- ============ StatsHunters ============ -->
         <div id="screen-statshunters" class="app-screen" hidden>
             <header class="app-screen-header">
-                <button class="app-back" onclick="history.back()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="app-back" onclick="goRoute('home')" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                 <h1>StatsHunters</h1>
             </header>
             <div class="section">
@@ -395,7 +397,7 @@
                     <div id="statshunters-embed">
                         <iframe id="statshunters-frame" title="StatsHunters activity map" allowfullscreen></iframe>
                     </div>
-                    <p id="statshunters-status" class="no-location-note" style="margin-top:8px"></p>
+                    <p id="statshunters-status" class="no-location-note" role="status" style="margin-top:8px"></p>
                 </div>
             </div>
         </div>
@@ -438,9 +440,9 @@
     <script src="../js/fluid-zoom.js?v=20261025b"></script>
     <script src="../js/map-fixes.js?v=20261025"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
-    <script src="/js/strava.js?v=20261110a"></script>
-    <script src="/js/insights.js?v=20261105a"></script>
-    <script src="/js/app.js?v=20261110a"></script>
+    <script src="/js/strava.js?v=20261110e"></script>
+    <script src="/js/insights.js?v=20261110b"></script>
+    <script src="/js/app.js?v=20261110d"></script>
 </body>
 
 </html>

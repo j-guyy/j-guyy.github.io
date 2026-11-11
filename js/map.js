@@ -4,16 +4,22 @@
 // d3 + topojson are loaded on demand so the Tables view never downloads them.
 
 const USMap = (() => {
+    // Exact-version CDN files, checked against their hash (Subresource
+    // Integrity) like the site's <script> tags.
     const SCRIPTS = [
-        'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js'
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
+          integrity: 'sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i' },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js',
+          integrity: 'sha384-9dCJK6nh7skY14HrcvlLYlFga9/MehJjL9ONWRflmiXNRuf8p2jiF4Y5PR881PTq' }
     ];
     let libs = null;
     let controlsReady = false;
 
-    function loadScript(src) {
+    function loadScript({ src, integrity }) {
         return new Promise((resolve, reject) => {
             const el = document.createElement('script');
+            el.integrity = integrity;
+            el.crossOrigin = 'anonymous';
             el.src = src;
             el.onload = resolve;
             el.onerror = () => reject(new Error('Failed to load ' + src));
@@ -39,14 +45,23 @@ const USMap = (() => {
             mapEl.textContent = 'Error loading map. Please try again later.';
             return;
         }
+        // The legend box and the layer buttons show only beside a drawn map
+        // (they start hidden in us-dashboard.html, and stay hidden if the
+        // draw below fails).
+        const legendEl = document.getElementById('map-legend');
+        const controlsEl = document.querySelector('#map-view .map-controls');
+        legendEl.hidden = true;
+        controlsEl.hidden = true;
         mapEl.innerHTML = '';
-        document.getElementById('map-legend').innerHTML = '';
+        legendEl.innerHTML = '';
         await createCombinedMap();
         if (!controlsReady) {
             setupToggleButtons();
             controlsReady = true;
         }
         applyCategoryVisibility();
+        legendEl.hidden = false;
+        controlsEl.hidden = false;
     }
 
     return { render };
@@ -329,13 +344,13 @@ function createLegend() {
 
     const legendData = [
         { shape: "circle", color: "#4CAF50", label: "Metro - Visited", category: "Metro" },
-        { shape: "circle", color: "#f44336", label: "Metro - Not Visited", category: "Metro" },
+        { shape: "circle", color: "#6b6b6b", label: "Metro - Not Visited", category: "Metro" },
         { shape: "triangle", color: "#4CAF50", label: "High Point - Summited", category: "High Point" },
-        { shape: "triangle", color: "#f44336", label: "High Point - Not Summited", category: "High Point" },
+        { shape: "triangle", color: "#6b6b6b", label: "High Point - Not Summited", category: "High Point" },
         { shape: "star", color: "#4CAF50", label: "Capital - Visited", category: "Capital" },
-        { shape: "star", color: "#f44336", label: "Capital - Not Visited", category: "Capital" },
+        { shape: "star", color: "#6b6b6b", label: "Capital - Not Visited", category: "Capital" },
         { shape: "square", color: "#4CAF50", label: "National Park - Visited", category: "National Park" },
-        { shape: "square", color: "#f44336", label: "National Park - Not Visited", category: "National Park" }
+        { shape: "square", color: "#6b6b6b", label: "National Park - Not Visited", category: "National Park" }
     ];
 
     const legendItems = legend.selectAll(".legend-item")

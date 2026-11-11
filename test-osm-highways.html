@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>Highway Splitter</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
     <style>
@@ -42,13 +45,14 @@
 
         button {
             cursor: pointer;
-            background: #e94560;
-            border-color: #e94560;
+            background: #D32F2F;
+            border-color: #D32F2F;
+            color: #fff;
             font-weight: 600;
         }
 
         button:hover {
-            background: #c73e54;
+            background: #B71C1C;
         }
 
         button:disabled {
@@ -62,8 +66,8 @@
         }
 
         button.green {
-            background: #27ae60;
-            border-color: #27ae60;
+            background: #1E8449;
+            border-color: #1E8449;
         }
 
         #map {
@@ -203,13 +207,13 @@
 <body>
     <div class="controls">
         <span style="font-size:0.85em;opacity:0.7;">Route:</span>
-        <select id="route-type">
+        <select id="route-type" aria-label="Route type">
             <option value="interstate">Interstate</option>
             <option value="us-highway">US Highway</option>
             <option value="state">State Route</option>
         </select>
-        <input type="text" id="route-number" placeholder="90" style="width:70px;" value="90">
-        <input type="text" id="route-state" placeholder="State (e.g. CO)" style="width:70px;display:none;">
+        <input type="text" id="route-number" aria-label="Route number" placeholder="90" style="width:70px;" value="90">
+        <input type="text" id="route-state" aria-label="State" placeholder="State (e.g. CO)" style="width:70px;display:none;">
         <button onclick="fetchReference()">Show Route</button>
         <button class="green" id="split-btn" onclick="toggleSplitMode()">Start Splitting</button>
         <label style="display:flex;align-items:center;gap:4px;font-size:0.85em;cursor:pointer;">
@@ -234,7 +238,7 @@
     <div class="modal-bg" id="modal">
         <div class="modal">
             <h3 style="color:#4CAF50;margin:0;">Export</h3>
-            <textarea id="export-text" readonly></textarea>
+            <textarea id="export-text" aria-label="Exported JSON" readonly></textarea>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button class="sec"
                     onclick="document.getElementById('modal').classList.remove('visible')">Close</button>
@@ -598,7 +602,7 @@
                 map.on('click', onMapClick);
             } else {
                 btn.textContent = 'Start Splitting';
-                btn.style.background = '#27ae60';
+                btn.style.background = '#1E8449';
                 document.getElementById('hint').textContent = '';
                 map.getContainer().style.cursor = '';
                 map.off('click', onMapClick);
@@ -720,7 +724,7 @@
             el.innerHTML = splitPoints.map((sp, i) => `
                 <div class="sp-item">
                     <span class="idx">${i + 1}.</span>
-                    <input value="${sp.name}" onchange="renameSplit(${i}, this.value)" placeholder="City name">
+                    <input value="${sp.name}" onchange="renameSplit(${i}, this.value)" placeholder="City name" aria-label="City name">
                     <span class="coords">[${sp.latLng[0].toFixed(3)}, ${sp.latLng[1].toFixed(3)}]</span>
                     <span class="reorder${i === 0 ? ' disabled' : ''}" onclick="moveSplitUp(${i})" title="Move up">↑</span>
                     <span class="reorder${i === last ? ' disabled' : ''}" onclick="moveSplitDown(${i})" title="Move down">↓</span>
@@ -941,7 +945,7 @@
                 document.getElementById('hint').textContent = 'Click a colored route segment to force it through that point. Drag the purple waypoints to adjust, right-click to remove.';
             } else {
                 btn.textContent = 'Edit Routes';
-                btn.style.background = '#27ae60';
+                btn.style.background = '#1E8449';
                 document.getElementById('hint').textContent = '';
             }
         }
@@ -1067,7 +1071,7 @@
                     : '<span style="opacity:0.5;">No match</span>'}
                                 </td>
                                 <td style="padding:6px;vertical-align:top;">
-                                    <input type="text" value="${m.resultDrivers.join(', ')}"
+                                    <input type="text" aria-label="Driven by" value="${m.resultDrivers.join(', ')}"
                                         onchange="transferMappings[${i}].resultDrivers = this.value.split(',').map(s=>s.trim()).filter(Boolean)"
                                         style="width:140px;padding:3px 6px;background:rgba(255,255,255,0.1);border:1px solid #444;color:#eee;border-radius:3px;font-size:0.9em;">
                                 </td>
@@ -1164,9 +1168,9 @@
             splitting = false;
             editingRoutes = false;
             document.getElementById('split-btn').textContent = 'Start Splitting';
-            document.getElementById('split-btn').style.background = '#27ae60';
+            document.getElementById('split-btn').style.background = '#1E8449';
             document.getElementById('edit-routes-btn').textContent = 'Edit Routes';
-            document.getElementById('edit-routes-btn').style.background = '#27ae60';
+            document.getElementById('edit-routes-btn').style.background = '#1E8449';
             document.getElementById('edit-routes-btn').disabled = true;
             document.getElementById('route-btn').disabled = true;
             document.getElementById('export-btn').disabled = true;

@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>World Travel: Countries &amp; Cities Visited — Justin Guyette</title>
     <meta name="description" content="Global travel tracking across 6 continents with country-level data and exploration statistics.">
     <meta property="og:title" content="World Travel: Countries &amp; Cities Visited — Justin Guyette">
@@ -15,14 +18,14 @@
     <meta name="twitter:title" content="World Travel: Countries &amp; Cities Visited — Justin Guyette">
     <meta name="twitter:description" content="Global travel tracking across 6 continents with country-level data and exploration statistics.">
     <meta name="twitter:image" content="https://j-guyy.github.io/images/background-portrait.jpg">
-    <link rel="stylesheet" href="css/base.css?v=20261022">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/leaflet.css">
-    <link rel="stylesheet" href="css/dashboard.css?v=20261025y">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/base.css?v=20261110b">
+    <link rel="stylesheet" href="css/layout.css?v=20261110e">
+    <link rel="stylesheet" href="css/map.css?v=20261110d">
+    <link rel="stylesheet" href="css/leaflet.css?v=20261110d">
+    <link rel="stylesheet" href="css/dashboard.css?v=20261110c">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110e">
     <link rel="stylesheet" href="css/map-controls.css">
-    <link rel="stylesheet" href="css/world-map.css?v=20261025">
+    <link rel="stylesheet" href="css/world-map.css?v=20261110b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous" />
@@ -47,15 +50,16 @@
             <a href="#map" class="view-switch-option" data-view="map">Map</a>
         </nav>
 
-        <div class="section">
+        <!-- Hidden in the Map view (js/view-switch.js). -->
+        <div class="section" data-tables-only>
             <h2>Global Progress Report</h2>
-            <div id="travel-summary"></div>
+            <div id="travel-summary"><p class="dash-loading dash-loading--summary" role="status">Loading…</p></div>
             <div id="bucket-summary"></div>
         </div>
 
         <div class="section" id="tables-view">
             <div class="table-controls">
-                <select id="table-selector">
+                <select id="table-selector" aria-label="Table to show">
                     <optgroup label="Countries">
                         <option value="world" selected>All countries</option>
                         <option value="northAmerica">North America</option>
@@ -77,7 +81,7 @@
                 <button id="edit-mode-btn" class="table-action-btn" data-owner-only hidden>Edit Mode</button>
                 <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
-            <div id="travel-table-container"></div>
+            <div id="travel-table-container"><p class="dash-loading" role="status">Loading…</p></div>
         </div>
 
         <!-- Leaflet + js/world-map.js load the first time the Map view is opened. -->
@@ -122,12 +126,12 @@
         </div>
     </div>
 
-    <script src="js/travel-api.js?v=20261110a"></script>
+    <script src="js/travel-api.js?v=20261110e"></script>
     <script src="js/rest-countries.js?v=20261022"></script>
-    <script src="js/view-switch.js?v=20261022"></script>
+    <script src="js/view-switch.js?v=20261110d"></script>
     <script src="js/bucket-lists.js?v=20261022"></script>
-    <script src="js/world-dashboard.js?v=20261110a"></script>
-    <script src="js/navbar-component.js?v=20261110a"></script>
+    <script src="js/world-dashboard.js?v=20261110d"></script>
+    <script src="js/navbar-component.js?v=20261110c"></script>
 </body>
 
 </html>

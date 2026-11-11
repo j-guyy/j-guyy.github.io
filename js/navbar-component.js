@@ -14,6 +14,7 @@ class NavbarComponent extends HTMLElement {
 
         // Organized navigation structure with logical groupings
         this.innerHTML = `
+            <a class="skip-link" href="#main-content">Skip to content</a>
             <nav class="navbar">
                 <div class="navbar-container">
                     <div class="navbar-brand">
@@ -161,14 +162,63 @@ class NavbarComponent extends HTMLElement {
         // Hide-on-scroll phone bar
         this.initializeScrollBehavior();
 
+        // "Skip to content" link (first focusable element on the page)
+        this.initializeSkipLink();
+
+        // The Tools menu is hidden unless it was switched on before; the
+        // choice is remembered so it survives moving between pages.
+        const TOOLS_KEY = 'jg_show_tools';
+        try {
+            if (localStorage.getItem(TOOLS_KEY) === '1') {
+                document.body.classList.add('show-tools');
+            }
+        } catch { /* storage blocked: the menu just starts hidden */ }
+
         // Add keyboard shortcut to toggle tools menu (Ctrl+Shift+T on Mac, Alt+Shift+T on Windows)
         document.addEventListener('keydown', function (event) {
             const isMacShortcut = event.ctrlKey && event.shiftKey && event.key === 'T';
             const isWinShortcut = event.altKey && event.shiftKey && event.key === 'T';
             if (isMacShortcut || isWinShortcut) {
                 event.preventDefault();
-                document.body.classList.toggle('show-tools');
+                const shown = document.body.classList.toggle('show-tools');
+                try {
+                    if (shown) localStorage.setItem(TOOLS_KEY, '1');
+                    else localStorage.removeItem(TOOLS_KEY);
+                } catch { /* storage blocked: the toggle lasts for this page only */ }
             }
+        });
+    }
+
+    // The skip link jumps past the menu to the page's <main>, or on pages
+    // without one to the first real element after the navbar. The target is
+    // looked up when the link is used, so it works wherever this script is
+    // loaded from, and gets an id and tabindex then if it has none.
+    initializeSkipLink() {
+        const link = this.querySelector('.skip-link');
+        if (!link) return;
+
+        const findTarget = () => {
+            const main = document.querySelector('main, [role="main"]');
+            if (main) return main;
+            const skip = /^(SCRIPT|STYLE|LINK|TEMPLATE|NOSCRIPT)$/;
+            let el = this.nextElementSibling;
+            // Also pass over empty decoration (the fixed photo backdrops on
+            // training-plan.html have no text and no aria-hidden).
+            while (el && (skip.test(el.tagName) || el.getAttribute('aria-hidden') === 'true' ||
+                !el.textContent.trim())) {
+                el = el.nextElementSibling;
+            }
+            return el;
+        };
+
+        link.addEventListener('click', (e) => {
+            const target = findTarget();
+            if (!target) return;
+            e.preventDefault();
+            if (!target.id) target.id = 'main-content';
+            if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({ block: 'start' });
         });
     }
 
@@ -477,20 +527,9 @@ class NavbarComponent extends HTMLElement {
     }
 
     setupHoverEffects() {
-        // Only add hover effects for non-touch devices
-        if (!('ontouchstart' in window)) {
-            const dropdownLinks = this.querySelectorAll('.dropdown-content a');
-            dropdownLinks.forEach(link => {
-                link.addEventListener('mouseover', function () {
-                    this.style.backgroundColor = 'rgba(0, 128, 0, 0.5)';
-                    this.style.color = '#fff';
-                });
-                link.addEventListener('mouseout', function () {
-                    this.style.backgroundColor = '';
-                    this.style.color = '';
-                });
-            });
-        }
+        // Hover colours for the dropdown links come from css/layout.css
+        // (`@media (hover: hover) .dropdown-content a:hover`). Inline styles
+        // set here used to override them with white text on the green fill.
     }
 
     initializeHamburgerMenu() {

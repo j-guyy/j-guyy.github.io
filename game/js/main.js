@@ -20,7 +20,7 @@ import {
   needsReplacement, replacementOptions, sendInReplacement,
 } from './battle/battle.js';
 import { hasSave, loadSave, writeSave, STARTING_KIT, STARTING_MACHINES, STARTING_MONEY } from './save.js';
-import { initAudio, playMusic, playSfx, toggleMute } from './engine/audio.js';
+import { initAudio, playMusic, playSfx, toggleMute, isMuted } from './engine/audio.js';
 
 const STEP_MS = 140; // per-tile walk duration
 const PARTY_CAP = 6;
@@ -55,6 +55,7 @@ const game = {
   typeChart: null,
   dex: null,
   state: 'LOADING',
+  touch: false, // on-screen controls in use (coarse pointer, or ?touch=1)
   mapCache: {},
   map: null,
   player: null, // { tx, ty, facing, px, py, moving, fromPx, toPx, t }
@@ -68,8 +69,8 @@ const game = {
   flags: {},
   sprites: {},
   // scene-scoped holders
-  title: { index: 0, hasSave: false, message: null },
-  starter: { index: 0, ids: [] },
+  title: { index: 0, hasSave: false, message: null, loading: false },
+  starter: { index: 0, ids: [], loading: false, message: null },
   dialogue: null,
   menu: null,
   battle: null,
@@ -83,8 +84,23 @@ const game = {
 
 async function boot() {
   const canvas = document.getElementById('game-canvas');
-  game.renderer = new Renderer(canvas);
+
+  // On-screen controls for touch devices (or force with ?touch=1). Decided
+  // before the renderer exists: touch mode changes the page layout the canvas
+  // is sized against, and every hint string asks game.touch which labels to use.
+  const touchEl = document.getElementById('touch-controls');
+  game.touch = !!touchEl && (window.matchMedia('(pointer: coarse)').matches
+    || new URLSearchParams(location.search).has('touch'));
+  if (game.touch) {
+    touchEl.hidden = false;
+    // Swaps the keyboard instructions for the one-line touch hint.
+    document.body.classList.add('touch-mode');
+  }
+
+  game.renderer = new Renderer(canvas, { touch: game.touch, below: document.getElementById('controls-hint') });
   game.input = new Input();
+  if (game.touch) game.input.bindTouch(touchEl);
+  render(); // "Loading..." while the data and art below are fetched
 
   game.sprites.player = makeActorSprite({ color: '#3f6fd0', accent: '#27408a', head: '#f0c090' });
   game.sprites.elder = makeActorSprite({ color: '#8a6fd0', accent: '#5a3f9a', head: '#e8c090' });
@@ -106,29 +122,44 @@ async function boot() {
   game.input.flush();
 
   // Audio starts on the first user gesture (browser autoplay policy); M mutes.
-  const audioKick = () => {
+  // A gesture aimed at the mute control itself (the on-screen button, or the M
+  // key) does not start it here: those handlers flip the mute state first and
+  // start audio after, so a first-gesture mute never lets a note through.
+  const muteBtn = document.getElementById('touch-mute');
+  const isMuteGesture = (e) => !!e && (
+    (e.type === 'keydown' && e.code === 'KeyM')
+    || (!!muteBtn && e.target instanceof Node && muteBtn.contains(e.target)));
+  const audioKick = (e) => {
+    if (isMuteGesture(e)) return;
     initAudio();
     window.removeEventListener('keydown', audioKick);
     window.removeEventListener('pointerdown', audioKick);
   };
   window.addEventListener('keydown', audioKick);
   window.addEventListener('pointerdown', audioKick);
+  // One mute toggle for both the M key and the on-screen button; the button's
+  // aria-pressed mirrors the muted state.
+  const syncMuteBtn = () => {
+    if (!muteBtn) return;
+    muteBtn.setAttribute('aria-pressed', isMuted() ? 'true' : 'false');
+    muteBtn.setAttribute('aria-label', isMuted() ? 'Unmute sound' : 'Mute sound');
+  };
+  const toggleSound = () => {
+    showBanner(toggleMute() ? 'Sound: OFF' : 'Sound: ON');
+    syncMuteBtn();
+    audioKick(); // mute state is settled; safe to start audio on this gesture
+  };
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyM') showBanner(toggleMute() ? 'Sound: OFF' : 'Sound: ON');
+    if (e.code === 'KeyM') toggleSound();
   });
-  playMusic('title');
-
-  // On-screen controls for touch devices (or force with ?touch=1).
-  const touchEl = document.getElementById('touch-controls');
-  const wantTouch = window.matchMedia('(pointer: coarse)').matches
-    || new URLSearchParams(location.search).has('touch');
-  if (wantTouch && touchEl) {
-    touchEl.hidden = false;
-    game.input.bindTouch(touchEl);
-    // Keyboard hints + editor links sit right under the d-pad on a phone, where
-    // they're useless and easy to tap by accident — drop them in touch mode.
-    document.body.classList.add('touch-mode');
+  if (muteBtn) {
+    muteBtn.addEventListener('click', () => {
+      toggleSound();
+      muteBtn.blur(); // keep Space/Enter going to the game, not back to this button
+    });
+    syncMuteBtn();
   }
+  playMusic('title');
 
   requestAnimationFrame(loop);
 }
@@ -152,6 +183,18 @@ function setState(s) {
 }
 
 // ---- Map / world helpers -------------------------------------------------
+
+// A map fetch that never settles must not hold a lock forever (the warp lock,
+// the title's loading guard): race it against a timer. A fetch that finishes
+// late still fills the map cache, so the next try is instant.
+const MAP_LOAD_TIMEOUT_MS = 8000;
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Timed out after ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 async function getMap(id) {
   if (!game.mapCache[id]) {
@@ -177,6 +220,53 @@ async function placePlayer(mapId, tx, ty, facing) {
 
 function showBanner(text) {
   game.banner = { text, t: 2000 };
+}
+
+// Control names for on-canvas hints: keyboard keys, or the on-screen pad's
+// buttons in touch mode.
+// A touch device with a hardware keyboard (a tablet in a keyboard case)
+// switches to the keyboard names once a game key is pressed; the pad stays.
+function touchHints() {
+  return game.touch && !game.input.keyboardUsed;
+}
+
+function controlLabels() {
+  return touchHints()
+    ? { ok: 'A', back: 'B', dirs: 'D-pad' }
+    : { ok: 'Z', back: 'X', dirs: 'Arrows' };
+}
+
+// Fill a hint template: hint('{ok}: buy   {back}: leave').
+function hint(template) {
+  const labels = controlLabels();
+  return template.replace(/\{(ok|back|dirs)\}/g, (_, k) => labels[k]);
+}
+
+// Players who ask for reduced motion get no screen shake or sprite blink.
+const reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+const reducedMotion = () => !!(reducedMotionQuery && reducedMotionQuery.matches);
+
+// Text that carries a type (a move, a starter): the type colour goes in a small
+// swatch and the words stay in the panel ink, because yellow and pale type
+// colours are unreadable as text on the cream panels.
+function drawTypeSwatch(r, x, y, textSize, type) {
+  const side = Math.round(textSize * 0.5);
+  const top = y + Math.round((textSize - side) / 2);
+  // Outline as a filled rect, not strokeRect: the layout audit reads stroked
+  // rectangles as panel borders.
+  r.fillRect(x, top, side, side, '#2b2b3a');
+  r.fillRect(x + 1, top + 1, side - 2, side - 2, game.typeChart.color(type));
+  return side + 6; // how far to shift the text that follows
+}
+
+// A move's swatch and name at (x, y), kept left of `rightLimit` (where the
+// next column — PP, type — begins). Names are 22px; one too long for its cell
+// steps down to 16px, and past that is cut with an ellipsis (Renderer.fitText).
+function drawMoveName(r, mv, x, y, rightLimit, color) {
+  const tx = x + drawTypeSwatch(r, x, y, 22, mv.type);
+  const fit = r.fitText(mv.name, rightLimit - tx, 22, 16);
+  // A smaller size is nudged down so it stays centred on the 22px row.
+  r.text(fit.text, tx, y + Math.round((22 - fit.size) / 2), { size: fit.size, color });
 }
 
 // ---- Dex / inventory helpers ---------------------------------------------
@@ -233,12 +323,32 @@ function consumeMachineIfTM(machineId) {
 function beginStarterSelect() {
   game.starter.ids = game.dex.starters();
   game.starter.index = 0;
+  game.starter.message = null;
   setState('STARTER');
 }
 
 // An existing save is NOT cleared here: it stays until the new game's first
 // manual save overwrites it, so backing out to the title can still Continue.
+// starter.loading keeps a second confirm from starting a second run while the
+// first one is still fetching the map.
 async function startNewGame(starterId) {
+  if (game.starter.loading) return;
+  game.starter.loading = true;
+  game.starter.message = null;
+  try {
+    await beginNewGame(starterId);
+  } catch (e) {
+    // A failed or timed-out map fetch: say so on the starter screen.
+    console.error('New game could not start', e);
+    game.starter.message = 'The game could not load. Try again.';
+  } finally {
+    game.starter.loading = false;
+  }
+}
+
+async function beginNewGame(starterId) {
+  // Fetch (or time out) before any game state is touched.
+  const start = (await withTimeout(getMap('village'), MAP_LOAD_TIMEOUT_MS)).playerStart;
   game.starterChosen = starterId;
   game.party = [game.dex.makeInstance(starterId, 5)];
   game.storage = [];
@@ -248,12 +358,23 @@ async function startNewGame(starterId) {
   game.dexData = { seen: new Set(), caught: new Set() };
   markCaught(starterId);
   game.flags = {};
-  const start = (await getMap('village')).playerStart;
   await placePlayer('village', start.x, start.y, start.facing || 'down');
   setState('OVERWORLD');
 }
 
+// title.loading makes the title ignore input until the load settles, so two
+// fast confirms cannot run the restore twice.
 async function continueGame() {
+  if (game.title.loading) return;
+  game.title.loading = true;
+  try {
+    await restoreSave();
+  } finally {
+    game.title.loading = false;
+  }
+}
+
+async function restoreSave() {
   const data = loadSave();
   if (!data) {
     game.title.message = 'Save could not be loaded.';
@@ -267,7 +388,7 @@ async function continueGame() {
     storage = (data.storage || []).map((m) => game.dex.deserializeMember(m));
     const ds = data.dexState || {};
     dexData = { seen: new Set(ds.seen || []), caught: new Set(ds.caught || []) };
-    await getMap(data.player.map);
+    await withTimeout(getMap(data.player.map), MAP_LOAD_TIMEOUT_MS);
   } catch (e) {
     console.error('Save could not be loaded', e);
     game.title.message = 'Save could not be loaded.';
@@ -350,12 +471,25 @@ function update(dt) {
 function updateTitle() {
   const t = game.title;
   const options = ['New Game', 'Continue'];
-  if (game.input.consume('up')) t.index = (t.index + options.length - 1) % options.length;
-  if (game.input.consume('down')) t.index = (t.index + 1) % options.length;
+  if (t.loading) { // a save is loading: drop input until it settles
+    game.input.flush();
+    return;
+  }
+  // A message ("No save yet.", "Save could not be loaded.") belongs to the
+  // press that caused it: it stays until the next input, then clears.
+  if (game.input.consume('up')) {
+    t.index = (t.index + options.length - 1) % options.length;
+    t.message = null;
+  }
+  if (game.input.consume('down')) {
+    t.index = (t.index + 1) % options.length;
+    t.message = null;
+  }
   if (game.input.consume('confirm')) {
     t.message = null;
     if (t.index === 0) beginStarterSelect();
-    else if (t.index === 1 && t.hasSave) continueGame();
+    else if (t.hasSave) continueGame();
+    else t.message = 'No save yet.';
   }
 }
 
@@ -363,8 +497,18 @@ function updateTitle() {
 
 function updateStarter() {
   const s = game.starter;
-  if (game.input.consume('left')) s.index = (s.index + s.ids.length - 1) % s.ids.length;
-  if (game.input.consume('right')) s.index = (s.index + 1) % s.ids.length;
+  if (s.loading) { // the new game's map is loading
+    game.input.flush();
+    return;
+  }
+  if (game.input.consume('left')) {
+    s.index = (s.index + s.ids.length - 1) % s.ids.length;
+    s.message = null;
+  }
+  if (game.input.consume('right')) {
+    s.index = (s.index + 1) % s.ids.length;
+    s.message = null;
+  }
   if (game.input.consume('confirm')) startNewGame(s.ids[s.index]);
   if (game.input.consume('cancel')) setState('TITLE');
 }
@@ -434,8 +578,11 @@ async function onArriveTile() {
   if (warp) {
     // Lock input while the destination map loads (updateOverworld bails on
     // p.warping), and don't leave a failed fetch as an unhandled rejection.
+    // The fetch is raced against a timeout so a stalled network cannot freeze
+    // the player; it runs before placePlayer so a late arrival cannot teleport.
     p.warping = true;
     try {
+      await withTimeout(getMap(warp.toMap), MAP_LOAD_TIMEOUT_MS);
       await placePlayer(warp.toMap, warp.toX, warp.toY, warp.toFacing || p.facing);
     } catch (e) {
       console.error('Warp failed', e);
@@ -578,7 +725,7 @@ function renderShop() {
   r.wrapClamped(sel.desc, w - 84, 20, 2)
     .forEach((ln, i) => r.text(ln, x + 42, y + 288 + i * 26, { size: 20, color: '#555' }));
   if (s.message) r.text(s.message, x + 42, y + 336, { size: 21, color: s.message.startsWith('Bought') ? '#2a7a2a' : '#a04030' });
-  r.text('Z: buy   X: leave', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
+  r.text(hint('{ok}: buy   {back}: leave'), x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
 }
 
 // ---- Storage (PC box) ------------------------------------------------------
@@ -670,7 +817,7 @@ function renderStorage() {
   drawPane(42 + paneW + 24, `STORAGE (${game.storage.length})`, game.storage, ui.pane === 'box', ui.pane === 'box' ? ui.scroll : 0);
 
   if (ui.message) r.text(ui.message, VIEW_W / 2, VIEW_H - 72, { align: 'center', size: 21, color: '#2a7a2a' });
-  r.text('Z: deposit / withdraw   X: done', VIEW_W / 2, VIEW_H - 44, { align: 'center', size: 21, color: '#666' });
+  r.text(hint('{ok}: deposit / withdraw   {back}: done'), VIEW_W / 2, VIEW_H - 44, { align: 'center', size: 21, color: '#666' });
 }
 
 // ---- Pause menu ----------------------------------------------------------
@@ -1173,7 +1320,9 @@ function updateBattle(dt) {
 
     if (beat.type === 'msg') {
       b.beatTimer += dt;
-      if (b.beatTimer > 180 && (game.input.consume('confirm') || game.input.consume('cancel'))) {
+      // A press advances; holding confirm fast-forwards through the messages.
+      if ((b.beatTimer > 180 && (game.input.consume('confirm') || game.input.consume('cancel')))
+          || (b.beatTimer > 420 && game.input.isDown('confirm'))) {
         advanceBeat();
       }
     } else if (beat.type === 'damage') {
@@ -1512,7 +1661,8 @@ function renderTitle() {
   r.fillRect(0, 180, VIEW_W, 4, '#16223a');
   r.text('CREATURE', VIEW_W / 2, 48, { align: 'center', size: 60, bold: true, color: '#ffe08a', shadow: '#000' });
   r.text('QUEST', VIEW_W / 2, 110, { align: 'center', size: 48, bold: true, color: '#fff', shadow: '#000' });
-  r.text('a phase-7 prototype', VIEW_W / 2, 172, { align: 'center', size: 24, color: '#9fb4d8' });
+  // below the band line (y 180-184), not across it
+  r.text('A small creature-collecting adventure', VIEW_W / 2, 204, { align: 'center', size: 21, color: '#9fb4d8' });
 
   const opts = ['New Game', 'Continue'];
   const y0 = 280;
@@ -1528,7 +1678,7 @@ function renderTitle() {
   if (game.title.message) {
     r.text(game.title.message, VIEW_W / 2, y0 + 2 * 52 + 8, { align: 'center', size: 21, color: '#ff9a8a' });
   }
-  r.text('Arrows/WASD move   Z/Enter confirm   X/Esc back', VIEW_W / 2, VIEW_H - 40, { align: 'center', size: 21, color: '#9fb4d8' });
+  r.text(touchHints() ? hint('{dirs} move   {ok} confirm   {back} back') : hint('{dirs}/WASD move   {ok}/Enter confirm   {back}/Esc back'), VIEW_W / 2, VIEW_H - 40, { align: 'center', size: 21, color: '#9fb4d8' });
 }
 
 function renderStarter() {
@@ -1556,13 +1706,19 @@ function renderStarter() {
   const sel = game.species(ids[game.starter.index]);
   const bs = sel.baseStats;
   r.panel(60, 288, VIEW_W - 120, 156);
-  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84, 298, { size: 25, bold: true, color: game.typeChart.color(sel.types[0]) });
+  const selDx = drawTypeSwatch(r, 84, 298, 25, sel.types[0]);
+  r.text(`${sel.name}   [${sel.types.join('/')}]`, 84 + selDx, 298, { size: 25, bold: true });
   if (sel.ability) r.text(`Ability: ${game.dex.ability(sel.ability).name}`, 84, 326, { size: 20, color: '#3a5fa8' });
   r.text(`HP ${bs.hp}   ATK ${bs.attack}   DEF ${bs.defense}`, 84, 348, { size: 21 });
   r.text(`SpA ${bs.spAttack}   SpD ${bs.spDefense}   SPD ${bs.speed}`, 84, 370, { size: 21 });
   r.wrapClamped(sel.flavor, VIEW_W - 168, 19, 2)
     .forEach((ln, i) => r.text(ln, 84, 394 + i * 22, { size: 19, color: '#444' }));
-  r.text('<  Left / Right to choose  >    Z select    X back', VIEW_W / 2, VIEW_H - 26, { align: 'center', size: 21, color: '#cfe0b8' });
+  if (game.starter.message) {
+    // A failed start takes the hint line until the next input.
+    r.text(game.starter.message, VIEW_W / 2, VIEW_H - 26, { align: 'center', size: 21, color: '#ff9a8a' });
+  } else {
+    r.text(hint('<  Left / Right to choose  >    {ok} select    {back} back'), VIEW_W / 2, VIEW_H - 26, { align: 'center', size: 21, color: '#cfe0b8' });
+  }
 }
 
 // convenience
@@ -1707,14 +1863,14 @@ function renderPartySummary(r, mon) {
   r.text('MOVES', 42, 274, { size: 20, bold: true, color: '#555' });
   mon.moves.forEach((mv, i) => {
     const y = 304 + i * 30;
-    r.text(mv.name, 42, y, { size: 22, color: game.typeChart.color(mv.type) });
+    drawMoveName(r, mv, 42, y, 300 - 8);
     r.text(mv.type, 300, y + 2, { size: 17, color: '#666' });
     r.text(mv.category, 396, y + 2, { size: 17, color: '#666' });
     r.text(`PWR ${mv.power || '—'}`, 510, y + 2, { size: 17, color: '#666' });
     r.text(`PP ${mv.curPP}/${mv.pp}`, VIEW_W - 42, y + 2, { align: 'right', size: 17, color: mv.curPP ? '#666' : '#b06a5a' });
   });
 
-  r.text('↑↓ other creature   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+  r.text(hint('↑↓ other creature   {back}: back'), VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
 }
 
 function renderMenu() {
@@ -1740,7 +1896,7 @@ function renderMenu() {
   }
 
   if (m.view === 'party') {
-    renderPartyList(r, 'PARTY', m.partyIndex, 'Z: summary   X: back');
+    renderPartyList(r, 'PARTY', m.partyIndex, hint('{ok}: summary   {back}: back'));
     return;
   }
 
@@ -1782,7 +1938,7 @@ function renderMenu() {
     }
     if (m.dexScroll > 0) r.text('▲', VIEW_W - 42, 84, { size: 21, color: '#888' });
     if (m.dexScroll + DEX_ROWS < order.length) r.text('▼', VIEW_W - 42, 84 + (DEX_ROWS - 1) * 33, { size: 21, color: '#888' });
-    r.text('Z: entry (if seen)   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+    r.text(hint('{ok}: entry (if seen)   {back}: back'), VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
     return;
   }
 
@@ -1801,7 +1957,7 @@ function renderMenu() {
     entryLines.slice(0, 8).forEach((ln, i) => r.text(ln, 270, 96 + i * 30, { size: 21 }));
     const bs = sp.baseStats;
     r.text(`HP ${bs.hp}  ATK ${bs.attack}  DEF ${bs.defense}  SpA ${bs.spAttack}  SpD ${bs.spDefense}  SPD ${bs.speed}`, 252, VIEW_H - 78, { size: 16, color: '#555' });
-    r.text('X / Z to go back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+    r.text(hint('{back} / {ok} to go back'), VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
     return;
   }
 
@@ -1829,12 +1985,12 @@ function renderMenu() {
         .forEach((ln, i) => r.text(ln, x + 42, y + 246 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 300, { size: 21, color: '#2a7a2a' });
-    r.text('Z: use   X: back', x + w / 2, y + 330, { align: 'center', size: 21, color: '#666' });
+    r.text(hint('{ok}: use   {back}: back'), x + w / 2, y + 330, { align: 'center', size: 21, color: '#666' });
     return;
   }
 
   if (m.view === 'itemTarget') {
-    renderPartyList(r, `Use ${game.dex.item(m.pendingItem).name} on which creature?`, m.targetIndex, 'Z: use here   X: back');
+    renderPartyList(r, `Use ${game.dex.item(m.pendingItem).name} on which creature?`, m.targetIndex, hint('{ok}: use here   {back}: back'));
     if (m.message) r.text(m.message, VIEW_W / 2, VIEW_H - 72, { align: 'center', size: 21, color: '#a04030' });
     return;
   }
@@ -1864,7 +2020,7 @@ function renderMenu() {
         .forEach((ln, i) => r.text(ln, x + 42, y + 276 + i * 27, { size: 21, color: '#555' }));
     }
     if (m.message) r.text(m.message, x + 42, y + 336, { size: 21, color: '#2a7a2a' });
-    r.text('Z: teach   X: back', x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
+    r.text(hint('{ok}: teach   {back}: back'), x + w / 2, y + 360, { align: 'center', size: 21, color: '#666' });
     return;
   }
 
@@ -1890,7 +2046,7 @@ function renderMenu() {
         .forEach((line, row) => r.text(line, 372, y + 2 + row * 22, { size: 16, color: '#555' }));
     });
     if (m.message) r.text(m.message, VIEW_W / 2, VIEW_H - 72, { align: 'center', size: 21, color: '#a04030' });
-    r.text('Z: teach here   X: back', VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
+    r.text(hint('{ok}: teach here   {back}: back'), VIEW_W / 2, VIEW_H - 42, { align: 'center', size: 21, color: '#666' });
     return;
   }
 
@@ -1899,11 +2055,15 @@ function renderMenu() {
     const moveName = game.dex.move(m.teach.move).name;
     const opts = [...mon.moves.map((mv) => mv.name), 'Cancel'];
     const w = 448, x = (VIEW_W - w) / 2, y = 96;
-    r.panel(x, y, w, 132 + opts.length * 36);
-    r.text(`${mon.name} wants to learn ${moveName}.`, x + 24, y + 18, { size: 21, bold: true });
-    r.text('Forget which move?', x + 24, y + 54, { size: 21, color: '#555' });
+    // A long creature + move name needs a second heading line; the rest of the
+    // panel moves down by that much.
+    const head = r.wrapClamped(`${mon.name} wants to learn ${moveName}.`, w - 48, 21, 2);
+    const extra = (head.length - 1) * 26;
+    r.panel(x, y, w, 132 + extra + opts.length * 36);
+    head.forEach((ln, i) => r.text(ln, x + 24, y + 18 + i * 26, { size: 21, bold: true }));
+    r.text('Forget which move?', x + 24, y + 54 + extra, { size: 21, color: '#555' });
     opts.forEach((o, i) => {
-      const oy = y + 96 + i * 36;
+      const oy = y + 96 + extra + i * 36;
       if (i === m.machineLearnIndex) r.cursor(x + 18, oy + 3);
       r.text(o, x + 42, oy, { size: 24, color: i === opts.length - 1 ? '#a04030' : '#2b2b3a' });
     });
@@ -1923,8 +2083,9 @@ function renderBattle() {
   if (!b) return; // battle just ended mid-frame; overworld will render next frame
   // screen shake on big hits
   const fx = b.fx;
-  const sx = fx.shakeT > 0 ? (Math.random() * 8 - 4) : 0;
-  const sy = fx.shakeT > 0 ? (Math.random() * 6 - 3) : 0;
+  const shaking = fx.shakeT > 0 && !reducedMotion();
+  const sx = shaking ? (Math.random() * 8 - 4) : 0;
+  const sy = shaking ? (Math.random() * 6 - 3) : 0;
   r.ctx.save();
   r.ctx.translate(sx, sy);
 
@@ -1947,7 +2108,7 @@ function renderBattle() {
     if (fx.faintAnim && fx.faintAnim.side === side) {
       dy += (1 - fx.faintAnim.t / 350) * 80;
     }
-    if (fx.flash[side] > 0 && Math.floor(fx.flash[side] / 55) % 2 === 0) return; // blink
+    if (!reducedMotion() && fx.flash[side] > 0 && Math.floor(fx.flash[side] / 55) % 2 === 0) return; // blink
     // Classic style: the player's own creature is seen from behind; the
     // opponent is seen face-on.
     const sprite = side === 'player' ? mon.spriteBack || mon.sprite : mon.sprite;
@@ -1994,7 +2155,12 @@ function renderBattle() {
   r.panel(12, my, VIEW_W - 24, 120);
 
   if (b.phase === 'resolve') {
-    r.text(b.msg || '', 36, my + 30, { size: 24 });
+    // Up to two lines: the longest battle messages run past the panel at one.
+    // A single line stays where it always was; two start higher so the second
+    // still clears the ▼ prompt.
+    const msgLines = r.wrapClamped(b.msg || '', VIEW_W - 72, 24, 2);
+    const msgY = msgLines.length > 1 ? my + 20 : my + 30;
+    msgLines.forEach((ln, i) => r.text(ln, 36, msgY + i * 30, { size: 24 }));
     const beat = b.beats[b.beatIndex];
     if (beat && beat.type === 'msg' && b.beatTimer > 180) r.text('▼', VIEW_W - 48, my + 84, { size: 24, color: '#888' });
   } else if (b.phase === 'menu') {
@@ -2017,17 +2183,21 @@ function renderBattle() {
       const oy = my + 24 + Math.floor(i / 2) * 42;
       if (i === b.moveIndex) r.cursor(ox - 24, oy + 3);
       const out = mv.curPP <= 0;
-      r.text(mv.name, ox, oy, { size: 24, color: out ? '#999' : game.typeChart.color(mv.type) });
-      r.text(`${mv.curPP}/${mv.pp}`, ox + 276, oy + 4, { align: 'right', size: 18, color: out ? '#b06a5a' : '#777' });
+      // Swatch + ink instead of type-coloured text; one size down so the
+      // longest names still end where they did before the swatch.
+      const ppText = `${mv.curPP}/${mv.pp}`;
+      // The name gets whatever the PP count leaves of the cell, less a gap.
+      drawMoveName(r, mv, ox, oy + 1, ox + 276 - r.textWidth(ppText, 18) - 8, out ? '#999' : undefined);
+      r.text(ppText, ox + 276, oy + 4, { align: 'right', size: 18, color: out ? '#b06a5a' : '#777' });
     });
     const sel = moves[b.moveIndex];
     r.text(`${sel.type}   ${sel.category}   PWR ${sel.power || '—'}   ACC ${sel.accuracy}   PP ${sel.curPP}/${sel.pp}`, VIEW_W - 24, my + 96, { align: 'right', size: 19, color: '#555' });
   } else if (b.phase === 'party') {
-    renderPartyList(r, 'Switch to which creature?', b.partyIndex, 'Z: switch in (uses the turn)   X: back');
+    renderPartyList(r, 'Switch to which creature?', b.partyIndex, hint('{ok}: switch in (uses the turn)   {back}: back'));
   } else if (b.phase === 'replace') {
     // No name in the title — renderPartyList doesn't wrap, and a long one runs
     // off the panel. The fainted creature is the 0 HP row in the list anyway.
-    renderPartyList(r, 'Send out which creature?', b.partyIndex, 'Z: send in');
+    renderPartyList(r, 'Send out which creature?', b.partyIndex, hint('{ok}: send in'));
   } else if (b.phase === 'item') {
     const list = invEntries();
     const rows = Math.ceil(list.length / 2);
@@ -2047,17 +2217,20 @@ function renderBattle() {
       const more = `${b.itemScroll > 0 ? '▲' : ' '}${b.itemScroll + BATTLE_ITEM_ROWS < rows ? '▼' : ' '}`;
       r.text(more, 36, my + 96, { size: 21, color: '#888' });
     }
-    r.text('X: back', VIEW_W - 24, my + 96, { align: 'right', size: 21, color: '#555' });
+    r.text(hint('{back}: back'), VIEW_W - 24, my + 96, { align: 'right', size: 21, color: '#555' });
   } else if (b.phase === 'learn') {
     const pl = b.pendingLearns[0];
     const moveName = game.dex.move(pl.move).name;
     const opts = [...pl.mon.moves.map((mv) => mv.name), 'Give up'];
     const w = 420, x = (VIEW_W - w) / 2, y = 84;
-    r.panel(x, y, w, 132 + opts.length * 36);
-    r.text(`${pl.mon.name} wants to learn ${moveName}!`, x + 24, y + 18, { size: 22, bold: true });
-    r.text('Forget which move?', x + 24, y + 54, { size: 21, color: '#555' });
+    // Same two-line heading rule as the TM learn prompt in the pause menu.
+    const head = r.wrapClamped(`${pl.mon.name} wants to learn ${moveName}!`, w - 48, 22, 2);
+    const extra = (head.length - 1) * 26;
+    r.panel(x, y, w, 132 + extra + opts.length * 36);
+    head.forEach((ln, i) => r.text(ln, x + 24, y + 18 + i * 26, { size: 22, bold: true }));
+    r.text('Forget which move?', x + 24, y + 54 + extra, { size: 21, color: '#555' });
     opts.forEach((o, i) => {
-      const oy = y + 96 + i * 36;
+      const oy = y + 96 + extra + i * 36;
       if (i === b.learnIndex) r.cursor(x + 18, oy + 3);
       r.text(o, x + 42, oy, { size: 24, color: i === opts.length - 1 ? '#a04030' : '#2b2b3a' });
     });
@@ -2103,7 +2276,8 @@ function renderEvolve() {
 // ---- Go ------------------------------------------------------------------
 
 boot().catch((e) => {
-  console.error(e);
+  // The technical detail stays in the console; the player gets plain words.
+  console.error('Creature Quest failed to boot:', e);
   const c = document.getElementById('game-canvas');
   if (c) {
     const g = c.getContext('2d');
@@ -2111,7 +2285,9 @@ boot().catch((e) => {
     g.fillRect(0, 0, c.width, c.height);
     g.fillStyle = '#fff';
     g.font = '24px monospace';
-    g.fillText('Boot error: ' + e.message, 24, 48);
-    g.fillText('Serve over http:// (not file://).', 24, 84);
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillText('Could not load the game.', 24, 48);
+    g.fillText('Reload the page to try again.', 24, 84);
   }
 });

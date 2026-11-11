@@ -15,12 +15,16 @@ export class Input {
   constructor() {
     this.down = new Set(); // actions currently held
     this.pressQueue = []; // edge-triggered presses awaiting consumption
+    // True once a real game key has been pressed. In touch mode main.js reads
+    // it to switch the on-canvas hints from pad names to key names.
+    this.keyboardUsed = false;
 
     window.addEventListener('keydown', (e) => {
       // Leave browser/OS shortcuts (Ctrl+S, Cmd+A, Alt+Left...) alone.
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const action = KEYMAP[e.code];
       if (!action) return;
+      this.keyboardUsed = true;
       // prevent page scroll / back-navigation on game keys
       e.preventDefault();
       if (!this.down.has(action)) {

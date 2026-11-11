@@ -95,6 +95,8 @@ let lastSyncedAt = null; // most recent sync timestamp, for re-rendering the con
 let syncing = false;       // true while a manual force-sync is in flight (drives the button state)
 let syncProgress = null;   // { fetched, pct } during a sync, for the progress bar
 let lastSyncResult = null; // transient "Synced — N new, M updated" line shown after a sync
+let rebuildOffered = false; // the worker's shrink guard refused the last sync: offer "Rebuild from Strava"
+let rebuilding = false;     // true while that rebuild is in flight (with `syncing`)
 
 // ── Admin auth ──────────────────────────────────────────────────────────────
 // The Strava admin controls (manual force-sync + the debug-menu resets) are
@@ -104,6 +106,11 @@ let lastSyncResult = null; // transient "Synced — N new, M updated" line shown
 // protected worker calls. The worker is the real gate — it rejects those calls
 // without a valid password, so hiding the buttons is just UX.
 const ADMIN_PW_KEY = window.STRAVA_ADMIN_PW_KEY || 'strava_admin_pw';
+// User mode (/app/?user=1, js/user-mode.js): the person's session token sits
+// under ADMIN_PW_KEY so the user worker accepts their saves and syncs. They are
+// not the site owner, so the owner's controls (admin login prompt, Log out,
+// Debug) are not offered; their Account row on Home has Disconnect.
+const IS_USER_MODE = Boolean(window.STRAVA_USER);
 
 function getAdminPw() { return localStorage.getItem(ADMIN_PW_KEY) || ''; }
 function isLoggedIn() { return Boolean(getAdminPw()); }
@@ -138,6 +145,7 @@ function savePost(path, body) {
 }
 
 async function adminLogin() {
+    if (IS_USER_MODE) return; // no owner login in user mode
     const pw = prompt('Enter Strava admin password:');
     if (!pw) return;
     try {
@@ -155,6 +163,7 @@ async function adminLogin() {
 }
 
 function adminLogout() {
+    if (IS_USER_MODE) return; // would drop the session token; Disconnect is on Home
     localStorage.removeItem(ADMIN_PW_KEY);
     const panel = document.getElementById('debug-panel');
     if (panel) panel.hidden = true;
@@ -546,6 +555,8 @@ async function syncWithWorker({ join = false } = {}) {
             : null,
     });
     lastSyncResult = formatSyncResult(data);
+    // Refused by the worker's shrink guard: the way out is a rebuild.
+    rebuildOffered = /shrank/.test(data.skipped || '');
     setStatus(lastSyncResult);
     return data;
 }
@@ -1176,7 +1187,11 @@ function renderFilters() {
         </div>`;
 
     const drawer = filterDrawer();
-    drawer.querySelector('.filter-drawer-body').innerHTML = `
+    // A pill that is pressed is replaced by this render: remember its place
+    // so the keyboard focus goes to the new one, not back to <body>.
+    const drawerBody = drawer.querySelector('.filter-drawer-body');
+    const focusIdx = [...drawerBody.querySelectorAll('button')].indexOf(document.activeElement);
+    drawerBody.innerHTML = `
         <section class="filter-drawer-section">
             <h3>Sports</h3>
             <div class="filter-controls">
@@ -1187,6 +1202,7 @@ function renderFilters() {
             <div class="filter-pills">${pillsHtml}</div>
         </section>
         ${renderYearFilterHtml()}`;
+    if (focusIdx >= 0) drawerBody.querySelectorAll('button')[focusIdx]?.focus({ preventScroll: true });
     drawer.querySelector('.filter-drawer-summary').textContent = filterSummaryText(sortedTypes);
     updateFilterFab(nOff);
 }
@@ -1246,11 +1262,31 @@ function filterDrawer() {
     if (isAppPage()) el.classList.add('app-drawer');
     document.body.appendChild(el);
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !el.hidden) closeFilterDrawer(); });
+    // Keep Tab / Shift+Tab inside the panel while it is open. On document,
+    // not the panel: focus can be on <body> (after a re-render, or a tap on
+    // the panel's text) and Tab must still go into the panel.
+    document.addEventListener('keydown', ev => {
+        if (ev.key !== 'Tab' || el.hidden || !el.classList.contains('is-open')) return;
+        const items = [...el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+            .filter(n => !n.disabled && n.getClientRects().length > 0);
+        if (!items.length) { ev.preventDefault(); return; }
+        const first = items[0], last = items[items.length - 1];
+        const inside = items.includes(document.activeElement);
+        if (ev.shiftKey && (!inside || document.activeElement === first)) {
+            ev.preventDefault();
+            last.focus();
+        } else if (!ev.shiftKey && (!inside || document.activeElement === last)) {
+            ev.preventDefault();
+            first.focus();
+        }
+    });
     return el;
 }
 
 function openFilterDrawer() {
     const el = filterDrawer();
+    // The control that opened the panel gets the focus back on close.
+    if (el.hidden) el._opener = document.activeElement;
     el.hidden = false;
     // Locking the page scroll can send iPhone Safari back to the top; the
     // spot is put back on close.
@@ -1266,6 +1302,15 @@ function closeFilterDrawer() {
     el.classList.remove('is-open');
     document.documentElement.classList.remove('filter-drawer-open');
     if (el._scrollY > 40 && window.scrollY < 5) window.scrollTo(0, el._scrollY);
+    // Focus back to the opener, or to the page's Filters button when the
+    // opener is gone (re-rendered) or hidden (the floating button).
+    const opener = el._opener;
+    el._opener = null;
+    const back = opener && opener.isConnected && opener.getClientRects().length > 0
+        ? opener
+        : document.querySelector('#filter-summary .filter-open-btn');
+    const at = document.activeElement;
+    if (back && (!at || at === document.body || el.contains(at))) back.focus({ preventScroll: true });
     setTimeout(() => { if (!el.classList.contains('is-open')) el.hidden = true; }, 220);
 }
 
@@ -3764,6 +3809,8 @@ function setMetroStatus(msg) {
 const ECO_TOPOJSON_URL = '/data/us-ecoregions.topojson';
 const ECO_AK_URL       = '/data/ak-ecoregions.geojson';
 const ECO_TOPOJSON_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js';
+// Same hash as the <script> tag for this file in us-ecoregions.html.
+const ECO_TOPOJSON_SRI = 'sha384-9dCJK6nh7skY14HrcvlLYlFga9/MehJjL9ONWRflmiXNRuf8p2jiF4Y5PR881PTq';
 const ECO_COLORS_JS    = '/js/eco-colors.js';
 // Bump when detection changes: a saved blob from another version is discarded
 // and every activity is scanned again. v2 records patches (see ecoPatchFirst).
@@ -3808,12 +3855,17 @@ let ecoPatchFirst = new Map();   // patch id → id of the first activity that e
 let ecoProcessedIds = new Set();
 const ecoExpandedL3 = new Set(); // Level III rows opened in the progress table
 
-// Inject a <script> once and resolve when it has run.
+// Inject a <script> once and resolve when it has run. `integrity` (an SRI
+// hash) is for exact-version third-party files.
 const scriptLoads = {};
-function loadScriptOnce(src) {
+function loadScriptOnce(src, integrity = '') {
     if (!scriptLoads[src]) {
         scriptLoads[src] = new Promise((resolve, reject) => {
             const s = document.createElement('script');
+            if (integrity) {
+                s.integrity = integrity;
+                s.crossOrigin = 'anonymous';
+            }
             s.src = src;
             s.onload = resolve;
             s.onerror = () => { delete scriptLoads[src]; reject(new Error(`Failed to load ${src}`)); };
@@ -3869,7 +3921,7 @@ async function initEcoregionMap() {
             // A worker without the endpoints yet (or offline) just means no saved
             // progress: detect from scratch and let the save fail quietly.
             fetch(`${WORKER_URL}/ecoregions/all`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-            loadScriptOnce(ECO_TOPOJSON_LIB),
+            loadScriptOnce(ECO_TOPOJSON_LIB, ECO_TOPOJSON_SRI),
             loadScriptOnce(ECO_COLORS_JS),
         ]);
     } catch (err) {
@@ -9655,6 +9707,43 @@ function hideLoader() {
     if (el) el.style.display = 'none';
 }
 
+// Tell other UI (the app's Home header, js/app.js) how the first load is
+// going: a 'stravaload' event on document with detail.state 'loading' (a Retry
+// started) | 'loaded' (activities rendered, also after a sync) | 'error'.
+function notifyLoadState(state) {
+    document.dispatchEvent(new CustomEvent('stravaload', { detail: { state } }));
+}
+
+// The first load failed (offline, worker unreachable): stop the spinner and
+// offer Retry in the loader. The technical reason stays in the debug log and
+// the console. Does nothing once the page has rendered (the loader is hidden).
+function showLoadError() {
+    const el = document.getElementById('loading-section');
+    if (!el || el.style.display === 'none') return;
+    el.classList.add('load-failed');
+    setStatus('Could not load activities. Check your connection and try again.');
+    if (!document.getElementById('load-retry-btn')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'load-retry-btn';
+        btn.className = 'cache-refresh-btn load-retry-btn';
+        btn.textContent = 'Retry';
+        btn.addEventListener('click', retryLoad);
+        el.appendChild(btn);
+    }
+    notifyLoadState('error');
+}
+
+function retryLoad() {
+    if (pipelineRunning) return;
+    const el = document.getElementById('loading-section');
+    if (el) el.classList.remove('load-failed');
+    document.getElementById('load-retry-btn')?.remove();
+    setStatus('Loading activities…');
+    notifyLoadState('loading');
+    runPipeline(false);
+}
+
 function relativeTime(ts) {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
@@ -9678,21 +9767,35 @@ function setCacheInfo(gpsCount, total, syncedAt) {
     // While a sync is in flight the button shows a disabled "Syncing…" state — a
     // full refresh re-fetches every page from Strava, so it's not instant.
     const syncBtn = syncing
-        ? `<button class="cache-refresh-btn" id="refresh-btn" disabled>⏳ Syncing…</button>`
+        ? `<button class="cache-refresh-btn" id="refresh-btn" disabled>⏳ ${rebuilding ? 'Rebuilding…' : 'Syncing…'}</button>`
         : `<button class="cache-refresh-btn" id="refresh-btn">Sync now</button>`;
-    const controls = isLoggedIn()
-        ? `${syncBtn}
+    // In user mode the bar has the sync control only (see IS_USER_MODE).
+    let controls;
+    if (IS_USER_MODE) {
+        controls = isLoggedIn() ? syncBtn : '';
+    } else if (isLoggedIn()) {
+        controls = `${syncBtn}
            <button class="cache-refresh-btn dbg-toggle-btn" onclick="toggleDebug()">Debug</button>
-           <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`
-        : `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login">🔒</button>`;
+           <button class="cache-refresh-btn" onclick="adminLogout()" title="Log out of admin">Log out</button>`;
+    } else {
+        controls = `<button class="cache-refresh-btn" onclick="adminLogin()" title="Admin login" aria-label="Admin login">🔒</button>`;
+    }
     // A full-width progress bar (its own flex row) while syncing, or a transient
     // result line once a sync finishes.
     let extra = '';
-    if (syncing) {
+    if (rebuilding) {
+        // One long request with no progress to report.
+        extra = `<span class="sync-result" role="status">Rebuilding from Strava — fetching every activity again…</span>`;
+    } else if (syncing) {
         const pct = syncProgress?.pct ?? 0;
         extra = `<div class="sync-progress"><div class="sync-progress-fill" id="sync-progress-fill" style="width:${pct}%"></div></div>`;
     } else if (lastSyncResult) {
         extra = `<span class="sync-result">${escHtml(lastSyncResult)}</span>`;
+        // Only for someone the worker will accept (owner password or, in user
+        // mode, the person's session token); never for anonymous visitors.
+        if (rebuildOffered && isLoggedIn()) {
+            extra += `<button type="button" class="cache-refresh-btn" id="rebuild-btn" title="Fetch every activity again and replace the stored list">Rebuild from Strava</button>`;
+        }
     }
     el.innerHTML = `
         <span class="cache-meta">${total.toLocaleString()} activities${gpsNote} · ${syncNote}</span>
@@ -9700,6 +9803,59 @@ function setCacheInfo(gpsCount, total, syncedAt) {
         ${extra}
     `;
     document.getElementById('refresh-btn')?.addEventListener('click', () => runManualSync());
+    document.getElementById('rebuild-btn')?.addEventListener('click', () => runRebuild());
+}
+
+// The way out of a sync the worker's shrink guard refused ("list shrank…"):
+// POST /activities/rebuild fetches the whole list again and stores it whatever
+// its size (the worker keeps the stored list if Strava answers with nothing).
+// One plain request (no progress stream) that answers with the same record as
+// a finished sync, so it is rendered the way runPipeline renders a sync.
+async function runRebuild() {
+    if (syncing || pipelineRunning || !isLoggedIn()) return;
+    // The worker also clears every ride's stored high point (`eh`). The owner's
+    // page fetches them again (backfillRideElev, one Strava call per ride);
+    // user mode has no backfill, so there they are gone.
+    const highPoints = IS_USER_MODE
+        ? (currentSlim.some(a => a.eh !== undefined) ? ' Stored ride high points are lost.' : '')
+        : ' Ride high points are fetched again after (one Strava call per ride).';
+    if (!confirm(`Rebuild from Strava?\n\nThis fetches every activity again and replaces the stored list, even if the new list is much shorter.${highPoints} It can take a minute or more.`)) return;
+    syncing = true;
+    rebuilding = true;
+    pipelineRunning = true;
+    syncProgress = null;
+    lastSyncResult = null;
+    rebuildOffered = false;
+    try {
+        refreshAdminUI();
+        dbg('POST /activities/rebuild — fetching every activity from Strava…');
+        const res = await adminPost('/activities/rebuild');
+        if (!res.ok) throw new Error(res.status === 401 ? 'not authorised' : `worker error ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data.slim)) throw new Error('unexpected answer from the worker');
+        if (data.skipped) throw new Error(`${data.skipped} — kept the stored activities`);
+        dbg(`Rebuild complete — ${data.total} activities`);
+        cachedPolylines = null;
+        await geocodeAndRender(data.slim, data.total, data.syncedAt, currentCache);
+        refreshOpenMapHunters();
+        lastSyncResult = `Rebuilt — ${Number(data.total).toLocaleString()} activities`;
+    } catch (err) {
+        dbg(`ERROR: rebuild — ${err.message}`);
+        console.error(err);
+        lastSyncResult = `Rebuild failed: ${err.message}`;
+        rebuildOffered = true; // leave the action there to try again
+    } finally {
+        syncing = false;
+        rebuilding = false;
+        pipelineRunning = false;
+        refreshAdminUI();
+        if (lastSyncResult && !rebuildOffered) {
+            const shown = lastSyncResult;
+            setTimeout(() => {
+                if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
+            }, 8000);
+        }
+    }
 }
 
 // Manual force-sync wrapper that drives the button's in-flight state so the user
@@ -9709,9 +9865,11 @@ function setCacheInfo(gpsCount, total, syncedAt) {
 let syncTask = null;
 function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
     if (syncTask) return syncTask;
+    if (rebuilding) return Promise.resolve(); // runRebuild owns the sync state
     syncing = true;
     syncProgress = { fetched, pct: 0 };
     lastSyncResult = null;
+    rebuildOffered = false;
     refreshAdminUI(); // repaint the button as "Syncing…" with the progress bar
     syncTask = (async () => {
         try {
@@ -9723,8 +9881,9 @@ function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
             syncProgress = null;
             syncTask = null;
             refreshAdminUI(); // back to "Sync now", showing the result line + "Synced just now"
-            // Clear the transient result line after a few seconds.
-            if (lastSyncResult) {
+            // Clear the transient result line after a few seconds; a refused
+            // sync stays, with its "Rebuild from Strava" action.
+            if (lastSyncResult && !rebuildOffered) {
                 const shown = lastSyncResult;
                 setTimeout(() => {
                     if (lastSyncResult === shown) { lastSyncResult = null; refreshAdminUI(); }
@@ -9758,6 +9917,7 @@ async function geocodeAndRender(slim, total, syncedAt, cache) {
     currentSlim = slim;
     currentTotal = total;
     currentCache = cache;
+    notifyLoadState('loaded');
 
     const { countries, subdivisions } = buildData(slim, cache);
     const subCounts = SUBDIVISION_CONFIG
@@ -9941,7 +10101,7 @@ async function runPipeline(forceSync = false, { join = false } = {}) {
 
     } catch (err) {
         dbg(`ERROR: ${err.message}`);
-        setStatus('Error: ' + err.message);
+        showLoadError();
         // The loader is gone once the page has rendered, so put a failed sync
         // where the button is.
         if (forceSync) lastSyncResult = `Sync failed: ${err.message}`;

@@ -35,51 +35,8 @@
         box-sizing: border-box;
     }
 
-    /* Navigation adjustments */
-    .navbar {
-        position: fixed;
-        width: 100%;
-        top: 0;
-        left: 0;
-        z-index: 1000;
-    }
-
-    .nav-menu li {
-        margin: 5px 10px;
-        width: auto; /* fill the menu minus the margins, not 100% plus them */
-        align-self: stretch;
-        position: relative;
-    }
-
-    /* Dropdown mobile adjustments */
-    .dropdown-content {
-        display: none;
-        /* Hidden by default */
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 200px;
-        z-index: 1002;
-        background-color: rgba(0, 0, 0, 0.95);
-    }
-
-    /* Show dropdown when active */
-    .dropdown.active .dropdown-content {
-        display: block;
-    }
-
-    .dropdown-content a {
-        padding: 15px 20px;
-        font-size: 1.1em;
-    }
-
-    /* Disable desktop hover on mobile touch devices */
-    @media (hover: none) {
-        .dropdown:hover .dropdown-content {
-            display: none;
-        }
-    }
+    /* The phone menu (bar, sheet, accordion) is styled in layout.css only.
+       This sheet loads after it, so nav rules here would override it. */
 
     /* General adjustments */
     h1 {
@@ -101,22 +58,7 @@
         padding-top: 20vh;
     }
 
-    .home-page .content {
-        padding: 1.5rem;
-        width: 90%;
-        max-width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        box-sizing: border-box;
-        /* Ensure padding is included in the width */
-    }
-
-    .home-page .content h1 {
-        font-size: 1.7em;
-        letter-spacing: 1px;
-        text-align: center;
-    }
+    /* The hero box and title size themselves (clamp() in homepage.css). */
 
     .subtitle-container {
         width: 100%;
@@ -139,28 +81,7 @@
         animation: ui-fade-in 0.9s var(--ease-out) 0.5s both;
     }
 
-    /* Navigation buttons mobile adjustments */
-    .navigation-buttons {
-        flex-direction: column;
-        gap: 12px;
-        top: 55vh;
-        bottom: auto;
-        padding: 0 20px;
-        max-width: 280px;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .nav-button {
-        padding: 14px 24px;
-        font-size: 0.9rem;
-        width: 100%;
-        max-width: 200px;
-        text-align: center;
-        box-sizing: border-box;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-    }
+    /* Hero buttons: phone layout is in homepage.css. */
 
     /* About page adjustments */
     .info,
@@ -302,19 +223,9 @@
         align-items: flex-start;
     }
 
-    .home-page .content h1 {
-        font-size: 1.4em;
-        letter-spacing: 0.5px;
-        line-height: 1.1;
-    }
-
     .home-page .content .subtitle {
         font-size: 0.7em;
         letter-spacing: 0.5px;
-    }
-
-    .home-page .content {
-        padding: 1rem 0.5rem;
     }
 }
 
@@ -375,19 +286,95 @@
 
 /* Print styles */
 @media print {
-    .no-print {
-        display: none;
+    :root {
+        color-scheme: light;
     }
 
+    /* Chrome that means nothing on paper: the menu, the photo backdrops and
+       embeds that are empty boxes until their scripts run. */
+    .no-print,
+    nav-bar,
+    .navbar,
+    .skip-link,
+    .parallax-background,
+    .parallax-overlay,
+    .home-bg,
+    .scroll-cue,
+    .strava-embed-placeholder,
+    .model-section {
+        display: none !important;
+    }
+
+    html,
     body {
         font-size: 12pt;
         line-height: 1.5;
-        color: #000;
-        background: #fff;
+        color: #000 !important;
+        background: #fff !important;
     }
 
-    a {
-        color: #000;
+    .content,
+    .about-content,
+    .travels-content {
+        padding-top: 0 !important;
+    }
+
+    /* Dark cards over photos become plain black-on-white blocks. */
+    .hero,
+    .section,
+    .section * {
+        color: #111 !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        text-shadow: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .hero {
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 0 0 12pt !important;
+    }
+
+    .hero h1,
+    .hero h2 {
+        color: #000 !important;
+        text-shadow: none !important;
+    }
+
+    .section {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 0 16pt !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+    }
+
+    /* Trip report "summit achieved" banner: a plain outlined box */
+    .status-banner,
+    .status-banner * {
+        color: #111 !important;
+        background: none !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        animation: none !important;
+    }
+
+    .status-banner::before,
+    .status-banner::after {
+        display: none !important;
+    }
+
+    .status-banner {
+        border: 1px solid #999 !important;
+    }
+
+    a,
+    .section a {
+        color: #000 !important;
         text-decoration: underline;
     }
 

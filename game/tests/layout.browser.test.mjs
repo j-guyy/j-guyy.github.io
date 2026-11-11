@@ -12,6 +12,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { available, unavailableReason, openGame, makeSave } from './helpers/browser.mjs';
+import { horizontalExtent } from './helpers/draw-audit.mjs';
 
 const opts = available ? {} : { skip: unavailableReason };
 
@@ -33,6 +34,16 @@ test('title, starter select and the overworld keep their text in bounds', opts, 
   try {
     await check(game, 'title');
 
+    await game.press('ArrowDown');            // Continue, with no save to continue
+    await game.press('KeyZ');
+    await check(game, 'title with the "No save yet." message');
+    assert.ok((await game.draws()).some((d) => d.text === 'No save yet.'), 'the message should show after the press');
+    await game.press('ArrowUp');
+    // The message belongs to the press that caused it: moving the cursor clears it.
+    await game.resetDraws();
+    await settle(game);
+    assert.ok(!(await game.draws()).some((d) => d.text === 'No save yet.'), 'the message should clear when the cursor moves');
+
     await game.press('KeyZ');                 // New Game -> starter select
     for (const starter of ['first', 'second', 'third']) {
       await check(game, `starter select (${starter})`);
@@ -42,6 +53,42 @@ test('title, starter select and the overworld keep their text in bounds', opts, 
     await game.press('KeyZ');                 // into the world
     await game.page.waitForTimeout(500);
     await check(game, 'overworld with the map-name banner');
+  } finally {
+    await game.close();
+  }
+});
+
+test('touch mode keeps the title and starter hints in bounds', opts, async () => {
+  // ?touch=1 forces the on-screen pad, which swaps every key hint for the
+  // pad's labels (A / B / D-pad) — different strings, same boxes.
+  const game = await openGame({ audit: true, query: '?touch=1' });
+  try {
+    await check(game, 'title (touch)');
+    // Use the on-screen A button, not a key: a real game key switches the
+    // hints to keyboard names (see the hardware-keyboard test below).
+    await game.page.locator('#touch-controls [data-act="confirm"]').click();
+    await game.page.waitForTimeout(160);
+    await check(game, 'starter select (touch)');
+    assert.ok((await game.draws()).some((d) => /A select\s+B back/.test(d.text)), 'starter hint should name the pad buttons');
+    assert.deepEqual(game.errors, [], game.errors.join('\n'));
+  } finally {
+    await game.close();
+  }
+});
+
+test('touch mode switches its hints to keyboard names after a game key', opts, async () => {
+  // A tablet with a hardware keyboard: touch hints until the first game key.
+  const game = await openGame({ audit: true, query: '?touch=1' });
+  try {
+    await check(game, 'title (touch)');
+    assert.ok((await game.draws()).some((d) => (d.text || '').includes('D-pad')), 'touch hints before any key');
+    await game.press('ArrowDown');
+    await check(game, 'title (touch, after a key press)');
+    const texts = (await game.draws()).map((d) => d.text || '');
+    assert.ok(texts.some((t) => t.includes('Arrows')), 'keyboard hints after a game key');
+    assert.ok(!texts.some((t) => t.includes('D-pad')), 'no pad names after a game key');
+    assert.ok(await game.page.locator('#touch-controls').isVisible(), 'the pad stays on screen');
+    assert.deepEqual(game.errors, [], game.errors.join('\n'));
   } finally {
     await game.close();
   }
@@ -214,6 +261,46 @@ test('the black-out banner stays on the canvas', opts, async () => {
     await game.page.waitForTimeout(600);
     assert.ok(!(await game.inBattle()), 'should be back in the overworld after blacking out');
     await check(game, 'black-out payout banner');
+  } finally {
+    await game.close();
+  }
+});
+
+test('the longest move name does not run into its PP count', opts, async () => {
+  // "Falling Star Fist" (17 characters) at the grid's 22px overlapped the PP
+  // text; the cell now steps the font down (Renderer.fitText) to keep a gap.
+  const game = await openGame({
+    audit: true,
+    save: makeSave({
+      player: { map: 'route1', x: 3, y: 1, facing: 'down' },
+      party: [{
+        species: 'verdantitan', level: 34, xp: 34 ** 3, curHP: 90, status: null, statusCounter: 0,
+        moves: [
+          { id: 'falling_star_fist', pp: 10 }, { id: 'ice_lance_volley', pp: 5 },
+          { id: 'soothing_bouquet', pp: 5 }, { id: 'cataclysm_flame', pp: 5 },
+        ],
+      }],
+    }),
+  });
+  try {
+    await game.press('KeyZ');
+    await game.page.waitForTimeout(500);
+    assert.ok(await game.findEncounter(), 'no wild encounter after 40 steps in grass');
+    await game.press('KeyZ', 2);
+    await game.press('KeyZ');                 // Fight
+    await check(game, 'move grid with the longest names');
+
+    const draws = (await game.draws()).filter((d) => d.kind === 'text');
+    const name = draws.find((d) => d.text.startsWith('Falling Star'));
+    assert.ok(name, 'the move name should be drawn');
+    assert.ok(name.size >= 16 && name.size <= 22, `name drawn at ${name.size}px`);
+    // Its PP count: right-aligned, same cell (the first one to its right, same row).
+    const pp = draws.find((d) => d.align === 'right' && /^\d+\/\d+$/.test(d.text)
+      && Math.abs(d.y - name.y) < 12 && d.x > name.x && d.x - name.x < 300);
+    assert.ok(pp, 'the PP count should be drawn beside the name');
+    const nameRight = horizontalExtent(name)[1];
+    const ppLeft = horizontalExtent(pp)[0];
+    assert.ok(nameRight <= ppLeft, `name ends at ${nameRight}, PP starts at ${ppLeft}`);
   } finally {
     await game.close();
   }

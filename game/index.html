@@ -2,15 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0d0b">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/connect/icon-192.png">
   <meta name="robots" content="noindex, nofollow" />
-  <title>Creature Quest — Phase 7 Prototype</title>
+  <title>Creature Quest — a small creature-collecting adventure</title>
+  <meta name="description" content="Creature Quest: a small creature-collecting adventure you can play in the browser." />
   <link rel="stylesheet" href="css/game.css" />
 </head>
 <body>
   <div id="game-shell">
     <canvas id="game-canvas" width="720" height="480" aria-label="Creature Quest game canvas"></canvas>
     <div id="controls-hint">
+      <div class="hint-keyboard">
       <b>Move:</b> Arrow keys / WASD &nbsp;·&nbsp;
       <b>Confirm:</b> Z / Enter &nbsp;·&nbsp;
       <b>Back / Menu:</b> X / Esc &nbsp;·&nbsp;
@@ -23,9 +28,14 @@
       <a href="battle-sim.html">Battle Simulator</a> — build any team you like and battle an NPC.
       <br />
       Edit the game: <a href="editor.html">Creature Editor</a> · <a href="route-editor.html">Route Editor</a>
+      </div>
+      <div class="hint-touch">
+        <b>A</b> confirm &nbsp;·&nbsp; <b>B</b> back / menu &nbsp;·&nbsp; <a href="battle-sim.html">Battle Simulator</a>
+      </div>
     </div>
   </div>
   <div id="touch-controls" hidden>
+    <button id="touch-mute" type="button" aria-label="Mute sound" aria-pressed="false">♪</button>
     <div id="touch-dpad">
       <button data-act="up" aria-label="Up">▲</button>
       <button data-act="left" aria-label="Left">◀</button>

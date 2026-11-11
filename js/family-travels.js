@@ -795,7 +795,7 @@ document.addEventListener('DOMContentLoaded', initMap);
 // Using 110m resolution for faster loading (was 50m)
 async function loadCountries() {
     try {
-        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson');
+        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/9380cca83db5f9aef52d5e762765100745f84b27/geojson/ne_110m_admin_0_countries.geojson');
         const geojson = await response.json();
         landGeoJSON = geojson;
 

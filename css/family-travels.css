@@ -288,6 +288,12 @@
     border-color: var(--primary-color);
 }
 
+/* Keyboard focus: a ring as well as the border colour */
+.location-search input:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .search-results {
     position: absolute;
     top: 100%;
@@ -319,6 +325,11 @@
 .search-result-item:focus {
     background-color: rgba(76, 175, 80, 0.2);
     outline: none;
+}
+
+.search-result-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
 }
 
 .search-result-item:last-child {

@@ -3,7 +3,8 @@
 // Everything is synthesized (square/triangle oscillators + noise bursts) in the
 // GB/GBA spirit. The AudioContext can only start after a user gesture, so
 // init() is wired to the first keydown/pointerdown; until then all calls are
-// no-ops. Mute (M key) persists in localStorage.
+// no-ops. Mute (M key, or the on-screen button in touch mode) persists in
+// localStorage. Sound pauses while the tab is hidden.
 
 const MUTE_KEY = 'jg_creature_game_muted';
 
@@ -71,6 +72,11 @@ export function initAudio() {
     state.musicGain.connect(state.ctx.destination);
     state.sfxGain.connect(state.ctx.destination);
     applyMute();
+    // A hidden tab keeps its audio clock running while timers are throttled,
+    // so music would stutter on in the background. Suspend the whole context
+    // instead and pick up where it left off. Mute is untouched: it lives in
+    // the gains, so a muted game stays silent after the resume.
+    document.addEventListener('visibilitychange', () => setAudioSuspended(document.hidden));
     if (state.pendingTrack) {
       const t = state.pendingTrack;
       state.pendingTrack = null;
@@ -94,6 +100,15 @@ export function toggleMute() {
 
 export function isMuted() {
   return state.muted;
+}
+
+// Pause or resume all sound output (tab hidden / visible again).
+export function setAudioSuspended(suspended) {
+  if (!state.ctx) return;
+  try {
+    const p = suspended ? state.ctx.suspend() : state.ctx.resume();
+    if (p && p.catch) p.catch(() => { /* context closed or blocked — stay silent */ });
+  } catch { /* ignore */ }
 }
 
 function spawnNote(freq, when, dur, type, dest, vol = 1) {

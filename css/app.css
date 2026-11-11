@@ -1280,8 +1280,23 @@
 .app-page #screen-dashboard #strava-filters .filter-pills::-webkit-scrollbar { display: none; }
 .app-page #screen-dashboard #strava-filters .filter-pill { white-space: nowrap; }
 
+/* Retry inside the Home header line when the first load fails (js/app.js). */
+.app-page .home-status-retry {
+    min-height: 32px;
+    margin-left: 4px;
+    padding: 4px 14px;
+    border: none;
+    border-radius: 999px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 /* ── User mode (/app/?user=1, js/user-mode.js) ─────────────────────────────
-   Hides the owner-only parts (Travel, StatsHunters) and adds the account row. */
+   Hides the owner-only parts (Travel, StatsHunters, and the Colorado-only
+   City / Pass / Trail Hunters) and adds the account row. */
 .user-mode [data-user-hide] { display: none !important; }
 .user-mode .app-tabbar { grid-template-columns: repeat(4, 1fr); }
 .user-account { margin-top: 8px; padding-bottom: 8px; }
