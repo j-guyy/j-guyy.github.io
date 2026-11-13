@@ -29,10 +29,10 @@
     color: #4CAF50;
 }
 
-/* Grey, not red (as on the US map): climbed vs not must not rest on telling
-   red from green. The legend in js/leaflet.js uses the same colour. */
+/* Red, so what's still to climb stands out (as on the US map). The legend
+   in js/leaflet.js uses the same colour. */
 .peak-marker.not-climbed {
-    color: #6b6b6b;
+    color: #f44336;
 }
 
 .info.legend {

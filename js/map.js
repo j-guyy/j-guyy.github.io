@@ -344,13 +344,13 @@ function createLegend() {
 
     const legendData = [
         { shape: "circle", color: "#4CAF50", label: "Metro - Visited", category: "Metro" },
-        { shape: "circle", color: "#6b6b6b", label: "Metro - Not Visited", category: "Metro" },
+        { shape: "circle", color: "#f44336", label: "Metro - Not Visited", category: "Metro" },
         { shape: "triangle", color: "#4CAF50", label: "High Point - Summited", category: "High Point" },
-        { shape: "triangle", color: "#6b6b6b", label: "High Point - Not Summited", category: "High Point" },
+        { shape: "triangle", color: "#f44336", label: "High Point - Not Summited", category: "High Point" },
         { shape: "star", color: "#4CAF50", label: "Capital - Visited", category: "Capital" },
-        { shape: "star", color: "#6b6b6b", label: "Capital - Not Visited", category: "Capital" },
+        { shape: "star", color: "#f44336", label: "Capital - Not Visited", category: "Capital" },
         { shape: "square", color: "#4CAF50", label: "National Park - Visited", category: "National Park" },
-        { shape: "square", color: "#6b6b6b", label: "National Park - Not Visited", category: "National Park" }
+        { shape: "square", color: "#f44336", label: "National Park - Not Visited", category: "National Park" }
     ];
 
     const legendItems = legend.selectAll(".legend-item")
