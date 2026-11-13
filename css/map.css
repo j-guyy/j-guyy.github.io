@@ -80,9 +80,9 @@
     cursor: pointer;
 }
 
-/* Grey, not red: visited vs not must not rest on telling red from green. */
+/* Red, so what's still to visit stands out. */
 .not-visited {
-    fill: #6b6b6b;
+    fill: #f44336;
 }
 
 .city-dot.top-100 {
