@@ -8,6 +8,12 @@
 // villages, ~2.5 MB gzipped) only once the map is zoomed in far enough for
 // them to be visible, or when the search box is used.
 //
+// The Cities | Metro areas switch swaps in data/population/metros.txt (GHSL
+// Functional Urban Areas: 9,031 metro areas = urban centre + commuting zone,
+// `name|countryIdx|altName|lat|lng|pop|urbanCentrePop`), loaded on first use.
+// Each view is its own store (CITY / METRO); `P` points at the one shown, so
+// drawing, hit-testing, search and the In View panel all follow the switch.
+//
 // Rendering: one canvas overlay (BubbleLayer, same pattern as the World Travel
 // Map's CanvasOverlay) redrawn at each moveend and scaled by Leaflet's zoom
 // animation in between. Points are stored pre-projected (Web Mercator 0..1)
@@ -20,6 +26,8 @@
 
 (function () {
     const TIERS = ['data/population/tier-0.txt', 'data/population/tier-1.txt', 'data/population/tier-2.txt'];
+    const METROS = 'data/population/metros.txt';
+    const MODE_KEY = 'population_map_mode';
     const TIER2_ZOOM = 4.4;          // below this every tier-2 place (<10k) is < ~1 px
     const R_K = 0.004;               // 1M people → 4 px at zoom 2
     const R_GROWTH = 0.55;           // bubble growth per zoom level (log2)
@@ -34,16 +42,23 @@
     const LOG_LO = 2.7, LOG_HI = 7.4;  // log10 of 500 and ~25M
 
     // ── Place store ─────────────────────────────────────────────────────────
-    const P = {
-        n: 0,
-        name: [], country: new Uint16Array(CAP), region: new Uint16Array(CAP),
-        lat: new Float32Array(CAP), lng: new Float32Array(CAP),
-        mx: new Float64Array(CAP), my: new Float64Array(CAP),
-        pop: new Uint32Array(CAP), bucket: new Uint8Array(CAP),
-        keys: [],  // normalised names for search, filled lazily
-    };
+    function makeStore(kind, cap) {
+        return {
+            kind, n: 0,
+            name: [], alt: [], country: new Uint16Array(cap), region: new Uint16Array(cap),
+            lat: new Float32Array(cap), lng: new Float32Array(cap),
+            mx: new Float64Array(cap), my: new Float64Array(cap),
+            pop: new Uint32Array(cap), core: new Uint32Array(kind === 'metros' ? cap : 0),
+            bucket: new Uint8Array(cap),
+            keys: [],  // normalised names for search, filled lazily
+        };
+    }
+    const CITY = makeStore('cities', CAP);
+    const METRO = makeStore('metros', 10000);
+    let P = CITY;
     let tables = { countries: [], regions: [] };
     const tierState = [null, null, null];   // null | 'loading' | 'done'
+    let metroState = null;
 
     let map, layer, highlight, mapIsDark = true;
     let pinned = -1;   // place whose tip is pinned by a tap / search pick
@@ -67,28 +82,57 @@
     }
 
     function placeLabel(i) {
-        const region = tables.regions[P.region[i]];
         const country = tables.countries[P.country[i]];
-        return [region, country].filter(Boolean).join(', ');
+        if (P.kind === 'metros') return P.alt[i] ? `${country} · incl. ${P.alt[i]}` : country;
+        return [tables.regions[P.region[i]], country].filter(Boolean).join(', ');
     }
 
-    function addTier(text) {
-        const lines = text.split('\n');
-        for (const line of lines) {
+    const noun = (n) => P.kind === 'metros' ? (n === 1 ? 'metro area' : 'metro areas') : (n === 1 ? 'place' : 'places');
+
+    function addRows(S, text) {
+        const metro = S.kind === 'metros';
+        for (const line of text.split('\n')) {
             if (!line) continue;
             const f = line.split('|');
-            const i = P.n++;
+            const i = S.n++;
             const lat = +f[3], lng = +f[4], pop = +f[5];
-            P.name[i] = f[0];
-            P.country[i] = +f[1];
-            P.region[i] = +f[2];
-            P.lat[i] = lat; P.lng[i] = lng;
-            P.pop[i] = pop;
-            P.bucket[i] = bucketOf(pop);
-            P.mx[i] = (lng + 180) / 360;
+            S.name[i] = f[0];
+            S.country[i] = +f[1];
+            if (metro) { S.alt[i] = f[2]; S.core[i] = +f[6]; }
+            else S.region[i] = +f[2];
+            S.lat[i] = lat; S.lng[i] = lng;
+            S.pop[i] = pop;
+            S.bucket[i] = bucketOf(pop);
+            S.mx[i] = (lng + 180) / 360;
             const c = Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180;
-            P.my[i] = (1 - Math.log(Math.tan(c) + 1 / Math.cos(c)) / Math.PI) / 2;
+            S.my[i] = (1 - Math.log(Math.tan(c) + 1 / Math.cos(c)) / Math.PI) / 2;
         }
+    }
+
+    function fetchText(url) {
+        return fetch(url).then(r => {
+            if (!r.ok) throw new Error(r.status);
+            return r.text();
+        });
+    }
+
+    let tablesLoaded = null;
+    function loadTables() {
+        return tablesLoaded ||= fetch('data/population/places.json').then(r => r.json()).then(t => { tables = t; });
+    }
+
+    function loadMetros() {
+        if (metroState) return Promise.resolve();
+        metroState = 'loading';
+        updateStatus();
+        return Promise.all([loadTables(), fetchText(METROS)]).then(([, text]) => {
+            addRows(METRO, text);
+            metroState = 'done';
+            layer && layer.redraw();
+        }).catch(err => {
+            metroState = null;
+            setStatus('Couldn\u2019t load metro areas (' + err.message + ') \u2014 try reloading.');
+        });
     }
 
     // Tiers must land in order (indices are population ranks), so each waits
@@ -98,14 +142,11 @@
         if (tierState[t]) return loadChain;
         tierState[t] = 'loading';
         updateStatus();
-        const fetched = fetch(TIERS[t]).then(r => {
-            if (!r.ok) throw new Error(r.status);
-            return r.text();
-        });
+        const fetched = fetchText(TIERS[t]);
         loadChain = loadChain.then(() => fetched).then(text => {
-            addTier(text);
+            addRows(CITY, text);
             tierState[t] = 'done';
-            layer && layer.redraw();
+            if (layer && P === CITY) layer.redraw();
             updateStatus();
         }).catch(err => {
             tierState[t] = null;
@@ -281,6 +322,11 @@
     function setStatus(text) { document.getElementById('pop-status').textContent = text; }
 
     function updateStatus() {
+        if (P === METRO) {
+            if (metroState !== 'done') return setStatus('Loading metro areas…');
+            const shown = layer && layer._hits ? layer._hits.idx.length : 0;
+            return setStatus(fmt.format(shown) + ' of ' + fmt.format(METRO.n) + ' metro areas drawn');
+        }
         if (!tierState[0] || tierState[0] === 'loading') return setStatus('Loading cities…');
         if (tierState[2] === 'loading') return setStatus('Loading towns and villages…');
         const shown = layer && layer._hits ? layer._hits.idx.length : 0;
@@ -293,14 +339,14 @@
 
     function onDrawn(drawn, zoom) {
         layer = drawn;
-        if (zoom >= TIER2_ZOOM && P.n) loadTier(2);
+        if (P === CITY && zoom >= TIER2_ZOOM && P.n) loadTier(2);
         const s = drawn._stats;
         if (s) {
             document.getElementById('stat-people').textContent = fmtCompact.format(s.people);
             document.getElementById('stat-places').textContent = fmt.format(s.places);
             renderTop(s.top);
         }
-        document.getElementById('stat-loaded').textContent = fmt.format(P.n);
+        document.getElementById('stat-loaded').textContent = P.n ? fmt.format(P.n) : '–';
         renderLegend(zoom);
         updateStatus();
         if (pinned >= 0) showTip(pinned, true);
@@ -310,7 +356,7 @@
         const ol = document.getElementById('pop-top');
         ol.innerHTML = '';
         if (!top.length) {
-            ol.innerHTML = '<li class="pop-top-empty">No places in view — try zooming out.</li>';
+            ol.innerHTML = `<li class="pop-top-empty">No ${noun(2)} in view — try zooming out.</li>`;
             return;
         }
         const max = P.pop[top[0]];
@@ -370,7 +416,8 @@
         if (pt.x < 0 || pt.y < 0 || pt.x > size.x || pt.y > size.y) { hideTip(); return; }
         el.innerHTML = '<div class="pop-tip-name"></div><div class="pop-tip-where"></div>' +
             `<div class="pop-tip-pop">${fmt.format(P.pop[i])} <span>people</span></div>` +
-            `<div class="pop-tip-rank">#${fmt.format(i + 1)} of ${fmt.format(P.n)} places loaded</div>`;
+            (P.kind === 'metros' && P.core[i] ? `<div class="pop-tip-rank">${fmt.format(P.core[i])} in the urban core</div>` : '') +
+            `<div class="pop-tip-rank">#${fmt.format(i + 1)} of ${fmt.format(P.n)} ${noun(2)}${P.kind === 'metros' ? ' · 2015' : ' loaded'}</div>`;
         el.querySelector('.pop-tip-name').textContent = P.name[i];
         el.querySelector('.pop-tip-where').textContent = placeLabel(i);
         el.hidden = false;
@@ -396,7 +443,8 @@
     function goTo(i) {
         pinned = i;
         const p = P.pop[i];
-        const zoom = p >= 2e6 ? 8 : p >= 2e5 ? 10 : p >= 2e4 ? 11 : 12;
+        const zoom = P.kind === 'metros' ? (p >= 5e6 ? 7 : p >= 5e5 ? 8 : 9)
+            : p >= 2e6 ? 8 : p >= 2e5 ? 10 : p >= 2e4 ? 11 : 12;
         hideTip();
         map.flyTo([P.lat[i], P.lng[i]], Math.max(zoom, Math.min(map.getZoom(), 13)), { duration: 1.4 });
         document.getElementById('pop-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -433,7 +481,7 @@
         const search = () => {
             const q = normalise(input.value.trim());
             if (q.length < 2) { results = []; render(); return; }
-            for (let i = P.keys.length; i < P.n; i++) P.keys[i] = normalise(P.name[i]);
+            for (let i = P.keys.length; i < P.n; i++) P.keys[i] = normalise(P.alt[i] ? P.name[i] + ' ' + P.alt[i] : P.name[i]);
             const starts = [], words = [];
             const sq = ' ' + q;
             for (let i = 0; i < P.n && starts.length < 8; i++) {
@@ -446,7 +494,8 @@
             render();
         };
 
-        input.addEventListener('focus', () => loadTier(2).then(() => { if (input.value) search(); }));
+        input.addEventListener('focus', () => (P === CITY ? loadTier(2) : loadMetros()).then(() => { if (input.value) search(); }));
+        document.addEventListener('pop-mode', () => { input.value = ''; results = []; render(); });
         input.addEventListener('input', search);
         input.addEventListener('blur', close);
         input.addEventListener('keydown', e => {
@@ -457,8 +506,52 @@
         });
     }
 
+    // ── Cities | Metro areas ────────────────────────────────────────────────
+    // `#metros` in the URL (or the last choice, remembered per browser) opens
+    // on metro areas.
+    function initialMode() {
+        if (location.hash === '#metros') return 'metros';
+        if (location.hash === '#cities') return 'cities';
+        try { return localStorage.getItem(MODE_KEY) === 'metros' ? 'metros' : 'cities'; } catch (e) { return 'cities'; }
+    }
+
+    function applyModeText() {
+        const metro = P === METRO;
+        document.querySelectorAll('.pop-mode-btn').forEach(b => {
+            const on = b.dataset.mode === P.kind;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-pressed', String(on));
+        });
+        document.getElementById('pop-search').placeholder = metro ? 'Search a metro area…' : 'Search a city or town…';
+        document.getElementById('stat-places-label').textContent = metro ? 'metro areas in view' : 'places in view';
+        document.getElementById('stat-loaded-label').textContent = metro ? 'metro areas worldwide' : 'places loaded';
+        document.getElementById('stat-people-label').textContent = metro ? 'people in metro areas shown' : 'people in places shown';
+        document.getElementById('pop-top-title').textContent = metro ? 'Biggest metro areas in view' : 'Biggest places in view';
+        document.getElementById('pop-mode-note').hidden = !metro;
+    }
+
+    function setMode(mode) {
+        const next = mode === 'metros' ? METRO : CITY;
+        if (next === P) return;
+        P = next;
+        pinned = -1;
+        hideTip();
+        try { localStorage.setItem(MODE_KEY, P.kind); } catch (e) { /* private mode */ }
+        history.replaceState(null, '', '#' + P.kind);
+        applyModeText();
+        document.dispatchEvent(new Event('pop-mode'));
+        if (P === METRO) loadMetros();
+        layer.redraw();
+    }
+
+    function setupModeSwitch() {
+        document.querySelectorAll('.pop-mode-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+        applyModeText();
+    }
+
     // ── Init ────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
+        P = initialMode() === 'metros' ? METRO : CITY;
         map = L.map('pop-map', {
             center: [25, 15],
             zoom: 2.4,
@@ -515,9 +608,9 @@
         map.on('movestart zoomstart', () => { tip().hidden = true; if (map.hasLayer(highlight)) highlight.remove(); });
 
         setupSearch();
-        fetch('data/population/places.json')
-            .then(r => r.json())
-            .then(t => { tables = t; })
+        setupModeSwitch();
+        if (P === METRO) loadMetros();
+        loadTables()
             .then(() => loadTier(0))
             .then(() => loadTier(1))
             .catch(err => setStatus('Couldn’t load places (' + err.message + ') — try reloading.'));

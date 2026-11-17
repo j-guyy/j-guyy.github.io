@@ -8,12 +8,12 @@
     <link rel="icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/connect/icon-192.png">
     <title>World Population Map — Justin Guyette</title>
-    <meta name="description" content="Interactive bubble map of where the world lives: 187,000 cities, towns and villages sized by population. Zoom in to see the small towns appear.">
+    <meta name="description" content="Interactive bubble map of where the world lives: 187,000 cities, towns and villages, or 9,000 metro areas, sized by population. Zoom in to see the small towns appear.">
     <link rel="stylesheet" href="css/base.css?v=20261110d">
     <link rel="stylesheet" href="css/layout.css?v=20261110d">
     <link rel="stylesheet" href="css/responsive.css?v=20261110d">
     <link rel="stylesheet" href="css/map-controls.css">
-    <link rel="stylesheet" href="css/population-map.css?v=20261117">
+    <link rel="stylesheet" href="css/population-map.css?v=20261117b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous"/>
@@ -34,15 +34,20 @@
 
         <div class="section">
             <h2>Where the World Lives</h2>
-            <p class="description">Each bubble is one place, its area proportional to the people who live there. Zoomed out you see the megacities; zoom in and the towns and villages fill in around them. Hover or tap a bubble for its population, search for a place, or use the crosshair to see what's around you.</p>
+            <p class="description">Each bubble is one place, its area proportional to the people who live there. Zoomed out you see the megacities; zoom in and the towns and villages fill in around them. Switch to <strong>Metro areas</strong> to see each city together with the suburbs and commuter towns around it. Hover or tap a bubble for its population, search for a place, or use the crosshair to see what's around you.</p>
 
             <div class="pop-controls">
+                <div class="pop-mode" role="group" aria-label="Show">
+                    <button type="button" class="pop-mode-btn active" data-mode="cities" aria-pressed="true">Cities</button>
+                    <button type="button" class="pop-mode-btn" data-mode="metros" aria-pressed="false">Metro areas</button>
+                </div>
                 <div class="pop-search-wrap">
                     <input type="search" id="pop-search" class="pop-search" placeholder="Search a city or town…" autocomplete="off" aria-label="Search places" aria-controls="pop-results" aria-expanded="false" role="combobox">
                     <ul id="pop-results" class="pop-results" role="listbox" hidden></ul>
                 </div>
                 <span id="pop-status" class="pop-status" aria-live="polite">Loading cities…</span>
             </div>
+            <p id="pop-mode-note" class="pop-mode-note" hidden>Metro areas are the EU Joint Research Centre's <a href="https://human-settlement.emergency.copernicus.eu/ghs_fua.php" target="_blank" rel="noopener">functional urban areas</a>: a city plus the commuting zone around it, drawn the same way in every country (2015 populations). They're often a little different from official definitions like US metropolitan statistical areas (MSAs).</p>
 
             <div class="pop-map-wrap">
                 <div id="pop-map" class="pop-map"></div>
@@ -57,13 +62,13 @@
         <div class="section">
             <h2>In View</h2>
             <div class="pop-stats">
-                <div class="pop-stat"><span class="pop-stat-value" id="stat-people">–</span><span class="pop-stat-label">people in places shown</span></div>
-                <div class="pop-stat"><span class="pop-stat-value" id="stat-places">–</span><span class="pop-stat-label">places in view</span></div>
-                <div class="pop-stat"><span class="pop-stat-value" id="stat-loaded">–</span><span class="pop-stat-label">places loaded</span></div>
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-people">–</span><span class="pop-stat-label" id="stat-people-label">people in places shown</span></div>
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-places">–</span><span class="pop-stat-label" id="stat-places-label">places in view</span></div>
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-loaded">–</span><span class="pop-stat-label" id="stat-loaded-label">places loaded</span></div>
             </div>
-            <h3 class="pop-subhead">Biggest places in view</h3>
+            <h3 class="pop-subhead" id="pop-top-title">Biggest places in view</h3>
             <ol id="pop-top" class="pop-top"></ol>
-            <p class="description pop-credit">Populations from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) — city-proper figures, so a metro area like Tokyo shows as its core city plus the separate cities around it. Neighbourhood entries are left out so districts don't double-count their city.</p>
+            <p class="description pop-credit">Populations from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) — city-proper figures, so a metro area like Tokyo shows as its core city plus the separate cities around it. Neighbourhood entries are left out so districts don't double-count their city. Metro areas from the <a href="https://human-settlement.emergency.copernicus.eu/ghs_fua.php" target="_blank" rel="noopener">GHSL Functional Urban Areas</a> (European Commission JRC, CC BY 4.0).</p>
         </div>
     </div>
 
@@ -73,7 +78,7 @@
     <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
     <script src="js/map-controls.js?v=20261025"></script>
-    <script src="js/population-map.js?v=20261117"></script>
+    <script src="js/population-map.js?v=20261117b"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 
