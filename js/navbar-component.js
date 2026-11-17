@@ -45,6 +45,7 @@ class NavbarComponent extends HTMLElement {
                                 <a href="${basePath}colorado-ranges.html">CO Ranges</a>
                                 <a href="${basePath}us-ecoregions.html">Ecoregions</a>
                                 <a href="${basePath}highways.html">Highways</a>
+                                <a href="${basePath}population-map.html">Population Map</a>
                                 <!-- <a href="${basePath}prehistoric-timeline.html">Prehistoric Timeline</a> -->
                             </div>
                         </li>

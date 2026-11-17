@@ -24,3 +24,4 @@ __pycache__/
 .claude/settings.local.json
 scripts/.osrm-cache/
 scripts/snap-highways-report.json
+.geonames-cache/

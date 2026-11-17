@@ -1,0 +1,270 @@
+/* World Population Map (population-map.html, js/population-map.js) */
+
+.pop-page {
+    --pop-amber: #f3aa3c;
+}
+
+.pop-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.pop-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 380px;
+}
+
+.pop-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.pop-search::placeholder { color: var(--text-dim); }
+
+.pop-search:focus {
+    outline: none;
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pop-results {
+    position: absolute;
+    z-index: 1100;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--surface-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    text-align: left;
+}
+
+.pop-results[hidden] { display: none; }
+
+.pop-result {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.pop-result.active,
+.pop-result:hover { background: var(--surface-2-hover); }
+
+.pop-result-name { color: var(--text); font-weight: 600; }
+.pop-result-where { grid-row: 2; color: var(--text-dim); font-size: var(--text-xs); }
+.pop-result-pop {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.pop-status {
+    margin-left: auto;
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────── */
+
+.pop-map-wrap {
+    position: relative;
+}
+
+.pop-map {
+    width: 100%;
+    height: 78vh;
+    min-height: 420px;
+    max-height: 860px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+}
+
+/* Beats leaflet.css's #ddd so the map stays dark while tiles load. */
+.pop-page .pop-map.leaflet-container { background: #0e0e0e; }
+
+.pop-canvas {
+    position: absolute;
+    pointer-events: none;
+}
+
+.pop-tip {
+    position: absolute;
+    z-index: 1000;
+    min-width: 150px;
+    max-width: 260px;
+    padding: 9px 12px;
+    background: rgba(14, 16, 15, 0.94);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    pointer-events: none;
+    text-align: left;
+    color: var(--text);
+}
+
+.pop-tip[hidden] { display: none; }
+.pop-tip-name { font-weight: 700; font-size: 1rem; }
+.pop-tip-where { color: var(--text-dim); font-size: var(--text-xs); margin-top: 1px; }
+.pop-tip-pop { margin-top: 6px; font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pop-tip-pop span { font-size: var(--text-xs); font-weight: 400; color: var(--text-dim); }
+.pop-tip-rank { font-size: var(--text-xs); color: var(--text-dim); margin-top: 2px; }
+
+.pop-legend {
+    position: absolute;
+    z-index: 800;
+    left: 10px;
+    bottom: 24px;
+    padding: 8px 10px 6px;
+    background: rgba(14, 16, 15, 0.82);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    text-align: left;
+}
+
+.pop-legend-title {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    margin-bottom: 4px;
+}
+
+.pop-legend-svg { display: block; overflow: visible; }
+.pop-legend-tick { stroke: rgba(238, 242, 239, 0.4); stroke-width: 1; stroke-dasharray: 2 2; }
+.pop-legend-label { fill: var(--text); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+
+/* ── In view ─────────────────────────────────────────────────────────── */
+
+.pop-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.pop-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.pop-stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.pop-stat-label { font-size: var(--text-xs); color: var(--text-dim); }
+
+.pop-subhead {
+    text-align: left;
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.pop-top {
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    counter-reset: pop;
+}
+
+.pop-top li { counter-increment: pop; }
+
+.pop-top-item {
+    display: grid;
+    grid-template-columns: 2em minmax(0, 1.2fr) minmax(60px, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0 12px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.pop-top-item::before {
+    content: counter(pop);
+    grid-row: 1 / span 2;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.pop-top-item:hover { background: var(--surface-2-hover); }
+.pop-top-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pop-top-where { grid-column: 2; grid-row: 2; color: var(--text-dim); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pop-top-bar {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.pop-top-bar span {
+    display: block;
+    height: 100%;
+    background: var(--pop-amber);
+    border-radius: 3px;
+}
+
+.pop-top-pop {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-sm);
+}
+
+.pop-top-empty { color: var(--text-dim); padding: 8px 10px; text-align: left; }
+
+.pop-credit { font-size: var(--text-xs); }
+
+@media (max-width: 600px) {
+    .pop-map { height: 68vh; min-height: 360px; }
+    .pop-status { margin-left: 0; width: 100%; }
+    .pop-stats { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .pop-stat { padding: 10px 8px; }
+    .pop-stat-value { font-size: 1.2rem; }
+    .pop-top-item { grid-template-columns: 1.6em minmax(0, 1fr) auto; }
+    .pop-top-bar { display: none; }
+    .pop-top-pop { grid-column: 3; }
+    .pop-legend { bottom: 20px; left: 8px; }
+}
