@@ -9,6 +9,18 @@ One file per country so a region map only downloads the boundaries it draws.
 Source: Natural Earth 10m admin-1 states/provinces (public domain).
     https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson
 
+Natural Earth's borders can be a kilometre or more out, which puts routes near
+a border in the wrong region (downtown El Paso landed in Chihuahua, the
+Iztaccíhuatl trailhead in Puebla instead of the State of Mexico). Countries with
+a `geometry` key below take their outlines from geoBoundaries ADM1 instead
+(https://www.geoboundaries.org, built from government sources): each region
+keeps Natural Earth's id, names and aliases and takes the outline of the
+geoBoundaries region that overlaps it most (geoBoundaries' own names and ISO
+codes are too inconsistent to match on — it files Mexico City as MX-MEX).
+geoBoundaries' US states run out into the Great Lakes, so each outline is cut
+back to Natural Earth's land, padded by LAND_PAD so a border Natural Earth has
+in the wrong place (the Rio Grande at El Paso) doesn't clip it.
+
 Natural Earth splits Italy and Spain into provinces, not the regions /
 autonomous communities that Nominatim reports as `address.state`, so those two
 are dissolved up a level using Natural Earth's own `region` field. So are
@@ -38,9 +50,13 @@ import urllib.request
 
 from shapely.geometry import MultiPolygon, Point, Polygon, shape, mapping
 from shapely.ops import unary_union
+from shapely import STRtree, set_precision
 
 NE_URL = ('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/'
           'master/geojson/ne_10m_admin_1_states_provinces.geojson')
+
+GB_URL = ('https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/'
+          'releaseData/gbOpen/{0}/ADM1/geoBoundaries-{0}-ADM1.geojson')
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'admin1')
 
@@ -63,6 +79,10 @@ TOLERANCE = 0.01
 # artefacts that are invisible at country zoom but cost a lot of vertices.
 MIN_PART_AREA = 0.0004
 
+# How far (degrees, ~2 km) past Natural Earth's land a geoBoundaries outline
+# may reach before it's cut back (see the top).
+LAND_PAD = 0.02
+
 # country config id → how to pull its regions out of Natural Earth.
 #   admin     Natural Earth `admin` value
 #   group_by  property whose value identifies one output region
@@ -77,11 +97,12 @@ MIN_PART_AREA = 0.0004
 #             mapped to (region name, id). Natural Earth files Hong Kong and
 #             Macau as their own countries, split into districts, but Nominatim
 #             reports them as regions of China (ISO 3166-2 CN-HK / CN-MO)
+#   geometry  geoBoundaries ISO3 code to take the outlines from (see the top)
 COUNTRIES = [
-    {'id': 'us',        'admin': 'United States of America', 'group_by': 'name',       'id_from': 'iso_3166_2'},
+    {'id': 'us',        'admin': 'United States of America', 'group_by': 'name',       'id_from': 'iso_3166_2', 'geometry': 'USA'},
     {'id': 'canada',    'admin': 'Canada',                   'group_by': 'name_en',    'id_from': 'iso_3166_2'},
     {'id': 'australia', 'admin': 'Australia',                'group_by': 'iso_3166_2', 'id_from': 'iso_3166_2'},
-    {'id': 'mexico',    'admin': 'Mexico',                   'group_by': 'name_en',    'id_from': 'iso_3166_2'},
+    {'id': 'mexico',    'admin': 'Mexico',                   'group_by': 'name_en',    'id_from': 'iso_3166_2', 'geometry': 'MEX'},
     {'id': 'china',     'admin': 'China',                    'group_by': 'name_en',    'id_from': 'iso_3166_2',
      'fold_in': {'Hong Kong S.A.R.': ('Hong Kong', 'CN-HK'), 'Macau S.A.R': ('Macau', 'CN-MO')}},
     {'id': 'spain',     'admin': 'Spain',                    'group_by': 'region',     'id_from': None,         'dissolve': True},
@@ -297,6 +318,36 @@ def snap_to_ring(geom, ring, vertices):
     return polys[0] if len(polys) == 1 else MultiPolygon(polys)
 
 
+def load_geoboundaries(iso3):
+    """geoBoundaries ADM1 polygons for one country, downloaded once."""
+    path = os.path.join(tempfile.gettempdir(), f'geoBoundaries-{iso3}-ADM1.geojson')
+    if not os.path.exists(path):
+        print(f'Downloading {GB_URL.format(iso3)} …')
+        urllib.request.urlretrieve(GB_URL.format(iso3), path)
+    with open(path) as fh:
+        return [shape(f['geometry']).buffer(0) for f in json.load(fh)['features']]
+
+
+def swap_geometry(cfg, regions, land):
+    """Replaces each Natural Earth region outline (id → geometry) with the
+    geoBoundaries one that overlaps it most, cut back to `land` (an STRtree of
+    every Natural Earth region); fails loudly when that isn't a clean
+    one-to-one match, rather than writing a region into the wrong place."""
+    gb = load_geoboundaries(cfg['geometry'])
+    out, taken = {}, {}
+    for rid, geom in regions.items():
+        overlaps = [g.intersection(geom).area for g in gb]
+        i = max(range(len(gb)), key=overlaps.__getitem__)
+        if overlaps[i] < 0.8 * min(geom.area, gb[i].area):
+            raise SystemExit(f"{cfg['id']}: {rid} has no clear geoBoundaries match")
+        if i in taken:
+            raise SystemExit(f"{cfg['id']}: {rid} and {taken[i]} match the same geoBoundaries region")
+        taken[i] = rid
+        near = unary_union(list(land.geometries.take(land.query(gb[i]))))
+        out[rid] = gb[i].intersection(near.buffer(LAND_PAD))
+    return out
+
+
 def round_coords(obj, nd=4):
     """~11 m precision — plenty for country-scale maps, and halves the file."""
     if isinstance(obj, (list, tuple)):
@@ -316,6 +367,8 @@ def main():
 
     with open(src) as fh:
         ne = json.load(fh)
+
+    land = STRtree([shape(f['geometry']).buffer(0) for f in ne['features']])
 
     with open(ENCLAVES, encoding='utf-8') as fh:
         enclaves = json.load(fh)
@@ -341,6 +394,13 @@ def main():
                 print(f"  ! {cfg['id']}: feature with no {cfg['group_by']} — skipped")
                 continue
             groups.setdefault(key, []).append((shape(f['geometry']), p))
+
+        swapped = None
+        if cfg.get('geometry'):
+            ids = {key: folded_ids.get(key) or max(parts, key=lambda t: t[0].area)[1].get(cfg['id_from']) or key
+                   for key, parts in groups.items()}
+            swapped = swap_geometry(cfg, {ids[k]: unary_union([g for g, _ in parts]).buffer(0) for k, parts in groups.items()}, land)
+            swapped = {k: swapped[ids[k]] for k in groups}
 
         for key, parts in sorted(groups.items()):
             # The mainland/largest part names the region — for a grouped state
@@ -373,12 +433,18 @@ def main():
             out_features.append({
                 'type': 'Feature',
                 'properties': {'id': rid, 'country': cfg['id'], 'name': name, 'aliases': aliases},
-                'geometry': clean_geometry(unary_union([g for g, _ in parts])),
+                'geometry': clean_geometry(swapped[key] if swapped else unary_union([g for g, _ in parts])),
             })
 
         geoms = cut_enclaves(cfg['admin'], [f['geometry'] for f in out_features], enclaves)
         for f, geom in zip(out_features, geoms):
-            f['geometry'] = {'type': geom.geom_type, 'coordinates': round_coords(mapping(geom)['coordinates'])}
+            coords = round_coords(mapping(geom)['coordinates'])
+            if not shape({'type': geom.geom_type, 'coordinates': coords}).is_valid:
+                # Rounding folded a ring over itself — snap to the same grid
+                # in a way that keeps the polygon valid.
+                geom = set_precision(geom, 10 ** -4)
+                coords = round_coords(mapping(geom)['coordinates'])
+            f['geometry'] = {'type': geom.geom_type, 'coordinates': coords}
 
         # Guard against a source change silently merging two regions into one.
         seen = {}
