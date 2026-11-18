@@ -1138,3 +1138,271 @@ a.summary-stat-link:focus-visible {
         opacity: 0.7;
     }
 }
+
+/* ── World Countries table: Strava column + its pop-up (js/world-dashboard.js) ── */
+.strava-count {
+    min-width: 2.6em;
+    padding: 3px 9px;
+    border: 1px solid rgba(252, 82, 0, 0.55);
+    border-radius: 999px;
+    background: rgba(252, 82, 0, 0.14);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.strava-count:hover,
+.strava-count:focus-visible {
+    background: rgba(252, 82, 0, 0.32);
+}
+.strava-count .count-short {
+    display: none;
+}
+.travel-table td.col-strava,
+.travel-table th.col-strava {
+    text-align: center;
+}
+
+.strava-dialog {
+    width: min(640px, calc(100vw - 32px));
+    max-height: min(86vh, 900px);
+    padding: 18px 20px 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: var(--surface-solid);
+    color: var(--text);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.strava-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+.strava-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.strava-dialog-head h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+.strava-dialog-head .flag {
+    width: 27px;
+    height: 18px;
+}
+.strava-dialog-close {
+    display: grid;
+    place-items: center;
+    padding: 0 0 2px;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.strava-dialog-close:hover {
+    background: var(--surface-2-hover);
+}
+.strava-dialog-totals {
+    margin: 4px 0 14px;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+}
+.strava-highlights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.strava-highlight {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+}
+.strava-highlight:hover {
+    background: var(--surface-2-hover);
+    border-color: var(--border-strong);
+}
+.strava-highlight-label {
+    color: #fc7a3a;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.strava-highlight-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.strava-highlight-meta,
+.strava-highlight-stats {
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+}
+.strava-highlight-stats {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.strava-dialog-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 18px 0 8px;
+}
+.strava-dialog-bar h4 {
+    margin: 0;
+    margin-right: auto;
+    font-size: 1rem;
+}
+.strava-sort {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+}
+.strava-sort .view-mode-btn {
+    padding: 5px 12px;
+    font-size: var(--text-xs);
+}
+.strava-sport-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    order: 3;
+    width: 100%;
+}
+.strava-sport-filter:empty {
+    display: none;
+}
+.strava-chip {
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-xs);
+    cursor: pointer;
+}
+.strava-chip.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--on-accent);
+}
+.strava-act-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.strava-act-list li + li {
+    border-top: 1px solid var(--border);
+}
+.strava-act {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    color: var(--text);
+    text-decoration: none;
+}
+.strava-act:hover {
+    background: var(--surface-2);
+}
+.strava-act-icon {
+    flex: none;
+    width: 1.5em;
+    text-align: center;
+}
+.strava-act-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+.strava-act-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.strava-act-date {
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+}
+.strava-act-stats {
+    flex: none;
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.strava-act-note {
+    padding: 12px 4px;
+    color: var(--text-dim);
+}
+.strava-more {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+/* A 360px phone: thinner bars and 2.7k, or the Countries row runs off screen. */
+@media (max-width: 400px) {
+    .travel-table--fit:has(.col-strava) .state-progress {
+        width: 40px;
+    }
+    .strava-count .count-long {
+        display: none;
+    }
+    .strava-count .count-short {
+        display: inline;
+    }
+}
+@media (max-width: 600px) {
+    .strava-dialog {
+        width: calc(100vw - 16px);
+        max-height: 90vh;
+        padding: 14px 14px 12px;
+    }
+    .strava-highlights {
+        grid-template-columns: 1fr;
+    }
+    /* Stats go under the name, so long titles keep their room. */
+    .strava-act {
+        display: grid;
+        grid-template-columns: 1.5em 1fr;
+        gap: 2px 10px;
+    }
+    .strava-act-stats {
+        grid-column: 2;
+        text-align: left;
+    }
+    .travel-table--fit th.col-strava,
+    .travel-table--fit td.col-strava {
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+    .travel-table--fit .strava-count {
+        min-width: 0;
+        padding: 2px 7px;
+    }
+}

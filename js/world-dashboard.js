@@ -38,6 +38,11 @@ let bucketListsFailed = false;
 // ready | error.
 let regionProgress = null;
 let regionsState = 'idle';
+// The Strava column (worker /activities/by-country): per countries.json name,
+// { count, sec, di, longest, latest, raw } (raw = the geocoded names merged
+// into it). stravaState: loading | ready | error.
+let stravaByCountry = null;
+let stravaState = 'loading';
 const isBucketList = type => BUCKET_LISTS.some(l => l.id === type);
 const isCountryTable = type => type === 'world' || Boolean(continentMap[type]);
 const currentTable = () => document.getElementById('table-selector').value;
@@ -85,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
     loadCountryHighpoints()
         .then(list => { countryHighpoints = list; rerender(); })
         .catch(err => console.error('Error loading the country high points:', err));
+    loadStravaByCountry();
     setupWorldViewSwitch(dataReady);
     dataReady.then(() => scheduleRegionProgress()).catch(() => { /* the load error is shown above */ });
 });
@@ -257,6 +263,200 @@ async function computeRegions() {
     refreshTable();
 }
 
+// ── Strava activities per country ────────────────────────────────────────────
+// How many Strava activities started in each country, from the worker, which
+// places activities by their start point (the geocode cache's Nominatim
+// names, mapped through GEO_COUNTRY_ALIASES). Tapping a count opens a pop-up
+// with the longest (by moving time, not distance, so a long day on foot
+// outranks a longer, faster ride), the latest, and every activity there.
+function loadStravaByCountry() {
+    fetch(`${TRAVEL_WORKER_URL}/activities/by-country`)
+        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(data => {
+            const byCountry = {};
+            Object.entries(data.countries || {}).forEach(([raw, v]) => {
+                const name = geoCountryName(raw);
+                const row = byCountry[name] || (byCountry[name] = { count: 0, sec: 0, di: 0, longest: null, latest: null, raw: [] });
+                row.raw.push(raw);
+                row.count += v.count || 0;
+                row.sec += v.sec || 0;
+                row.di += v.di || 0;
+                if (v.longest && (!row.longest || v.longest.m > row.longest.m)) row.longest = v.longest;
+                if (v.latest && (!row.latest || String(v.latest.d) > String(row.latest.d))) row.latest = v.latest;
+            });
+            stravaByCountry = byCountry;
+            stravaState = 'ready';
+        })
+        .catch(err => { console.warn('Strava activities unavailable:', err); stravaState = 'error'; })
+        .then(() => { if (worldData) refreshTable(); });
+}
+
+const geoCountryName = raw => GEO_COUNTRY_ALIASES[raw] || countryKey(raw);
+
+const SPORT_ICONS = [
+    [/Ride$/, '🚴'], [/Run$/, '🏃'], [/^(Hike|Walk|Snowshoe)$/, '🥾'], [/Ski|Snowboard/, '⛷️'],
+    [/Swim/, '🏊'], [/Kayak|Canoe|Row|Paddl|Sail|Surf/, '🛶'],
+];
+const sportIcon = t => (SPORT_ICONS.find(([re]) => re.test(t || '')) || [null, '💪'])[1];
+const sportLabel = t => String(t || 'Activity').replace(/([a-z])([A-Z])/g, '$1 $2').replace('E Bike', 'E-Bike');
+
+// 32h 36m, 2h 05m, 48m (2,782h past 100 hours)
+function formatDuration(sec) {
+    const mins = Math.round((sec || 0) / 60);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    if (h >= 100) return `${Math.round(sec / 3600).toLocaleString()}h`;
+    return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+}
+
+const formatMiles = m => {
+    const mi = (m || 0) / 1609.344;
+    return `${mi < 10 ? mi.toFixed(1) : Math.round(mi).toLocaleString()} mi`;
+};
+
+function formatActDate(d) {
+    const date = new Date(`${String(d || '').slice(0, 10)}T12:00:00`);
+    return isNaN(date) ? '' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+const stravaUrl = a => `https://www.strava.com/activities/${encodeURIComponent(a.i)}`;
+
+// The Strava cell: the activity count as a button that opens the pop-up.
+function stravaCell(r) {
+    const s = r.strava;
+    if (!s) {
+        const empty = stravaState === 'loading' ? '…' : '—';
+        const why = stravaState === 'error' ? 'Strava activities unavailable right now'
+            : stravaState === 'loading' ? 'Loading Strava activities…' : 'No Strava activities started here';
+        return `<span class="state-progress-none" title="${why}">${empty}</span>`;
+    }
+    const title = `${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'}, ${formatDuration(s.sec)} moving`
+        + (s.longest ? `\nLongest: ${s.longest.n || 'Activity'} (${formatDuration(s.longest.m)})` : '') + '\nTap for all of them';
+    // 2.7k on a narrow phone, so the row still fits.
+    const short = s.count >= 1000 ? `${(s.count / 1000).toFixed(1)}k` : String(s.count);
+    return `<button type="button" class="strava-count" title="${escapeAttr(title)}">`
+        + `<span class="count-long">${s.count.toLocaleString()}</span><span class="count-short">${short}</span></button>`;
+}
+
+// The pop-up: the country's totals, its longest and latest activities, then
+// every activity there (newest first, or sorted by moving time / distance),
+// fetched when it opens and shown a page at a time.
+const STRAVA_PAGE = 50;
+const STRAVA_SORTS = [
+    { id: 'newest', label: 'Newest', cmp: (a, b) => String(b.d).localeCompare(String(a.d)) },
+    { id: 'longest', label: 'Longest', cmp: (a, b) => (b.m || 0) - (a.m || 0) },
+    { id: 'distance', label: 'Farthest', cmp: (a, b) => (b.di || 0) - (a.di || 0) },
+];
+
+function activityStats(a) {
+    const stats = [formatDuration(a.m)];
+    if (a.di) stats.push(formatMiles(a.di));
+    if (a.e) stats.push(`${Math.round(a.e * 3.28084).toLocaleString()} ft`);
+    return stats.join(' · ');
+}
+
+function highlightCard(label, a) {
+    if (!a) return '';
+    return `<a class="strava-highlight" href="${stravaUrl(a)}" target="_blank" rel="noopener">
+        <span class="strava-highlight-label">${label}</span>
+        <span class="strava-highlight-name"><span aria-hidden="true">${sportIcon(a.t)}</span> ${escapeAttr(a.n || 'Activity')}</span>
+        <span class="strava-highlight-meta">${escapeAttr(sportLabel(a.t))} · ${formatActDate(a.d)}</span>
+        <span class="strava-highlight-stats">${activityStats(a)}</span>
+    </a>`;
+}
+
+function activityRow(a) {
+    return `<li><a class="strava-act" href="${stravaUrl(a)}" target="_blank" rel="noopener">
+        <span class="strava-act-icon" aria-hidden="true">${sportIcon(a.t)}</span>
+        <span class="strava-act-main"><span class="strava-act-name">${escapeAttr(a.n || 'Activity')}</span>
+            <span class="strava-act-date">${formatActDate(a.d)} · ${escapeAttr(sportLabel(a.t))}</span></span>
+        <span class="strava-act-stats">${activityStats(a)}</span>
+    </a></li>`;
+}
+
+function openStravaDialog(name) {
+    const s = stravaByCountry && stravaByCountry[name];
+    if (!s) return;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'strava-dialog';
+    dialog.setAttribute('aria-label', `Strava activities in ${name}`);
+    dialog.innerHTML = `
+        <div class="strava-dialog-head">
+            <h3>${withCountryFlag(name)}</h3>
+            <button type="button" class="strava-dialog-close" aria-label="Close">×</button>
+        </div>
+        <p class="strava-dialog-totals">${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'} · ${formatDuration(s.sec)} moving · ${formatMiles(s.di)}</p>
+        <div class="strava-highlights">${highlightCard('Longest', s.longest)}${highlightCard('Latest', s.latest)}</div>
+        <div class="strava-dialog-bar">
+            <h4>All activities</h4>
+            <div class="strava-sport-filter" role="group" aria-label="Sport"></div>
+            <div class="view-toggle strava-sort" role="group" aria-label="Sort">
+                ${STRAVA_SORTS.map((o, i) => `<button type="button" class="view-mode-btn${i ? '' : ' active'}" data-sort="${o.id}" aria-pressed="${!i}">${o.label}</button>`).join('')}
+            </div>
+        </div>
+        <ul class="strava-act-list"><li class="strava-act-note">Loading activities…</li></ul>
+        <button type="button" class="strava-more" hidden>Show more</button>`;
+    document.body.appendChild(dialog);
+
+    const list = dialog.querySelector('.strava-act-list');
+    const more = dialog.querySelector('.strava-more');
+    const sportBox = dialog.querySelector('.strava-sport-filter');
+    let activities = null, sort = STRAVA_SORTS[0], sport = null, shown = 0, rows = [];
+
+    const render = (append = false) => {
+        if (!activities) return;
+        if (!append) {
+            rows = activities.filter(a => !sport || sportIcon(a.t) === sport).sort(sort.cmp);
+            shown = 0;
+            list.innerHTML = rows.length ? '' : '<li class="strava-act-note">No activities</li>';
+        }
+        list.insertAdjacentHTML('beforeend', rows.slice(shown, shown + STRAVA_PAGE).map(activityRow).join(''));
+        shown = Math.min(rows.length, shown + STRAVA_PAGE);
+        more.hidden = shown >= rows.length;
+        more.textContent = `Show more (${(rows.length - shown).toLocaleString()} left)`;
+    };
+
+    dialog.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
+        sort = STRAVA_SORTS.find(o => o.id === btn.dataset.sort);
+        dialog.querySelectorAll('[data-sort]').forEach(b => {
+            b.classList.toggle('active', b === btn);
+            b.setAttribute('aria-pressed', String(b === btn));
+        });
+        render();
+    }));
+    more.addEventListener('click', () => render(true));
+    dialog.querySelector('.strava-dialog-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.showModal();
+
+    const qs = s.raw.map(c => `country=${encodeURIComponent(c)}`).join('&');
+    fetch(`${TRAVEL_WORKER_URL}/activities/by-country?${qs}`)
+        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(data => {
+            activities = data.activities || [];
+            // One chip per sport icon, when there's more than one kind.
+            const counts = new Map();
+            activities.forEach(a => { const k = sportIcon(a.t); counts.set(k, (counts.get(k) || 0) + 1); });
+            if (counts.size > 1) {
+                sportBox.innerHTML = [['', `All ${activities.length.toLocaleString()}`], ...[...counts].sort((a, b) => b[1] - a[1]).map(([k, n]) => [k, `${k} ${n.toLocaleString()}`])]
+                    .map(([k, label], i) => `<button type="button" class="strava-chip${i ? '' : ' active'}" data-sport="${k}" aria-pressed="${!i}">${label}</button>`).join('');
+                sportBox.querySelectorAll('[data-sport]').forEach(btn => btn.addEventListener('click', () => {
+                    sport = btn.dataset.sport || null;
+                    sportBox.querySelectorAll('[data-sport]').forEach(b => {
+                        b.classList.toggle('active', b === btn);
+                        b.setAttribute('aria-pressed', String(b === btn));
+                    });
+                    render();
+                }));
+            }
+            render();
+        })
+        .catch(err => {
+            console.warn('Country activities unavailable:', err);
+            list.innerHTML = '<li class="strava-act-note">Couldn\'t load the activities right now.</li>';
+        });
+}
+
 // Resolves once the capitals have loaded (or failed to).
 function worldCapitalsReady() {
     if (worldCapitals) return Promise.resolve(worldCapitals);
@@ -285,6 +485,24 @@ const COUNTRY_ALIASES = {
 };
 const countryKey = name => COUNTRY_ALIASES[name] || String(name || '').replace(/ \(Mainland\)$/, '');
 
+// Nominatim's country names (the geocode cache behind the Strava column) that
+// aren't countries.json names. Kept apart from COUNTRY_ALIASES so the bucket
+// lists' "Hong Kong" doesn't start counting for China.
+const GEO_COUNTRY_ALIASES = {
+    'United States': 'United States of America', 'Puerto Rico': 'United States of America',
+    'United States Virgin Islands': 'United States of America', Guam: 'United States of America',
+    'Hong Kong': 'China', Macau: 'China', Macao: 'China', Czechia: 'Czech Republic', 'Türkiye': 'Turkey',
+    'Viet Nam': 'Vietnam', 'Russian Federation': 'Russia', 'Republic of Korea': 'South Korea',
+    'Holy See': 'Vatican City', Vatican: 'Vatican City', 'Cabo Verde': 'Cape Verde',
+    'Democratic Republic of the Congo': 'DR Congo', "Côte d'Ivoire": 'Ivory Coast', 'The Bahamas': 'Bahamas',
+    Greenland: 'Denmark', 'Faroe Islands': 'Denmark', Aruba: 'Netherlands', 'Curaçao': 'Netherlands',
+    'Sint Maarten': 'Netherlands', 'Caribbean Netherlands': 'Netherlands',
+    Gibraltar: 'United Kingdom', 'Isle of Man': 'United Kingdom', Jersey: 'United Kingdom', Guernsey: 'United Kingdom',
+    Bermuda: 'United Kingdom', 'Cayman Islands': 'United Kingdom', 'French Polynesia': 'France',
+    'New Caledonia': 'France', Martinique: 'France', Guadeloupe: 'France', 'Réunion': 'France', 'French Guiana': 'France',
+    'Christmas Island': 'Australia', 'Norfolk Island': 'Australia', 'Cook Islands': 'New Zealand',
+};
+
 // A list item's name, with the territory it's in when that isn't the country
 // itself (El Yunque counts for the US, from Puerto Rico).
 const TERRITORIES = new Set(['Puerto Rico', 'Aruba', 'Christmas Island', 'Norfolk Island']);
@@ -302,6 +520,7 @@ function buildCountryRows(tableType) {
         capital: null, capVisited: false, highpoints: [], hpDone: 0,
         citiesVisited: 0, citiesTotal: 0, cities: [], wondersVisited: 0, wondersTotal: 0, wonders: [], wonderNames: [],
         regions: null, regionPct: null,
+        strava: (stravaByCountry && stravaByCountry[country.name]) || null,
     }));
     const rowFor = name => rows.get(countryKey(name));
     if (worldCapitals) worldCapitals.capitals.forEach(c => {
@@ -338,6 +557,7 @@ function buildCountryRows(tableType) {
         r.total = total;
         r.progress = Math.round((done / total) * 100);
         r.hpSort = r.highpoints.length ? r.hpDone / r.highpoints.length : -1;
+        r.stravaCount = r.strava ? r.strava.count : null;
         const reg = regionProgress && regionProgress.byCountry[r.name];
         if (reg) {
             r.regions = reg;
@@ -441,17 +661,27 @@ function setupCsvExport() {
         const rows = sortTableData(buildCountryRows(type), col, dir);
         const headers = ['Country', 'Continent', 'Core %', 'Core Done', 'Core Total', 'Regions Reached', 'Regions Total',
             'Capital', 'Capital Status', 'Forbes Cities Visited', 'Forbes Cities Total', 'Wonders Visited', 'Wonders Total',
-            'High Point', 'High Point Status', 'Population', 'Status'];
+            'High Point', 'High Point Status', 'Strava Activities', 'Strava Hours', 'Strava Miles',
+            'Longest Activity', 'Longest Sport', 'Longest Date', 'Longest Moving Time (h)', 'Longest Link', 'Population', 'Status'];
         downloadCsv(headers, rows.map(r => [
             r.name, CONTINENT_LABELS[r.continent], r.progress, r.done, r.total,
             r.regions ? r.regions.done : '', r.regions ? r.regions.total : '',
             r.capital ? r.capital.name : '', r.capital ? (r.capVisited ? 'Visited' : 'Not Visited') : '',
             r.citiesVisited, r.citiesTotal, r.wondersVisited, r.wondersTotal,
             r.highpoints.map(p => p.name).join(' / '), r.highpoints.map(p => (p.climbed ? 'Summited' : 'Not Yet')).join(' / '),
+            ...stravaCsv(r.strava),
             r.population, r.visited ? 'Visited' : 'Not Visited',
         ]), type === 'world' ? 'countries.csv'
             : type.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '') + '-countries.csv');
     });
+}
+
+function stravaCsv(s) {
+    if (!s) return ['', '', '', '', '', '', '', ''];
+    const a = s.longest;
+    return [s.count, (s.sec / 3600).toFixed(1), Math.round(s.di / 1609.344),
+        a ? a.n || '' : '', a ? sportLabel(a.t) : '', a ? String(a.d || '').slice(0, 10) : '',
+        a ? (a.m / 3600).toFixed(2) : '', a ? `https://www.strava.com/activities/${a.i}` : ''];
 }
 
 function downloadCsv(headers, rows, filename) {
@@ -768,7 +998,8 @@ function updateTable(tableType) {
     sortableHeader(table, tableType, [
         { label: 'Country', key: 'name', cls: 'col-name' },
         { label: 'Core', key: 'progress', cls: 'col-progress', title: 'The country, its capital, Forbes 100 cities, wonders and high point' },
-        { label: 'Regions', key: 'regionPct', cls: 'col-progress', title: 'States / provinces reached by a pin or a Strava route (as on the map\'s Subregions view)' },
+        { label: ['Regions', 'Reg'], key: 'regionPct', cls: 'col-progress', title: 'States / provinces reached by a pin or a Strava route (as on the map\'s Subregions view)' },
+        { label: ['Strava', 'Acts'], key: 'stravaCount', cls: 'col-strava', title: 'Strava activities that started here: tap a count for all of them, the longest and the latest' },
         { label: 'Cities', key: 'citiesVisited', cls: 'col-num col-detail', title: 'Forbes 100 cities' },
         { label: 'Wonders', key: 'wondersVisited', cls: 'col-num col-detail', title: 'Seven Wonders, Seven Natural Wonders and nominees' },
         { label: ['High Point', 'HP'], key: 'hpSort', cls: 'col-status' },
@@ -792,6 +1023,7 @@ function updateTable(tableType) {
             <td class="col-name">${withCountryFlag(r.name)}</td>
             <td class="col-progress">${progressBar(r.progress, coreBreakdown(r))}</td>
             <td class="col-progress">${progressBar(r.regionPct, regionsTitle(r), regionsPending ? '…' : '—')}</td>
+            <td class="col-strava">${stravaCell(r)}</td>
             <td class="col-num col-detail">${fraction(r.citiesVisited, r.citiesTotal, r.cities)}</td>
             <td class="col-num col-detail">${fraction(r.wondersVisited, r.wondersTotal, r.wonders)}</td>
             <td class="col-status">${hps}</td>
@@ -804,6 +1036,8 @@ function updateTable(tableType) {
             if (cap && !isCityState(cap)) tr.querySelector('[data-toggle="cap"]').addEventListener('click', () => handleCapitalToggle(cap));
             tr.querySelectorAll('[data-hp]').forEach(el => el.addEventListener('click', () => handleHighpointToggle(r.highpoints[+el.dataset.hp])));
         }
+        const stravaBtn = tr.querySelector('.strava-count');
+        if (stravaBtn) stravaBtn.addEventListener('click', () => openStravaDialog(r.name));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);

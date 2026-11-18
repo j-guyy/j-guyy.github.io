@@ -231,6 +231,9 @@ export default {
             if (path === '/hr/all' && request.method === 'GET') {
                 return await handleHrAll(env);
             }
+            if (path === '/activities/by-country' && request.method === 'GET') {
+                return await handleActivitiesByCountry(env, url.searchParams.getAll('country'));
+            }
             if (path === '/polylines/all') {
                 const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
                 if (!stored) return json([]);
@@ -2651,6 +2654,55 @@ function distanceNote(slim) {
     return missing
         ? { note: `${missing} of ${slim.length} activities have no distance stored yet, so distance totals and filters skip them; the next nightly Strava sync fills it in.` }
         : {};
+}
+
+// GET /activities/by-country: per country activities started in (the geocode
+// cache's Nominatim name) { count, sec, di, longest, latest }, where longest is
+// the activity with the most moving time (not distance, so a long day on foot
+// counts as much as a long ride) and latest the most recent. With
+// ?country=<name> (repeatable) it instead lists every activity started in
+// those countries, newest first. The World Travel Countries table's Strava
+// column and its pop-up read it.
+async function handleActivitiesByCountry(env, countries) {
+    const [stored, geo] = await Promise.all([
+        env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json'),
+        env.STRAVA_DATA.get(GEO_KEY, 'json'),
+    ]);
+    const slim = stored?.slim || [];
+    const syncedAt = stored?.syncedAt || null;
+    if (countries.length) {
+        const wanted = new Set(countries);
+        const activities = slim.filter(a => wanted.has(placeOf(geo || {}, a.l)?.c))
+            .sort((a, b) => byStartTime(b, a)).map(countryActivity);
+        return json({ countries, activities, syncedAt });
+    }
+    return json({ countries: activitiesByCountry(slim, geo || {}), syncedAt });
+}
+
+// A slim activity without its route or start point.
+function countryActivity(a) {
+    return { i: a.i, n: a.n, t: a.t, d: a.d, m: a.m ?? null, di: a.di ?? null, e: a.e ?? null };
+}
+
+function activitiesByCountry(slim, geo) {
+    const out = {};
+    for (const a of slim) {
+        const c = placeOf(geo, a.l)?.c;
+        if (!c || c === 'Unknown') continue;
+        const row = out[c] || (out[c] = { count: 0, sec: 0, di: 0, longest: null, latest: null });
+        row.count++;
+        row.sec += a.m || 0;
+        row.di += a.di || 0;
+        if ((a.m || 0) > 0 && (!row.longest || a.m > row.longest.m)) row.longest = a;
+        if (!row.latest || byStartTime(a, row.latest) > 0) row.latest = a;
+    }
+    for (const row of Object.values(out)) {
+        row.sec = Math.round(row.sec);
+        row.di = Math.round(row.di);
+        row.longest = row.longest && countryActivity(row.longest);
+        row.latest = row.latest && countryActivity(row.latest);
+    }
+    return out;
 }
 
 // The geocode cache is keyed by start point on a 0.01° grid (gridKey in
