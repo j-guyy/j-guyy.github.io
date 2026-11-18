@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
+    <title>World Population Map — Justin Guyette</title>
+    <meta name="description" content="Interactive bubble map of where the world lives: 187,000 cities, towns and villages, or 12,000 metro areas (UN 2025 figures), sized by population. Zoom in to see the small towns appear.">
+    <link rel="stylesheet" href="css/base.css?v=20261110d">
+    <link rel="stylesheet" href="css/layout.css?v=20261110d">
+    <link rel="stylesheet" href="css/responsive.css?v=20261110d">
+    <link rel="stylesheet" href="css/map-controls.css">
+    <link rel="stylesheet" href="css/population-map.css?v=20261118a">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous"/>
+    <link rel="canonical" href="https://j-guyy.github.io/population-map.html">
+</head>
+
+<body class="page pop-page">
+    <div class="parallax-background"></div>
+    <div class="parallax-overlay"></div>
+
+    <nav-bar></nav-bar>
+
+    <div class="content">
+        <div class="hero">
+            <h1>World Population Map</h1>
+            <h2>Every city, town and village of 500+ people</h2>
+        </div>
+
+        <div class="section">
+            <h2>Where the World Lives</h2>
+            <p class="description">Each bubble is one place, its area proportional to the people who live there. Zoomed out you see the megacities; zoom in and the towns and villages fill in around them. Switch to <strong>Metro areas</strong> to see each city as one continuous built-up area, suburbs included, with the UN's 2025 populations. Hover or tap a bubble for its population, search for a place, or use the crosshair to see what's around you.</p>
+
+            <div class="pop-controls">
+                <div class="pop-mode" role="group" aria-label="Show">
+                    <button type="button" class="pop-mode-btn active" data-mode="cities" aria-pressed="true">Cities</button>
+                    <button type="button" class="pop-mode-btn" data-mode="metros" aria-pressed="false">Metro areas</button>
+                </div>
+                <div class="pop-search-wrap">
+                    <input type="search" id="pop-search" class="pop-search" placeholder="Search a city or town…" autocomplete="off" aria-label="Search places" aria-controls="pop-results" aria-expanded="false" role="combobox">
+                    <ul id="pop-results" class="pop-results" role="listbox" hidden></ul>
+                </div>
+                <span id="pop-status" class="pop-status" aria-live="polite">Loading cities…</span>
+            </div>
+            <p id="pop-mode-note" class="pop-mode-note" hidden>Metro areas are the cities of the UN's <a href="https://population.un.org/wup/" target="_blank" rel="noopener">World Urbanization Prospects 2025</a>, with 2025 populations. Each one is the whole continuous built-up area, drawn the same way in every country from satellite population grids (1 km² cells of 1,500+ people per km²) rather than by city limits. That's why Jakarta (41.9 million) and Dhaka (36.6 million) now rank above Tokyo (33.4 million). Other rankings, like Demographia's, still put Tokyo first, and official definitions such as US metropolitan statistical areas (MSAs), which add commuter counties, often come out larger.</p>
+
+            <div class="pop-map-wrap">
+                <div id="pop-map" class="pop-map"></div>
+                <div id="pop-tip" class="pop-tip" hidden></div>
+                <div class="pop-legend" aria-label="Bubble size key">
+                    <div class="pop-legend-title">Population</div>
+                    <svg id="pop-legend-svg" class="pop-legend-svg" role="img"></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>In View</h2>
+            <div class="pop-stats">
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-people">–</span><span class="pop-stat-label" id="stat-people-label">people in places shown</span></div>
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-places">–</span><span class="pop-stat-label" id="stat-places-label">places in view</span></div>
+                <div class="pop-stat"><span class="pop-stat-value" id="stat-loaded">–</span><span class="pop-stat-label" id="stat-loaded-label">places loaded</span></div>
+            </div>
+            <h3 class="pop-subhead" id="pop-top-title">Biggest places in view</h3>
+            <ol id="pop-top" class="pop-top"></ol>
+            <p class="description pop-credit">Populations from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) — city-proper figures, so a metro area like Tokyo shows as its core city plus the separate cities around it. Neighbourhood entries are left out so districts don't double-count their city. Metro areas from the UN DESA Population Division's <a href="https://population.un.org/wup/downloads?tab=Cities" target="_blank" rel="noopener">World Urbanization Prospects 2025</a> (CC BY 3.0 IGO).</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+    <script src="js/fluid-zoom.js?v=20261025b"></script>
+    <script src="js/map-fixes.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
+    <script src="js/map-controls.js?v=20261025"></script>
+    <script src="js/population-map.js?v=20261118a"></script>
+    <script src="js/navbar-component.js"></script>
+</body>
+
+</html>

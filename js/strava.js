@@ -1444,6 +1444,8 @@ function applyFilters() {
     renderSubdivisions(subdivisions);
     // The app Dashboard's charts (js/insights.js, loaded only on /app/).
     if (typeof renderInsights === 'function') renderInsights(filtered);
+    // The app's Travel screens for invited users (js/user-travel.js, /app/ only).
+    if (typeof renderUserTravel === 'function') renderUserTravel();
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
@@ -8927,6 +8929,7 @@ async function scanMountainSummits(summitActs) {
     setMountainStatus('');
     renderMountainStats();
     if (mountainMapInitialized) rebuildMountainMap();  // refresh markers if the map is open
+    if (typeof renderUserTravel === 'function') renderUserTravel();
     dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
 }
 

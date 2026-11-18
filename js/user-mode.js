@@ -3,8 +3,9 @@
 // The same app, for anyone who connected their own Strava account on
 // /connect/: it points strava.js at that person's data on the user worker
 // (user-worker.js) instead of strava-worker, and hides the owner-only parts
-// (Travel, StatsHunters). Without ?user in the URL this file does nothing,
-// so the owner's app and the Android shell are unchanged.
+// (StatsHunters; their Travel tab is their own, js/user-travel.js). Without
+// ?user in the URL this file does nothing, so the owner's app and the Android
+// shell are unchanged.
 //
 // Loaded before strava.js, which reads window.STRAVA_WORKER_URL and
 // window.STRAVA_ADMIN_PW_KEY. The person's session token arrives once as
