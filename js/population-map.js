@@ -8,9 +8,11 @@
 // villages, ~2.5 MB gzipped) only once the map is zoomed in far enough for
 // them to be visible, or when the search box is used.
 //
-// The Cities | Metro areas switch swaps in data/population/metros.txt (GHSL
-// Functional Urban Areas: 9,031 metro areas = urban centre + commuting zone,
-// `name|countryIdx|altName|lat|lng|pop|urbanCentrePop`), loaded on first use.
+// The Cities | Metro areas switch swaps in data/population/metros.txt (UN World
+// Urbanization Prospects 2025: the 2025 population of ~12,100 cities of 50k+,
+// each drawn the same way everywhere by the Degree of Urbanisation,
+// `name|countryIdx|altName|lat|lng|pop`; altName is the local name, e.g.
+// "Tōkyō", or "incl. Saint Paul"), loaded on first use.
 // Each view is its own store (CITY / METRO); `P` points at the one shown, so
 // drawing, hit-testing, search and the In View panel all follow the switch.
 //
@@ -48,13 +50,13 @@
             name: [], alt: [], country: new Uint16Array(cap), region: new Uint16Array(cap),
             lat: new Float32Array(cap), lng: new Float32Array(cap),
             mx: new Float64Array(cap), my: new Float64Array(cap),
-            pop: new Uint32Array(cap), core: new Uint32Array(kind === 'metros' ? cap : 0),
+            pop: new Uint32Array(cap),
             bucket: new Uint8Array(cap),
             keys: [],  // normalised names for search, filled lazily
         };
     }
     const CITY = makeStore('cities', CAP);
-    const METRO = makeStore('metros', 10000);
+    const METRO = makeStore('metros', 13000);  // metros.txt has 12,138 rows; raise if it grows
     let P = CITY;
     let tables = { countries: [], regions: [] };
     const tierState = [null, null, null];   // null | 'loading' | 'done'
@@ -83,7 +85,7 @@
 
     function placeLabel(i) {
         const country = tables.countries[P.country[i]];
-        if (P.kind === 'metros') return P.alt[i] ? `${country} · incl. ${P.alt[i]}` : country;
+        if (P.kind === 'metros') return P.alt[i] ? `${country} · ${P.alt[i]}` : country;
         return [tables.regions[P.region[i]], country].filter(Boolean).join(', ');
     }
 
@@ -98,7 +100,7 @@
             const lat = +f[3], lng = +f[4], pop = +f[5];
             S.name[i] = f[0];
             S.country[i] = +f[1];
-            if (metro) { S.alt[i] = f[2]; S.core[i] = +f[6]; }
+            if (metro) S.alt[i] = f[2];
             else S.region[i] = +f[2];
             S.lat[i] = lat; S.lng[i] = lng;
             S.pop[i] = pop;
@@ -416,8 +418,7 @@
         if (pt.x < 0 || pt.y < 0 || pt.x > size.x || pt.y > size.y) { hideTip(); return; }
         el.innerHTML = '<div class="pop-tip-name"></div><div class="pop-tip-where"></div>' +
             `<div class="pop-tip-pop">${fmt.format(P.pop[i])} <span>people</span></div>` +
-            (P.kind === 'metros' && P.core[i] ? `<div class="pop-tip-rank">${fmt.format(P.core[i])} in the urban core</div>` : '') +
-            `<div class="pop-tip-rank">#${fmt.format(i + 1)} of ${fmt.format(P.n)} ${noun(2)}${P.kind === 'metros' ? ' · 2015' : ' loaded'}</div>`;
+            `<div class="pop-tip-rank">#${fmt.format(i + 1)} of ${fmt.format(P.n)} ${noun(2)}${P.kind === 'metros' ? ' · 2025' : ' loaded'}</div>`;
         el.querySelector('.pop-tip-name').textContent = P.name[i];
         el.querySelector('.pop-tip-where').textContent = placeLabel(i);
         el.hidden = false;
