@@ -19,6 +19,11 @@
 const SCREENS = {
     home: {},
     travel: {},
+    // User mode only: the person's travel from their own activities
+    // (js/user-travel.js), opened from the Travel tab and Home.
+    states: {},
+    countries: {},
+    peaks: {},
     dashboard: {},
     map: { open: () => ensureOpen('map-section', () => toggleMap()) },
     county: { open: () => ensureOpen('county-section', () => toggleCountyMap()) },
@@ -42,11 +47,13 @@ const SCREENS = {
 // layers wait for their own detection to finish (`ready`), since their toggle
 // leaves the panel open but empty if it fires early.
 // User mode (/app/?user=1) leaves out what only works for the site owner:
-// Travel and StatsHunters are the owner's own pages, and City, Pass and Trail
+// StatsHunters is the owner's own page, and City, Pass and Trail
 // Hunter are fixed to Colorado areas (CITY_CONFIGS / TRAIL_CONFIGS /
 // data/colorado-passes.json in strava.js). Their Home cards carry
-// data-user-hide; this keeps the map layers and deep links in step.
-const USER_HIDDEN = new Set(window.STRAVA_USER ? ['travel', 'statshunters', 'city', 'pass', 'trail'] : []);
+// data-user-hide; this keeps the map layers and deep links in step. Their
+// Travel tab opens their own US States / Countries / Peaks screens instead of
+// the owner's travel pages; those screens don't exist for the owner.
+const USER_HIDDEN = new Set(window.STRAVA_USER ? ['statshunters', 'city', 'pass', 'trail'] : ['states', 'countries', 'peaks']);
 
 let pendingOpen = null;
 const activitiesLoaded = () => currentSlim.length > 0;
@@ -172,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildMapSwitcher();
     showScreen(currentRoute());
     pollHomeStats();
-    if (!window.STRAVA_USER) loadTravelStats(); // user mode hides Travel
+    if (!window.STRAVA_USER) loadTravelStats(); // user mode's Travel is js/user-travel.js
 });
 
 // ── Home grid quick stats ────────────────────────────────────────────────────
@@ -323,6 +330,7 @@ function stampEntry(from) {
 }
 
 function tabFor(route) {
+    if (['states', 'countries', 'peaks'].includes(route)) return 'travel';
     return TAB_ROUTES.has(route) ? route : 'home';
 }
 

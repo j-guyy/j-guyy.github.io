@@ -1295,10 +1295,10 @@
 }
 
 /* ── User mode (/app/?user=1, js/user-mode.js) ─────────────────────────────
-   Hides the owner-only parts (Travel, StatsHunters, and the Colorado-only
+   Hides the owner-only parts (StatsHunters, the owner's travel pages, and the Colorado-only
    City / Pass / Trail Hunters) and adds the account row. */
 .user-mode [data-user-hide] { display: none !important; }
-.user-mode .app-tabbar { grid-template-columns: repeat(4, 1fr); }
+html:not(.user-mode) [data-user-only] { display: none !important; }
 .user-account { margin-top: 8px; padding-bottom: 8px; }
 .user-account-row, .user-tip { margin-left: 16px; margin-right: 16px; }
 .user-account-row {
@@ -1318,3 +1318,78 @@
 .app-page .filter-drawer-panel { background: var(--app-surface, #151a17); border-color: var(--app-border, #26302a); }
 .app-page .filter-fab { bottom: calc(var(--app-tabbar-h, 64px) + env(safe-area-inset-bottom) + 14px); }
 .app-page .filter-summary-text { color: var(--app-text-dim); }
+
+/* ── User mode Travel: US States / Countries / Peaks (js/user-travel.js) ── */
+.ut-section { padding-top: 14px; }
+.ut-note { margin: 4px 0 14px; font-size: 0.8rem; color: var(--app-text-dim); }
+.ut-h {
+    display: flex; align-items: baseline; gap: 8px;
+    margin: 20px 0 8px; font-size: 0.72rem; font-weight: 650;
+    text-transform: uppercase; letter-spacing: 0.11em; color: var(--app-text-dim);
+}
+.ut-h span { color: var(--app-accent); letter-spacing: 0; }
+
+.ut-state-grid {
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px;
+    margin: 4px 0 10px;
+}
+.ut-tile {
+    display: grid; place-items: center; aspect-ratio: 1;
+    border-radius: 5px; background: var(--app-surface-2); border: 1px solid var(--app-border);
+    font-size: min(0.66rem, 2.6vw); font-weight: 650; color: var(--app-text-dim);
+}
+.ut-tile-done { background: var(--app-accent); border-color: var(--app-accent); color: #06140c; }
+.ut-tile-gap { visibility: hidden; }
+
+.ut-list { list-style: none; margin: 0; padding: 0; }
+.ut-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 2px; border-bottom: 1px solid var(--app-border);
+}
+.ut-list li:last-child { border-bottom: 0; }
+.ut-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ut-main strong { font-size: 0.92rem; font-weight: 600; }
+.ut-main small { font-size: 0.76rem; color: var(--app-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ut-main small a { color: var(--app-accent); text-decoration: none; }
+.ut-count { font-size: 0.8rem; font-weight: 600; color: var(--app-text-dim); font-variant-numeric: tabular-nums; }
+.ut-abbr {
+    flex: 0 0 34px; height: 26px; display: grid; place-items: center; border-radius: 6px;
+    background: var(--app-accent-soft); color: var(--app-accent); font-size: 0.72rem; font-weight: 700;
+}
+.ut-flag { flex: 0 0 auto; width: 30px; height: 20px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px var(--app-border); }
+.ut-flag-none { display: grid; place-items: center; box-shadow: none; }
+.ut-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ut-chip {
+    padding: 4px 10px; border-radius: 999px; font-size: 0.78rem;
+    background: var(--app-surface-2); border: 1px solid var(--app-border); color: var(--app-text-dim);
+}
+
+.ut-bar { height: 6px; border-radius: 3px; background: var(--app-surface-2); overflow: hidden; }
+.ut-bar-fill { height: 100%; border-radius: 3px; background: var(--app-accent); }
+.ut-progress { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 8px; }
+.ut-progress li { display: grid; grid-template-columns: 7.5em 1fr 4.5em; align-items: center; gap: 10px; font-size: 0.84rem; }
+.ut-progress em { font-style: normal; text-align: right; color: var(--app-text-dim); font-variant-numeric: tabular-nums; }
+
+.ut-peak-list {
+    margin: 0 0 10px; border-radius: var(--app-radius-sm);
+    background: var(--app-surface); border: 1px solid var(--app-border);
+}
+.ut-peak-head {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 12px 14px; background: none; border: 0; color: inherit; font: inherit; text-align: left;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.app-page .ut-peak-head, .app-page .ut-peak-head:hover {
+    background: none; color: inherit; border-radius: var(--app-radius-sm); box-shadow: none; transform: none;
+}
+.ut-peak-head .ut-main { gap: 7px; }
+.ut-peak-head em { font-style: normal; font-weight: 650; color: var(--app-accent); font-variant-numeric: tabular-nums; }
+.ut-chev { font-size: 1.3rem; line-height: 1; color: var(--app-text-dim); transition: transform 0.15s ease; }
+.ut-peak-list.open .ut-chev { transform: rotate(90deg); }
+.ut-peak-items { padding: 0 14px 6px; border-top: 1px solid var(--app-border); }
+.ut-check {
+    flex: 0 0 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+    border: 1.5px solid var(--app-border); font-size: 0.75rem; font-weight: 700;
+}
+.ut-done .ut-check { background: var(--app-accent); border-color: var(--app-accent); color: #06140c; }
+.ut-peak-items li:not(.ut-done) strong { color: var(--app-text-dim); font-weight: 500; }
