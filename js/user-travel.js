@@ -130,28 +130,239 @@ function utLoadReference() {
 }
 
 // ── Places from activities ──────────────────────────────────────────────────
+//
+// A state / country counts everywhere an activity's route passes, as on the
+// World Travel page (js/world-map.js): each route is cut into the ~1 km cells
+// it crosses and every cell is located in data/world-countries.geojson (and,
+// inside the US, data/admin1/us.geojson). The activity's geocoded start place
+// counts too, so an activity without a route (or one the outlines miss) still
+// lands. Until the boundaries have loaded and routes are traced, only start
+// places count. Traced results are kept per activity in localStorage
+// (UT_TRACE_KEY), so a later open traces only new activities.
 
-// Every activity's start place, oldest first, so the first one seen in a
-// state / country is its first visit.
-function utPlaces() {
-    if (typeof currentSlim === 'undefined' || !currentSlim.length) return null;
-    const states = new Map();     // state name → { first, count }
-    const countries = new Map();  // countries.json name (or the geocoded name) → { first, count, raw }
-    [...currentSlim].sort(byStartTime).forEach(a => {
-        if (!Array.isArray(a.l)) return;
-        const geo = currentCache[gridKey(a.l)];
-        if (!geo || !geo.c || geo.c === 'Unknown') return;
-        const country = UT_COUNTRY_ALIASES[geo.c] || geo.c;
-        const c = countries.get(country) || { first: a, count: 0 };
-        c.count++;
-        countries.set(country, c);
-        if (SUBDIVISION_BY_COUNTRY[geo.c]?.id === 'us' && UT_STATE_ABBR[geo.s]) {
-            const s = states.get(geo.s) || { first: a, count: 0 };
-            s.count++;
-            states.set(geo.s, s);
+const UT_TRACE_KEY = 'user_travel_trace_v1';
+const UT_FINE_SIZE = 0.1;  // features smaller than this (degrees) are tested exactly
+const UT_COAST_SNAP = [0.01, 0.025].flatMap(d => [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [d, -d], [-d, d], [-d, -d]]);
+
+const utTrace = {
+    byId: new Map(),      // activity id → { c: [countries], s: [states] }
+    state: 'idle',        // idle | loading | tracing | done | error
+    done: 0, total: 0,
+};
+try {
+    const saved = JSON.parse(localStorage.getItem(UT_TRACE_KEY) || 'null');
+    if (saved?.v === 1 && saved.acts) {
+        Object.entries(saved.acts).forEach(([id, v]) => {
+            const [c, st] = String(v).split(';');
+            utTrace.byId.set(id, { c: c ? c.split('|') : [], s: st ? st.split('|') : [] });
+        });
+    }
+} catch { /* no saved traces */ }
+
+function utSaveTraces() {
+    const acts = {};
+    utTrace.byId.forEach((v, id) => { acts[id] = `${v.c.join('|')};${v.s.join('|')}`; });
+    try { localStorage.setItem(UT_TRACE_KEY, JSON.stringify({ v: 1, acts })); } catch { /* storage full or blocked */ }
+}
+
+// Point-in-polygon with each geometry's edges bucketed by latitude band, so a
+// test only looks at the edges near the point (like world-map.js's bandIndex).
+function utIndexGeometry(geometry) {
+    const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+    let s = Infinity, n = -Infinity, w = Infinity, e = -Infinity, edges = 0;
+    polys.forEach(poly => poly.forEach(ring => ring.forEach(([x, y]) => {
+        if (y < s) s = y; if (y > n) n = y; if (x < w) w = x; if (x > e) e = x;
+        edges++;
+    })));
+    const count = Math.max(1, Math.min(512, Math.ceil(edges / 16)));
+    const height = (n - s) / count || 1;
+    const bands = Array.from({ length: count }, () => []);
+    const rings = [];   // [polyIndex, ring]
+    polys.forEach((poly, pi) => poly.forEach((ring, ri) => {
+        const r = rings.length;
+        rings.push({ pi, hole: ri > 0, ring });
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            const y1 = ring[i][1], y2 = ring[j][1];
+            const lo = Math.max(0, Math.floor((Math.min(y1, y2) - s) / height));
+            const hi = Math.min(count - 1, Math.floor((Math.max(y1, y2) - s) / height));
+            for (let b = lo; b <= hi; b++) bands[b].push(r, i, j);
+        }
+    }));
+    return { s, n, w, e, count, height, bands, rings, polys: polys.length };
+}
+
+function utInside(idx, lng, lat) {
+    if (lat < idx.s || lat > idx.n || lng < idx.w || lng > idx.e) return false;
+    const band = idx.bands[Math.min(idx.count - 1, Math.floor((lat - idx.s) / idx.height))];
+    const parity = new Uint8Array(idx.rings.length);
+    for (let k = 0; k < band.length; k += 3) {
+        const ring = idx.rings[band[k]].ring;
+        const [xi, yi] = ring[band[k + 1]], [xj, yj] = ring[band[k + 2]];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) parity[band[k]] ^= 1;
+    }
+    // Inside an outer ring and none of that polygon's holes.
+    const inPoly = new Uint8Array(idx.polys), inHole = new Uint8Array(idx.polys);
+    idx.rings.forEach((r, i) => { if (parity[i]) (r.hole ? inHole : inPoly)[r.pi] = 1; });
+    for (let p = 0; p < idx.polys; p++) if (inPoly[p] && !inHole[p]) return true;
+    return false;
+}
+
+// (lat, lng) → the name of the feature it's in, or null; a 1° grid of feature
+// boxes keeps candidates few, and results are cached per ~1 km cell.
+function utLocator(features, nameOf) {
+    const grid = new Map();
+    const fine = [];
+    const items = features.map(f => ({ name: nameOf(f), idx: utIndexGeometry(f.geometry) }));
+    items.forEach(it => {
+        const b = it.idx;
+        if (b.e - b.w < UT_FINE_SIZE && b.n - b.s < UT_FINE_SIZE) fine.push(it);
+        for (let x = Math.floor(b.w); x <= Math.floor(b.e); x++) {
+            for (let y = Math.floor(b.s); y <= Math.floor(b.n); y++) {
+                const key = `${x},${y}`;
+                if (!grid.has(key)) grid.set(key, []);
+                grid.get(key).push(it);
+            }
         }
     });
+    const hitAt = (lat, lng) => {
+        for (const it of grid.get(`${Math.floor(lng)},${Math.floor(lat)}`) || []) {
+            if (utInside(it.idx, lng, lat)) return it.name;
+        }
+        return null;
+    };
+    const cache = new Map();
+    const locate = (lat, lng) => {
+        for (const it of fine) if (utInside(it.idx, lng, lat)) return it.name;
+        const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+        if (cache.has(key)) return cache.get(key);
+        let hit = hitAt(lat, lng);
+        for (let i = 0; hit === null && i < UT_COAST_SNAP.length; i++) hit = hitAt(lat + UT_COAST_SNAP[i][0], lng + UT_COAST_SNAP[i][1]);
+        cache.set(key, hit);
+        return hit;
+    };
+    locate.near = (lat, lng) => fine.some(({ idx: b }) => lat >= b.s && lat <= b.n && lng >= b.w && lng <= b.e);
+    return locate;
+}
+
+function utYield() {
+    return new Promise(resolve => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => resolve();
+        ch.port2.postMessage(null);
+    });
+}
+
+let utLocators = null;
+async function utLoadLocators() {
+    if (utLocators) return utLocators;
+    const get = url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+    const [world, us] = await Promise.all([get('/data/world-countries.geojson'), get('/data/admin1/us.geojson')]);
+    await utLoadReference();
+    const known = utCountryIndex();
+    // Outlines are Natural Earth names; territories go to their sovereign
+    // (Puerto Rico → the US) when that's the countries.json name.
+    const countryName = f => {
+        const { name, sov } = f.properties;
+        if (known.has(name)) return name;
+        if (known.has(UT_COUNTRY_ALIASES[name])) return UT_COUNTRY_ALIASES[name];
+        if (known.has(sov)) return sov;
+        return name;
+    };
+    utLocators = {
+        country: utLocator(world.features, countryName),
+        state: utLocator(us.features, f => f.properties.name),
+    };
+    return utLocators;
+}
+
+// Traces every activity not traced yet, in slices so the app stays usable.
+async function utTraceRoutes() {
+    if (utTrace.state === 'loading' || utTrace.state === 'tracing') return;
+    const todo = currentSlim.filter(a => a.p && a.i != null && !utTrace.byId.has(String(a.i)));
+    if (!todo.length) { utTrace.state = 'done'; return; }
+    utTrace.state = 'loading';
+    let loc;
+    try {
+        loc = await utLoadLocators();
+    } catch (err) {
+        console.warn('Route tracing unavailable:', err);
+        utTrace.state = 'error';
+        renderUserTravel();
+        return;
+    }
+    utTrace.state = 'tracing';
+    utTrace.done = 0;
+    utTrace.total = todo.length;
+    renderUserTravel();
+    let sliceStart = performance.now(), lastPaint = sliceStart;
+    for (const a of todo) {
+        const countries = new Set(), states = new Set();
+        let points = [];
+        try { points = decodePolyline(a.p); } catch { /* bad polyline: start place only */ }
+        const seen = new Set();
+        points.forEach(([lat, lng]) => {
+            const fine = loc.country.near(lat, lng);
+            const key = fine ? `${lat.toFixed(4)},${lng.toFixed(4)}` : `${lat.toFixed(2)},${lng.toFixed(2)}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const c = loc.country(lat, lng);
+            if (!c) return;
+            countries.add(c);
+            if (c === 'United States of America') {
+                const st = loc.state(lat, lng);
+                if (st) states.add(st);
+            }
+        });
+        utTrace.byId.set(String(a.i), { c: [...countries], s: [...states] });
+        utTrace.done++;
+        if (performance.now() - sliceStart > 12) {
+            await utYield();
+            sliceStart = performance.now();
+            if (sliceStart - lastPaint > 1500) { lastPaint = sliceStart; renderUserTravel(); }
+        }
+    }
+    utTrace.state = 'done';
+    utSaveTraces();
+    renderUserTravel();
+}
+
+// Every place each activity reached, oldest activity first, so the first one
+// seen in a state / country is its first visit.
+function utPlaces() {
+    if (typeof currentSlim === 'undefined' || !currentSlim.length) return null;
+    const states = new Map();     // state name → { first, count, acts }
+    const countries = new Map();  // countries.json name (or the outline's / geocoded name) → { first, count, acts }
+    const add = (map, name, a) => {
+        const e = map.get(name) || { first: a, count: 0, acts: [] };
+        e.count++;
+        e.acts.push(a);
+        map.set(name, e);
+    };
+    [...currentSlim].sort(byStartTime).forEach(a => {
+        const cs = new Set(), ss = new Set();
+        const geo = Array.isArray(a.l) ? currentCache[gridKey(a.l)] : null;
+        if (geo && geo.c && geo.c !== 'Unknown') {
+            cs.add(UT_COUNTRY_ALIASES[geo.c] || geo.c);
+            if (SUBDIVISION_BY_COUNTRY[geo.c]?.id === 'us' && UT_STATE_ABBR[geo.s]) ss.add(geo.s);
+        }
+        const traced = utTrace.byId.get(String(a.i));
+        if (traced) {
+            traced.c.forEach(c => cs.add(c));
+            traced.s.forEach(st => ss.add(st));
+        }
+        cs.forEach(c => add(countries, c, a));
+        ss.forEach(st => add(states, st, a));
+    });
     return { states, countries };
+}
+
+function utTraceNote() {
+    if (utTrace.state === 'tracing' || utTrace.state === 'loading') {
+        const pct = utTrace.total ? Math.round((utTrace.done / utTrace.total) * 100) : 0;
+        return `<p class="ut-note ut-tracing">Tracing your routes… ${pct}%</p>`;
+    }
+    if (utTrace.state === 'error') return '<p class="ut-note">Couldn’t load the map outlines, so only where activities start is counted for now.</p>';
+    return '';
 }
 
 // countries.json name → { name, continent }
@@ -237,7 +448,9 @@ function renderStates(places) {
         const name = UT_ABBR_STATE[abbr];
         const s = states.get(name);
         const title = s ? `${name}: first ${utDate(s.first.d)}` : `${name}: not yet`;
-        return `<span class="ut-tile${s ? ' ut-tile-done' : ''}" title="${utEsc(title)}">${abbr}</span>`;
+        return s
+            ? `<button type="button" class="ut-tile ut-tile-done" data-place="state" data-name="${utEsc(name)}" title="${utEsc(title)}">${abbr}</button>`
+            : `<span class="ut-tile" title="${utEsc(title)}">${abbr}</span>`;
     }).join('') + '<span class="ut-tile ut-tile-gap"></span>'.repeat(12 - row.length)).join('');
 
     const visited = [...states.entries()].sort((a, b) => a[0].localeCompare(b[0]));
@@ -250,12 +463,13 @@ function renderStates(places) {
             ${utStat(recent ? UT_STATE_ABBR[recent[0]] : '—', 'Newest')}
         </div>
         <div class="ut-state-grid" aria-label="US states map">${grid}</div>
-        <p class="ut-note">A state counts once an activity starts there.${states.has('District of Columbia') ? ' DC is on the map but not in the 50.' : ''}</p>
+        <p class="ut-note">A state counts once an activity passes through it. Tap a state for its activities.${states.has('District of Columbia') ? ' DC is on the map but not in the 50.' : ''}</p>
+        ${utTraceNote()}
         <h3 class="ut-h">Visited <span>${visited.length}</span></h3>
         <ul class="ut-list">${visited.map(([name, s]) => `
-            <li><span class="ut-abbr">${UT_STATE_ABBR[name]}</span>
-                <span class="ut-main"><strong>${utEsc(name)}</strong><small>First ${utDate(s.first.d)} · ${utActLink({ id: s.first.i, name: s.first.n })}</small></span>
-                <span class="ut-count">${s.count.toLocaleString()}</span></li>`).join('')}
+            <li class="ut-tap" data-place="state" data-name="${utEsc(name)}" role="button" tabindex="0"><span class="ut-abbr">${UT_STATE_ABBR[name]}</span>
+                <span class="ut-main"><strong>${utEsc(name)}</strong><small>First ${utDate(s.first.d)} · ${utEsc(s.first.n || 'Activity')}</small></span>
+                <span class="ut-count">${s.count.toLocaleString()}</span><span class="ut-chev" aria-hidden="true">›</span></li>`).join('')}
         </ul>
         ${remaining.length ? `<h3 class="ut-h">Not yet <span>${remaining.length}</span></h3>
         <div class="ut-chips">${remaining.map(n => `<span class="ut-chip">${utEsc(n)}</span>`).join('')}</div>` : ''}`;
@@ -278,9 +492,9 @@ function renderCountries(places) {
     const continentsReached = [...byContinent.values()].filter(l => l.length).length;
 
     const row = ([name, c]) => `
-        <li>${utFlag(name)}
-            <span class="ut-main"><strong>${utEsc(name)}</strong><small>First ${utDate(c.first.d)} · ${utActLink({ id: c.first.i, name: c.first.n })}</small></span>
-            <span class="ut-count">${c.count.toLocaleString()}</span></li>`;
+        <li class="ut-tap" data-place="country" data-name="${utEsc(name)}" role="button" tabindex="0">${utFlag(name)}
+            <span class="ut-main"><strong>${utEsc(name)}</strong><small>First ${utDate(c.first.d)} · ${utEsc(c.first.n || 'Activity')}</small></span>
+            <span class="ut-count">${c.count.toLocaleString()}</span><span class="ut-chev" aria-hidden="true">›</span></li>`;
 
     const continentTotals = Object.fromEntries(UT_CONTINENTS.map(([key, name]) => [name, (utRef.countries[key] || []).length]));
     el.innerHTML = `
@@ -292,7 +506,8 @@ function renderCountries(places) {
         <ul class="ut-progress">${[...byContinent.entries()].map(([name, list]) => `
             <li><span>${name}</span>${utBar(list.length, continentTotals[name])}<em>${list.length} / ${continentTotals[name]}</em></li>`).join('')}
         </ul>
-        <p class="ut-note">A country counts once an activity starts there; territories count for their country (Puerto Rico for the US, Hong Kong for China).</p>
+        <p class="ut-note">A country counts once an activity passes through it; territories count for their country (Puerto Rico for the US, Hong Kong for China). Tap a country for its activities.</p>
+        ${utTraceNote()}
         ${[...byContinent.entries()].filter(([, l]) => l.length).map(([name, list]) => `
             <h3 class="ut-h">${name} <span>${list.length}</span></h3>
             <ul class="ut-list">${list.sort((a, b) => a[0].localeCompare(b[0])).map(row).join('')}</ul>`).join('')}
@@ -356,6 +571,105 @@ function setUserTravelStats(places) {
     if (hp) set('u-peaks', `${hp.matches.size} / ${hp.items.length} high points`);
 }
 
+// ── Activities pop-up (a state / country row or tile) ─────────────────────
+// Like the World Travel Countries table's Strava pop-up: totals, the longest
+// activity by moving time (so a long day on foot outranks a faster ride), the
+// latest, then every activity there. Everything is already on the page.
+
+const UT_SORTS = [
+    { id: 'newest', label: 'Newest', cmp: (a, b) => byStartTime(b, a) },
+    { id: 'longest', label: 'Longest', cmp: (a, b) => (b.m || 0) - (a.m || 0) },
+    { id: 'distance', label: 'Farthest', cmp: (a, b) => (b.di || 0) - (a.di || 0) },
+];
+const UT_PAGE = 50;
+
+function utDuration(sec) {
+    const h = Math.floor((sec || 0) / 3600), m = Math.round(((sec || 0) % 3600) / 60);
+    return h ? `${h.toLocaleString()}h ${m}m` : `${m}m`;
+}
+function utMiles(m) {
+    const mi = (m || 0) / 1609.344;
+    return `${mi >= 100 ? Math.round(mi).toLocaleString() : mi.toFixed(1)} mi`;
+}
+function utActStats(a) {
+    const out = [utDuration(a.m)];
+    if (a.di) out.push(utMiles(a.di));
+    if (a.e) out.push(`${Math.round(a.e * 3.28084).toLocaleString()} ft`);
+    return out.join(' · ');
+}
+const utActUrl = a => `https://www.strava.com/activities/${encodeURIComponent(a.i)}`;
+const utSport = t => (typeof typeLabel === 'function' ? typeLabel(t) : t);
+
+function utHighlight(label, a) {
+    if (!a) return '';
+    return `<a class="ut-hl" href="${utActUrl(a)}" target="_blank" rel="noopener">
+        <span class="ut-hl-label">${label}</span>
+        <strong>${utEsc(a.n || 'Activity')}</strong>
+        <small>${utEsc(utSport(a.t))} · ${utDate(a.d)}</small>
+        <small>${utActStats(a)}</small></a>`;
+}
+
+function utActRow(a) {
+    return `<li><a class="ut-act" href="${utActUrl(a)}" target="_blank" rel="noopener">
+        <span class="ut-main"><strong>${utEsc(a.n || 'Activity')}</strong><small>${utDate(a.d)} · ${utEsc(utSport(a.t))}</small></span>
+        <span class="ut-act-stats">${utActStats(a)}</span></a></li>`;
+}
+
+let utLastPlaces = null;
+function utOpenPlace(kind, name) {
+    const entry = utLastPlaces?.[kind === 'state' ? 'states' : 'countries'].get(name);
+    if (!entry) return;
+    const acts = entry.acts;
+    const sec = acts.reduce((n, a) => n + (a.m || 0), 0);
+    const di = acts.reduce((n, a) => n + (a.di || 0), 0);
+    const longest = acts.reduce((best, a) => ((a.m || 0) > (best?.m || 0) ? a : best), null);
+    const latest = acts.reduce((best, a) => (!best || byStartTime(a, best) > 0 ? a : best), null);
+    const title = kind === 'state' ? `<span class="ut-abbr">${UT_STATE_ABBR[name] || ''}</span> ${utEsc(name)}` : `${utFlag(name)} ${utEsc(name)}`;
+
+    const dialog = document.createElement('dialog');
+    dialog.className = 'ut-dialog';
+    dialog.setAttribute('aria-label', `Activities in ${name}`);
+    dialog.innerHTML = `
+        <div class="ut-dialog-head"><h2>${title}</h2><button type="button" class="ut-dialog-close" aria-label="Close">×</button></div>
+        <p class="ut-note">${acts.length.toLocaleString()} ${acts.length === 1 ? 'activity' : 'activities'} · ${utDuration(sec)} moving · ${utMiles(di)}</p>
+        <div class="ut-hls">${utHighlight('Longest', longest)}${utHighlight('Latest', latest)}</div>
+        <div class="ut-dialog-bar"><h3 class="ut-h">All activities</h3>
+            <div class="ut-sorts" role="group" aria-label="Sort">${UT_SORTS.map((o, i) =>
+                `<button type="button" class="filter-pill${i ? '' : ' active'}" data-sort="${o.id}" aria-pressed="${!i}">${o.label}</button>`).join('')}</div></div>
+        <ul class="ut-list ut-acts"></ul>
+        <button type="button" class="cache-refresh-btn ut-more" hidden>Show more</button>`;
+    document.body.appendChild(dialog);
+    const list = dialog.querySelector('.ut-acts');
+    const more = dialog.querySelector('.ut-more');
+    let rows = [], shown = 0;
+    const render = (sortId, append) => {
+        if (!append) {
+            rows = [...acts].sort(UT_SORTS.find(o => o.id === sortId).cmp);
+            shown = 0;
+            list.innerHTML = '';
+        }
+        list.insertAdjacentHTML('beforeend', rows.slice(shown, shown + UT_PAGE).map(utActRow).join(''));
+        shown = Math.min(rows.length, shown + UT_PAGE);
+        more.hidden = shown >= rows.length;
+        more.textContent = `Show more (${(rows.length - shown).toLocaleString()} left)`;
+    };
+    let sortId = 'newest';
+    dialog.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
+        sortId = btn.dataset.sort;
+        dialog.querySelectorAll('[data-sort]').forEach(b => {
+            b.classList.toggle('active', b === btn);
+            b.setAttribute('aria-pressed', String(b === btn));
+        });
+        render(sortId, false);
+    }));
+    more.addEventListener('click', () => render(sortId, true));
+    dialog.querySelector('.ut-dialog-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    render(sortId, false);
+    dialog.showModal();
+}
+
 let utRenderQueued = false;
 function renderUserTravel() {
     if (!UT_ENABLED || utRenderQueued) return;
@@ -363,7 +677,13 @@ function renderUserTravel() {
     requestAnimationFrame(() => {
         utRenderQueued = false;
         const places = utPlaces();
+        utLastPlaces = places;
         setUserTravelStats(places);
+        // Trace routes (once per new activity) as soon as activities are in.
+        if (places && (utTrace.state === 'idle' || (utTrace.state === 'done' && utTrace.slimLen !== currentSlim.length))) {
+            utTrace.slimLen = currentSlim.length;
+            utTraceRoutes();
+        }
         // Only the screen on show is drawn; the others draw when opened.
         const shown = screen => !document.getElementById(`screen-${screen}`)?.hidden;
         if (shown('states')) renderStates(places);
@@ -376,6 +696,16 @@ if (UT_ENABLED) {
     document.addEventListener('DOMContentLoaded', () => {
         utLoadReference();
         utFetchServerSummits();
+        ['ut-states', 'ut-countries'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const open = e => {
+                const hit = e.target.closest('[data-place]');
+                if (hit) utOpenPlace(hit.dataset.place, hit.dataset.name);
+            };
+            el.addEventListener('click', open);
+            el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
+        });
         document.getElementById('ut-peaks')?.addEventListener('click', e => {
             const head = e.target.closest('.ut-peak-head');
             if (!head) return;
