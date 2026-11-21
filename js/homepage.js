@@ -375,13 +375,16 @@ function achRowHtml(row) {
     const strava = acts.length
         ? `<a class="home-ach-strava" href="https://www.strava.com/activities/${encodeURIComponent(acts[0].i)}" target="_blank" rel="noopener" aria-label="Open ${escapeHtml(actName)} on Strava">Strava <span aria-hidden="true">&#8599;</span></a>`
         : '';
-    const meta = [achDateLabel(row.date), row.place].filter(Boolean).map(escapeHtml).join(' · ');
+    const meta = row.place ? escapeHtml(row.place) : '';
     const first = byType.get(types[0]);
 
     return `
         <li class="home-card home-ach-row" style="--ach: ${lead.color}">
             <a class="home-ach-link" href="${lead.href}" aria-label="${escapeHtml(`${lead.one}: ${first.map(i => i.name).join(', ')}`)}"></a>
-            <ul class="home-ach-items">${lines}</ul>
+            <div class="home-ach-top">
+                <ul class="home-ach-items">${lines}</ul>
+                <time class="home-ach-date" datetime="${escapeHtml(row.date)}">${escapeHtml(achDateLabel(row.date))}</time>
+            </div>
             <p class="home-ach-act">
                 <span class="home-ach-act-name">${escapeHtml(actName)}${extra}</span>
                 <span class="home-ach-act-meta">${meta}</span>

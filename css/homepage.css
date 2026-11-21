@@ -526,6 +526,31 @@ a.home-card:focus-visible,
     outline-offset: 2px;
 }
 
+.home-ach-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.home-ach-top .home-ach-items {
+    flex: 1;
+    min-width: 0;
+}
+
+/* The day it happened, in the card's top corner. */
+.home-ach-date {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ach) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ach) 45%, transparent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
 .home-ach-items {
     display: flex;
     flex-direction: column;
