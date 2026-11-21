@@ -21,7 +21,7 @@
     <link rel="preload" as="image" href="images/img4.jpg" fetchpriority="high">
     <link rel="stylesheet" href="css/base.css?v=20261110d">
     <link rel="stylesheet" href="css/layout.css?v=20261110d">
-    <link rel="stylesheet" href="css/homepage.css?v=20261113a">
+    <link rel="stylesheet" href="css/homepage.css?v=20261121f">
     <link rel="stylesheet" href="css/responsive.css?v=20261110d">
 
     <link rel="canonical" href="https://j-guyy.github.io/">
@@ -65,6 +65,13 @@
 
     <main id="explore" class="home-main">
 
+        <!-- Filled from the Worker /achievements (js/homepage.js); stays hidden if it fails -->
+        <section class="home-section" id="home-achievements" aria-labelledby="home-ach-title" hidden>
+            <h2 class="home-section-title" id="home-ach-title">Latest Achievements</h2>
+            <ol class="home-ach-list" id="home-ach-list"></ol>
+            <button type="button" class="home-more-link home-ach-more" id="home-ach-more" hidden>Show more</button>
+        </section>
+
         <!-- Filled from the Worker /travel/* endpoints; stays hidden if they fail -->
         <section class="home-section" id="home-stats" aria-labelledby="home-stats-title" hidden>
             <h2 class="home-section-title" id="home-stats-title">By the Numbers</h2>
@@ -103,9 +110,9 @@
 
     </main>
 
-    <script src="js/travel-api.js"></script>
+    <script src="js/travel-api.js?v=20261121a"></script>
     <script src="data/adventures.js?v=20261110d"></script>
-    <script src="js/homepage.js"></script>
+    <script src="js/homepage.js?v=20261121f"></script>
     <script src="js/navbar-component.js"></script>
 </body>
 

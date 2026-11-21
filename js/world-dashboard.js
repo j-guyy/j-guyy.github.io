@@ -62,6 +62,10 @@ const CONTINENT_LABELS = {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    // ?table=forbes100 / ?table=capitals (the homepage's achievements) opens on that table.
+    const selector = document.getElementById('table-selector');
+    const wanted = new URLSearchParams(location.search).get('table');
+    if (wanted && [...selector.options].some(o => o.value === wanted)) selector.value = wanted;
     const dataReady = loadCountriesWithPopulation(null, function (updatedData) {
         worldData = updatedData;
         displayWorldTravelSummary();

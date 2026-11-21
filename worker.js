@@ -530,6 +530,11 @@ export default {
                 return await handleSummary(env);
             }
 
+            // ── Latest achievements (homepage feed; see "Achievements") ──
+            if (path === '/achievements' && request.method === 'GET') {
+                return await handleAchievements(env);
+            }
+
             // ── Google Maps key for the About page's 3D globe ──
             // Kept as the GOOGLE_MAPS_KEY secret so it isn't in the public repo.
             // The browser still sees it, so Google's own limits are the real
@@ -1087,6 +1092,7 @@ async function handleTravelToggle(request, env) {
     }
 
     await env.STRAVA_DATA.put(kvKey, JSON.stringify(data));
+    await refreshAchievementsAfter(env, 'travel toggle');
     return json({ ok: true, type, key, toggled: true });
 }
 
@@ -1103,6 +1109,7 @@ async function handleTravelSeed(request, env) {
     }
 
     await env.STRAVA_DATA.put(TRAVEL_KEYS[type], JSON.stringify(data));
+    await refreshAchievementsAfter(env, 'travel save');
     return json({ ok: true, type, seeded: true });
 }
 
@@ -1898,6 +1905,8 @@ async function detectHuntersAfterSync(env, slim) {
             results[name] = { error: e.message };
         }
     }
+    // The homepage feed: note newly checked list items, replay the tile records.
+    await refreshAchievementsAfter(env, 'sync', slim);
     return results;
 }
 
@@ -3475,6 +3484,550 @@ async function getAccessToken(env) {
     }));
 
     return tokens.access_token;
+}
+
+// ── Achievements (homepage "Latest Achievements") ────────────────────────────
+//
+// GET /achievements: the newest things reached, one row per outing, built from
+// data the site already keeps, never by hand:
+//   county      County Hunter's first visits
+//   ecoregion   a Level III ecoregion's first Level IV (Alaska regions are
+//               their own Level III); Level IV patches would crowd the list
+//   peak        a Peaks dashboard list peak (14ers, 46ers, state / country
+//               high points, British Isles) on its first Strava summit
+//   tile        Tile Hunter's max cluster or max square growing, found by
+//               replaying every route in order (tileHistory); single tiles never count
+//   best        an all-time #1 in the Dashboard's Best Efforts (INS_BEST_SPORTS
+//               × distance / time / climbing in js/insights.js — keep in step),
+//               once a sport has ACH_BEST_MIN_PRIOR activities before it
+//   state, country, capital (state), world_capital, metro (top 100 only),
+//   forbes     the hand-kept travel lists. They carry no dates, so the worker
+//               notes the day each item is first seen checked (refreshTravelLog,
+//               run after every /travel save and every sync; the first run is
+//               the baseline and logs nothing) and ties it to the Strava
+//               activity that reached it in the ACH_MATCH_DAYS before. A state,
+//               country or top-100 metro Strava reached but the list hasn't
+//               checked yet shows up on its own, at that activity.
+// Rows: every item of one activity is one row, and rows of the same day that
+// start in the same state / country merge, so a trip day with five counties,
+// a new state, a capital and a metro is a single line. Items a list checked
+// with no matching activity share one row per day.
+//
+// Response: { generatedAt, since, rows: [{ date, acts: [{ i, n, t }], place,
+// items: [{ type, id, name, sub?, detail? }] }] }, newest first. The page
+// colours and links each type (js/homepage.js ACH_TYPES).
+
+const ACH_TRAVEL_KEY = 'achievements_travel';   // { since, seen: { type: [id] }, log: [{ k, id, date }] }
+const ACH_TILES_KEY  = 'achievements_tiles';    // { v, sig, events: [{ actId, date, cluster?, square? }] }
+const ACH_CACHE_KEY  = 'achievements_cache';    // { at, body } — the last response
+const ACH_CACHE_MS = 10 * 60 * 1000;
+const ACH_TILE_VERSION = 1;
+const ACH_TZ = 'America/Denver';
+const ACH_ROWS = 40;
+const ACH_MATCH_DAYS = 30;
+const ACH_BEST_MIN_PRIOR = 10;
+const ACH_MASS_ADD = 25;          // more new items than this in one go is a re-seed, not a trip
+const ACH_CITY_M = 15000;         // a route this close to a capital / Forbes city reached it
+const ACH_METRO_M = 25000;
+
+const ACH_US_STATES = {
+    AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado',
+    CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho',
+    IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+    ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota',
+    MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada',
+    NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
+    ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+    RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+    UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia',
+    WI: 'Wisconsin', WY: 'Wyoming', DC: 'District of Columbia',
+};
+
+// GEO_COUNTRY_ALIASES in js/world-dashboard.js: Nominatim country names →
+// countries.json names. Keep in step.
+const ACH_GEO_COUNTRY_ALIASES = {
+    'United States': 'United States of America', 'Puerto Rico': 'United States of America',
+    'United States Virgin Islands': 'United States of America', Guam: 'United States of America',
+    'Hong Kong': 'China', Macau: 'China', Macao: 'China', Czechia: 'Czech Republic', 'Türkiye': 'Turkey',
+    'Viet Nam': 'Vietnam', 'Russian Federation': 'Russia', 'Republic of Korea': 'South Korea',
+    'Holy See': 'Vatican City', Vatican: 'Vatican City', 'Cabo Verde': 'Cape Verde',
+    'Democratic Republic of the Congo': 'DR Congo', "Côte d'Ivoire": 'Ivory Coast', 'The Bahamas': 'Bahamas',
+    Greenland: 'Denmark', 'Faroe Islands': 'Denmark', Aruba: 'Netherlands', 'Curaçao': 'Netherlands',
+    'Sint Maarten': 'Netherlands', 'Caribbean Netherlands': 'Netherlands',
+    Gibraltar: 'United Kingdom', 'Isle of Man': 'United Kingdom', Jersey: 'United Kingdom', Guernsey: 'United Kingdom',
+    Bermuda: 'United Kingdom', 'Cayman Islands': 'United Kingdom', 'French Polynesia': 'France',
+    'New Caledonia': 'France', Martinique: 'France', Guadeloupe: 'France', 'Réunion': 'France', 'French Guiana': 'France',
+    'Christmas Island': 'Australia', 'Norfolk Island': 'Australia', 'Cook Islands': 'New Zealand',
+};
+const achCountryOf = raw => ACH_GEO_COUNTRY_ALIASES[raw] || raw;
+
+// INS_BEST_SPORTS / INS_BEST_CATS in js/insights.js.
+const ACH_BEST_SPORTS = [
+    { key: 'run',    label: 'Run',             types: ['Run', 'TrailRun'] },
+    { key: 'ride',   label: 'Ride',            types: ['Ride', 'GravelRide', 'MountainBikeRide'] },
+    { key: 'hike',   label: 'Hike',            types: ['Hike'] },
+    { key: 'nordic', label: 'Nordic Ski',      types: ['NordicSki'] },
+    { key: 'bc',     label: 'Backcountry Ski', types: ['BackcountrySki'] },
+];
+const ACH_BEST_CATS = [
+    { key: 'dist', label: 'Furthest',      val: a => (a.di || 0) / M_PER_MI, fmt: v => `${v.toFixed(1)} mi` },
+    { key: 'time', label: 'Longest',       val: a => a.m || 0,               fmt: v => `${Math.floor(v / 3600)}h ${String(Math.round(v % 3600 / 60)).padStart(2, '0')}m` },
+    { key: 'elev', label: 'Most Climbing', val: a => (a.e || 0) * FT_PER_M,  fmt: v => `${Math.round(v).toLocaleString('en-US')} ft` },
+];
+
+const ACH_PEAK_LABELS = {
+    colorado14ers: 'Colorado 14er', adk46ers: 'Adirondack 46er', highpoints: 'State high point',
+    britishIsles: 'British Isles High Five', countryHighpoints: 'Country high point',
+};
+
+// YYYY-MM-DD in Justin's time zone (the en-CA locale writes dates that way).
+function achToday(ms = Date.now()) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: ACH_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+}
+
+function achAddDays(date, days) {
+    const d = new Date(`${date}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+// ── Achievements — the hand-kept travel lists ──
+
+// type → Map(id → { name, sub?, lat?, lng? }) of what each list has checked,
+// or null when that list couldn't be read (so a failed read never looks like
+// everything being unchecked). Same sources as the dashboards (and
+// mcpGetTravel): KV once seeded, else the /data file.
+async function achTravelLists(env) {
+    const kv = env.STRAVA_DATA;
+    const safe = p => p.catch(e => { console.log(`achievements: ${e.message}`); return undefined; });
+    const [states, countries, metros, capStored, capFile, wcapStored, wcapFile, forbes, worldCities, metroFile] = await Promise.all([
+        safe(kv.get(TRAVEL_KEYS.visitedStates, 'json').then(d => d || fetchSiteJson('data/visitedStates.json'))),
+        safe(kv.get(TRAVEL_KEYS.countries, 'json').then(d => d || fetchSiteJson('data/countries.json'))),
+        safe(kv.get(TRAVEL_KEYS.metros, 'json')),
+        safe(kv.get(TRAVEL_KEYS.capitals, 'json')),
+        safe(fetchSiteJson('data/stateCapitals.json')),
+        safe(kv.get(TRAVEL_KEYS.worldCapitals, 'json')),
+        safe(fetchSiteJson('data/worldCapitals.json')),
+        safe(fetchSiteJson('data/forbes100cities.json')),
+        safe(fetchSiteJson('data/worldCities.json')),
+        safe(fetchSiteJson('data/metros.json')),
+    ]);
+    const out = {};
+
+    out.state = states && typeof states === 'object' && !Array.isArray(states)
+        ? new Map(Object.entries(states).filter(([, v]) => v).map(([name]) => [name, { name }])) : null;
+
+    out.country = null;
+    if (countries && Object.keys(CONTINENT_LISTS).every(k => Array.isArray(countries[k]))) {
+        out.country = new Map();
+        for (const k of Object.keys(CONTINENT_LISTS)) {
+            for (const c of countries[k]) if (c.visited) out.country.set(c.name, { name: c.name });
+        }
+    }
+
+    // Coordinates from the file, flags from KV once the list was first saved.
+    const flagged = (file, stored, key) => {
+        if (!Array.isArray(file)) return null;
+        const done = Array.isArray(stored) && stored.length ? new Map(stored.map(c => [c[key], Boolean(c.visited)])) : null;
+        return file.filter(c => (done ? done.get(c[key]) : c.visited));
+    };
+    const caps = flagged(capFile, capStored, 'state');
+    out.capital = caps && new Map(caps.map(c => [c.state, {
+        name: c.name, sub: ACH_US_STATES[c.state] || c.state, lat: c.coords?.[1], lng: c.coords?.[0],
+    }]));
+    const wcaps = flagged(wcapFile, wcapStored, 'country');
+    out.world_capital = wcaps && new Map(wcaps.map(c => [c.country, {
+        name: c.name, sub: c.country, lat: c.coords?.[1], lng: c.coords?.[0],
+    }]));
+
+    const metroList = Array.isArray(metros) && metros.length ? metros : metroFile;
+    out.metro = Array.isArray(metroList)
+        ? new Map(metroList.filter(m => m.visited && m.rank <= 100).map(m => [String(m.rank), {
+            name: m.name, sub: `#${m.rank}`, lat: m.coords?.[1], lng: m.coords?.[0],
+        }])) : null;
+
+    // forbesRows in js/bucket-lists.js: a visited US metro or a worldCities city.
+    if (Array.isArray(forbes) && Array.isArray(metroList) && Array.isArray(worldCities?.visitedCities)) {
+        const norm = s => String(s).toLowerCase().replace(/[.,]/g, '').trim();
+        const visitedMetros = new Set(metroList.filter(m => m.visited).map(m => norm(m.name)));
+        const cities = new Set(worldCities.visitedCities.map(c => c.name));
+        out.forbes = new Map(forbes
+            .map((c, i) => ({ ...c, rank: i + 1 }))
+            .filter(c => (c.country === 'USA' && visitedMetros.has(norm(c.name))) || cities.has(c.name))
+            .map(c => [c.name, { name: c.name, sub: `#${c.rank}`, lat: c.coords?.[1], lng: c.coords?.[0] }]));
+    } else {
+        out.forbes = null;
+    }
+    return { lists: out, metroList: Array.isArray(metroList) ? metroList : [] };
+}
+
+// Notes the day each list item is first seen checked. An item unchecked again
+// loses its note (a mistake undone); a burst of more than ACH_MASS_ADD at once
+// (a list seeded for the first time) is taken as the new baseline.
+async function refreshTravelLog(env, lists) {
+    lists = lists || (await achTravelLists(env)).lists;
+    const kv = env.STRAVA_DATA;
+    const stored = await kv.get(ACH_TRAVEL_KEY, 'json');
+    const today = achToday();
+    const state = stored || { since: today, seen: {}, log: [] };
+    let changed = !stored;
+    for (const [type, map] of Object.entries(lists)) {
+        if (!map) continue;
+        const now = [...map.keys()];
+        const before = state.seen[type];
+        if (!Array.isArray(before)) { state.seen[type] = now; changed = true; continue; }
+        const prev = new Set(before);
+        const added = now.filter(id => !prev.has(id));
+        const cur = new Set(now);
+        const removed = new Set(before.filter(id => !cur.has(id)));
+        if (!added.length && !removed.size) continue;
+        if (removed.size) state.log = state.log.filter(e => !(e.k === type && removed.has(e.id)));
+        if (stored && added.length <= ACH_MASS_ADD) {
+            for (const id of added) state.log.push({ k: type, id, date: today });
+        }
+        state.seen[type] = now;
+        changed = true;
+    }
+    if (changed) {
+        await kv.put(ACH_TRAVEL_KEY, JSON.stringify(state));
+        await kv.delete(ACH_CACHE_KEY);
+    }
+    return state;
+}
+
+// Never fails the save or sync it follows.
+async function refreshAchievementsAfter(env, what, slim) {
+    try {
+        await refreshTravelLog(env);
+        if (slim) await achTileEvents(env, slim);
+        await env.STRAVA_DATA.delete(ACH_CACHE_KEY);
+    } catch (e) {
+        console.log(`achievements after ${what} failed: ${e.message}`);
+    }
+}
+
+// ── Achievements — Tile Hunter records ──
+
+// Replays every route oldest first into z14 tiles (sampled as detectTiles
+// does) and reports each activity that grew the max cluster (connected tiles
+// with all four neighbours visited, kept with a union-find) or the max square
+// (largest fully visited N×N block, checked only around the activity's new
+// tiles). Same definitions as summarizeTiles.
+function tileHistory(slim) {
+    const B = 14, M = (1 << B) - 1, ROW = 1 << B;
+    const set = new Set();
+    const parent = new Map(), size = new Map();
+    const find = v => { let r = v; while (parent.get(r) !== r) r = parent.get(r); while (parent.get(v) !== r) { const n = parent.get(v); parent.set(v, r); v = n; } return r; };
+    let maxCluster = 0, maxSquare = 0;
+    const union = (a, b) => {
+        let ra = find(a), rb = find(b);
+        if (ra === rb) return;
+        if (size.get(ra) < size.get(rb)) [ra, rb] = [rb, ra];
+        parent.set(rb, ra);
+        size.set(ra, size.get(ra) + size.get(rb));
+        if (size.get(ra) > maxCluster) maxCluster = size.get(ra);
+    };
+    const isInterior = v => {
+        const x = v >> B, y = v & M;
+        return x > 0 && x < M && y > 0 && y < M && set.has(v - 1) && set.has(v + 1) && set.has(v - ROW) && set.has(v + ROW);
+    };
+    const promote = v => {
+        if (parent.has(v) || !set.has(v) || !isInterior(v)) return;
+        parent.set(v, v); size.set(v, 1);
+        if (maxCluster < 1) maxCluster = 1;
+        for (const n of [v - 1, v + 1, v - ROW, v + ROW]) if (parent.has(n)) union(v, n);
+    };
+    const run = (v, step) => {   // visited tiles in a line through v
+        let n = 1;
+        for (let u = v - step; set.has(u); u -= step) n++;
+        for (let u = v + step; set.has(u); u += step) n++;
+        return n;
+    };
+    // Largest fully visited square in the (2k-1)² window around v.
+    const squareAround = (v, k) => {
+        const x0 = (v >> B) - k + 1, y0 = (v & M) - k + 1, w = 2 * k - 1;
+        const dp = new Int32Array((w + 1) * (w + 1));
+        let best = 0;
+        for (let j = 1; j <= w; j++) {
+            for (let i = 1; i <= w; i++) {
+                const x = x0 + i - 1, y = y0 + j - 1;
+                if (x < 0 || y < 0 || x > M || y > M || !set.has((x << B) | y)) continue;
+                const n = Math.min(dp[(j - 1) * (w + 1) + i], dp[j * (w + 1) + i - 1], dp[(j - 1) * (w + 1) + i - 1]) + 1;
+                dp[j * (w + 1) + i] = n;
+                if (n > best) best = n;
+            }
+        }
+        return best;
+    };
+
+    const events = [];
+    const acts = slim.filter(a => a.i && a.p).sort(byStartTime);
+    for (const act of acts) {
+        const pts = decodePolylineFlat(act.p);
+        const fresh = [];
+        const add = (lat, lng) => {
+            const [x, y] = tileKeyOf(lat, lng).split(',').map(Number);
+            if (!(x >= 0 && y >= 0 && x <= M && y <= M)) return;
+            const v = (x << B) | y;
+            if (!set.has(v)) { set.add(v); fresh.push(v); }
+        };
+        for (let k = 0; k < pts.length; k += 2) {
+            const lat = pts[k], lng = pts[k + 1];
+            add(lat, lng);
+            if (k > 0) {
+                const lat1 = pts[k - 2], lng1 = pts[k - 1];
+                const steps = Math.max(1, Math.ceil(metresApart(lat1, lng1, lat, lng) / TILE_SAMPLE_M));
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    add(lat1 + (lat - lat1) * t, lng1 + (lng - lng1) * t);
+                }
+            }
+        }
+        if (!fresh.length) continue;
+        const clusterBefore = maxCluster, squareBefore = maxSquare;
+        for (const v of fresh) {
+            promote(v);
+            for (const n of [v - 1, v + 1, v - ROW, v + ROW]) promote(n);
+        }
+        for (let grew = true; grew;) {
+            grew = false;
+            const k = maxSquare + 1;
+            for (const v of fresh) {
+                if (run(v, ROW) < k || run(v, 1) < k) continue;
+                const s = squareAround(v, k);
+                if (s >= k) { maxSquare = s; grew = true; break; }
+            }
+        }
+        if (maxCluster > clusterBefore || maxSquare > squareBefore) {
+            events.push({
+                actId: act.i, date: act.d,
+                ...(maxCluster > clusterBefore ? { cluster: [clusterBefore, maxCluster] } : {}),
+                ...(maxSquare > squareBefore ? { square: [squareBefore, maxSquare] } : {}),
+            });
+        }
+    }
+    return events;
+}
+
+// The replay is redone only when the activity list changed (each sync).
+async function achTileEvents(env, slim) {
+    const routed = slim.filter(a => a.i && a.p);
+    let idSum = 0;
+    for (const a of routed) idSum = (idSum + Number(a.i) % 1000003) % 1000000007;
+    const sig = `${routed.length}|${idSum}`;
+    const stored = await env.STRAVA_DATA.get(ACH_TILES_KEY, 'json');
+    if (stored?.v === ACH_TILE_VERSION && stored.sig === sig) return stored.events;
+    const events = tileHistory(slim);
+    await env.STRAVA_DATA.put(ACH_TILES_KEY, JSON.stringify({ v: ACH_TILE_VERSION, sig, events }));
+    return events;
+}
+
+// ── Achievements — building the feed ──
+
+async function handleAchievements(env) {
+    const cached = await env.STRAVA_DATA.get(ACH_CACHE_KEY, 'json');
+    if (cached && Date.now() - cached.at < ACH_CACHE_MS) {
+        return json(cached.body, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+    }
+    const body = await buildAchievements(env);
+    await env.STRAVA_DATA.put(ACH_CACHE_KEY, JSON.stringify({ at: Date.now(), body }));
+    return json(body, 200, { 'Cache-Control': `public, max-age=${SUMMARY_CACHE_SECONDS}` });
+}
+
+async function buildAchievements(env) {
+    const kv = env.STRAVA_DATA;
+    const [{ slim, geo }, counties, metroHunter, eco, names, travel, summited] = await Promise.all([
+        loadActivities(env),
+        kv.get(COUNTIES_KEY, 'json'),
+        kv.get(METRO_HUNTER_KEY, 'json'),
+        kv.get(ECOREGIONS_KEY, 'json'),
+        hunterNames(),
+        achTravelLists(env),
+        listSummitedPeaks(env).catch(() => []),
+    ]);
+    const log = await refreshTravelLog(env, travel.lists);
+    const tileEvents = await achTileEvents(env, slim).catch(e => { console.log(`tile history: ${e.message}`); return []; });
+    const peakLists = await Promise.all(Object.values(MCP_PEAK_LISTS).map(cfg =>
+        loadPeakList(cfg, env).then(items => ({ cfg, items })).catch(() => null)));
+
+    const byId = new Map(slim.map(a => [Number(a.i), a]));
+    const items = [];   // { type, id, name, sub?, detail?, actId, date }
+    const push = (item) => { if (item.date) items.push(item); };
+    const fromDiscovery = d => ({ actId: d?.actId != null && byId.has(Number(d.actId)) ? Number(d.actId) : null, date: d?.date || null });
+
+    // Counties (and which activities reached each state, for the state rows).
+    const stateActs = new Map();   // state name → [activity]
+    for (const [fips, d] of Object.entries(counties?.discoveries || {})) {
+        const [name, abbr] = names.counties?.[fips] || [fips, ''];
+        push({ type: 'county', id: fips, name, sub: abbr, ...fromDiscovery(d) });
+        const act = byId.get(Number(d?.actId));
+        const stateName = ACH_US_STATES[abbr];
+        if (act && stateName) (stateActs.get(stateName) || stateActs.set(stateName, []).get(stateName)).push(act);
+    }
+
+    // Level III ecoregions: the first of their Level IVs.
+    const ecoFirst = new Map();
+    for (const [code, d] of Object.entries(eco?.discoveries || {})) {
+        const l3 = names.ecoregions?.[code]?.[1] || String(code).replace(/[a-z]+$/i, '');
+        const prev = ecoFirst.get(l3);
+        if (!prev || String(d.date) < String(prev.date)) ecoFirst.set(l3, d);
+    }
+    for (const [l3, d] of ecoFirst) {
+        push({ type: 'ecoregion', id: l3, name: names.ecoL3?.[l3] || `Ecoregion ${l3}`, sub: 'Level III', ...fromDiscovery(d) });
+    }
+
+    // Peaks dashboard list peaks, one item per summit even when it tops two lists.
+    const peakItems = new Map();
+    for (const list of peakLists) {
+        if (!list) continue;
+        for (const [item, peak] of matchPeakList(list.items, summited)) {
+            const label = ACH_PEAK_LABELS[list.cfg.type];
+            const have = peakItems.get(peak.id);
+            if (have) { if (!have.sub.includes(label)) have.sub += ` · ${label}`; continue; }
+            peakItems.set(peak.id, { type: 'peak', id: String(peak.id), name: item.name, sub: label, ...fromDiscovery(peak.first) });
+        }
+    }
+    for (const it of peakItems.values()) push(it);
+
+    // Tile records.
+    for (const ev of tileEvents) {
+        if (ev.cluster && ev.cluster[1] >= 10) {
+            push({ type: 'tile', id: `cluster:${ev.actId}`, name: 'Max cluster', detail: `${ev.cluster[1].toLocaleString('en-US')} tiles`, actId: ev.actId, date: ev.date });
+        }
+        if (ev.square && ev.square[1] >= 3) {
+            push({ type: 'tile', id: `square:${ev.actId}`, name: 'Max square', detail: `${ev.square[1]}×${ev.square[1]}`, actId: ev.actId, date: ev.date });
+        }
+    }
+
+    // All-time Best Efforts.
+    const sorted = [...slim].filter(a => a.d).sort(byStartTime);
+    for (const sport of ACH_BEST_SPORTS) {
+        const acts = sorted.filter(a => sport.types.includes(a.t));
+        for (const cat of ACH_BEST_CATS) {
+            let best = 0;
+            acts.forEach((a, n) => {
+                const v = cat.val(a);
+                if (v > best) {
+                    if (n >= ACH_BEST_MIN_PRIOR && best > 0) {
+                        push({ type: 'best', id: `${sport.key}:${cat.key}:${a.i}`, name: `${cat.label} ${sport.label}`, detail: cat.fmt(v), actId: Number(a.i), date: a.d });
+                    }
+                    best = v;
+                }
+            });
+        }
+    }
+
+    // Travel lists: the day an item was checked, tied to the activity that got
+    // there; plus what Strava reached that a list hasn't checked yet.
+    const placeIs = (a, test) => { const p = placeOf(geo, a.l); return Boolean(p && test(p)); };
+    const near = (a, lat, lng, m) => {
+        if (lat == null || lng == null) return false;
+        if (Array.isArray(a.l) && haversineM(a.l[0], a.l[1], lat, lng) <= m) return true;
+        if (!a.p) return false;
+        const pts = decodePolylineFlat(a.p);
+        for (let k = 0; k < pts.length; k += 2) if (metresApart(pts[k], pts[k + 1], lat, lng) <= m) return true;
+        return false;
+    };
+    const metroDisc = new Map();   // metro rank → discovery
+    for (const [id, d] of Object.entries(metroHunter?.discoveries || {})) {
+        const rank = names.metros?.[id]?.[2];
+        if (rank) metroDisc.set(String(rank), d);
+    }
+    const reached = {
+        state: (id) => a => (stateActs.get(id) || []).includes(a) || placeIs(a, p => p.c === 'United States' && p.s === id),
+        country: (id) => a => placeIs(a, p => achCountryOf(p.c) === id),
+        capital: (id, it) => a => near(a, it.lat, it.lng, ACH_CITY_M),
+        world_capital: (id, it) => a => near(a, it.lat, it.lng, ACH_CITY_M),
+        forbes: (id, it) => a => near(a, it.lat, it.lng, ACH_CITY_M),
+        metro: (id, it) => a => Number(metroDisc.get(id)?.actId) === Number(a.i) || near(a, it.lat, it.lng, ACH_METRO_M),
+    };
+    const describe = {
+        state: (id) => ({ name: id }),
+        country: (id) => ({ name: id }),
+    };
+    for (const entry of log.log || []) {
+        const map = travel.lists[entry.k];
+        const it = map?.get(entry.id);
+        if (!it || !reached[entry.k]) continue;
+        const from = achAddDays(entry.date, -ACH_MATCH_DAYS);
+        const test = reached[entry.k](entry.id, it);
+        const act = sorted.find(a => a.d >= from && a.d <= entry.date && test(a));
+        push({ type: entry.k, id: entry.id, name: it.name, ...(it.sub ? { sub: it.sub } : {}), actId: act ? Number(act.i) : null, date: act ? act.d : entry.date });
+    }
+    const logged = new Set((log.log || []).map(e => `${e.k}:${e.id}`));
+    // Strava-only: a state / country / top-100 metro the list doesn't have yet.
+    if (travel.lists.state) {
+        for (const [stateName, acts] of stateActs) {
+            if (travel.lists.state.has(stateName) || logged.has(`state:${stateName}`)) continue;
+            const first = [...acts].sort(byStartTime)[0];
+            push({ type: 'state', id: stateName, ...describe.state(stateName), actId: Number(first.i), date: first.d });
+        }
+    }
+    if (travel.lists.country) {
+        const firstIn = new Map();
+        for (const a of sorted) {
+            const c = placeOf(geo, a.l)?.c;
+            if (!c || c === 'Unknown') continue;
+            const name = achCountryOf(c);
+            if (!firstIn.has(name)) firstIn.set(name, a);
+        }
+        for (const [name, a] of firstIn) {
+            if (travel.lists.country.has(name) || logged.has(`country:${name}`)) continue;
+            push({ type: 'country', id: name, name, actId: Number(a.i), date: a.d });
+        }
+    }
+    if (travel.lists.metro) {
+        for (const m of travel.metroList) {
+            const id = String(m.rank);
+            if (m.rank > 100 || travel.lists.metro.has(id) || logged.has(`metro:${id}`)) continue;
+            const d = metroDisc.get(id);
+            if (d) push({ type: 'metro', id, name: m.name, sub: `#${m.rank}`, ...fromDiscovery(d) });
+        }
+    }
+
+    return { generatedAt: Date.now(), since: log.since, rows: achRows(items, byId, geo) };
+}
+
+// One row per activity, then one per day and start place; items a list checked
+// without a matching activity share a row per day.
+function achRows(items, byId, geo) {
+    const groups = new Map();
+    for (const it of items) {
+        const key = it.actId != null ? `a:${it.actId}` : `d:${it.date}`;
+        let g = groups.get(key);
+        if (!g) {
+            const act = it.actId != null ? byId.get(it.actId) : null;
+            const p = act ? placeOf(geo, act.l) : null;
+            g = { date: act ? act.d : it.date, acts: act ? [act] : [], place: p && p.c !== 'Unknown' ? p : null, items: [] };
+            groups.set(key, g);
+        }
+        const { actId, date, ...rest } = it;
+        g.items.push(rest);
+    }
+
+    // Newest first, so the cut keeps the latest rows whole.
+    const newest = [...groups.values()].sort((a, b) =>
+        b.date.localeCompare(a.date) || (b.acts[0] && a.acts[0] ? byStartTime(b.acts[0], a.acts[0]) : b.acts.length - a.acts.length));
+    const rows = [];
+    const byDayPlace = new Map();
+    for (const g of newest) {
+        const placeKey = g.acts.length && g.place ? `${g.date}|${g.place.c}|${g.place.s || ''}` : null;
+        const into = placeKey && byDayPlace.get(placeKey);
+        if (into) {
+            into.acts.push(...g.acts);
+            into.items.push(...g.items);
+            continue;
+        }
+        if (rows.length >= ACH_ROWS) continue;
+        if (placeKey) byDayPlace.set(placeKey, g);
+        rows.push(g);
+    }
+    return rows.map(g => ({
+        date: g.date,
+        acts: g.acts.sort(byStartTime).map(a => ({ i: a.i, n: a.n || '', t: a.t || '' })),
+        place: g.place ? [g.place.s, g.place.c === 'United States' ? '' : g.place.c].filter(Boolean).join(', ') : '',
+        items: g.items,
+    }));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
