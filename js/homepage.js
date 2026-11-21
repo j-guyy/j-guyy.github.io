@@ -343,6 +343,8 @@ function achItemTitle(it) {
     return [it.name, it.detail, it.sub].filter(Boolean).join(' · ');
 }
 
+// The achievements lead each card (one line per type, the most notable first
+// and largest); the activity that earned them is the small line underneath.
 function achRowHtml(row) {
     const byType = new Map();
     row.items.forEach(it => {
@@ -354,38 +356,37 @@ function achRowHtml(row) {
     if (!types.length) return '';
     const lead = ACH_TYPES[types[0]];
 
-    const badges = types.map(type => {
+    const lines = types.map(type => {
         const cfg = ACH_TYPES[type];
         const list = byType.get(type);
         const shown = list.slice(0, ACH_NAMES_SHOWN).map(achItemText).join(', ');
-        const more = list.length > ACH_NAMES_SHOWN ? ` +${list.length - ACH_NAMES_SHOWN}` : '';
+        const more = list.length > ACH_NAMES_SHOWN ? ` +${list.length - ACH_NAMES_SHOWN} more` : '';
         const label = list.length > 1 ? `${list.length} ${cfg.many}` : cfg.one;
-        return `<a class="home-ach-badge" href="${cfg.href}" style="--ach: ${cfg.color}"
+        return `<li><a class="home-ach-item" href="${cfg.href}" style="--ach: ${cfg.color}"
                    title="${escapeHtml(list.map(achItemTitle).join('\n'))}">
-                <span class="home-ach-badge-type">${escapeHtml(label)}</span>
-                <span class="home-ach-badge-names">${escapeHtml(shown + more)}</span>
-            </a>`;
+                <span class="home-ach-type">${escapeHtml(label)}</span>
+                <span class="home-ach-name">${escapeHtml(shown + more)}</span>
+            </a></li>`;
     }).join('');
 
     const acts = row.acts || [];
-    const title = acts.length
-        ? acts[0].n || 'Untitled activity'
-        : 'Checked off the lists';
-    const extra = acts.length > 1 ? ` <span class="home-ach-more-acts">+${acts.length - 1} more</span>` : '';
+    const actName = acts.length ? (acts[0].n || 'Untitled activity') : 'Checked off the lists';
+    const extra = acts.length > 1 ? ` +${acts.length - 1} more` : '';
     const strava = acts.length
-        ? `<a class="home-ach-strava" href="https://www.strava.com/activities/${encodeURIComponent(acts[0].i)}" target="_blank" rel="noopener" aria-label="Open on Strava">Strava <span aria-hidden="true">&#8599;</span></a>`
+        ? `<a class="home-ach-strava" href="https://www.strava.com/activities/${encodeURIComponent(acts[0].i)}" target="_blank" rel="noopener" aria-label="Open ${escapeHtml(actName)} on Strava">Strava <span aria-hidden="true">&#8599;</span></a>`
         : '';
     const meta = [achDateLabel(row.date), row.place].filter(Boolean).map(escapeHtml).join(' · ');
+    const first = byType.get(types[0]);
 
     return `
         <li class="home-card home-ach-row" style="--ach: ${lead.color}">
-            <a class="home-ach-link" href="${lead.href}" aria-label="${escapeHtml(`${title}: ${types.map(t => ACH_TYPES[t].one).join(', ')}`)}"></a>
-            <div class="home-ach-head">
-                <h3 class="home-ach-title">${escapeHtml(title)}${extra}</h3>
+            <a class="home-ach-link" href="${lead.href}" aria-label="${escapeHtml(`${lead.one}: ${first.map(i => i.name).join(', ')}`)}"></a>
+            <ul class="home-ach-items">${lines}</ul>
+            <p class="home-ach-act">
+                <span class="home-ach-act-name">${escapeHtml(actName)}${extra}</span>
+                <span class="home-ach-act-meta">${meta}</span>
                 ${strava}
-            </div>
-            <p class="home-ach-meta">${meta}</p>
-            <div class="home-ach-badges">${badges}</div>
+            </p>
         </li>`;
 }
 
