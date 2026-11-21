@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setupBackgroundRotation(reducedMotion);
     setupScrollCue(reducedMotion);
+    loadAchievements();
     renderLatestTrips();
     loadTravelStats();
 });
@@ -285,5 +286,134 @@ async function loadTravelStats() {
             </a>
         `;
     }).join('');
+    section.hidden = false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Latest achievements (Worker /achievements)                          */
+/* ------------------------------------------------------------------ */
+
+// One entry per achievement type the worker reports (see "Achievements" in
+// worker.js), most notable first: a row is coloured and linked by its first
+// type, and its badges follow this order.
+const ACH_TYPES = {
+    country:       { one: 'New Country',     many: 'New Countries',     color: '#42a5f5', href: 'world-dashboard.html' },
+    state:         { one: 'New State',       many: 'New States',        color: '#ef5350', href: 'us-dashboard.html?table=states' },
+    world_capital: { one: 'World Capital',   many: 'World Capitals',    color: '#ffd54f', href: 'world-dashboard.html?table=capitals' },
+    capital:       { one: 'State Capital',   many: 'State Capitals',    color: '#ffa726', href: 'us-dashboard.html?table=capitals' },
+    forbes:        { one: 'Forbes 100 City', many: 'Forbes 100 Cities', color: '#f06292', href: 'world-dashboard.html?table=forbes100' },
+    metro:         { one: 'Top 100 Metro',   many: 'Top 100 Metros',    color: '#ba68c8', href: 'us-dashboard.html?table=metros' },
+    peak:          { one: 'New Peak',        many: 'New Peaks',         color: '#ff7043', href: 'peaks-dashboard.html' },
+    best:          { one: 'All-Time Best',   many: 'All-Time Bests',    color: '#26c6da', href: 'strava.html#ins-best' },
+    ecoregion:     { one: 'New Ecoregion',   many: 'New Ecoregions',    color: '#9ccc65', href: 'us-dashboard.html?table=ecoregions' },
+    tile:          { one: 'Tile Record',     many: 'Tile Records',      color: '#7986cb', href: 'strava.html#tile' },
+    county:        { one: 'New County',      many: 'New Counties',      color: '#4caf50', href: 'strava.html#county' },
+};
+const ACH_ORDER = Object.keys(ACH_TYPES);
+const ACH_FIRST_ROWS = 6;   // rows shown before "Show more"
+const ACH_MORE_ROWS = 10;   // rows each "Show more" adds
+const ACH_NAMES_SHOWN = 3;  // names listed on a badge before "+N"
+
+// "Today", "Yesterday", "Nov 20" this year, else "Nov 20, 2025".
+function achDateLabel(date) {
+    const today = new Date();
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (date === iso(today)) return 'Today';
+    const y = new Date(today);
+    y.setDate(y.getDate() - 1);
+    if (date === iso(y)) return 'Yesterday';
+    const d = new Date(`${date}T12:00:00`);
+    if (isNaN(d)) return date;
+    const opts = { month: 'short', day: 'numeric' };
+    if (d.getFullYear() !== today.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-US', opts);
+}
+
+// "Providence County" → "Providence" once the badge already says counties.
+const achShortName = (type, name) => type === 'county'
+    ? String(name).replace(/ (County|Parish|Borough|Census Area|Municipality|city)$/i, '')
+    : String(name);
+
+function achItemText(it) {
+    const name = achShortName(it.type, it.name);
+    return it.detail ? `${name} ${it.detail}` : name;
+}
+
+function achItemTitle(it) {
+    return [it.name, it.detail, it.sub].filter(Boolean).join(' · ');
+}
+
+function achRowHtml(row) {
+    const byType = new Map();
+    row.items.forEach(it => {
+        if (!ACH_TYPES[it.type]) return;
+        if (!byType.has(it.type)) byType.set(it.type, []);
+        byType.get(it.type).push(it);
+    });
+    const types = ACH_ORDER.filter(t => byType.has(t));
+    if (!types.length) return '';
+    const lead = ACH_TYPES[types[0]];
+
+    const badges = types.map(type => {
+        const cfg = ACH_TYPES[type];
+        const list = byType.get(type);
+        const shown = list.slice(0, ACH_NAMES_SHOWN).map(achItemText).join(', ');
+        const more = list.length > ACH_NAMES_SHOWN ? ` +${list.length - ACH_NAMES_SHOWN}` : '';
+        const label = list.length > 1 ? `${list.length} ${cfg.many}` : cfg.one;
+        return `<a class="home-ach-badge" href="${cfg.href}" style="--ach: ${cfg.color}"
+                   title="${escapeHtml(list.map(achItemTitle).join('\n'))}">
+                <span class="home-ach-badge-type">${escapeHtml(label)}</span>
+                <span class="home-ach-badge-names">${escapeHtml(shown + more)}</span>
+            </a>`;
+    }).join('');
+
+    const acts = row.acts || [];
+    const title = acts.length
+        ? acts[0].n || 'Untitled activity'
+        : 'Checked off the lists';
+    const extra = acts.length > 1 ? ` <span class="home-ach-more-acts">+${acts.length - 1} more</span>` : '';
+    const strava = acts.length
+        ? `<a class="home-ach-strava" href="https://www.strava.com/activities/${encodeURIComponent(acts[0].i)}" target="_blank" rel="noopener" aria-label="Open on Strava">Strava <span aria-hidden="true">&#8599;</span></a>`
+        : '';
+    const meta = [achDateLabel(row.date), row.place].filter(Boolean).map(escapeHtml).join(' · ');
+
+    return `
+        <li class="home-card home-ach-row" style="--ach: ${lead.color}">
+            <a class="home-ach-link" href="${lead.href}" aria-label="${escapeHtml(`${title}: ${types.map(t => ACH_TYPES[t].one).join(', ')}`)}"></a>
+            <div class="home-ach-head">
+                <h3 class="home-ach-title">${escapeHtml(title)}${extra}</h3>
+                ${strava}
+            </div>
+            <p class="home-ach-meta">${meta}</p>
+            <div class="home-ach-badges">${badges}</div>
+        </li>`;
+}
+
+async function loadAchievements() {
+    const section = document.getElementById('home-achievements');
+    const list = document.getElementById('home-ach-list');
+    const moreBtn = document.getElementById('home-ach-more');
+    if (!section || !list || typeof TRAVEL_WORKER_URL === 'undefined') return;
+
+    let data;
+    try {
+        const res = await fetch(`${TRAVEL_WORKER_URL}/achievements`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+    } catch (e) {
+        console.warn('Achievements unavailable', e);
+        return;
+    }
+    const rows = (data.rows || []).map(achRowHtml).filter(Boolean);
+    if (!rows.length) return;
+
+    let shown = 0;
+    const showMore = (n) => {
+        list.insertAdjacentHTML('beforeend', rows.slice(shown, shown + n).join(''));
+        shown = Math.min(rows.length, shown + n);
+        if (moreBtn) moreBtn.hidden = shown >= rows.length;
+    };
+    showMore(ACH_FIRST_ROWS);
+    if (moreBtn) moreBtn.addEventListener('click', () => showMore(ACH_MORE_ROWS));
     section.hidden = false;
 }
