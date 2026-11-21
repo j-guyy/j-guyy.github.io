@@ -491,9 +491,9 @@ a.home-card:focus-visible,
    through a stretched link, and the badges and Strava link sit above it. */
 .home-ach-list {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    max-width: 760px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -593,6 +593,12 @@ a.home-card:focus-visible,
     font-size: 0.78rem;
 }
 
+/* On a card a long list (three all-time bests) wraps instead of cutting off. */
+.home-ach-items .home-ach-name {
+    white-space: normal;
+    text-wrap: balance;
+}
+
 .home-ach-items > li:first-child .home-ach-name {
     font-size: 1.35rem;
     font-weight: 800;
@@ -647,6 +653,60 @@ a.home-card:focus-visible,
     text-decoration: underline;
 }
 
+/* Routine achievements (counties, tile records, ecoregions): one slim line. */
+.home-ach-row.is-slim {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px 9px 16px;
+    border-left-width: 3px;
+}
+
+.home-ach-slim-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.home-ach-slim-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    min-width: 0;
+}
+
+.is-slim .home-ach-item {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.is-slim .home-ach-type {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+}
+
+.is-slim .home-ach-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.home-ach-slim-act {
+    overflow: hidden;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.55);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.is-slim .home-ach-date {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+}
+
 .home-ach-more {
     padding: 0;
     border: 0;
@@ -661,10 +721,6 @@ a.home-card:focus-visible,
 
 /* Tablet */
 @media (max-width: 900px) {
-    .home-ach-list {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
     .home-stats-grid {
         grid-template-columns: repeat(6, minmax(0, 1fr));
     }

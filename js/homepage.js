@@ -297,20 +297,20 @@ async function loadTravelStats() {
 // worker.js), most notable first: a row is coloured and linked by its first
 // type, and its badges follow this order.
 const ACH_TYPES = {
-    country:       { one: 'New Country',     many: 'New Countries',     color: '#42a5f5', href: 'world-dashboard.html' },
-    state:         { one: 'New State',       many: 'New States',        color: '#ef5350', href: 'us-dashboard.html?table=states' },
-    world_capital: { one: 'World Capital',   many: 'World Capitals',    color: '#ffd54f', href: 'world-dashboard.html?table=capitals' },
-    capital:       { one: 'State Capital',   many: 'State Capitals',    color: '#ffa726', href: 'us-dashboard.html?table=capitals' },
-    forbes:        { one: 'Forbes 100 City', many: 'Forbes 100 Cities', color: '#f06292', href: 'world-dashboard.html?table=forbes100' },
-    metro:         { one: 'Top 100 Metro',   many: 'Top 100 Metros',    color: '#ba68c8', href: 'us-dashboard.html?table=metros' },
-    peak:          { one: 'New Peak',        many: 'New Peaks',         color: '#ff7043', href: 'peaks-dashboard.html' },
-    best:          { one: 'All-Time Best',   many: 'All-Time Bests',    color: '#26c6da', href: 'strava.html#ins-best' },
+    country:       { big: true, one: 'New Country',     many: 'New Countries',     color: '#42a5f5', href: 'world-dashboard.html' },
+    state:         { big: true, one: 'New State',       many: 'New States',        color: '#ef5350', href: 'us-dashboard.html?table=states' },
+    world_capital: { big: true, one: 'World Capital',   many: 'World Capitals',    color: '#ffd54f', href: 'world-dashboard.html?table=capitals' },
+    capital:       { big: true, one: 'State Capital',   many: 'State Capitals',    color: '#ffa726', href: 'us-dashboard.html?table=capitals' },
+    forbes:        { big: true, one: 'Forbes 100 City', many: 'Forbes 100 Cities', color: '#f06292', href: 'world-dashboard.html?table=forbes100' },
+    metro:         { big: true, one: 'Top 100 Metro',   many: 'Top 100 Metros',    color: '#ba68c8', href: 'us-dashboard.html?table=metros' },
+    peak:          { big: true, one: 'New Peak',        many: 'New Peaks',         color: '#ff7043', href: 'peaks-dashboard.html' },
+    best:          { big: true, one: 'All-Time Best',   many: 'All-Time Bests',    color: '#26c6da', href: 'strava.html#ins-best' },
     ecoregion:     { one: 'New Ecoregion',   many: 'New Ecoregions',    color: '#9ccc65', href: 'us-dashboard.html?table=ecoregions' },
     tile:          { one: 'Tile Record',     many: 'Tile Records',      color: '#7986cb', href: 'strava.html#tile' },
     county:        { one: 'New County',      many: 'New Counties',      color: '#4caf50', href: 'strava.html#county' },
 };
 const ACH_ORDER = Object.keys(ACH_TYPES);
-const ACH_FIRST_ROWS = 6;   // rows shown before "Show more"
+const ACH_FIRST_ROWS = 8;   // rows shown before "Show more"
 const ACH_MORE_ROWS = 10;   // rows each "Show more" adds
 const ACH_NAMES_SHOWN = 3;  // names listed on a badge before "+N"
 
@@ -370,6 +370,9 @@ function achRowHtml(row) {
     }).join('');
 
     const acts = row.acts || [];
+    // Counties, tile records and ecoregions alone make a slim one-line row;
+    // a card is kept for the big moments.
+    if (!types.some(t => ACH_TYPES[t].big)) return achSlimRowHtml(row, types, byType, lead);
     const actName = acts.length ? (acts[0].n || 'Untitled activity') : 'Checked off the lists';
     const extra = acts.length > 1 ? ` +${acts.length - 1} more` : '';
     const strava = acts.length
@@ -390,6 +393,33 @@ function achRowHtml(row) {
                 <span class="home-ach-act-meta">${meta}</span>
                 ${strava}
             </p>
+        </li>`;
+}
+
+function achSlimRowHtml(row, types, byType, lead) {
+    const parts = types.map(type => {
+        const cfg = ACH_TYPES[type];
+        const list = byType.get(type);
+        const shown = list.slice(0, ACH_NAMES_SHOWN).map(achItemText).join(', ');
+        const more = list.length > ACH_NAMES_SHOWN ? ` +${list.length - ACH_NAMES_SHOWN} more` : '';
+        const label = list.length > 1 ? `${list.length} ${cfg.many}` : cfg.one;
+        return `<a class="home-ach-item" href="${cfg.href}" style="--ach: ${cfg.color}"
+                   title="${escapeHtml(list.map(achItemTitle).join('\n'))}">
+                <span class="home-ach-type">${escapeHtml(label)}</span>
+                <span class="home-ach-name">${escapeHtml(shown + more)}</span>
+            </a>`;
+    }).join('');
+    const acts = row.acts || [];
+    const act = [acts.length ? (acts[0].n || 'Untitled activity') + (acts.length > 1 ? ` +${acts.length - 1}` : '') : '', row.place]
+        .filter(Boolean).map(escapeHtml).join(' · ');
+    return `
+        <li class="home-card home-ach-row is-slim" style="--ach: ${lead.color}">
+            <a class="home-ach-link" href="${lead.href}" aria-label="${escapeHtml(types.map(t => ACH_TYPES[t].one).join(', '))}"></a>
+            <div class="home-ach-slim-main">
+                <div class="home-ach-slim-items">${parts}</div>
+                ${act ? `<span class="home-ach-slim-act">${act}</span>` : ''}
+            </div>
+            <time class="home-ach-date" datetime="${escapeHtml(row.date)}">${escapeHtml(achDateLabel(row.date))}</time>
         </li>`;
 }
 
