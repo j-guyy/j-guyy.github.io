@@ -4,7 +4,7 @@
   "description": "Capacitor Android shell for the j-guyy.github.io Strava dashboard app",
   "private": true,
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
+    "@capacitor/android": "^8.6.0",
     "@capacitor/app": "^7.0.0",
     "@capacitor/core": "^7.0.0"
   },
