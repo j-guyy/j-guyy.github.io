@@ -1473,7 +1473,12 @@ html:not(.user-mode) [data-user-only] { display: none !important; }
 .app-page .home-sync-btn[data-state="offline"] { opacity: 0.85; }
 .app-page .home-sync-btn[data-state="offline"] .home-sync-icon { background: rgba(255, 193, 7, 0.16); color: #FFC107; }
 
-/* ── Home: Latest Achievements (css/achievements.css cards, app tokens) ── */
+/* ── Home: Latest Achievements (css/achievements.css cards, app tokens) ──
+   Last on Home, under the hunter cards, so it never pushes them down. */
+.app-page .app-ach {
+    padding-bottom: 12px;
+}
+
 .app-page .app-ach .ach-list {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
