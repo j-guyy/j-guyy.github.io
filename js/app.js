@@ -525,3 +525,19 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHomeSync();
     setInterval(renderHomeSync, 60000); // keep "Last synced 5m ago" current
 });
+
+// ── Home "Latest Achievements" ───────────────────────────────────────────────
+// The website homepage's feed (js/achievements.js), owner only: an invited
+// user's worker keeps no travel lists. Offline, app/sw.js serves the last copy.
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof mountAchievements !== 'function' || document.documentElement.classList.contains('user-mode')) return;
+    mountAchievements({
+        section: document.getElementById('app-achievements'),
+        list: document.getElementById('app-ach-list'),
+        more: document.getElementById('app-ach-more'),
+        url: 'https://strava-worker.justinguyette.workers.dev',
+        first: 3,
+        step: 5,
+        app: true,
+    });
+});
