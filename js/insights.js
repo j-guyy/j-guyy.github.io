@@ -84,7 +84,8 @@ const INS_BEST_CATS = [
     { key: 'time', label: 'Longest Time',     val: a => a.m || 0 },
     { key: 'elev', label: 'Most Climbing',    val: a => (a.e || 0) * INS_FT_PER_M },
 ];
-const INS_BEST_TOP = 5;
+const INS_BEST_TOP = 5;   // rows each leaderboard shows at first
+const INS_BEST_MORE = 10;  // rows each "Show more" adds
 
 const insState = {
     donutYear: null,      // null = this year; 'all' = every year in the filter
@@ -95,6 +96,7 @@ const insState = {
     eddYear: 'all',
     bestYear: null,       // null = this year (or all time when it has none)
     bestSport: 'run',
+    bestShown: {},        // rows shown per Best Efforts column (dist / time / elev), past the top 5
     hrYear: 'last',       // heart rate weeks: 'last' = last 12 months, or a year
     hrView: 'hours',      // heart rate by year: 'hours' | 'share' | 'month'
     hrZone: '1',          // the zone drawn month by month (0 = Z1)
@@ -255,6 +257,8 @@ function insYearPills(key, years, sel, allLabel = 'All Time', allValue = 'all') 
 const INS_YEAR_KEYS = ['donutYear', 'calYear', 'eddYear', 'bestYear', 'hrYear'];
 
 function insSet(key, value) {
+    // A new sport or year starts Best Efforts back at its top 5.
+    if (key === 'bestSport' || INS_YEAR_KEYS.includes(key)) insState.bestShown = {};
     if (INS_YEAR_KEYS.includes(key) && /^\d{4}$/.test(value)) {
         INS_YEAR_KEYS.forEach(k => { insState[k] = value; });
         insState.compareA = value;
@@ -1120,11 +1124,12 @@ function insBestCard(today) {
 
     const cols = INS_BEST_CATS.map(cat => {
         const ranked = list => list.filter(a => cat.val(a) > 0)
-            .sort((a, b) => cat.val(b) - cat.val(a) || (a.d < b.d ? -1 : 1))
-            .slice(0, INS_BEST_TOP);
-        const top = ranked(pool);
+            .sort((a, b) => cat.val(b) - cat.val(a) || (a.d < b.d ? -1 : 1));
+        const full = ranked(pool);
+        const shown = Math.max(INS_BEST_TOP, insState.bestShown[cat.key] || 0);
+        const top = full.slice(0, shown);
         // Viewing one year: flag the efforts that are also in the all-time top 5.
-        const allTime = year === 'all' ? [] : ranked(sport.acts);
+        const allTime = year === 'all' ? [] : ranked(sport.acts).slice(0, INS_BEST_TOP);
         const rows = top.map((a, i) => {
             const at = allTime.indexOf(a);
             const badge = at < 0 ? '' : `<span class="ins-best-badge${at === 0 ? ' is-best' : ''}">★ ${at === 0 ? 'All-time best' : `All-time #${at + 1}`}</span>`;
@@ -1137,7 +1142,14 @@ function insBestCard(today) {
                 <strong class="ins-best-val">${insBestValue(cat.key, cat.val(a))}</strong>
             </li>`;
         }).join('');
-        return `<div class="ins-best-col"><h3>${cat.label}</h3>${rows ? `<ol class="ins-best-list">${rows}</ol>` : '<p class="ins-note">None yet.</p>'}</div>`;
+        // Show more / Show less, like the homepage's Latest Achievements.
+        const more = full.length > top.length
+            ? `<button type="button" class="ins-best-more" onclick="insBestMore('${cat.key}', ${INS_BEST_MORE})">Show more</button>` : '';
+        const less = top.length > INS_BEST_TOP
+            ? `<button type="button" class="ins-best-more is-less" onclick="insBestMore('${cat.key}', 0)">Show less</button>` : '';
+        const wide = top.length > 99 ? ' is-wide3' : top.length > 9 ? ' is-wide' : '';
+        const list = rows ? `<ol class="ins-best-list${wide}">${rows}</ol>` : '<p class="ins-note">None yet.</p>';
+        return `<div class="ins-best-col"><h3>${cat.label}</h3>${list}${more || less ? `<div class="ins-best-more-row">${more}${less}</div>` : ''}</div>`;
     }).join('');
 
     const sportPills = insPills('bestSport', present.map(sp => [sp.key, sp.label]), sport.key);
@@ -1145,6 +1157,13 @@ function insBestCard(today) {
     const sub = `${year === 'all' ? 'all time' : year} · ${insFmt(pool.length)} ${sport.label.replace(/^\S+\s/, '').toLowerCase()} activities`;
     const note = { run: 'Run includes trail runs.', ride: 'Ride includes gravel and mountain bike rides (no e-bike or virtual rides).' }[sport.key] || '';
     return insCard('Best Efforts', `${sportPills}${yearPills}<div class="ins-best">${cols}</div>${note ? `<p class="ins-note">${note}</p>` : ''}`, sub, 'ins-best');
+}
+
+// Grow one Best Efforts column by n rows, or (n = 0) take it back to the top 5.
+function insBestMore(cat, n) {
+    const now = Math.max(INS_BEST_TOP, insState.bestShown[cat] || 0);
+    insState.bestShown = { ...insState.bestShown, [cat]: n ? now + n : INS_BEST_TOP };
+    renderInsights(insState.lastFiltered);
 }
 
 // ── 8. Goal progress ───────────────────────────────────────────────────────

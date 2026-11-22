@@ -387,6 +387,8 @@
     font-weight: 700;
     font-size: 0.75rem;
     line-height: 1.4em;
+    width: 1.4em;
+    justify-self: center;
 }
 .ins-root .ins-best-main { display: flex; flex-direction: column; min-width: 0; }
 .ins-root .ins-best-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -403,6 +405,25 @@
 }
 .ins-root .ins-best-badge.is-best { background: var(--ins-accent); color: #131715; }
 .ins-root .ins-best-val { color: var(--ins-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Two- and three-digit ranks once a column has been grown with Show more */
+.ins-root .ins-best-list.is-wide .ins-best-row { grid-template-columns: 1.9em minmax(0, 1fr) auto; }
+.ins-root .ins-best-list.is-wide3 .ins-best-row { grid-template-columns: 2.5em minmax(0, 1fr) auto; }
+/* Show more / Show less: text buttons like the homepage's Latest Achievements */
+.ins-root .ins-best-more-row { display: flex; gap: 18px; margin-top: 8px; }
+.ins-root .ins-best-more {
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--ins-accent);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+.ins-root .ins-best-more.is-less { color: var(--ins-text-dim); }
+.ins-root .ins-best-more:hover { text-decoration: underline; }
+.ins-root .ins-best-more:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: 3px; border-radius: 2px; }
 
 /* Floating tooltip (appended to body) */
 .ins-tooltip {
