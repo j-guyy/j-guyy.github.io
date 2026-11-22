@@ -454,14 +454,23 @@ function renderHomeSync() {
     const lastSync = lastSyncedAt ? `Last synced ${relativeTime(lastSyncedAt)}` : '';
 
     let state = 'idle';
-    if (!isLoggedIn()) state = 'locked';
+    const offline = typeof window.jgOffline === 'function' && window.jgOffline();
+    if (offline && !syncing) state = 'offline';
+    else if (!isLoggedIn()) state = 'locked';
     else if (syncing) state = 'syncing';
     else if (lastSyncResult) state = /fail/i.test(lastSyncResult) ? 'error' : 'done';
     btn.dataset.state = state;
-    btn.disabled = state === 'syncing';
+    btn.disabled = state === 'syncing' || (state === 'offline' && navigator.onLine === false);
     bar.hidden = state !== 'syncing';
 
-    if (state === 'locked' && window.STRAVA_USER) {
+    if (state === 'offline') {
+        // js/offline.js: no signal, or this visit is showing saved data. Once
+        // the signal is back the button reloads for fresh data.
+        const saved = window.jgOfflineSavedText?.() || '';
+        const back = navigator.onLine !== false;
+        label.textContent = back ? 'Back online — tap to reload' : 'Offline — sync is off';
+        meta.textContent = saved ? `Showing saved ${saved}` : 'Showing your saved data';
+    } else if (state === 'locked' && window.STRAVA_USER) {
         // User mode has no owner login: the session token is missing on this
         // device (storage blocked or cleared), so the way back is /connect/.
         label.textContent = 'Reconnect to sync';
@@ -496,6 +505,10 @@ function renderHomeSync() {
 
 function onHomeSyncTap() {
     if (typeof isLoggedIn !== 'function') return;
+    if (typeof window.jgOffline === 'function' && window.jgOffline()) {
+        if (navigator.onLine !== false) location.reload();
+        return;
+    }
     if (!isLoggedIn()) {
         if (window.STRAVA_USER) location.href = '/connect/'; // no owner login in user mode
         else adminLogin(); // a successful login fires 'stravasync'
@@ -506,6 +519,7 @@ function onHomeSyncTap() {
 }
 
 document.addEventListener('stravasync', renderHomeSync);
+document.addEventListener('jgoffline', renderHomeSync);
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('home-sync-btn')?.addEventListener('click', onHomeSyncTap);
     renderHomeSync();
