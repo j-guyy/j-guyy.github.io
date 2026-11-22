@@ -204,6 +204,7 @@ button.ach-act-name:hover {
 /* Pop-up listing a row's activities (achOpenActs); matches the World
    Travel page's Strava pop-up (.strava-dialog in dashboard.css). */
 .ach-dialog {
+    box-sizing: border-box;
     margin: auto;
     width: min(560px, calc(100vw - 32px));
     max-height: min(86vh, 900px);
