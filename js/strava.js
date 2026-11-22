@@ -132,7 +132,14 @@ function passwordRejected(res) {
 }
 
 // POST to a protected worker endpoint with the admin password attached.
+// Offline (js/offline.js, app only): the page is showing a saved copy of the
+// data, so nothing it works out may be saved over newer results on the worker.
+function offlineNow() {
+    return typeof window.jgOffline === 'function' && window.jgOffline();
+}
+
 function adminPost(path, body = null) {
+    if (offlineNow()) return Promise.reject(new Error('offline'));
     const opts = { method: 'POST', headers: { ...adminHeaders() } };
     if (body !== null) {
         opts.headers['Content-Type'] = 'application/json';
@@ -146,6 +153,13 @@ function adminPost(path, body = null) {
 // skipped (resolves null) with one debug line per visit.
 let saveSkipLogged = false;
 function savePost(path, body) {
+    if (offlineNow()) {
+        if (!saveSkipLogged) {
+            saveSkipLogged = true;
+            dbg('Offline — showing saved data, so results are not saved to the server');
+        }
+        return Promise.resolve(null);
+    }
     if (!isLoggedIn()) {
         if (!saveSkipLogged) {
             saveSkipLogged = true;
@@ -699,7 +713,7 @@ async function fetchSyncStatus() {
 // browser was watching when it left may have finished meanwhile — pick up its
 // result. `loaded` is the initial pipeline run.
 async function resumeBackgroundSync(loaded) {
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn() || offlineNow()) return;
     let pendingSince = 0;
     try { pendingSince = Number(localStorage.getItem(SYNC_PENDING_KEY)) || 0; } catch { /* ignore */ }
     const status = await fetchSyncStatus();
@@ -9935,6 +9949,7 @@ let syncTask = null;
 function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
     if (syncTask) return syncTask;
     if (rebuilding) return Promise.resolve(); // runRebuild owns the sync state
+    if (offlineNow()) return Promise.resolve(); // no signal: Home shows why
     syncing = true;
     syncProgress = { fetched, pct: 0 };
     lastSyncResult = null;
