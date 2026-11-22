@@ -653,6 +653,159 @@ a.home-card:focus-visible,
     text-decoration: underline;
 }
 
+button.home-ach-act-name,
+button.home-ach-strava {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+button.home-ach-strava {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+button.home-ach-act-name {
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+}
+
+button.home-ach-act-name:hover {
+    text-decoration: underline;
+}
+
+/* Pop-up listing a row's activities (achOpenActs); matches the World
+   Travel page's Strava pop-up (.strava-dialog in dashboard.css). */
+.home-ach-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: min(86vh, 900px);
+    padding: 18px 20px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: var(--surface-solid);
+    color: var(--text-color);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.home-ach-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.home-ach-dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.home-ach-dialog-head h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.home-ach-dialog-close {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 0 0 2px;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-color);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.home-ach-dialog-close:hover {
+    background: var(--surface-2-hover);
+}
+
+.home-ach-dialog-sub {
+    margin: 4px 0 10px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.home-ach-dialog-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-ach-dialog-list li + li {
+    border-top: 1px solid var(--border);
+}
+
+.home-ach-dialog-act {
+    display: flex;
+    gap: 10px;
+    padding: 10px 6px;
+    border-radius: 8px;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.home-ach-dialog-act:hover {
+    background: var(--surface-2);
+}
+
+.home-ach-dialog-icon {
+    flex: none;
+    width: 1.5em;
+    text-align: center;
+}
+
+.home-ach-dialog-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.home-ach-dialog-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.home-ach-dialog-ext {
+    color: #fc6d2d;
+    font-size: 0.8em;
+}
+
+.home-ach-dialog-meta {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-variant-numeric: tabular-nums;
+}
+
+.home-ach-dialog-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 4px;
+}
+
+.home-ach-tag {
+    padding: 2px 8px;
+    border: 1px solid color-mix(in srgb, var(--ach) 50%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ach) 14%, transparent);
+    font-size: 0.75rem;
+}
+
+.home-ach-tag b {
+    color: var(--ach);
+}
+
 .home-ach-more {
     padding: 0;
     border: 0;

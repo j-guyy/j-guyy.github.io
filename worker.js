@@ -3513,8 +3513,8 @@ async function getAccessToken(env) {
 // a new state, a capital and a metro is a single line. Items a list checked
 // with no matching activity share one row per day.
 //
-// Response: { generatedAt, since, rows: [{ date, acts: [{ i, n, t }], place,
-// items: [{ type, id, name, sub?, detail? }] }] }, newest first. The page
+// Response: { generatedAt, since, rows: [{ date, acts: [{ i, n, t, m, di, e }], place,
+// items: [{ type, id, name, sub?, detail?, a? (the activity's id) }] }] }, newest first. The page
 // colours and links each type (js/homepage.js ACH_TYPES).
 
 const ACH_TRAVEL_KEY = 'achievements_travel';   // { since, seen: { type: [id] }, log: [{ k, id, date }] }
@@ -4002,7 +4002,7 @@ function achRows(items, byId, geo) {
             groups.set(key, g);
         }
         const { actId, date, ...rest } = it;
-        g.items.push(rest);
+        g.items.push(actId != null ? { ...rest, a: actId } : rest);
     }
 
     // Newest first, so the cut keeps the latest rows whole.
@@ -4024,7 +4024,7 @@ function achRows(items, byId, geo) {
     }
     return rows.map(g => ({
         date: g.date,
-        acts: g.acts.sort(byStartTime).map(a => ({ i: a.i, n: a.n || '', t: a.t || '' })),
+        acts: g.acts.sort(byStartTime).map(a => ({ i: a.i, n: a.n || '', t: a.t || '', m: a.m ?? null, di: a.di ?? null, e: a.e ?? null })),
         place: g.place ? [g.place.s, g.place.c === 'United States' ? '' : g.place.c].filter(Boolean).join(', ') : '',
         items: g.items,
     }));

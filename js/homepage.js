@@ -345,7 +345,7 @@ function achItemTitle(it) {
 
 // The achievements lead each card (one line per type, the most notable first
 // and largest); the activity that earned them is the small line underneath.
-function achRowHtml(row) {
+function achRowHtml(row, index) {
     const byType = new Map();
     row.items.forEach(it => {
         if (!ACH_TYPES[it.type]) return;
@@ -372,7 +372,11 @@ function achRowHtml(row) {
     const acts = row.acts || [];
     const actName = acts.length ? (acts[0].n || 'Untitled activity') : 'Checked off the lists';
     const extra = acts.length > 1 ? ` +${acts.length - 1} more` : '';
-    const strava = acts.length
+    // Several activities: the footer opens a pop-up listing each one with what
+    // it checked off (achOpenActs); one activity links straight to Strava.
+    const strava = acts.length > 1
+        ? `<button type="button" class="home-ach-strava home-ach-acts-btn" data-ach-row="${index}">${acts.length} activities <span aria-hidden="true">&#9656;</span></button>`
+        : acts.length
         ? `<a class="home-ach-strava" href="https://www.strava.com/activities/${encodeURIComponent(acts[0].i)}" target="_blank" rel="noopener" aria-label="Open ${escapeHtml(actName)} on Strava">Strava <span aria-hidden="true">&#8599;</span></a>`
         : '';
     const meta = row.place ? escapeHtml(row.place) : '';
@@ -386,7 +390,9 @@ function achRowHtml(row) {
                 <time class="home-ach-date" datetime="${escapeHtml(row.date)}">${escapeHtml(achDateLabel(row.date))}</time>
             </div>
             <p class="home-ach-act">
-                <span class="home-ach-act-name">${escapeHtml(actName)}${extra}</span>
+                ${acts.length > 1
+                    ? `<button type="button" class="home-ach-act-name home-ach-acts-btn" data-ach-row="${index}">${escapeHtml(actName)}${extra}</button>`
+                    : `<span class="home-ach-act-name">${escapeHtml(actName)}</span>`}
                 <span class="home-ach-act-meta">${meta}</span>
                 ${strava}
             </p>
@@ -408,8 +414,13 @@ async function loadAchievements() {
         console.warn('Achievements unavailable', e);
         return;
     }
-    const rows = (data.rows || []).map(achRowHtml).filter(Boolean);
+    const dataRows = data.rows || [];
+    const rows = dataRows.map((row, i) => achRowHtml(row, i)).filter(Boolean);
     if (!rows.length) return;
+    list.addEventListener('click', e => {
+        const btn = e.target.closest('.home-ach-acts-btn');
+        if (btn) achOpenActs(dataRows[Number(btn.dataset.achRow)]);
+    });
 
     let shown = 0;
     const showMore = (n) => {
@@ -420,4 +431,67 @@ async function loadAchievements() {
     showMore(ACH_FIRST_ROWS);
     if (moreBtn) moreBtn.addEventListener('click', () => showMore(ACH_MORE_ROWS));
     section.hidden = false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pop-up: every activity of a multi-activity achievement row          */
+/* ------------------------------------------------------------------ */
+
+// Same look as the World Travel page's Strava pop-up (openStravaDialog in
+// js/world-dashboard.js); each activity lists what it checked off.
+const ACH_SPORT_ICONS = [
+    [/Ride$/, '🚴'], [/Run$/, '🏃'], [/^(Hike|Walk|Snowshoe)$/, '🥾'], [/Ski|Snowboard/, '⛷️'],
+    [/Swim/, '🏊'], [/Kayak|Canoe|Row|Paddl|Sail|Surf/, '🛶'],
+];
+const achSportIcon = t => (ACH_SPORT_ICONS.find(([re]) => re.test(t || '')) || [null, '💪'])[1];
+const achSportLabel = t => String(t || 'Activity').replace(/([a-z])([A-Z])/g, '$1 $2').replace('E Bike', 'E-Bike');
+
+function achActStats(a) {
+    const stats = [];
+    if (a.m) {
+        const mins = Math.round(a.m / 60);
+        stats.push(mins >= 60 ? `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m` : `${mins}m`);
+    }
+    if (a.di) stats.push(`${(a.di / 1609.344).toFixed(1)} mi`);
+    if (a.e) stats.push(`${Math.round(a.e * 3.28084).toLocaleString('en-US')} ft`);
+    return stats.join(' · ');
+}
+
+function achOpenActs(row) {
+    if (!row || !(row.acts || []).length) return;
+    const tags = a => {
+        const mine = row.items.filter(it => Number(it.a) === Number(a.i) && ACH_TYPES[it.type]);
+        return ACH_ORDER.filter(t => mine.some(it => it.type === t)).map(t => {
+            const cfg = ACH_TYPES[t];
+            const list = mine.filter(it => it.type === t);
+            const names = list.slice(0, ACH_NAMES_SHOWN).map(achItemText).join(', ')
+                + (list.length > ACH_NAMES_SHOWN ? ` +${list.length - ACH_NAMES_SHOWN}` : '');
+            return `<span class="home-ach-tag" style="--ach: ${cfg.color}" title="${escapeHtml(list.map(achItemTitle).join('\n'))}"><b>${escapeHtml(list.length > 1 ? `${list.length} ${cfg.many}` : cfg.one)}</b> ${escapeHtml(names)}</span>`;
+        }).join('');
+    };
+    const dialog = document.createElement('dialog');
+    dialog.className = 'home-ach-dialog';
+    dialog.setAttribute('aria-label', `Activities on ${achDateLabel(row.date)}`);
+    dialog.innerHTML = `
+        <div class="home-ach-dialog-head">
+            <h3>${escapeHtml(achDateLabel(row.date))}${row.place ? ` · ${escapeHtml(row.place)}` : ''}</h3>
+            <button type="button" class="home-ach-dialog-close" aria-label="Close">×</button>
+        </div>
+        <p class="home-ach-dialog-sub">${row.acts.length} activities</p>
+        <ul class="home-ach-dialog-list">${row.acts.map(a => {
+            const t = tags(a);
+            return `<li><a class="home-ach-dialog-act" href="https://www.strava.com/activities/${encodeURIComponent(a.i)}" target="_blank" rel="noopener">
+                <span class="home-ach-dialog-icon" aria-hidden="true">${achSportIcon(a.t)}</span>
+                <span class="home-ach-dialog-main">
+                    <span class="home-ach-dialog-name">${escapeHtml(a.n || 'Activity')} <span class="home-ach-dialog-ext" aria-hidden="true">&#8599;</span></span>
+                    <span class="home-ach-dialog-meta">${escapeHtml(achSportLabel(a.t))}${achActStats(a) ? ` · ${escapeHtml(achActStats(a))}` : ''}</span>
+                    ${t ? `<span class="home-ach-dialog-tags">${t}</span>` : ''}
+                </span>
+            </a></li>`;
+        }).join('')}</ul>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector('.home-ach-dialog-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    dialog.showModal();
 }
