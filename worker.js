@@ -4039,7 +4039,10 @@ function achRows(items, byId, geo) {
             .sort((x, y) => (firstAct.get(x) ?? 1e9) - (firstAct.get(y) ?? 1e9));
         return {
             date: g.date,
-            acts: acts.map(a => ({ i: a.i, n: a.n || '', t: a.t || '', m: a.m ?? null, di: a.di ?? null, e: a.e ?? null })),
+            acts: acts.map(a => {
+                const p = placeOf(geo, a.l);
+                return { i: a.i, n: a.n || '', t: a.t || '', m: a.m ?? null, di: a.di ?? null, e: a.e ?? null, p: p && p.c !== 'Unknown' ? placeLabel(p) : '' };
+            }),
             place: labels.length > 1 && !labels.some(l => l.includes(','))
                 ? `${labels.slice(0, -1).join(', ')} & ${labels[labels.length - 1]}`
                 : labels.join(' · '),
