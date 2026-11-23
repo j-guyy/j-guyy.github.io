@@ -296,7 +296,10 @@ function setStat(id, text) {
 const CapApp = window.Capacitor?.Plugins?.App;
 if (CapApp?.addListener) {
     CapApp.addListener('backButton', () => {
-        if (currentRoute() !== 'home') history.back();
+        // An open pop-up (the achievements' activity list, …) closes first.
+        const open = [...document.querySelectorAll('dialog[open]')].pop();
+        if (open) open.close();
+        else if (currentRoute() !== 'home') history.back();
         else CapApp.exitApp();
     });
 }
