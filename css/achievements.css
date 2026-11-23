@@ -344,12 +344,24 @@ button.ach-act-name:hover {
     color: var(--ach);
 }
 
-.ach-more {
+.ach-more,
+.ach-more:hover,
+.ach-more:active,
+.ach-more:focus {
     padding: 0;
     border: 0;
     background: none;
     font: inherit;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* base.css paints every button:hover green, and a tap leaves :hover stuck on
+   touch screens, so only a real mouse gets the underline. */
+@media (hover: hover) {
+    .ach-more:hover {
+        text-decoration: underline;
+    }
 }
 
 .ach-more[hidden] {
