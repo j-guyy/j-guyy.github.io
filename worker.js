@@ -4005,29 +4005,50 @@ function achRows(items, byId, geo) {
         g.items.push(actId != null ? { ...rest, a: actId } : rest);
     }
 
-    // Newest first, so the cut keeps the latest rows whole.
+    // Newest first, so the cut keeps the latest rows whole. Then one card per
+    // day: everything checked off that day merges, whatever state or country
+    // it was in (counties in Texas and New Mexico the same day = one card).
     const newest = [...groups.values()].sort((a, b) =>
         b.date.localeCompare(a.date) || (b.acts[0] && a.acts[0] ? byStartTime(b.acts[0], a.acts[0]) : b.acts.length - a.acts.length));
     const rows = [];
-    const byDayPlace = new Map();
+    const byDay = new Map();
     for (const g of newest) {
-        const placeKey = g.acts.length && g.place ? `${g.date}|${g.place.c}|${g.place.s || ''}` : null;
-        const into = placeKey && byDayPlace.get(placeKey);
+        const into = byDay.get(g.date);
         if (into) {
             into.acts.push(...g.acts);
             into.items.push(...g.items);
+            if (g.place) into.places.push(g.place);
             continue;
         }
         if (rows.length >= ACH_ROWS) continue;
-        if (placeKey) byDayPlace.set(placeKey, g);
-        rows.push(g);
+        const row = { date: g.date, acts: [...g.acts], items: [...g.items], places: g.place ? [g.place] : [] };
+        byDay.set(g.date, row);
+        rows.push(row);
     }
-    return rows.map(g => ({
-        date: g.date,
-        acts: g.acts.sort(byStartTime).map(a => ({ i: a.i, n: a.n || '', t: a.t || '', m: a.m ?? null, di: a.di ?? null, e: a.e ?? null })),
-        place: g.place ? [g.place.s, g.place.c === 'United States' ? '' : g.place.c].filter(Boolean).join(', ') : '',
-        items: g.items,
-    }));
+    const placeLabel = p => [p.s, p.c === 'United States' ? '' : p.c].filter(Boolean).join(', ');
+    return rows.map(g => {
+        const acts = g.acts.sort(byStartTime);
+        // Places in the order the day's activities started.
+        const order = new Map(acts.map((a, i) => [a.i, i]));
+        const firstAct = new Map();
+        for (const a of acts) {
+            const p = placeOf(geo, a.l);
+            if (p && p.c !== 'Unknown') { const k = placeLabel(p); if (!firstAct.has(k)) firstAct.set(k, order.get(a.i)); }
+        }
+        const labels = [...new Set(g.places.map(placeLabel).filter(Boolean))]
+            .sort((x, y) => (firstAct.get(x) ?? 1e9) - (firstAct.get(y) ?? 1e9));
+        return {
+            date: g.date,
+            acts: acts.map(a => {
+                const p = placeOf(geo, a.l);
+                return { i: a.i, n: a.n || '', t: a.t || '', m: a.m ?? null, di: a.di ?? null, e: a.e ?? null, p: p && p.c !== 'Unknown' ? placeLabel(p) : '' };
+            }),
+            place: labels.length > 1 && !labels.some(l => l.includes(','))
+                ? `${labels.slice(0, -1).join(', ')} & ${labels[labels.length - 1]}`
+                : labels.join(' · '),
+            items: g.items,
+        };
+    });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

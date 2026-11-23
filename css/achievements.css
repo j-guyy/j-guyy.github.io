@@ -306,6 +306,19 @@ button.ach-act-name:hover {
     font-size: 0.8em;
 }
 
+.ach-dialog-place {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.72rem;
+    font-weight: 500;
+    vertical-align: 2px;
+    white-space: nowrap;
+}
+
 .ach-dialog-meta {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);

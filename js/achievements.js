@@ -210,7 +210,7 @@ function achOpenActs(row) {
             return `<li><a class="ach-dialog-act" href="https://www.strava.com/activities/${encodeURIComponent(a.i)}" target="_blank" rel="noopener">
                 <span class="ach-dialog-icon" aria-hidden="true">${achSportIcon(a.t)}</span>
                 <span class="ach-dialog-main">
-                    <span class="ach-dialog-name">${achEsc(a.n || 'Activity')} <span class="ach-dialog-ext" aria-hidden="true">&#8599;</span></span>
+                    <span class="ach-dialog-name">${achEsc(a.n || 'Activity')} <span class="ach-dialog-ext" aria-hidden="true">&#8599;</span>${a.p ? ` <span class="ach-dialog-place">${achEsc(a.p)}</span>` : ''}</span>
                     <span class="ach-dialog-meta">${achEsc(achSportLabel(a.t))}${achActStats(a) ? ` · ${achEsc(achActStats(a))}` : ''}</span>
                     ${t ? `<span class="ach-dialog-tags">${t}</span>` : ''}
                 </span>
