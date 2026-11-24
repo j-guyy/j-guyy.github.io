@@ -268,17 +268,15 @@ async function computeRegions() {
 }
 
 // ── Strava activities per country ────────────────────────────────────────────
-// How many Strava activities started in each country, from the worker, which
-// places activities by their start point (the geocode cache's Nominatim
-// names, mapped through GEO_COUNTRY_ALIASES). Tapping a count opens a pop-up
-// with the longest (by moving time, not distance, so a long day on foot
-// outranks a longer, faster ride), the latest, and every activity there.
+// How many Strava activities started in each country (js/strava-activities.js,
+// the worker's geocoded start names mapped through GEO_COUNTRY_ALIASES).
+// Tapping a count opens a pop-up with the longest, the latest, and every
+// activity there.
 function loadStravaByCountry() {
-    fetch(`${TRAVEL_WORKER_URL}/activities/by-country`)
-        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-        .then(data => {
+    StravaActivities.fetchTotals()
+        .then(countries => {
             const byCountry = {};
-            Object.entries(data.countries || {}).forEach(([raw, v]) => {
+            Object.entries(countries).forEach(([raw, v]) => {
                 const name = geoCountryName(raw);
                 const row = byCountry[name] || (byCountry[name] = { count: 0, sec: 0, di: 0, longest: null, latest: null, raw: [] });
                 row.raw.push(raw);
@@ -297,169 +295,11 @@ function loadStravaByCountry() {
 
 const geoCountryName = raw => GEO_COUNTRY_ALIASES[raw] || countryKey(raw);
 
-const SPORT_ICONS = [
-    [/Ride$/, '🚴'], [/Run$/, '🏃'], [/^(Hike|Walk|Snowshoe)$/, '🥾'], [/Ski|Snowboard/, '⛷️'],
-    [/Swim/, '🏊'], [/Kayak|Canoe|Row|Paddl|Sail|Surf/, '🛶'],
-];
-const sportIcon = t => (SPORT_ICONS.find(([re]) => re.test(t || '')) || [null, '💪'])[1];
-const sportLabel = t => String(t || 'Activity').replace(/([a-z])([A-Z])/g, '$1 $2').replace('E Bike', 'E-Bike');
-
-// 32h 36m, 2h 05m, 48m (2,782h past 100 hours)
-function formatDuration(sec) {
-    const mins = Math.round((sec || 0) / 60);
-    const h = Math.floor(mins / 60), m = mins % 60;
-    if (h >= 100) return `${Math.round(sec / 3600).toLocaleString()}h`;
-    return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
-}
-
-const formatMiles = m => {
-    const mi = (m || 0) / 1609.344;
-    return `${mi < 10 ? mi.toFixed(1) : Math.round(mi).toLocaleString()} mi`;
-};
-
-function formatActDate(d) {
-    const date = new Date(`${String(d || '').slice(0, 10)}T12:00:00`);
-    return isNaN(date) ? '' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-const stravaUrl = a => `https://www.strava.com/activities/${encodeURIComponent(a.i)}`;
-
-// The Strava cell: the activity count as a button that opens the pop-up.
-function stravaCell(r) {
-    const s = r.strava;
-    if (!s) {
-        const empty = stravaState === 'loading' ? '…' : '—';
-        const why = stravaState === 'error' ? 'Strava activities unavailable right now'
-            : stravaState === 'loading' ? 'Loading Strava activities…' : 'No Strava activities started here';
-        return `<span class="state-progress-none" title="${why}">${empty}</span>`;
-    }
-    const title = `${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'}, ${formatDuration(s.sec)} moving`
-        + (s.longest ? `\nLongest: ${s.longest.n || 'Activity'} (${formatDuration(s.longest.m)})` : '') + '\nTap for all of them';
-    // 2.7k on a narrow phone, so the row still fits.
-    const short = s.count >= 1000 ? `${(s.count / 1000).toFixed(1)}k` : String(s.count);
-    return `<button type="button" class="strava-count" title="${escapeAttr(title)}">`
-        + `<span class="count-long">${s.count.toLocaleString()}</span><span class="count-short">${short}</span></button>`;
-}
-
-// The pop-up: the country's totals, its longest and latest activities, then
-// every activity there (newest first, or sorted by moving time / distance),
-// fetched when it opens and shown a page at a time.
-const STRAVA_PAGE = 50;
-const STRAVA_SORTS = [
-    { id: 'newest', label: 'Newest', cmp: (a, b) => String(b.d).localeCompare(String(a.d)) },
-    { id: 'longest', label: 'Longest', cmp: (a, b) => (b.m || 0) - (a.m || 0) },
-    { id: 'distance', label: 'Farthest', cmp: (a, b) => (b.di || 0) - (a.di || 0) },
-];
-
-function activityStats(a) {
-    const stats = [formatDuration(a.m)];
-    if (a.di) stats.push(formatMiles(a.di));
-    if (a.e) stats.push(`${Math.round(a.e * 3.28084).toLocaleString()} ft`);
-    return stats.join(' · ');
-}
-
-function highlightCard(label, a) {
-    if (!a) return '';
-    return `<a class="strava-highlight" href="${stravaUrl(a)}" target="_blank" rel="noopener">
-        <span class="strava-highlight-label">${label}</span>
-        <span class="strava-highlight-name"><span aria-hidden="true">${sportIcon(a.t)}</span> ${escapeAttr(a.n || 'Activity')}</span>
-        <span class="strava-highlight-meta">${escapeAttr(sportLabel(a.t))} · ${formatActDate(a.d)}</span>
-        <span class="strava-highlight-stats">${activityStats(a)}</span>
-    </a>`;
-}
-
-function activityRow(a) {
-    return `<li><a class="strava-act" href="${stravaUrl(a)}" target="_blank" rel="noopener">
-        <span class="strava-act-icon" aria-hidden="true">${sportIcon(a.t)}</span>
-        <span class="strava-act-main"><span class="strava-act-name">${escapeAttr(a.n || 'Activity')}</span>
-            <span class="strava-act-date">${formatActDate(a.d)} · ${escapeAttr(sportLabel(a.t))}</span></span>
-        <span class="strava-act-stats">${activityStats(a)}</span>
-    </a></li>`;
-}
+const stravaCell = r => StravaActivities.cell(r.strava, stravaState);
 
 function openStravaDialog(name) {
     const s = stravaByCountry && stravaByCountry[name];
-    if (!s) return;
-    const dialog = document.createElement('dialog');
-    dialog.className = 'strava-dialog';
-    dialog.setAttribute('aria-label', `Strava activities in ${name}`);
-    dialog.innerHTML = `
-        <div class="strava-dialog-head">
-            <h3>${withCountryFlag(name)}</h3>
-            <button type="button" class="strava-dialog-close" aria-label="Close">×</button>
-        </div>
-        <p class="strava-dialog-totals">${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'} · ${formatDuration(s.sec)} moving · ${formatMiles(s.di)}</p>
-        <div class="strava-highlights">${highlightCard('Longest', s.longest)}${highlightCard('Latest', s.latest)}</div>
-        <div class="strava-dialog-bar">
-            <h4>All activities</h4>
-            <div class="strava-sport-filter" role="group" aria-label="Sport"></div>
-            <div class="view-toggle strava-sort" role="group" aria-label="Sort">
-                ${STRAVA_SORTS.map((o, i) => `<button type="button" class="view-mode-btn${i ? '' : ' active'}" data-sort="${o.id}" aria-pressed="${!i}">${o.label}</button>`).join('')}
-            </div>
-        </div>
-        <ul class="strava-act-list"><li class="strava-act-note">Loading activities…</li></ul>
-        <button type="button" class="strava-more" hidden>Show more</button>`;
-    document.body.appendChild(dialog);
-
-    const list = dialog.querySelector('.strava-act-list');
-    const more = dialog.querySelector('.strava-more');
-    const sportBox = dialog.querySelector('.strava-sport-filter');
-    let activities = null, sort = STRAVA_SORTS[0], sport = null, shown = 0, rows = [];
-
-    const render = (append = false) => {
-        if (!activities) return;
-        if (!append) {
-            rows = activities.filter(a => !sport || sportIcon(a.t) === sport).sort(sort.cmp);
-            shown = 0;
-            list.innerHTML = rows.length ? '' : '<li class="strava-act-note">No activities</li>';
-        }
-        list.insertAdjacentHTML('beforeend', rows.slice(shown, shown + STRAVA_PAGE).map(activityRow).join(''));
-        shown = Math.min(rows.length, shown + STRAVA_PAGE);
-        more.hidden = shown >= rows.length;
-        more.textContent = `Show more (${(rows.length - shown).toLocaleString()} left)`;
-    };
-
-    dialog.querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
-        sort = STRAVA_SORTS.find(o => o.id === btn.dataset.sort);
-        dialog.querySelectorAll('[data-sort]').forEach(b => {
-            b.classList.toggle('active', b === btn);
-            b.setAttribute('aria-pressed', String(b === btn));
-        });
-        render();
-    }));
-    more.addEventListener('click', () => render(true));
-    dialog.querySelector('.strava-dialog-close').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
-    dialog.addEventListener('close', () => dialog.remove());
-    dialog.showModal();
-    if (typeof closeDialogOnBack === 'function') closeDialogOnBack(dialog);
-
-    const qs = s.raw.map(c => `country=${encodeURIComponent(c)}`).join('&');
-    fetch(`${TRAVEL_WORKER_URL}/activities/by-country?${qs}`)
-        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-        .then(data => {
-            activities = data.activities || [];
-            // One chip per sport icon, when there's more than one kind.
-            const counts = new Map();
-            activities.forEach(a => { const k = sportIcon(a.t); counts.set(k, (counts.get(k) || 0) + 1); });
-            if (counts.size > 1) {
-                sportBox.innerHTML = [['', `All ${activities.length.toLocaleString()}`], ...[...counts].sort((a, b) => b[1] - a[1]).map(([k, n]) => [k, `${k} ${n.toLocaleString()}`])]
-                    .map(([k, label], i) => `<button type="button" class="strava-chip${i ? '' : ' active'}" data-sport="${k}" aria-pressed="${!i}">${label}</button>`).join('');
-                sportBox.querySelectorAll('[data-sport]').forEach(btn => btn.addEventListener('click', () => {
-                    sport = btn.dataset.sport || null;
-                    sportBox.querySelectorAll('[data-sport]').forEach(b => {
-                        b.classList.toggle('active', b === btn);
-                        b.setAttribute('aria-pressed', String(b === btn));
-                    });
-                    render();
-                }));
-            }
-            render();
-        })
-        .catch(err => {
-            console.warn('Country activities unavailable:', err);
-            list.innerHTML = '<li class="strava-act-note">Couldn\'t load the activities right now.</li>';
-        });
+    if (s) StravaActivities.open({ name, titleHtml: withCountryFlag(name), s, countries: s.raw });
 }
 
 // Resolves once the capitals have loaded (or failed to).
