@@ -165,6 +165,7 @@ const StravaActivities = (() => {
         dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
         dialog.addEventListener('close', () => dialog.remove());
         dialog.showModal();
+        if (typeof closeDialogOnBack === 'function') closeDialogOnBack(dialog);
 
         const qs = [...countries.map(c => `country=${encodeURIComponent(c)}`),
             ...regions.map(r => `region=${encodeURIComponent(r)}`)].join('&');

@@ -668,6 +668,7 @@ function utOpenPlace(kind, name) {
     dialog.addEventListener('close', () => dialog.remove());
     render(sortId, false);
     dialog.showModal();
+    if (typeof closeDialogOnBack === 'function') closeDialogOnBack(dialog);
 }
 
 let utRenderQueued = false;

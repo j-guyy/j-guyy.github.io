@@ -1432,6 +1432,7 @@ html:not(.user-mode) [data-user-only] { display: none !important; }
 .ut-act { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 2px; color: inherit; text-decoration: none; }
 .ut-act-stats { flex: 0 0 auto; max-width: 45%; text-align: right; font-size: 0.74rem; color: var(--app-text-dim); }
 .ut-more { display: block; width: 100%; margin-top: 10px; }
+.ut-more[hidden] { display: none; }
 
 /* ── Offline (js/offline.js) ─────────────────────────────────────────────── */
 /* Small pill above the tab bar while the app shows its saved copy. Tap hides

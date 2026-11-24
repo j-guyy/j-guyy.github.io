@@ -1327,6 +1327,23 @@ a.summary-stat-link:focus-visible {
     color: var(--text);
     font: inherit;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+/* `display: block` above outranks the browser's [hidden] rule, which left a
+   "Show more (0 left)" button on screen once every row was showing. */
+.strava-more[hidden] {
+    display: none;
+}
+/* base.css paints every button:hover green, and a tap leaves :hover stuck on
+   touch screens, so keep the button's own colours and only lift it for a mouse. */
+.strava-more:hover,
+.strava-more:active {
+    background: var(--surface-2);
+}
+@media (hover: hover) {
+    .strava-more:hover {
+        border-color: var(--text-dim);
+    }
 }
 /* US Travel tables: the year of the first Strava activity (js/us-strava.js). */
 .strava-first {
