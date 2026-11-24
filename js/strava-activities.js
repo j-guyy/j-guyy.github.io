@@ -49,12 +49,12 @@ const StravaActivities = (() => {
     }
 
     // The count as a button that opens the pop-up. s: the place's totals, or
-    // null; state: loading | ready | error.
-    function cell(s, state) {
+    // null; state: loading | ready | error; none: the tooltip when there are none.
+    function cell(s, state, none = 'No Strava activities started here') {
         if (!s) {
             const empty = state === 'loading' ? '…' : '—';
             const why = state === 'error' ? 'Strava activities unavailable right now'
-                : state === 'loading' ? 'Loading Strava activities…' : 'No Strava activities started here';
+                : state === 'loading' ? 'Loading Strava activities…' : none;
             return `<span class="state-progress-none" title="${why}">${empty}</span>`;
         }
         const title = `${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'}, ${formatDuration(s.sec)} moving`
@@ -110,12 +110,14 @@ const StravaActivities = (() => {
 
     // name: the place (for the pop-up's label); titleHtml: its heading (a name
     // with a flag); s: its totals; countries: the geocoded country names it
-    // covers; regions: optionally, the region names within them.
-    function open({ name, titleHtml, s, countries, regions = [] }) {
+    // covers; regions: optionally, the region names within them. Or, instead
+    // of countries / regions, listUrl: any worker URL answering { activities }
+    // (the World Travel bucket lists' /activities/near), with its own label.
+    function open({ name, titleHtml, s, countries = [], regions = [], listUrl = null, label = null }) {
         if (!s) return;
         const dialog = document.createElement('dialog');
         dialog.className = 'strava-dialog';
-        dialog.setAttribute('aria-label', `Strava activities in ${name}`);
+        dialog.setAttribute('aria-label', label || `Strava activities in ${name}`);
         dialog.innerHTML = `
             <div class="strava-dialog-head">
                 <h3>${titleHtml || esc(name)}</h3>
@@ -167,7 +169,7 @@ const StravaActivities = (() => {
 
         const qs = [...countries.map(c => `country=${encodeURIComponent(c)}`),
             ...regions.map(r => `region=${encodeURIComponent(r)}`)].join('&');
-        fetch(`${WORKER}/activities/by-country?${qs}`)
+        fetch(listUrl || `${WORKER}/activities/by-country?${qs}`)
             .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
             .then(data => {
                 // An older worker ignores ?region= and lists the whole country.
