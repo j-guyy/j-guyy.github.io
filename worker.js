@@ -232,7 +232,9 @@ export default {
                 return await handleHrAll(env);
             }
             if (path === '/activities/by-country' && request.method === 'GET') {
-                return await handleActivitiesByCountry(env, url.searchParams.getAll('country'));
+                return await handleActivitiesByCountry(env, url.searchParams.getAll('country'), {
+                    regions: url.searchParams.getAll('region'), group: url.searchParams.get('group'),
+                });
             }
             if (path === '/polylines/all') {
                 const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
@@ -2670,20 +2672,33 @@ function distanceNote(slim) {
 // the activity with the most moving time (not distance, so a long day on foot
 // counts as much as a long ride) and latest the most recent. With
 // ?country=<name> (repeatable) it instead lists every activity started in
-// those countries, newest first. The World Travel Countries table's Strava
-// column and its pop-up read it.
-async function handleActivitiesByCountry(env, countries) {
+// those countries, newest first; adding ?region=<name> (repeatable) narrows
+// that list to those first-level regions (the geocode cache's `s`, e.g.
+// Colorado). ?country=<name>&group=region instead totals the country's
+// activities per region, like the country totals. The World Travel Countries
+// table's Strava column and its pop-up read it, and the US Travel States
+// table's (country=United States).
+async function handleActivitiesByCountry(env, countries, { regions = [], group = null } = {}) {
     const [stored, geo] = await Promise.all([
         env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json'),
         env.STRAVA_DATA.get(GEO_KEY, 'json'),
     ]);
     const slim = stored?.slim || [];
     const syncedAt = stored?.syncedAt || null;
+    if (countries.length && group === 'region') {
+        const wanted = new Set(countries);
+        const inCountry = slim.filter(a => wanted.has(placeOf(geo || {}, a.l)?.c));
+        return json({ countries, regions: activitiesByCountry(inCountry, geo || {}, 's'), syncedAt });
+    }
     if (countries.length) {
         const wanted = new Set(countries);
-        const activities = slim.filter(a => wanted.has(placeOf(geo || {}, a.l)?.c))
+        const wantedRegions = regions.length ? new Set(regions) : null;
+        const activities = slim.filter(a => {
+            const place = placeOf(geo || {}, a.l);
+            return wanted.has(place?.c) && (!wantedRegions || wantedRegions.has(place?.s));
+        })
             .sort((a, b) => byStartTime(b, a)).map(countryActivity);
-        return json({ countries, activities, syncedAt });
+        return json({ countries, regions, activities, syncedAt });
     }
     return json({ countries: activitiesByCountry(slim, geo || {}), syncedAt });
 }
@@ -2693,10 +2708,11 @@ function countryActivity(a) {
     return { i: a.i, n: a.n, t: a.t, d: a.d, m: a.m ?? null, di: a.di ?? null, e: a.e ?? null };
 }
 
-function activitiesByCountry(slim, geo) {
+// field: 'c' (country) or 's' (first-level region).
+function activitiesByCountry(slim, geo, field = 'c') {
     const out = {};
     for (const a of slim) {
-        const c = placeOf(geo, a.l)?.c;
+        const c = placeOf(geo, a.l)?.[field];
         if (!c || c === 'Unknown') continue;
         const row = out[c] || (out[c] = { count: 0, sec: 0, di: 0, longest: null, latest: null });
         row.count++;
