@@ -43,6 +43,9 @@ let regionsState = 'idle';
 // into it). stravaState: loading | ready | error.
 let stravaByCountry = null;
 let stravaState = 'loading';
+// The bucket tables' Strava column (worker /activities/near): row.strava on
+// each bucket row once loaded. stravaNearState: loading | ready | error.
+let stravaNearState = 'loading';
 const isBucketList = type => BUCKET_LISTS.some(l => l.id === type);
 const isCountryTable = type => type === 'world' || Boolean(continentMap[type]);
 const currentTable = () => document.getElementById('table-selector').value;
@@ -116,7 +119,7 @@ function rerender() {
 function loadBucketTables() {
     bucketListsFailed = false;
     loadBucketLists()
-        .then(b => { bucketLists = b; displayBucketSummary(); rerender(); })
+        .then(b => { bucketLists = b; displayBucketSummary(); rerender(); loadStravaNear(b); })
         .catch(error => {
             console.error('Error loading the bucket lists:', error);
             bucketListsFailed = !bucketLists;
@@ -297,6 +300,25 @@ function loadStravaByCountry() {
 
 const geoCountryName = raw => GEO_COUNTRY_ALIASES[raw] || countryKey(raw);
 
+// Strava activities at each Forbes city and wonder: every activity whose
+// route passes within its list's nearKm (js/bucket-lists.js) of the place,
+// asked of the worker in one request for all four lists.
+const nearParam = (r, km) => `at=${r.lat.toFixed(4)},${r.lng.toFixed(4)},${km}`;
+
+function loadStravaNear(b) {
+    const asked = BUCKET_LISTS.flatMap(l => b.lists[l.id].rows.map(r => [r, l.nearKm]));
+    stravaNearState = 'loading';
+    fetch(`${TRAVEL_WORKER_URL}/activities/near?${asked.map(([r, km]) => nearParam(r, km)).join('&')}`)
+        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(data => {
+            const places = data.places || [];
+            asked.forEach(([r, km], i) => { r.strava = places[i] || null; r.stravaKm = km; r.stravaCount = r.strava ? r.strava.count : 0; });
+            stravaNearState = 'ready';
+        })
+        .catch(err => { console.warn('Strava activities near places unavailable:', err); stravaNearState = 'error'; })
+        .then(() => { if (worldData && isBucketList(currentTable())) refreshTable(); });
+}
+
 const SPORT_ICONS = [
     [/Ride$/, '🚴'], [/Run$/, '🏃'], [/^(Hike|Walk|Snowshoe)$/, '🥾'], [/Ski|Snowboard/, '⛷️'],
     [/Swim/, '🏊'], [/Kayak|Canoe|Row|Paddl|Sail|Surf/, '🛶'],
@@ -325,12 +347,12 @@ function formatActDate(d) {
 const stravaUrl = a => `https://www.strava.com/activities/${encodeURIComponent(a.i)}`;
 
 // The Strava cell: the activity count as a button that opens the pop-up.
-function stravaCell(r) {
+function stravaCell(r, state = stravaState, none = 'No Strava activities started here') {
     const s = r.strava;
     if (!s) {
-        const empty = stravaState === 'loading' ? '…' : '—';
-        const why = stravaState === 'error' ? 'Strava activities unavailable right now'
-            : stravaState === 'loading' ? 'Loading Strava activities…' : 'No Strava activities started here';
+        const empty = state === 'loading' ? '…' : '—';
+        const why = state === 'error' ? 'Strava activities unavailable right now'
+            : state === 'loading' ? 'Loading Strava activities…' : none;
         return `<span class="state-progress-none" title="${why}">${empty}</span>`;
     }
     const title = `${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'}, ${formatDuration(s.sec)} moving`
@@ -380,12 +402,31 @@ function activityRow(a) {
 function openStravaDialog(name) {
     const s = stravaByCountry && stravaByCountry[name];
     if (!s) return;
+    const qs = s.raw.map(c => `country=${encodeURIComponent(c)}`).join('&');
+    showStravaDialog({ label: `Strava activities in ${name}`, heading: withCountryFlag(name), s,
+        url: `${TRAVEL_WORKER_URL}/activities/by-country?${qs}` });
+}
+
+// A Forbes city's or wonder's pop-up: the activities passing near it.
+function openPlaceStravaDialog(r) {
+    if (!r.strava) return;
+    showStravaDialog({
+        label: `Strava activities near ${r.name}`,
+        heading: `${escapeAttr(r.name)}<span class="strava-dialog-sub">${escapeAttr(countryKey(r.country))} · routes within ${r.stravaKm} km</span>`,
+        s: r.strava,
+        url: `${TRAVEL_WORKER_URL}/activities/near?${nearParam(r, r.stravaKm)}&list=1`,
+    });
+}
+
+// label: the dialog's accessible name; heading: its title (HTML); s: the
+// totals; url: where its activity list comes from ({ activities }).
+function showStravaDialog({ label, heading, s, url }) {
     const dialog = document.createElement('dialog');
     dialog.className = 'strava-dialog';
-    dialog.setAttribute('aria-label', `Strava activities in ${name}`);
+    dialog.setAttribute('aria-label', label);
     dialog.innerHTML = `
         <div class="strava-dialog-head">
-            <h3>${withCountryFlag(name)}</h3>
+            <h3>${heading}</h3>
             <button type="button" class="strava-dialog-close" aria-label="Close">×</button>
         </div>
         <p class="strava-dialog-totals">${s.count.toLocaleString()} ${s.count === 1 ? 'activity' : 'activities'} · ${formatDuration(s.sec)} moving · ${formatMiles(s.di)}</p>
@@ -433,8 +474,7 @@ function openStravaDialog(name) {
     dialog.addEventListener('close', () => dialog.remove());
     dialog.showModal();
 
-    const qs = s.raw.map(c => `country=${encodeURIComponent(c)}`).join('&');
-    fetch(`${TRAVEL_WORKER_URL}/activities/by-country?${qs}`)
+    fetch(url)
         .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
         .then(data => {
             activities = data.activities || [];
@@ -456,7 +496,7 @@ function openStravaDialog(name) {
             render();
         })
         .catch(err => {
-            console.warn('Country activities unavailable:', err);
+            console.warn('Strava activities unavailable:', err);
             list.innerHTML = '<li class="strava-act-note">Couldn\'t load the activities right now.</li>';
         });
 }
@@ -648,9 +688,10 @@ function setupCsvExport() {
             if (!bucketLists) return;
             const rows = sortBucketRows(bucketLists.lists[type].rows, col, dir);
             const withRank = type === 'forbes100';
-            const headers = (withRank ? ['Rank'] : []).concat(['Name', 'Country', 'Status']);
+            const headers = (withRank ? ['Rank'] : []).concat(['Name', 'Country', 'Status', 'Strava Activities', 'Strava Hours', 'Strava Miles',
+                'Longest Activity', 'Longest Sport', 'Longest Date', 'Longest Moving Time (h)', 'Longest Link']);
             downloadCsv(headers, rows.map(r => (withRank ? [r.rank] : []).concat(
-                [r.name, r.country, r.visited ? 'Visited' : 'Not Visited'])),
+                [r.name, r.country, r.visited ? 'Visited' : 'Not Visited', ...stravaCsv(r.strava)])),
                 type.replace(/([A-Z0-9]+)/g, '-$1').toLowerCase() + '.csv');
             return;
         }
@@ -946,7 +987,7 @@ function sortBucketRows(rows, col, dir) {
 }
 
 // Keys whose first click sorts high-to-low.
-const DESC_FIRST = new Set(['visited', 'population', 'progress', 'regionPct', 'citiesVisited', 'wondersVisited', 'hpSort', 'capVisited']);
+const DESC_FIRST = new Set(['visited', 'stravaCount', 'population', 'progress', 'regionPct', 'citiesVisited', 'wondersVisited', 'hpSort', 'capVisited']);
 
 // A sortable header row. columns: [{ label | [long, short], key, cls, title }].
 function sortableHeader(table, tableType, columns) {
@@ -1110,6 +1151,8 @@ function updateBucketTable(listId, tableContainer) {
     const columns = (withRank ? [{ label: '#', key: 'rank', cls: 'col-num' }] : []).concat([
         { label: listId === 'forbes100' ? 'City' : 'Name', key: 'name', cls: 'col-name' },
         { label: 'Country', key: 'country', cls: 'col-name' },
+        { label: ['Strava', 'Acts'], key: 'stravaCount', cls: 'col-strava',
+            title: `Strava activities whose route passes within ${BUCKET_LISTS.find(l => l.id === listId).nearKm} km: tap a count for all of them, the longest and the latest` },
         { label: 'Status', key: 'visited', cls: 'col-status' },
     ]);
     const { col, dir } = sortState[listId];
@@ -1117,28 +1160,7 @@ function updateBucketTable(listId, tableContainer) {
 
     const table = document.createElement('table');
     table.className = 'travel-table travel-table--fit';
-    const headerRow = document.createElement('tr');
-    columns.forEach(c => {
-        const th = document.createElement('th');
-        const isActive = col === c.key;
-        th.classList.add('sortable', c.cls);
-        if (isActive) th.classList.add('sort-active');
-        const indicator = document.createElement('span');
-        indicator.className = 'sort-indicator';
-        indicator.textContent = isActive ? (dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
-        th.append(document.createTextNode(c.label), indicator);
-        th.addEventListener('click', () => {
-            sortState[listId] = col === c.key
-                ? { col, dir: dir === 'asc' ? 'desc' : 'asc' }
-                : { col: c.key, dir: c.key === 'visited' ? 'desc' : 'asc' };
-            updateTable(listId);
-        });
-        TravelUI.sortableHeader(th, isActive, dir, c.key);
-        headerRow.appendChild(th);
-    });
-    const thead = document.createElement('thead');
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+    sortableHeader(table, listId, columns);
 
     const tbody = document.createElement('tbody');
     rows.forEach(r => {
@@ -1147,14 +1169,22 @@ function updateBucketTable(listId, tableContainer) {
         const cells = (withRank ? [[r.rank, 'col-num']] : []).concat([
             [r.note ? `${r.name} (${r.note})` : r.name, 'col-name'],
             [r.country, 'col-name'],
+            [null, 'col-strava'],
             [r.visited ? '✅' : '⬜', 'col-status'],
         ]);
         cells.forEach(([text, cls]) => {
             const td = document.createElement('td');
             td.className = cls;
-            td.textContent = text;
+            if (text === null) td.innerHTML = stravaCell(r, stravaNearState, 'No Strava route passes near here');
+            else td.textContent = text;
             tr.appendChild(td);
         });
+        // Not checked off, but a Strava route passes near: maybe visited.
+        if (!r.visited && r.strava) {
+            tr.lastChild.insertAdjacentHTML('beforeend', ` <span class="strava-hint" title="A Strava route passes near ${escapeAttr(r.name)}: check whether you were there">check Strava</span>`);
+        }
+        const stravaBtn = tr.querySelector('.strava-count');
+        if (stravaBtn) stravaBtn.addEventListener('click', () => openPlaceStravaDialog(r));
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);

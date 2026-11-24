@@ -1406,3 +1406,12 @@ a.summary-stat-link:focus-visible {
         padding: 2px 7px;
     }
 }
+
+/* A Forbes city's / wonder's Strava pop-up: its country and the radius under the name. */
+.strava-dialog-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--text-dim);
+}

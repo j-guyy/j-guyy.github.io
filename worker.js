@@ -234,6 +234,9 @@ export default {
             if (path === '/activities/by-country' && request.method === 'GET') {
                 return await handleActivitiesByCountry(env, url.searchParams.getAll('country'));
             }
+            if (path === '/activities/near' && request.method === 'GET') {
+                return await handleActivitiesNear(env, url.searchParams);
+            }
             if (path === '/polylines/all') {
                 const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
                 if (!stored) return json([]);
@@ -2686,6 +2689,88 @@ async function handleActivitiesByCountry(env, countries) {
         return json({ countries, activities, syncedAt });
     }
     return json({ countries: activitiesByCountry(slim, geo || {}), syncedAt });
+}
+
+// GET /activities/near?at=<lat>,<lng>,<km> (repeatable, at most 250): for each
+// place, the activities whose route passes within km of it, summed like
+// /activities/by-country ({ count, sec, di, longest, latest }, or null), in
+// the order asked. With &list=1 (one place) it lists those activities newest
+// first instead. The World Travel Forbes 100 / wonders tables read it.
+const NEAR_MAX_PLACES = 250;
+const NEAR_MAX_KM = 50;
+
+async function handleActivitiesNear(env, params) {
+    const places = params.getAll('at').slice(0, NEAR_MAX_PLACES).map(s => {
+        const [lat, lng, km] = s.split(',').map(Number);
+        return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+            ? { lat, lng, km: Math.min(Math.max(Number.isFinite(km) ? km : 2, 0.1), NEAR_MAX_KM) } : null;
+    });
+    if (!places.some(Boolean)) return json({ error: 'at=<lat>,<lng>,<km> required' }, 400);
+    const stored = await env.STRAVA_DATA.get(ACTIVITIES_KEY, 'json');
+    const slim = stored?.slim || [];
+    const syncedAt = stored?.syncedAt || null;
+    const hits = activitiesNear(slim, places);
+    if (params.get('list') === '1') {
+        const activities = hits[0].sort((a, b) => byStartTime(b, a)).map(countryActivity);
+        return json({ activities, syncedAt });
+    }
+    const out = hits.map((acts, k) => {
+        if (!places[k] || !acts.length) return null;
+        const row = { count: 0, sec: 0, di: 0, longest: null, latest: null };
+        for (const a of acts) {
+            row.count++;
+            row.sec += a.m || 0;
+            row.di += a.di || 0;
+            if ((a.m || 0) > 0 && (!row.longest || a.m > row.longest.m)) row.longest = a;
+            if (!row.latest || byStartTime(a, row.latest) > 0) row.latest = a;
+        }
+        row.sec = Math.round(row.sec);
+        row.di = Math.round(row.di);
+        row.longest = row.longest && countryActivity(row.longest);
+        row.latest = row.latest && countryActivity(row.latest);
+        return row;
+    });
+    return json({ places: out, syncedAt });
+}
+
+// Per place, the activities whose route comes within its km (distance to
+// each segment, flat-earth around the place). A route can't reach further
+// from its start than its own distance, so only activities that start within
+// distance + km of a place are decoded; most never are.
+function activitiesNear(slim, places) {
+    const hits = places.map(() => []);
+    for (const a of slim) {
+        if (!a.p || !Array.isArray(a.l)) continue;
+        const reach = typeof a.di === 'number' ? a.di : Infinity;
+        const near = [];
+        places.forEach((pl, k) => {
+            if (!pl) return;
+            const limit = reach + pl.km * 1000 + 500;
+            // A degree of latitude is ~111 km: most places fail this cheaply.
+            if (Math.abs(a.l[0] - pl.lat) * 110000 > limit) return;
+            if (haversineM(a.l[0], a.l[1], pl.lat, pl.lng) <= limit) near.push(k);
+        });
+        if (!near.length) continue;
+        const pts = decodePolylineFlat(a.p);
+        for (const k of near) if (routeWithin(pts, places[k])) hits[k].push(a);
+    }
+    return hits;
+}
+
+function routeWithin(pts, { lat, lng, km }) {
+    const kx = 111.32 * Math.cos(lat * Math.PI / 180), ky = 110.574;
+    const r2 = km * km;
+    let px = (pts[1] - lng) * kx, py = (pts[0] - lat) * ky;
+    if (px * px + py * py <= r2) return true;
+    for (let i = 2; i < pts.length; i += 2) {
+        const x = (pts[i + 1] - lng) * kx, y = (pts[i] - lat) * ky;
+        const dx = x - px, dy = y - py, len2 = dx * dx + dy * dy;
+        const t = len2 ? Math.min(1, Math.max(0, -(px * dx + py * dy) / len2)) : 0;
+        const cx = px + t * dx, cy = py + t * dy;
+        if (cx * cx + cy * cy <= r2) return true;
+        px = x; py = y;
+    }
+    return false;
 }
 
 // A slim activity without its route or start point.
