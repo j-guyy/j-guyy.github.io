@@ -150,6 +150,7 @@ Base URL: `https://strava-worker.justinguyette.workers.dev`
 | `/activities/rebuild` | POST | Full re-sync (admin): keeps the stored list until the new fetch succeeds, may shrink it (a normal sync refuses a drop of over 10% and over 20 activities), and refetches every ride's `eh` |
 | `/activities/backfill-elev` | POST | Backfill ride high points (`elev_high`) one batch at a time via detail calls |
 | `/activities/by-country` | GET | Per geocoded start country `{ count, sec, di, longest, latest }` (longest = most moving time); `?country=<name>` (repeatable) lists that country's activities newest first, without routes |
+| `/activities/near` | GET | `?at=<lat>,<lng>,<km>` (repeatable, ≤250): per place `{ count, sec, di, longest, latest }` of activities whose route passes within km (only activities starting within their distance + km are decoded); `&list=1` with one place lists them. Feeds the Strava column + pop-up of the World Travel Forbes 100 / wonders tables (radius per list: `nearKm` in `js/bucket-lists.js`; an unchecked row with activities gets a "check Strava" hint) |
 | `/hr/all` | GET | Heart rate histograms per activity + Strava zone limits (see Heart rate zones backfill) |
 | `/geo/all`, `/geo/save`, `/geo/reset` | GET/POST | Geocoding cache |
 | `/counties/all`, `/counties/save` | GET/POST | County Hunter state |
