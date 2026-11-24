@@ -626,30 +626,20 @@ function capitalHint(capital) {
     return !capitalDone(capital) && Boolean(regionProgress) && regionProgress.capitalHints.has(capital.country);
 }
 
-// Done / total parts across a set of countries, as a whole-number percent.
-function corePercent(rows) {
-    const done = rows.reduce((n, r) => n + r.done, 0);
-    const total = rows.reduce((n, r) => n + r.total, 0);
-    return total ? Math.round((done / total) * 100) : 0;
-}
-
 function displayWorldTravelSummary() {
     const summaryContainer = document.getElementById('travel-summary');
     const tableSelector = document.getElementById('table-selector');
 
     const all = allCountries();
     const totalVisited = all.filter(c => c.visited).length;
-    const allRows = buildCountryRows('world');
     const capitals = worldCapitals ? worldCapitals.capitals : null;
     const capitalsDone = capitals ? capitals.filter(capitalDone).length : 0;
     const pct = (n, d) => (d ? ((n / d) * 100).toFixed(0) : 0);
 
-    // Each card: countries visited, and a thin bar of the continent's Core
-    // (every part of every country in it, done vs total).
+    // Each card: countries visited in the continent.
     const cards = Object.keys(continentMap).map(type => {
         const list = worldData[continentMap[type]];
         const done = list.filter(c => c.visited).length;
-        const core = corePercent(allRows.filter(r => r.continent === type));
         return `
                 <button type="button" class="summary-stat bucket-card" data-list="${type}" title="Show the ${CONTINENT_LABELS[type]} Countries table">
                     <div class="stat-number-container">
@@ -658,7 +648,6 @@ function displayWorldTravelSummary() {
                         <span class="stat-percentage">(${pct(done, list.length)}%)</span>
                     </div>
                     <span class="stat-label">${CONTINENT_LABELS[type]} Countries</span>
-                    ${coreMeter(core)}
                 </button>`;
     }).join('');
 
@@ -672,7 +661,6 @@ function displayWorldTravelSummary() {
                         <span class="stat-percentage">(${pct(totalVisited, all.length)}%)</span>
                     </div>
                     <span class="stat-label">Countries Visited</span>
-                    ${coreMeter(corePercent(allRows))}
                 </button>
                 <button type="button" class="summary-stat world-summary bucket-card" data-list="capitals" title="Show the World Capitals table">
                     <div class="stat-number-container">
@@ -695,14 +683,6 @@ function displayWorldTravelSummary() {
             updateTable(this.value);
         });
     }
-}
-
-// A thin Core bar for a summary card.
-function coreMeter(pct) {
-    return `<span class="core-meter" title="Core: every country's visit, capital, Forbes cities, wonders and high points, done vs total">
-                <span class="core-meter-bar"><span class="core-meter-fill" style="width:${pct}%"></span></span>
-                <span class="core-meter-label">Core ${pct}%</span>
-            </span>`;
 }
 
 function sortTableData(data, col, dir) {

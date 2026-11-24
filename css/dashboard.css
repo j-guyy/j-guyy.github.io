@@ -941,38 +941,6 @@ Controls Styling */
     gap: 20px;
 }
 
-/* A thin Core bar under a World Travel summary card's label */
-.core-meter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    max-width: 180px;
-    margin-top: 8px;
-}
-
-.core-meter-bar {
-    position: relative;
-    flex: 1;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--surface-2-hover);
-    overflow: hidden;
-}
-
-.core-meter-fill {
-    position: absolute;
-    inset: 0 auto 0 0;
-    background: var(--primary-color);
-}
-
-.core-meter-label {
-    font-size: var(--text-xs);
-    color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
 /* Countries table: one icon per high point (two where the mainland's differs) */
 .hp-icon {
     display: inline-block;
@@ -990,11 +958,6 @@ Controls Styling */
 
     .world-headline .world-summary {
         padding: 16px 8px;
-    }
-
-    .core-meter {
-        gap: 6px;
-        margin-top: 6px;
     }
 }
 
