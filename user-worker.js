@@ -309,6 +309,124 @@ async function handleGeoSave(request, env, id) {
     return jsonRes(env, { ok: true, keys: Object.keys(geo).length });
 }
 
+// ── Shared peaks ─────────────────────────────────────────────────────────────
+//
+// Mountain Hunter needs every 2.5° cell an activity touches loaded with its
+// OpenStreetMap peaks before it can find summits. A new account starts with
+// none, and the page fills them from Overpass one cell at a time, only while
+// the app is open and often rate limited, so a phone could go weeks with most
+// of its summits (and state high points) missing. Peaks
+// don't depend on who was there, so /peaks/all fills a person's missing or
+// worse cells from the owner's peak cache, which already covers most places.
+// Only cells the person's own activities touch are copied, and they are
+// stored as the person's own right away, so the owner's ~25 MB cache isn't
+// read again until one of those cells goes stale. Cells the owner doesn't have
+// still load from Overpass on the page.
+//
+// Mirrors planMountainCells / cellIsFresh in js/strava.js (keep in step).
+
+const PEAK_CELL_VERSION = 2;
+const PEAK_CELL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const PEAK_CELL_SAMPLE = 10;
+const PEAKS_OWNER_CHECK_KEY = 'strava_peaks_owner_check';
+const PEAKS_OWNER_RECHECK_MS = 24 * 60 * 60 * 1000;
+
+function peakCellKey(lat, lng) {
+    return `${Math.floor(lat / 2.5) * 2.5},${Math.floor(lng / 2.5) * 2.5}`;
+}
+
+function decodePolylinePairs(encoded, step, visit) {
+    let index = 0, lat = 0, lng = 0, n = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        if (n++ % step === 0) visit(lat / 1e5, lng / 1e5);
+    }
+}
+
+// Every cell any activity starts in or passes through (a superset of the
+// page's, which counts only foot activities and rides).
+function activityPeakCells(slim) {
+    const keys = new Set();
+    for (const a of slim || []) {
+        if (Array.isArray(a.l) && a.l.length >= 2) keys.add(peakCellKey(a.l[0], a.l[1]));
+        if (typeof a.p === 'string' && a.p) {
+            decodePolylinePairs(a.p, PEAK_CELL_SAMPLE, (lat, lng) => keys.add(peakCellKey(lat, lng)));
+        }
+    }
+    return keys;
+}
+
+// 0 = missing / failed, 1 = partial, 2 = complete under an older version,
+// 3 = complete and current.
+function peakCellQuality(c) {
+    if (!c || c.failed || !Array.isArray(c.peaks)) return 0;
+    if (c.partial) return 1;
+    return c.v === PEAK_CELL_VERSION ? 3 : 2;
+}
+
+function peakCellFresh(c, now) {
+    return peakCellQuality(c) === 3 && now - (c.ts || 0) < PEAK_CELL_TTL_MS;
+}
+
+function betterPeakCell(own, other) {
+    const q = peakCellQuality(own), r = peakCellQuality(other);
+    if (r !== q) return r > q;
+    return r > 0 && (other.ts || 0) > (own.ts || 0);
+}
+
+async function ownerPeaks(env) {
+    if (!env.OWNER) return {};
+    try {
+        const res = await env.OWNER.fetch('https://strava-worker/peaks/all');
+        return res.ok ? ((await res.json()).cells || {}) : {};
+    } catch {
+        return {};
+    }
+}
+
+async function handlePeaksAll(env, id) {
+    const userEnv = scopedEnv(env, id);
+    const [ownText, stored] = await Promise.all([
+        userEnv.STRAVA_DATA.get('strava_peaks'),
+        userEnv.STRAVA_DATA.get('strava_activities', 'json'),
+    ]);
+    let own = {};
+    try { own = ownText ? JSON.parse(ownText) : {}; } catch { own = {}; }
+    const cells = { ...(own.cells || {}) };
+    const now = Date.now();
+    const wanted = [...activityPeakCells(stored?.slim)].filter(key => !peakCellFresh(cells[key], now));
+    // Cells the owner's cache couldn't improve last time aren't worth reading
+    // its whole cache for again within a day (the page fetches them itself).
+    const checked = (await userEnv.STRAVA_DATA.get(PEAKS_OWNER_CHECK_KEY, 'json')) || {};
+    const skip = now - (checked.ts || 0) < PEAKS_OWNER_RECHECK_MS ? new Set(checked.keys || []) : new Set();
+    let filled = 0;
+    if (wanted.some(key => !skip.has(key))) {
+        const owner = await ownerPeaks(env);
+        const unimproved = [];
+        for (const key of wanted) {
+            if (betterPeakCell(cells[key], owner[key])) { cells[key] = owner[key]; filled++; }
+            else unimproved.push(key);
+        }
+        await userEnv.STRAVA_DATA.put(PEAKS_OWNER_CHECK_KEY, JSON.stringify({ ts: now, keys: unimproved }));
+    }
+    if (!filled && ownText) {
+        return new Response(ownText, { headers: { ...corsHeaders(env), 'Content-Type': 'application/json' } });
+    }
+    // Keep the filled cells, so the next visit (and /summits/peaks, which
+    // joins summits with this cache) has them without reading the owner's.
+    const merged = { ...own, cells };
+    if (filled) {
+        await userEnv.STRAVA_DATA.put('strava_peaks', JSON.stringify(merged));
+        await userEnv.STRAVA_DATA.put('strava_peaks_meta', JSON.stringify({ cells: Object.keys(cells).length }));
+    }
+    return jsonRes(env, merged);
+}
+
 // ── Entry points ─────────────────────────────────────────────────────────────
 
 export default {
@@ -344,6 +462,7 @@ export default {
             }
             if (rest === '/geo/all' && request.method === 'GET') return await handleGeoAll(env, id);
             if (rest === '/geo/save' && request.method === 'POST') return await handleGeoSave(request, env, id);
+            if (rest === '/peaks/all' && request.method === 'GET') return await handlePeaksAll(env, id);
 
             const inner = new URL(request.url);
             inner.pathname = rest;
