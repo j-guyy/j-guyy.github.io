@@ -432,6 +432,7 @@ function openStravaDialog(name) {
     dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
     dialog.addEventListener('close', () => dialog.remove());
     dialog.showModal();
+    if (typeof closeDialogOnBack === 'function') closeDialogOnBack(dialog);
 
     const qs = s.raw.map(c => `country=${encodeURIComponent(c)}`).join('&');
     fetch(`${TRAVEL_WORKER_URL}/activities/by-country?${qs}`)
