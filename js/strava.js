@@ -2725,6 +2725,12 @@ let parkStateLayer = null;
 let visitedParkIds = new Set();
 let parkDiscoveries = {};   // id → { actId, actName, date }
 let parkProcessedIds = new Set();
+// Parks whose outline in federal-lands.geojson was corrected by hand: the
+// activities already scanned are checked once more against just those parks
+// (stored as `rechecked`, so it happens once). Gateway Arch's simplified
+// outline was a triangle across the river in Illinois.
+const PARK_BOUNDARY_FIXES = ['nps-gateway-arch-national-park'];
+let parkRechecked = new Set();
 let visitedStateParkIds = new Set();
 let stateParkDiscoveries = {};
 let stateParkProcessedIds = new Set();
@@ -2764,6 +2770,7 @@ async function initParkMap() {
     visitedParkIds        = new Set((savedFed.ids           || []).filter(Boolean));
     parkProcessedIds      = new Set((savedFed.processedIds  || []).filter(Boolean));
     parkDiscoveries       = savedFed.discoveries || {};
+    parkRechecked         = new Set(savedFed.rechecked || []);
     visitedStateParkIds   = new Set((savedState.ids          || []).filter(Boolean));
     stateParkProcessedIds = new Set((savedState.processedIds || []).filter(Boolean));
     stateParkDiscoveries  = savedState.discoveries || {};
@@ -2798,6 +2805,19 @@ async function initParkMap() {
         Object.assign(parkDiscoveries, newDiscoveries);
         fedUnprocessed.forEach(a => parkProcessedIds.add(a.i));
         dbg(`Park Hunter: +${newIds.size} federal (${visitedParkIds.size} total)`);
+        await saveParksToWorker();
+    }
+
+    // Federal: re-check scanned activities against parks whose outline was fixed.
+    const recheck = PARK_BOUNDARY_FIXES.filter(id => !parkRechecked.has(id));
+    if (recheck.length) {
+        const fixed = fedParks.filter(p => recheck.includes(p.id));
+        const scanned = currentSlim.filter(a => a.i && a.p && parkProcessedIds.has(a.i)).sort(byStartTime);
+        const { newIds, newDiscoveries } = await detectParksAsync(scanned, fixed, buildSpatialIndex(fixed), visitedParkIds);
+        newIds.forEach(id => visitedParkIds.add(id));
+        Object.assign(parkDiscoveries, newDiscoveries);
+        recheck.forEach(id => parkRechecked.add(id));
+        dbg(`Park Hunter: re-checked ${recheck.length} corrected outline(s), +${newIds.size}`);
         await saveParksToWorker();
     }
 
@@ -3174,6 +3194,7 @@ async function saveParksToWorker() {
             ids:          [...visitedParkIds],
             processedIds: [...parkProcessedIds],
             discoveries:  parkDiscoveries,
+            rechecked:    [...parkRechecked],
             order:        discoveryOrderStamp(),
         });
         if (!res) return;
@@ -3213,6 +3234,8 @@ async function resetParkData() {
         visitedParkIds.clear();
         parkProcessedIds.clear();
         parkDiscoveries = {};
+        // The full re-scan uses the corrected outlines already.
+        parkRechecked = new Set(PARK_BOUNDARY_FIXES);
         visitedStateParkIds.clear();
         stateParkProcessedIds.clear();
         stateParkDiscoveries = {};

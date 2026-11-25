@@ -56,9 +56,14 @@ const USStrava = (() => {
         return `metro-${slug.replace(/^-+|-+$/g, '')}-${m.state.toLowerCase()}`;
     }
 
-    // The travel list's park names → data/federal-lands.geojson ids.
+    // The travel list's park names → data/federal-lands.geojson ids. A list
+    // of ids counts the first one reached: North Cascades is run as one
+    // complex with its two recreation areas, and the road in (Newhalem,
+    // Diablo Lake) only crosses Ross Lake NRA.
     const PARK_IDS = {
         Chiricahua: 'nps-chiricahua-national-monument',
+        'North Cascades': ['nps-north-cascades-national-park', 'nps-ross-lake-national-recreation-area',
+            'nps-lake-chelan-national-recreation-area'],
         'Hawaii Volcanoes': 'nps-hawai-i-volcanoes-national-park',
         'New River Gorge': 'nps-new-river-gorge-national-park-and-preserve',
         'American Samoa': 'nps-national-park-of-american-samoa',
@@ -137,7 +142,10 @@ const USStrava = (() => {
             return best;
         }
         if (list === 'metros') return metroHunter[metroId(item)] || null;
-        if (list === 'parks') return parkHunter[parkId(item)] || null;
+        if (list === 'parks') {
+            const ids = [].concat(parkId(item));
+            return ids.reduce((best, id) => earlier(parkHunter[id] || null, best), null);
+        }
         if (list === 'highpoints') {
             if (!peakMatches.has(item.__list)) peakMatches.set(item.__list, PeakMatch.match(item.__list, summited));
             const m = peakMatches.get(item.__list).get(item);
