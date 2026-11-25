@@ -114,7 +114,7 @@ Owner-only controls (dashboard Edit Mode / Export CSV, Strava Sync/Debug, "Edit 
 The strava page is the most complex, containing 5 "hunter" modules that share a common activity data pipeline:
 
 1. **County Hunter** — tracks US counties visited via activity polylines
-   (Park Hunter: `data/federal-lands.geojson` is simplified at ~500 m, which can mangle tiny units — Gateway Arch's outline was a triangle in Illinois and was redrawn by hand. When you correct an outline, add its id to `PARK_BOUNDARY_FIXES` in `js/strava.js` so activities already scanned are re-checked against it once, recorded in the blob's `rechecked`.)
+   (Park Hunter: `data/federal-lands.geojson` is simplified at ~500 m, which can mangle tiny units — Gateway Arch's outline was a triangle in Illinois and was redrawn by hand. When you correct an outline, add its id to `PARK_BOUNDARY_FIXES` in `js/strava.js` and to the park entry's `fixes` in `worker.js`'s `POLYGON_HUNTERS` so activities already scanned are re-checked against it once, recorded in the blob's `rechecked` — by the next sync, or by the page if Park Hunter opens first.)
 2. **City Hunter** — road/way completion tracking within selected cities
 3. **Tile Hunter** — z14 map tile coverage tracking with cluster/square detection
 4. **Trail Hunter** — trail completion for specific regions (Boulder County, RMNP)

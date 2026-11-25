@@ -1589,7 +1589,10 @@ function detectResult(batch, added, remaining) {
 
 const POLYGON_HUNTERS = [
     { name: 'county',     kv: COUNTIES_KEY,     file: 'data/counties-us.json',     ids: 'fips', idOf: p => p.GEOID },
-    { name: 'park',       kv: PARKS_KEY,        file: 'data/federal-lands.geojson', ids: 'ids',  idOf: p => p.id },
+    // fixes: outlines corrected by hand (PARK_BOUNDARY_FIXES in js/strava.js,
+    // keep both equal), re-checked once against activities already scanned.
+    { name: 'park',       kv: PARKS_KEY,        file: 'data/federal-lands.geojson', ids: 'ids',  idOf: p => p.id,
+        fixes: ['nps-gateway-arch-national-park'] },
     { name: 'state_park', kv: STATE_PARKS_KEY,  file: 'data/state-parks.geojson',  ids: 'ids',  idOf: p => p.id },
     { name: 'metro',      kv: METRO_HUNTER_KEY, file: 'data/metro-areas.geojson',  ids: 'ids',  idOf: p => p.id },
 ];
@@ -1618,25 +1621,36 @@ async function detectPolygonHunter(env, hunter, slim, cache) {
     // Visits without first-visit history are rebuilt by the page's one-time
     // backfill, which only runs while the history is empty: leave them to it.
     if (visited.size && !Object.keys(stored?.discoveries || {}).length) return { skipped: 'awaiting page backfill' };
-    if (!batch.length) return { processed: 0, added: 0 };
+    const done = new Set(stored?.rechecked || []);
+    const recheck = stored ? (hunter.fixes || []).filter(id => !done.has(id)) : [];
+    if (!batch.length && !recheck.length) return { processed: 0, added: 0 };
 
-    const index = gridIndex(polygonEntries(await fetchBoundaryFile(hunter.file), hunter.idOf));
+    const entries = polygonEntries(await fetchBoundaryFile(hunter.file), hunter.idOf);
     const found = new Map();   // id → { actId, actName, date }
-    for (const act of batch) {
-        const pts = routePoints(act, cache);
-        for (let k = 0; k < pts.length; k += 6) {   // every 3rd point
-            const lat = pts[k], lng = pts[k + 1];
-            const candidates = index.get(`${Math.floor(lng)},${Math.floor(lat)}`);
-            if (!candidates) continue;
-            for (const f of candidates) {
-                if (visited.has(f.id) || found.has(f.id)) continue;
-                if (lng < f.minLng || lng > f.maxLng || lat < f.minLat || lat > f.maxLat) continue;
-                if (f.outer.some(ring => pointInFlatRing(lat, lng, ring))) {
-                    found.set(f.id, { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' });
+    const scan = (acts, index) => {
+        for (const act of acts) {
+            const pts = routePoints(act, cache);
+            for (let k = 0; k < pts.length; k += 6) {   // every 3rd point
+                const lat = pts[k], lng = pts[k + 1];
+                const candidates = index.get(`${Math.floor(lng)},${Math.floor(lat)}`);
+                if (!candidates) continue;
+                for (const f of candidates) {
+                    if (visited.has(f.id) || found.has(f.id)) continue;
+                    if (lng < f.minLng || lng > f.maxLng || lat < f.minLat || lat > f.maxLat) continue;
+                    if (f.outer.some(ring => pointInFlatRing(lat, lng, ring))) {
+                        found.set(f.id, { actId: act.i, actName: act.n || 'Untitled', date: act.d || '' });
+                    }
                 }
             }
         }
+    };
+    if (recheck.length) {
+        // Activities scanned before an outline was corrected, oldest first.
+        const scanned = new Set((stored.processedIds || []).filter(Boolean));
+        scan(slim.filter(a => a.i && a.p && scanned.has(a.i)).sort(byStartTime),
+            gridIndex(entries.filter(f => recheck.includes(f.id))));
     }
+    scan(batch, gridIndex(entries));
 
     const latest = await env.STRAVA_DATA.get(hunter.kv, 'json');
     if (stored && !latest) return { skipped: 'reset during detection' };
@@ -1649,12 +1663,14 @@ async function detectPolygonHunter(env, hunter, slim, cache) {
     }
     for (const a of batch) processedIds.add(a.i);
     const order = latest ? latest.order : discoveryOrderStamp(slim);
+    const rechecked = [...new Set([...(latest?.rechecked || []), ...recheck])];
     await env.STRAVA_DATA.put(hunter.kv, JSON.stringify({
         ...(latest || {}),
         [hunter.ids]: [...ids],
         processedIds: [...processedIds],
         discoveries,
         ...(order !== undefined ? { order } : {}),
+        ...(rechecked.length ? { rechecked } : {}),
     }));
     return detectResult(batch, found.size, remaining);
 }

@@ -2729,6 +2729,7 @@ let parkProcessedIds = new Set();
 // activities already scanned are checked once more against just those parks
 // (stored as `rechecked`, so it happens once). Gateway Arch's simplified
 // outline was a triangle across the river in Illinois.
+// The worker does the same after each sync (POLYGON_HUNTERS fixes; keep equal).
 const PARK_BOUNDARY_FIXES = ['nps-gateway-arch-national-park'];
 let parkRechecked = new Set();
 let visitedStateParkIds = new Set();
