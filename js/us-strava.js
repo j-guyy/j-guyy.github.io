@@ -13,7 +13,10 @@
 // Each list's status is loading | ready | error, so a table can show "…".
 const USStrava = (() => {
     const WORKER = typeof TRAVEL_WORKER_URL === 'string' ? TRAVEL_WORKER_URL : 'https://strava-worker.justinguyette.workers.dev';
-    const CAPITAL_M = 2000;
+    // 10 km: a capital is a city, not a point. Every capital marked visited with
+    // a route nearby has one within 7.2 km of its capitol (Phoenix);
+    // the nearest unmarked one is 22 km away (Montpelier).
+    const CAPITAL_M = 10000;
     const LISTS = ['states', 'metros', 'parks', 'highpoints', 'capitals'];
     const status = Object.fromEntries(LISTS.map(l => [l, 'loading']));
     const listeners = [];
@@ -98,15 +101,17 @@ const USStrava = (() => {
     }
 
     // Each capital's first activity whose route passes within CAPITAL_M: the
-    // capitals sit in a 0.1° grid, and every route point looks up its cell's
-    // neighbours.
+    // capitals sit in a 0.1° grid, filed under every cell within CAPITAL_M of
+    // them, and every route point looks up its own cell.
     function matchCapitals(capitals) {
         const grid = new Map();
         capitals.forEach(c => {
             if (!Array.isArray(c.coords)) return;
             const [lng, lat] = c.coords;
             const gx = Math.floor(lng * 10), gy = Math.floor(lat * 10);
-            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+            const ry = Math.ceil(CAPITAL_M / 11054);
+            const rx = Math.ceil(CAPITAL_M / (11132 * Math.cos(Math.min(89, Math.abs(lat) + 1) * Math.PI / 180)));
+            for (let dx = -rx; dx <= rx; dx++) for (let dy = -ry; dy <= ry; dy++) {
                 const k = `${gx + dx},${gy + dy}`;
                 (grid.get(k) || grid.set(k, []).get(k)).push(c);
             }

@@ -251,7 +251,7 @@ function fraction(done, total, items = []) {
 
 // A capital not checked off whose county Strava activities reach (County
 // Hunter): maybe visited without being marked. Only a hint; the owner decides.
-// An unchecked capital Strava reached: a route within 2 km of it once the
+// An unchecked capital Strava reached: a route within 10 km of it once the
 // routes have loaded, until then any route in its county.
 function stravaHint(capital) {
     if (capital.visited) return false;
@@ -889,7 +889,7 @@ function updateTable(tableType) {
 // strava.html.
 const STRAVA_COL_TITLE = {
     highpoints: 'First Strava summit (Mountain Hunter, matched as on the Peaks page)',
-    capitals: 'First Strava route within 2 km of the capital',
+    capitals: 'First Strava route within 10 km of the capital',
     metros: 'First Strava activity in the metro (Metro Hunter)',
     parks: 'First Strava activity in the park (Park Hunter)',
 };
@@ -943,7 +943,7 @@ function comparisonLists() {
         },
         {
             id: 'capitals', label: 'State capitals', table: 'capitals',
-            note: 'Strava: a route within 2 km',
+            note: 'Strava: a route within 10 km',
             items: capitals, marked: c => c.visited, reached: c => USStrava.first('capitals', c),
             ready: () => USStrava.status.capitals === 'ready',
             name: c => `${c.name}, ${c.state}`,
