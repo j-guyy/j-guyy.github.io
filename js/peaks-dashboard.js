@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     selector.addEventListener('change', () => render());
     setupEditMode();
     setupCsvExport();
+    setupViewSwitch({ onShow: onViewShown });
     render();
 
     try {
@@ -89,6 +90,7 @@ function render() {
     updateTable(currentType());
     renderSourceNote(currentType());
     renderComparison(currentType());
+    renderMap(currentType());
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -526,5 +528,139 @@ function renderComparison(type) {
         p.className = 'peaks-compare-note';
         p.textContent = 'Every climb is both ticked and on Strava.';
         el.appendChild(p);
+    }
+}
+
+// ── Map view ────────────────────────────────────────────────────────────────
+//
+// The Tables | Map switch (js/view-switch.js, as on the travel dashboards)
+// shows the list picked above on a map: a pin per peak, green when climbed
+// (ticked or on Strava, isDone()) and red when not, dashed when trailless. Leaflet loads the first
+// time the map is opened; after that every render() redraws the pins, and a
+// new list refits the view.
+
+const PEAKS_MAP_SCRIPTS = [
+    { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+      integrity: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH' },
+    'js/fluid-zoom.js?v=20261025b',
+    'js/map-fixes.js?v=20261025',
+    { src: 'https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js',
+      integrity: 'sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8' },
+    { src: 'https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js',
+      integrity: 'sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F' },
+    'js/map-controls.js?v=20261025',
+];
+const PIN_DONE = '#4CAF50';
+const PIN_TODO = '#f44336';
+
+const peaksMap = { map: null, layer: null, loading: null, shownType: null, needsFit: true };
+
+function mapShown() {
+    return !document.getElementById('map-view').hidden;
+}
+
+function onViewShown(view) {
+    // Edit Mode only edits the table, so it hides with it.
+    document.body.classList.toggle('peaks-map-shown', view === 'map');
+    if (view !== 'map') return;
+    if (peaksMap.map) {
+        peaksMap.map.invalidateSize();
+        renderMap(currentType());
+        return;
+    }
+    if (peaksMap.loading) return;
+    const el = document.getElementById('peaks-map');
+    peaksMap.loading = loadScriptsInOrder(PEAKS_MAP_SCRIPTS)
+        .then(() => {
+            buildPeaksMap(el);
+            // Opened, then flipped back before Leaflet arrived: size it on the next show.
+            if (mapShown()) renderMap(currentType());
+        })
+        .catch(err => {
+            console.error('Error loading the map:', err);
+            peaksMap.loading = null;
+            el.textContent = 'Error loading map. Please try again later.';
+        });
+}
+
+function buildPeaksMap(el) {
+    const map = L.map(el, {
+        center: [40, -95],
+        zoom: 4,
+        minZoom: 2,
+        zoomSnap: 0.1,
+        zoomDelta: 1,          // +/− buttons, double-click; wheel zoom is js/fluid-zoom.js
+        worldCopyJump: true,
+        gestureHandling: true,
+        tap: false,            // avoid Leaflet's synthetic-click delay, which breaks the fullscreen gesture on mobile
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: 'topleft' },
+    });
+    map.on('enterFullscreen', () => map.gestureHandling.disable());
+    map.on('exitFullscreen',  () => map.gestureHandling.enable());
+    setupMapBasemaps(map, { defaultBasemap: 'outdoors' });
+    new MapLocationControl().addTo(map);
+    peaksMap.map = map;
+    peaksMap.layer = L.layerGroup().addTo(map);
+}
+
+function pinPopup(type, item) {
+    const cfg = PEAK_LISTS[type];
+    const match = stravaMatch(type, item);
+    const region = regionOf(type, item);
+    const facts = [region, `${elevationFt(type, item).toLocaleString()} ft`].filter(Boolean).join(' · ');
+    let status;
+    if (isTicked(type, item) && match) status = `✅ Climbed · first on Strava ${stravaLink(match.peak.first)}`;
+    else if (isTicked(type, item)) status = '✅ Climbed';
+    else if (match) status = `✅ Summited on Strava ${stravaLink(match.peak.first)}`;
+    else status = '⬜ Not climbed yet';
+    const activities = match && match.peak.activities > 1 ? ` · ${match.peak.activities} activities` : '';
+    return `<div class="peaks-pin-popup">
+        <strong>${esc(item.name)}</strong>
+        <div>${esc(facts)}</div>
+        <div>${status}${activities}</div>
+        ${item.note ? `<div class="peaks-pin-note">${esc(item.note)}</div>` : ''}
+        ${cfg.key !== 'name' && item[cfg.key] && item[cfg.key] !== region ? `<div>${esc(item[cfg.key])}</div>` : ''}
+    </div>`;
+}
+
+function renderMap(type) {
+    const legend = document.getElementById('peaks-map-legend');
+    if (!peaksMap.map || !mapShown()) return;
+    if (peaksMap.shownType !== type) peaksMap.needsFit = true;
+    peaksMap.shownType = type;
+
+    const data = listData(type).filter(item => Array.isArray(item.coords));
+    const done = data.filter(item => isDone(type, item));
+    const hasTrailless = data.some(item => item.trailless);
+    peaksMap.layer.clearLayers();
+    // Not climbed first, so climbed pins sit on top where they crowd.
+    [...data].sort((a, b) => isDone(type, a) - isDone(type, b)).forEach(item => {
+        const [lng, lat] = item.coords;
+        const climbed = isDone(type, item);
+        L.circleMarker([lat, lng], {
+            radius: 7,
+            weight: 2,
+            color: '#111',
+            fillColor: climbed ? PIN_DONE : PIN_TODO,
+            fillOpacity: 0.95,
+            dashArray: item.trailless ? '3 3' : null,
+        })
+            .bindTooltip(esc(item.name), { direction: 'top', offset: [0, -6] })
+            .bindPopup(() => pinPopup(type, item))
+            .addTo(peaksMap.layer);
+    });
+
+    const loading = !summitedPeaks && !stravaError ? ' · checking Strava…' : '';
+    legend.innerHTML = `
+        <span class="peaks-map-key"><span class="peaks-map-dot" style="background:${PIN_DONE}"></span>Climbed (${done.length})</span>
+        <span class="peaks-map-key"><span class="peaks-map-dot" style="background:${PIN_TODO}"></span>Not yet (${data.length - done.length})</span>
+        ${hasTrailless ? '<span class="peaks-map-key"><span class="peaks-map-dot is-dashed"></span>Trailless</span>' : ''}
+        <span class="peaks-map-hint">${esc(PEAK_LISTS[type].label)}${loading}</span>`;
+
+    if (peaksMap.needsFit && data.length) {
+        peaksMap.needsFit = false;
+        const bounds = L.latLngBounds(data.map(item => [item.coords[1], item.coords[0]]));
+        peaksMap.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 11, animate: false });
     }
 }
