@@ -7,9 +7,15 @@
 
 // key: the field that identifies an entry (matching, the worker's MCP tools); done: the completion
 // flag (state highpoints are shared with the US dashboard, which uses
-// `visited`); unit: the elevation unit stored in the file (shown in feet).
+// `visited`); unit: the elevation unit stored in the file (shown in feet);
+// includes: other lists this one takes peaks from (see listData()): fill, the
+// region values their peaks don't carry; only, the keys to take (else all).
 const PEAK_LISTS = {
     adk46ers:          { label: 'Adirondack 46ers',        url: 'data/adirondack46ers.json',        csv: 'adirondack-46ers.csv',         key: 'name',    done: 'climbed' },
+    northeast115:      { label: 'Northeast 115',           url: 'data/northeast115.json',           csv: 'northeast-115.csv',            key: 'name',    done: 'climbed', region: 'state',   regionLabel: 'State',
+                         includes: { adk46ers: { fill: { state: 'NY' } },
+                                     catskill3500: { fill: { state: 'NY' }, only: ['Slide Mountain', 'Hunter Mountain'] } } },
+    catskill3500:      { label: 'Catskill 3500',           url: 'data/catskill3500.json',           csv: 'catskill-3500.csv',            key: 'name',    done: 'climbed' },
     colorado14ers:     { label: 'Colorado 14ers',          url: 'data/colorado14ers.json',          csv: 'colorado-14ers.csv',           key: 'name',    done: 'climbed' },
     highpoints:        { label: 'US State High Points',    url: 'data/highPoints.json',             csv: 'state-highpoints.csv',         key: 'state',   done: 'visited', region: 'state',   regionLabel: 'State' },
     britishIsles:      { label: 'British Isles High Five', url: 'data/british-isles-high-five.json', csv: 'british-isles-high-five.csv', key: 'name',    done: 'climbed', region: 'country', regionLabel: 'Country', unit: 'm' },
@@ -100,8 +106,31 @@ function elevationFt(type, item) {
 }
 
 function regionOf(type, item) {
-    const field = PEAK_LISTS[type].region;
-    return field ? item[field] || '' : '';
+    const cfg = PEAK_LISTS[type];
+    if (!cfg.region) return '';
+    return item[cfg.region] || cfg.includes?.[ownerType(type, item)]?.fill?.[cfg.region] || '';
+}
+
+// The peaks a list shows. The Northeast 115 is its own file's 67 peaks (New
+// England's 4000-footers) plus the whole Adirondack 46ers list and Slide and
+// Hunter from the Catskill 3500: those stay in their own lists, so one tick
+// counts for both.
+function listData(type) {
+    const cfg = PEAK_LISTS[type];
+    const own = lists[type].data;
+    if (!cfg.includes) return own;
+    return own.concat(...Object.entries(cfg.includes).map(([t, inc]) => inc.only
+        ? lists[t].data.filter(item => inc.only.includes(item[PEAK_LISTS[t].key]))
+        : lists[t].data));
+}
+
+// The list an entry shown under `type` is saved in.
+function ownerType(type, item) {
+    const included = PEAK_LISTS[type].includes;
+    if (included) {
+        for (const t of Object.keys(included)) if (lists[t].data.includes(item)) return t;
+    }
+    return type;
 }
 
 function stravaLink(visit) {
@@ -115,7 +144,7 @@ const matchCache = new Map();  // type → Map(item → { peak, distance })
 // Strava matching itself lives in js/peak-match.js (shared with the trip reports).
 function stravaMatches(type) {
     if (!summitedPeaks) return null;
-    if (!matchCache.has(type)) matchCache.set(type, PeakMatch.match(lists[type].data, summitedPeaks));
+    if (!matchCache.has(type)) matchCache.set(type, PeakMatch.match(listData(type), summitedPeaks));
     return matchCache.get(type);
 }
 
@@ -176,9 +205,10 @@ function downloadCsv(headers, rows, filename) {
 // so a list that isn't in Cloudflare yet is seeded by its first edit. A list
 // shown from the static copy because Cloudflare was unreachable isn't saved:
 // it could overwrite edits the page never loaded.
-function handleToggle(type, item) {
+function handleToggle(shownType, item) {
     const password = TravelAdmin.getPassword();
     if (!password) return;
+    const type = ownerType(shownType, item);
     const cfg = PEAK_LISTS[type];
     const list = lists[type];
     if (list.source !== 'cloudflare' && list.reason !== 'unseeded') {
@@ -216,7 +246,7 @@ function displayPeaksSummary() {
     const selected = currentType();
 
     const cards = Object.entries(PEAK_LISTS).map(([type, cfg]) => {
-        const data = lists[type].data;
+        const data = listData(type);
         const done = data.filter(item => isDone(type, item)).length;
         const pct = data.length ? ((done / data.length) * 100).toFixed(0) : 0;
         const matches = stravaMatches(type);
@@ -274,7 +304,7 @@ function sortValue(type, item, col) {
 function sortedData(type) {
     const { col, dir } = sortState[type];
     const sign = dir === 'asc' ? 1 : -1;
-    return [...lists[type].data].sort((a, b) => {
+    return [...listData(type)].sort((a, b) => {
         const av = sortValue(type, a, col), bv = sortValue(type, b, col);
         const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
         return sign * cmp || elevationFt(type, b) - elevationFt(type, a);
@@ -405,7 +435,7 @@ function renderComparison(type) {
     }
 
     const byElevation = (a, b) => elevationFt(type, b) - elevationFt(type, a);
-    const data = lists[type].data;
+    const data = listData(type);
     const marked = data.filter(item => isDone(type, item));
     const confirmed = marked.filter(item => matches.has(item));
     const markedOnly = marked.filter(item => !matches.has(item)).sort(byElevation);

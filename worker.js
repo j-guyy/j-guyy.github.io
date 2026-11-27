@@ -126,6 +126,8 @@ const TRAVEL_KEYS = {
     countries:     'travel_countries',
     visitedStates: 'travel_visited_states',
     adk46ers:      'travel_adk46ers',
+    northeast115:  'travel_northeast115',
+    catskill3500:  'travel_catskill3500',
     colorado14ers: 'travel_colorado14ers',
     britishIsles:  'travel_british_isles',
     countryHighpoints: 'travel_country_highpoints',
@@ -143,6 +145,8 @@ const TRAVEL_KEYS = {
 // `visited` branch, shared with the US dashboard.
 const PEAK_LIST_KEYS = {
     adk46ers:          'name',
+    northeast115:      'name',
+    catskill3500:      'name',
     colorado14ers:     'name',
     britishIsles:      'name',
     countryHighpoints: 'country',
@@ -186,6 +190,8 @@ export default {
             if (path === '/travel/countries')         return await handleTravelGet(env, 'countries');
             if (path === '/travel/visited-states')    return await handleTravelGet(env, 'visitedStates');
             if (path === '/travel/adk46ers')          return await handleTravelGet(env, 'adk46ers');
+            if (path === '/travel/northeast115')      return await handleTravelGet(env, 'northeast115');
+            if (path === '/travel/catskill3500')      return await handleTravelGet(env, 'catskill3500');
             if (path === '/travel/colorado14ers')     return await handleTravelGet(env, 'colorado14ers');
             if (path === '/travel/british-isles')     return await handleTravelGet(env, 'britishIsles');
             if (path === '/travel/country-highpoints') return await handleTravelGet(env, 'countryHighpoints');
@@ -2511,7 +2517,7 @@ const MCP_SERVER_INFO = { name: 'j-guyy-adventures', title: 'j-guyy.github.io ad
 const MCP_INSTRUCTIONS = `Data behind Justin Guyette's adventure site, ${SITE_URL}.
 - Activities are his Strava activities that have a GPS start point (indoor and manual entries aren't stored), refreshed nightly. Each has a sport type, date, distance, moving time, elevation gain and the country / state where it started. Strava links: https://www.strava.com/activities/<id>.
 - The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. Counties, parks, state parks, metros, ecoregions and map tiles are brought up to date at every Strava sync (nightly); summits and passes update when the site is opened, so they can lag the newest activities by a few days.
-- The peak lists (Colorado 14ers, Adirondack 46ers, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
+- The peak lists (Colorado 14ers, Adirondack 46ers, Northeast 115, Catskill 3500, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
 - Distances come in km and mi, elevations in m and ft. Use the units the user uses.
 Start with get_overview for headline numbers.`;
 
@@ -3025,10 +3031,17 @@ async function mcpGetSummits(args, env) {
 
 // Mirrors PEAK_LISTS in js/peaks-dashboard.js. type: the /travel KV type;
 // key: the field identifying an entry; done: its completion flag; unit: the
-// elevation unit in the file (feet unless noted).
+// elevation unit in the file (feet unless noted); includes: lists this one
+// takes peaks from — fill: region values their peaks lack, only: the keys to
+// take (else all). The Northeast 115 file holds New England's 67; the 46
+// Adirondack High Peaks and Slide + Hunter come from their own lists.
 const MCP_PEAK_LISTS = {
     colorado_14ers:          { type: 'colorado14ers',     file: 'data/colorado14ers.json',           key: 'name',    done: 'climbed' },
     adirondack_46ers:        { type: 'adk46ers',          file: 'data/adirondack46ers.json',         key: 'name',    done: 'climbed' },
+    northeast_115:           { type: 'northeast115',      file: 'data/northeast115.json',            key: 'name',    done: 'climbed', region: 'state',
+                               includes: { adirondack_46ers: { fill: { state: 'NY' } },
+                                           catskill_3500: { fill: { state: 'NY' }, only: ['Slide Mountain', 'Hunter Mountain'] } } },
+    catskill_3500:           { type: 'catskill3500',      file: 'data/catskill3500.json',            key: 'name',    done: 'climbed' },
     us_state_highpoints:     { type: 'highpoints',        file: 'data/highPoints.json',              key: 'state',   done: 'visited', region: 'state' },
     british_isles_high_five: { type: 'britishIsles',      file: 'data/british-isles-high-five.json', key: 'name',    done: 'climbed', region: 'country', unit: 'm' },
     country_highpoints:      { type: 'countryHighpoints', file: 'data/country-highpoints.json',      key: 'country', done: 'climbed', region: 'country' },
@@ -3117,7 +3130,15 @@ async function mcpGetPeakList(args, env) {
     const cfg = MCP_PEAK_LISTS[listKey];
     const status = argEnum(args.status, ['all', 'climbed', 'not_climbed'], 'status', 'all');
 
-    const [items, summited] = await Promise.all([loadPeakList(cfg, env), listSummitedPeaks(env)]);
+    const included = Object.entries(cfg.includes || {});
+    const [own, summited, ...others] = await Promise.all([loadPeakList(cfg, env), listSummitedPeaks(env),
+        ...included.map(([key]) => loadPeakList(MCP_PEAK_LISTS[key], env))]);
+    const items = own.concat(...others.map((list, i) => {
+        const [key, inc] = included[i];
+        const keyField = MCP_PEAK_LISTS[key].key;
+        return list.filter(item => !inc.only || inc.only.includes(item[keyField]))
+            .map(item => ({ ...inc.fill, ...item }));
+    }));
     const matches = matchPeakList(items, summited);
     const rows = items.map(item => {
         const peak = matches.get(item);
