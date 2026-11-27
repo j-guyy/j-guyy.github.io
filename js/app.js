@@ -19,6 +19,11 @@
 const SCREENS = {
     home: {},
     travel: {},
+    // User mode only: the person's travel from their own activities
+    // (js/user-travel.js), opened from the Travel tab and Home.
+    states: {},
+    countries: {},
+    peaks: {},
     dashboard: {},
     map: { open: () => ensureOpen('map-section', () => toggleMap()) },
     county: { open: () => ensureOpen('county-section', () => toggleCountyMap()) },
@@ -42,11 +47,13 @@ const SCREENS = {
 // layers wait for their own detection to finish (`ready`), since their toggle
 // leaves the panel open but empty if it fires early.
 // User mode (/app/?user=1) leaves out what only works for the site owner:
-// Travel and StatsHunters are the owner's own pages, and City, Pass and Trail
+// StatsHunters is the owner's own page, and City, Pass and Trail
 // Hunter are fixed to Colorado areas (CITY_CONFIGS / TRAIL_CONFIGS /
 // data/colorado-passes.json in strava.js). Their Home cards carry
-// data-user-hide; this keeps the map layers and deep links in step.
-const USER_HIDDEN = new Set(window.STRAVA_USER ? ['travel', 'statshunters', 'city', 'pass', 'trail'] : []);
+// data-user-hide; this keeps the map layers and deep links in step. Their
+// Travel tab opens their own US States / Countries / Peaks screens instead of
+// the owner's travel pages; those screens don't exist for the owner.
+const USER_HIDDEN = new Set(window.STRAVA_USER ? ['statshunters', 'city', 'pass', 'trail'] : ['states', 'countries', 'peaks']);
 
 let pendingOpen = null;
 const activitiesLoaded = () => currentSlim.length > 0;
@@ -172,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildMapSwitcher();
     showScreen(currentRoute());
     pollHomeStats();
-    if (!window.STRAVA_USER) loadTravelStats(); // user mode hides Travel
+    if (!window.STRAVA_USER) loadTravelStats(); // user mode's Travel is js/user-travel.js
 });
 
 // ── Home grid quick stats ────────────────────────────────────────────────────
@@ -239,10 +246,6 @@ function pollHomeStats() {
         if (!summary) return;
         ['tile', 'county', 'city', 'metro', 'park', 'ecoregion', 'mountain', 'pass', 'trail']
             .forEach(key => setStat(`stat-${key}`, hunterStatText(key, summary)));
-        // Travel's Ecoregions card (US Travel's Ecoregions table): Level III regions seen.
-        if (summary.ecoregion?.l3Total) {
-            setTravelStat('ecoregions', `${summary.ecoregion.l3Visited} / ${summary.ecoregion.l3Total} seen`);
-        }
         // The pipeline's own count (above) wins once it lands.
         if (typeof currentTotal === 'undefined' || currentTotal === 0) {
             setStat('stat-dashboard', hunterStatText('dashboard', summary));
@@ -293,7 +296,10 @@ function setStat(id, text) {
 const CapApp = window.Capacitor?.Plugins?.App;
 if (CapApp?.addListener) {
     CapApp.addListener('backButton', () => {
-        if (currentRoute() !== 'home') history.back();
+        // An open pop-up (the achievements' activity list, …) closes first.
+        const open = [...document.querySelectorAll('dialog[open]')].pop();
+        if (open) open.close();
+        else if (currentRoute() !== 'home') history.back();
         else CapApp.exitApp();
     });
 }
@@ -327,6 +333,7 @@ function stampEntry(from) {
 }
 
 function tabFor(route) {
+    if (['states', 'countries', 'peaks'].includes(route)) return 'travel';
     return TAB_ROUTES.has(route) ? route : 'home';
 }
 
@@ -450,14 +457,23 @@ function renderHomeSync() {
     const lastSync = lastSyncedAt ? `Last synced ${relativeTime(lastSyncedAt)}` : '';
 
     let state = 'idle';
-    if (!isLoggedIn()) state = 'locked';
+    const offline = typeof window.jgOffline === 'function' && window.jgOffline();
+    if (offline && !syncing) state = 'offline';
+    else if (!isLoggedIn()) state = 'locked';
     else if (syncing) state = 'syncing';
     else if (lastSyncResult) state = /fail/i.test(lastSyncResult) ? 'error' : 'done';
     btn.dataset.state = state;
-    btn.disabled = state === 'syncing';
+    btn.disabled = state === 'syncing' || (state === 'offline' && navigator.onLine === false);
     bar.hidden = state !== 'syncing';
 
-    if (state === 'locked' && window.STRAVA_USER) {
+    if (state === 'offline') {
+        // js/offline.js: no signal, or this visit is showing saved data. Once
+        // the signal is back the button reloads for fresh data.
+        const saved = window.jgOfflineSavedText?.() || '';
+        const back = navigator.onLine !== false;
+        label.textContent = back ? 'Back online — tap to reload' : 'Offline — sync is off';
+        meta.textContent = saved ? `Showing saved ${saved}` : 'Showing your saved data';
+    } else if (state === 'locked' && window.STRAVA_USER) {
         // User mode has no owner login: the session token is missing on this
         // device (storage blocked or cleared), so the way back is /connect/.
         label.textContent = 'Reconnect to sync';
@@ -492,6 +508,10 @@ function renderHomeSync() {
 
 function onHomeSyncTap() {
     if (typeof isLoggedIn !== 'function') return;
+    if (typeof window.jgOffline === 'function' && window.jgOffline()) {
+        if (navigator.onLine !== false) location.reload();
+        return;
+    }
     if (!isLoggedIn()) {
         if (window.STRAVA_USER) location.href = '/connect/'; // no owner login in user mode
         else adminLogin(); // a successful login fires 'stravasync'
@@ -502,8 +522,25 @@ function onHomeSyncTap() {
 }
 
 document.addEventListener('stravasync', renderHomeSync);
+document.addEventListener('jgoffline', renderHomeSync);
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('home-sync-btn')?.addEventListener('click', onHomeSyncTap);
     renderHomeSync();
     setInterval(renderHomeSync, 60000); // keep "Last synced 5m ago" current
+});
+
+// ── Home "Latest Achievements" ───────────────────────────────────────────────
+// The website homepage's feed (js/achievements.js), owner only: an invited
+// user's worker keeps no travel lists. Offline, app/sw.js serves the last copy.
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof mountAchievements !== 'function' || document.documentElement.classList.contains('user-mode')) return;
+    mountAchievements({
+        section: document.getElementById('app-achievements'),
+        list: document.getElementById('app-ach-list'),
+        more: document.getElementById('app-ach-more'),
+        url: 'https://strava-worker.justinguyette.workers.dev',
+        first: 3,
+        step: 5,
+        app: true,
+    });
 });

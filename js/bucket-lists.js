@@ -8,11 +8,13 @@
 // they're visited in data/sevenWonders.json; a Forbes city counts as visited
 // when it's a visited US metro or one of data/worldCities.json's cities.
 
+// nearKm: how close a Strava route must pass to count as an activity there
+// (the tables' Strava column): a city's centre or a wonder's site.
 const BUCKET_LISTS = [
-    { id: 'forbes100',           label: 'Forbes 100 Cities' },
-    { id: 'sevenWonders',        label: 'Seven Wonders of the World' },
-    { id: 'sevenNaturalWonders', label: 'Seven Natural Wonders' },
-    { id: 'wonderNominees',      label: 'Natural Wonder Nominees' },
+    { id: 'forbes100',           label: 'Forbes 100 Cities',          nearKm: 10 },
+    { id: 'sevenWonders',        label: 'Seven Wonders of the World', nearKm: 2 },
+    { id: 'sevenNaturalWonders', label: 'Seven Natural Wonders',      nearKm: 5 },
+    { id: 'wonderNominees',      label: 'Natural Wonder Nominees',    nearKm: 5 },
 ];
 
 let bucketListsPromise = null;

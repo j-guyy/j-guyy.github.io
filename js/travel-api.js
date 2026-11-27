@@ -38,16 +38,22 @@ const TravelAPI = {
 
     // The stored list keeps the names it was seeded with, and nothing edits
     // them, so a peak renamed in the /data file (Clingmans Dome → Kuwohi)
-    // would never show. Names are reference data: take them from the file.
+    // would never show. Names and coordinates are reference data: take them from the file.
     async fetchHighPoints() {
         const points = await this._fetchListWithFallback('highpoints', 'highPoints.json');
         try {
             const file = await fetch(new URL('highPoints.json', TRAVEL_DATA_URL));
             if (file.ok) {
-                const names = new Map((await file.json()).map(p => [p.state, p.name]));
+                // Names and coordinates come from the file (as on the Peaks
+                // page): a stored list keeps what it was seeded with, and old
+                // coordinates put Black Elk Peak, Mount Davis and Hoosier Hill
+                // too far from their summits for the Strava match.
+                const ref = new Map((await file.json()).map(p => [p.state, p]));
                 points.forEach(p => {
-                    const name = names.get(p.state);
-                    if (name) p.name = name;
+                    const r = ref.get(p.state);
+                    if (!r) return;
+                    if (r.name) p.name = r.name;
+                    if (Array.isArray(r.coords)) p.coords = r.coords;
                 });
             }
         } catch { /* keep the stored names */ }

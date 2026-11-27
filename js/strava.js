@@ -132,7 +132,14 @@ function passwordRejected(res) {
 }
 
 // POST to a protected worker endpoint with the admin password attached.
+// Offline (js/offline.js, app only): the page is showing a saved copy of the
+// data, so nothing it works out may be saved over newer results on the worker.
+function offlineNow() {
+    return typeof window.jgOffline === 'function' && window.jgOffline();
+}
+
 function adminPost(path, body = null) {
+    if (offlineNow()) return Promise.reject(new Error('offline'));
     const opts = { method: 'POST', headers: { ...adminHeaders() } };
     if (body !== null) {
         opts.headers['Content-Type'] = 'application/json';
@@ -146,6 +153,13 @@ function adminPost(path, body = null) {
 // skipped (resolves null) with one debug line per visit.
 let saveSkipLogged = false;
 function savePost(path, body) {
+    if (offlineNow()) {
+        if (!saveSkipLogged) {
+            saveSkipLogged = true;
+            dbg('Offline — showing saved data, so results are not saved to the server');
+        }
+        return Promise.resolve(null);
+    }
     if (!isLoggedIn()) {
         if (!saveSkipLogged) {
             saveSkipLogged = true;
@@ -699,7 +713,7 @@ async function fetchSyncStatus() {
 // browser was watching when it left may have finished meanwhile — pick up its
 // result. `loaded` is the initial pipeline run.
 async function resumeBackgroundSync(loaded) {
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn() || offlineNow()) return;
     let pendingSince = 0;
     try { pendingSince = Number(localStorage.getItem(SYNC_PENDING_KEY)) || 0; } catch { /* ignore */ }
     const status = await fetchSyncStatus();
@@ -1444,6 +1458,8 @@ function applyFilters() {
     renderSubdivisions(subdivisions);
     // The app Dashboard's charts (js/insights.js, loaded only on /app/).
     if (typeof renderInsights === 'function') renderInsights(filtered);
+    // The app's Travel screens for invited users (js/user-travel.js, /app/ only).
+    if (typeof renderUserTravel === 'function') renderUserTravel();
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
@@ -2709,6 +2725,13 @@ let parkStateLayer = null;
 let visitedParkIds = new Set();
 let parkDiscoveries = {};   // id → { actId, actName, date }
 let parkProcessedIds = new Set();
+// Parks whose outline in federal-lands.geojson was corrected by hand: the
+// activities already scanned are checked once more against just those parks
+// (stored as `rechecked`, so it happens once). Gateway Arch's simplified
+// outline was a triangle across the river in Illinois.
+// The worker does the same after each sync (POLYGON_HUNTERS fixes; keep equal).
+const PARK_BOUNDARY_FIXES = ['nps-gateway-arch-national-park'];
+let parkRechecked = new Set();
 let visitedStateParkIds = new Set();
 let stateParkDiscoveries = {};
 let stateParkProcessedIds = new Set();
@@ -2748,6 +2771,7 @@ async function initParkMap() {
     visitedParkIds        = new Set((savedFed.ids           || []).filter(Boolean));
     parkProcessedIds      = new Set((savedFed.processedIds  || []).filter(Boolean));
     parkDiscoveries       = savedFed.discoveries || {};
+    parkRechecked         = new Set(savedFed.rechecked || []);
     visitedStateParkIds   = new Set((savedState.ids          || []).filter(Boolean));
     stateParkProcessedIds = new Set((savedState.processedIds || []).filter(Boolean));
     stateParkDiscoveries  = savedState.discoveries || {};
@@ -2782,6 +2806,19 @@ async function initParkMap() {
         Object.assign(parkDiscoveries, newDiscoveries);
         fedUnprocessed.forEach(a => parkProcessedIds.add(a.i));
         dbg(`Park Hunter: +${newIds.size} federal (${visitedParkIds.size} total)`);
+        await saveParksToWorker();
+    }
+
+    // Federal: re-check scanned activities against parks whose outline was fixed.
+    const recheck = PARK_BOUNDARY_FIXES.filter(id => !parkRechecked.has(id));
+    if (recheck.length) {
+        const fixed = fedParks.filter(p => recheck.includes(p.id));
+        const scanned = currentSlim.filter(a => a.i && a.p && parkProcessedIds.has(a.i)).sort(byStartTime);
+        const { newIds, newDiscoveries } = await detectParksAsync(scanned, fixed, buildSpatialIndex(fixed), visitedParkIds);
+        newIds.forEach(id => visitedParkIds.add(id));
+        Object.assign(parkDiscoveries, newDiscoveries);
+        recheck.forEach(id => parkRechecked.add(id));
+        dbg(`Park Hunter: re-checked ${recheck.length} corrected outline(s), +${newIds.size}`);
         await saveParksToWorker();
     }
 
@@ -3158,6 +3195,7 @@ async function saveParksToWorker() {
             ids:          [...visitedParkIds],
             processedIds: [...parkProcessedIds],
             discoveries:  parkDiscoveries,
+            rechecked:    [...parkRechecked],
             order:        discoveryOrderStamp(),
         });
         if (!res) return;
@@ -3197,6 +3235,8 @@ async function resetParkData() {
         visitedParkIds.clear();
         parkProcessedIds.clear();
         parkDiscoveries = {};
+        // The full re-scan uses the corrected outlines already.
+        parkRechecked = new Set(PARK_BOUNDARY_FIXES);
         visitedStateParkIds.clear();
         stateParkProcessedIds.clear();
         stateParkDiscoveries = {};
@@ -8927,6 +8967,7 @@ async function scanMountainSummits(summitActs) {
     setMountainStatus('');
     renderMountainStats();
     if (mountainMapInitialized) rebuildMountainMap();  // refresh markers if the map is open
+    if (typeof renderUserTravel === 'function') renderUserTravel();
     dbg(`Mountain Hunter: ${mountainVisits.size} peaks summited out of ${mountainPeaks.length} in region`);
 }
 
@@ -9932,6 +9973,7 @@ let syncTask = null;
 function runManualSync({ join = false, after = null, fetched = 0 } = {}) {
     if (syncTask) return syncTask;
     if (rebuilding) return Promise.resolve(); // runRebuild owns the sync state
+    if (offlineNow()) return Promise.resolve(); // no signal: Home shows why
     syncing = true;
     syncProgress = { fetched, pct: 0 };
     lastSyncResult = null;

@@ -21,28 +21,34 @@ all tiers. Rows are sorted biggest first.
 Neighbourhoods (PPLX) and historical / abandoned / destroyed places are left out
 so a big city's districts don't pile bubbles on top of the city itself.
 
-It also writes metros.txt for the page's "Metro areas" view, from the EU Joint
-Research Centre's GHSL Functional Urban Areas (GHS-FUA R2019A, CC BY 4.0): 9,031
-metro areas worldwide — an urban centre plus its commuting zone, defined the same
-way everywhere from satellite-derived population grids (2015 populations). The
-file has no centre points, so each one is the area-weighted centroid of its
-outline, computed in the file's own equal-area Mollweide projection (ESRI:54009)
-and projected back to lat/lng by hand — no GIS libraries needed. One row each:
+It also writes metros.txt for the page's "Metro areas" view, from the UN's World
+Urbanization Prospects 2025 (WUP2025 file F21, CC BY 3.0 IGO): the 2025 population
+of every city of 50,000+ people (~12,100 of them), each drawn the same way in every
+country by the Degree of Urbanisation — a contiguous patch of 1 km² grid cells of
+1,500+ people per km², from satellite-derived population grids. That consistent
+boundary is why Jakarta (~42 M) and Dhaka (~37 M) outrank Tokyo (~33 M). Points are
+the UN's population-weighted centres. One row each, biggest first:
 
-    name|countryIdx|altName|lat|lng|population|urbanCentrePopulation
+    name|countryIdx|altName|lat|lng|population
 
-A name like "Quezon City [Manila]" becomes name "Manila", altName "Quezon City".
+A name like "Tōkyō (Tokyo)" becomes name "Tokyo", altName "Tōkyō"; one like
+"Minneapolis [Saint Paul]" becomes name "Minneapolis", altName "incl. Saint Paul".
+The xlsx is parsed with the standard library (zipfile + regex), no Excel libraries.
 
-    python3 scripts/build-world-population.py [--cache DIR]
+    python3 scripts/build-world-population.py [--cache DIR] [--metros-only]
+
+--metros-only rewrites just metros.txt, keeping the country table in places.json
+(new countries are appended), so the city tiers needn't be rebuilt.
 """
-import argparse, io, json, math, os, re, sqlite3, struct, sys, urllib.request, zipfile
+import argparse, html, io, json, os, re, sys, urllib.request, zipfile
 
 BASE = 'https://download.geonames.org/export/dump/'
 SKIP_CODES = {'PPLX', 'PPLH', 'PPLQ', 'PPLW', 'PPLCH'}
 TIERS = [(100_000, 'tier-0.txt'), (10_000, 'tier-1.txt'), (500, 'tier-2.txt')]
-FUA_URL = ('https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_FUA_UCDB2015_GLOBE_R2019A/V1-0/'
-           'GHS_FUA_UCDB2015_GLOBE_R2019A_54009_1K_V1_0.zip')
-MOLL_R = 6378137.0  # ESRI:54009 is spherical Mollweide on the WGS84 semi-major axis
+WUP_URL = 'https://population.un.org/wup/assets/Download/Cities/WUP2025-F21-DEGURBA-Cities_Pop.xlsx'
+WUP_YEAR = '2025'
+SOURCE = ('GeoNames cities500 (CC BY 4.0); UN DESA World Urbanization Prospects 2025, '
+          'F21 city populations (CC BY 3.0 IGO)')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'data', 'population')
 
@@ -55,103 +61,84 @@ def fetch(name, cache):
     return path
 
 
-def gpkg_rings(blob):
-    """Rings of a GeoPackage (Multi)Polygon blob, as lists of (x, y)."""
-    flags = blob[3]
-    env = {0: 0, 1: 32, 2: 48, 3: 48, 4: 64}[(flags >> 1) & 7]
-    buf, off = blob, 8 + env
-
-    def read(fmt):
-        nonlocal off
-        v = struct.unpack_from(fmt, buf, off)
-        off += struct.calcsize(fmt)
-        return v
-
-    polys = []
-    def geom():
-        bo = '<' if read('B')[0] == 1 else '>'
-        gtype = read(bo + 'I')[0] % 1000
-        if gtype == 6:
-            for _ in range(read(bo + 'I')[0]):
-                geom()
-        elif gtype == 3:
-            rings = []
-            for _ in range(read(bo + 'I')[0]):
-                n = read(bo + 'I')[0]
-                pts = struct.unpack_from(bo + 'd' * (2 * n), buf, off)
-                off_add(16 * n)
-                rings.append(list(zip(pts[0::2], pts[1::2])))
-            polys.append(rings)
-        else:
-            raise ValueError(f'unexpected geometry type {gtype}')
-    def off_add(n):
-        nonlocal off
-        off += n
-    geom()
-    return polys
+def xlsx_rows(path, sheet_name):
+    """Rows of one sheet of an .xlsx as {column letters: value}, standard library only."""
+    with zipfile.ZipFile(path) as z:
+        wb = z.read('xl/workbook.xml').decode('utf-8')
+        rels = z.read('xl/_rels/workbook.xml.rels').decode('utf-8')
+        rid = re.search(r'<sheet [^>]*name="%s"[^>]*r:id="([^"]+)"' % re.escape(sheet_name), wb).group(1)
+        target = re.search(r'<Relationship [^>]*Id="%s"[^>]*Target="([^"]+)"' % rid, rels)
+        if not target:  # attribute order varies
+            target = re.search(r'<Relationship [^>]*Target="([^"]+)"[^>]*Id="%s"' % rid, rels)
+        target = target.group(1).lstrip('/')
+        sheet = target if target.startswith('xl/') else 'xl/' + target
+        strings = []
+        if 'xl/sharedStrings.xml' in z.namelist():
+            sst = z.read('xl/sharedStrings.xml').decode('utf-8')
+            for si in re.findall(r'<si>(.*?)</si>', sst, re.S):
+                text = ''.join(re.findall(r'<t[^>]*>(.*?)</t>', si, re.S))
+                strings.append(html.unescape(text))
+        data = z.read(sheet).decode('utf-8')
+    cell = re.compile(r'<c r="([A-Z]+)\d+"([^>]*?)(?:/>|>(?:<f[^>]*>[^<]*</f>|<f[^>]*/>)?(?:<v>([^<]*)</v>)?</c>)')
+    for row in re.findall(r'<row[^>]*>(.*?)</row>', data, re.S):
+        out = {}
+        for col, attrs, v in cell.findall(row):
+            if v == '':
+                continue
+            out[col] = strings[int(v)] if 't="s"' in attrs else html.unescape(v)
+        yield out
 
 
-def centroid(polys):
-    """Area-weighted centroid (x, y) of polygons with holes, in projected units."""
-    A = cx = cy = 0.0
-    for rings in polys:
-        pa = px = py = 0.0
-        for k, ring in enumerate(rings):
-            a = x = y = 0.0
-            for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
-                c = x0 * y1 - x1 * y0
-                a += c; x += (x0 + x1) * c; y += (y0 + y1) * c
-            # Outer ring adds, holes subtract, whatever their winding.
-            sign = 1 if k == 0 else -1
-            if a < 0:
-                a, x, y = -a, -x, -y
-            pa += sign * a / 2; px += sign * x / 6; py += sign * y / 6
-        A += pa; cx += px; cy += py
-    return cx / A, cy / A
-
-
-def mollweide_inverse(x, y):
-    theta = math.asin(max(-1, min(1, y / (MOLL_R * math.sqrt(2)))))
-    lat = math.asin(max(-1, min(1, (2 * theta + math.sin(2 * theta)) / math.pi)))
-    lng = math.pi * x / (2 * MOLL_R * math.sqrt(2) * math.cos(theta))
-    return math.degrees(lat), math.degrees(lng)
+def split_wup_name(name):
+    """('Tokyo', 'Tōkyō') from 'Tōkyō (Tokyo)'; ('Minneapolis', 'incl. Saint Paul') from 'Minneapolis [Saint Paul]'."""
+    name = name.strip()
+    m = re.fullmatch(r'(.*?)\s*\(([^()]*)\)', name)
+    if m:
+        return m.group(2), m.group(1)
+    m = re.fullmatch(r'(.*?)\s*\[([^\[\]]*)\]', name)
+    if m:
+        return m.group(1), 'incl. ' + m.group(2)
+    return name, ''
 
 
 def build_metros(cache, iso3_names, country_idx):
-    path = os.path.join(cache, os.path.basename(FUA_URL))
+    path = os.path.join(cache, os.path.basename(WUP_URL))
     if not os.path.exists(path):
-        print('downloading', os.path.basename(FUA_URL), file=sys.stderr)
-        urllib.request.urlretrieve(FUA_URL, path)
-    gpkg = os.path.join(cache, 'fua.gpkg')
-    if not os.path.exists(gpkg):
-        with zipfile.ZipFile(path) as z:
-            name = next(n for n in z.namelist() if n.endswith('.gpkg'))
-            with open(gpkg, 'wb') as f:
-                f.write(z.read(name))
-    db = sqlite3.connect(gpkg)
-    table = db.execute('select table_name from gpkg_contents').fetchone()[0]
-    rows = []
-    for blob, name, iso, cname, pop, uc_pop in db.execute(
-            f'select geom, eFUA_name, Cntry_ISO, Cntry_name, FUA_p_2015, UC_p_2015 from "{table}"'):
-        x, y = centroid(gpkg_rings(blob))
-        lat, lng = mollweide_inverse(x, y)
-        alt = ''
-        m = re.fullmatch(r'(.*?)\s*\[(.*)\]', name.strip())
-        if m:
-            name, alt = m.group(2), m.group(1)
-        country = iso3_names.get(iso) or re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', cname)
-        rows.append((round(pop), name.replace('|', '/'), country, alt.replace('|', '/'), lat, lng, round(uc_pop or 0)))
+        print('downloading', os.path.basename(WUP_URL), file=sys.stderr)
+        urllib.request.urlretrieve(WUP_URL, path)
+    rows_in = xlsx_rows(path, 'Data')
+    header = next(rows_in)
+    col = {v: k for k, v in header.items()}
+    c_name, c_iso, c_lng, c_lat, c_pop = (col[k] for k in ('City_Name', 'ISO3_Code', 'PWCent_Longitude', 'PWCent_Latitude', WUP_YEAR))
+    rows, missing = [], set()
+    for r in rows_in:
+        if c_name not in r or c_pop not in r:
+            continue  # no city by that year (under 50,000 people)
+        pop = round(float(r[c_pop]) * 1000)  # the file is in thousands
+        if pop <= 0:
+            continue
+        iso = r[c_iso]
+        country = iso3_names.get(iso)
+        if not country:
+            missing.add(iso)
+            country = iso
+        name, alt = split_wup_name(r[c_name])
+        rows.append((pop, name.replace('|', '/'), country, alt.replace('|', '/'), float(r[c_lat]), float(r[c_lng])))
+    if missing:
+        print('no GeoNames country name for', sorted(missing), file=sys.stderr)
     rows.sort(key=lambda r: -r[0])
     with open(os.path.join(OUT, 'metros.txt'), 'w', encoding='utf-8') as f:
-        for pop, name, country, alt, lat, lng, uc in rows:
-            f.write(f'{name}|{country_idx(country)}|{alt}|{lat:.3f}|{lng:.3f}|{pop}|{uc}\n')
-    print(f'metros.txt: {len(rows):,} metro areas', file=sys.stderr)
+        for pop, name, country, alt, lat, lng in rows:
+            f.write(f'{name}|{country_idx(country)}|{alt}|{lat:.3f}|{lng:.3f}|{pop}\n')
+    print(f'metros.txt: {len(rows):,} cities ({WUP_YEAR})', file=sys.stderr)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cache', default=os.path.join(ROOT, '.geonames-cache'),
                     help='where to keep the downloads (default: .geonames-cache, git-ignored)')
+    ap.add_argument('--metros-only', action='store_true',
+                    help="rewrite only metros.txt, keeping places.json's country table")
     args = ap.parse_args()
     os.makedirs(args.cache, exist_ok=True)
 
@@ -163,6 +150,20 @@ def main():
             p = line.rstrip('\n').split('\t')
             countries[p[0]] = p[4]
             iso3[p[1]] = p[4]
+
+    if args.metros_only:
+        with open(os.path.join(OUT, 'places.json'), encoding='utf-8') as f:
+            places = json.load(f)
+        c_idx = {c: i for i, c in enumerate(places['countries'])}
+        def cidx(c):
+            if c not in c_idx:
+                c_idx[c] = len(c_idx)
+            return c_idx[c]
+        build_metros(args.cache, iso3, cidx)
+        places.update(countries=list(c_idx), source=SOURCE)
+        with open(os.path.join(OUT, 'places.json'), 'w', encoding='utf-8') as f:
+            json.dump(places, f, ensure_ascii=False, separators=(',', ':'))
+        return
 
     regions = {}
     with open(fetch('admin1CodesASCII.txt', args.cache), encoding='utf-8') as f:
@@ -206,7 +207,7 @@ def main():
     build_metros(args.cache, iso3, lambda c: idx(c_idx, c))
     with open(os.path.join(OUT, 'places.json'), 'w', encoding='utf-8') as f:
         json.dump({'countries': list(c_idx), 'regions': list(r_idx),
-                   'source': 'GeoNames cities500 (CC BY 4.0); GHSL GHS-FUA R2019A (CC BY 4.0)'}, f, ensure_ascii=False, separators=(',', ':'))
+                   'source': SOURCE}, f, ensure_ascii=False, separators=(',', ':'))
 
 
 if __name__ == '__main__':

@@ -10,6 +10,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setupBackgroundRotation(reducedMotion);
     setupScrollCue(reducedMotion);
+    // js/achievements.js
+    if (typeof mountAchievements === 'function' && typeof TRAVEL_WORKER_URL !== 'undefined') {
+        mountAchievements({
+            section: document.getElementById('home-achievements'),
+            list: document.getElementById('ach-list'),
+            more: document.getElementById('ach-more'),
+            url: TRAVEL_WORKER_URL,
+        });
+    }
     renderLatestTrips();
     loadTravelStats();
 });

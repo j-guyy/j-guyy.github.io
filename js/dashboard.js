@@ -7,6 +7,14 @@ let visitedCountyFips = null;
 // shows a message with a Retry).
 let ecoregionData = null;
 let ecoregionsFailed = false;
+// The States table's Strava column (js/strava-activities.js): per state name
+// (the geocode cache's Nominatim names, which are the state names) the
+// activities that started there, { count, sec, di, longest, latest }.
+// stravaState: loading | ready | error.
+let stravaByState = null;
+let stravaState = 'loading';
+// The geocode cache's name for the US, and the region filter's state name.
+const STRAVA_US = 'United States';
 let usDataReady = null; // resolves once the main lists are on the page
 const ecoExpanded = new Set(); // Ecoregions rows opened to list their Level IVs
 let editMode = false;
@@ -42,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Full state names, so the Capitals table sorts like the States table.
             const names = Object.fromEntries(Object.entries(STATE_ABBRS).map(([n, a]) => [a, n]));
             capitals.forEach(c => { c.stateName = names[c.state] || c.state; });
+            USStrava.tag(highPoints);
+            USStrava.tag(capitals);
             displayTravelSummary();
             updateTable(currentTable());
             setupEditMode();
@@ -60,6 +70,15 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(err => console.warn('County data unavailable:', err));
     loadEcoregions();
+    StravaActivities.fetchTotals({ group: 'region', country: STRAVA_US })
+        .then(regions => { stravaByState = regions; stravaState = 'ready'; })
+        .catch(err => { console.warn('Strava activities unavailable:', err); stravaState = 'error'; })
+        .then(stravaChanged);
+    // What Strava's hunters reached, for each table's Strava column and the
+    // comparison at the bottom (js/us-strava.js).
+    USStrava.onChange(stravaChanged);
+    USStrava.start();
+    setupStravaComparison(dataReady);
     setupUSViewSwitch(dataReady);
 });
 
@@ -84,6 +103,15 @@ function loadEcoregions() {
             if (currentTable() === 'ecoregions') refreshTable();
         })
         .catch(() => { /* the main load failed: TravelUI.showLoadError() says so */ });
+}
+
+// More Strava data arrived: redraw the table and the comparison.
+function stravaChanged() {
+    if (!usDataReady) return;
+    usDataReady.then(() => {
+        refreshTable();
+        renderStravaComparison();
+    }).catch(() => { /* the main load failed: TravelUI.showLoadError() says so */ });
 }
 
 // Tables | Map switch (js/view-switch.js). The map is only built the first
@@ -127,6 +155,8 @@ const STATE_COUNTIES = {
     '51': ['VA', 133], '53': ['WA', 39], '54': ['WV', 55], '55': ['WI', 72], '56': ['WY', 23]
 };
 
+const STATE_FIPS = Object.fromEntries(Object.entries(STATE_COUNTIES).map(([fips, [abbr]]) => [abbr, fips]));
+
 function buildStateRows() {
     const rows = {};
     Object.entries(STATE_ABBRS).forEach(([name, abbr]) => {
@@ -134,8 +164,11 @@ function buildStateRows() {
             name, abbr, visited: Boolean(visitedStates[name]),
             metrosVisited: 0, metrosTotal: 0, metros: [], parksVisited: 0, parksTotal: 0, parks: [],
             highPoint: null, hpVisited: false, capital: null, capVisited: false,
-            countiesVisited: 0, countiesTotal: 0, countyPct: null
+            countiesVisited: 0, countiesTotal: 0, countyPct: null,
+            strava: (stravaByState && stravaByState[name]) || null,
+            fipsPrefix: STATE_FIPS[abbr]
         };
+        rows[abbr].stravaCount = rows[abbr].strava ? rows[abbr].strava.count : (stravaByState ? 0 : null);
     });
     Object.values(STATE_COUNTIES).forEach(([abbr, total]) => { rows[abbr].countiesTotal = total; });
     if (visitedCountyFips) {
@@ -218,8 +251,12 @@ function fraction(done, total, items = []) {
 
 // A capital not checked off whose county Strava activities reach (County
 // Hunter): maybe visited without being marked. Only a hint; the owner decides.
+// An unchecked capital Strava reached: a route within 10 km of it once the
+// routes have loaded, until then any route in its county.
 function stravaHint(capital) {
-    return !capital.visited && Boolean(visitedCountyFips) && visitedCountyFips.includes(capital.fips);
+    if (capital.visited) return false;
+    if (USStrava.status.capitals === 'ready') return Boolean(USStrava.first('capitals', capital));
+    return Boolean(visitedCountyFips) && visitedCountyFips.includes(capital.fips);
 }
 
 // ── Ecoregions table ────────────────────────────────────────────────────────
@@ -303,6 +340,7 @@ function setEditMode(on) {
     btn.classList.toggle('active', on);
     btn.textContent = on ? 'Exit Edit Mode' : 'Edit Mode';
     updateTable(document.getElementById('table-selector').value);
+    renderStravaComparison();
 }
 
 function setupCsvExport() {
@@ -315,7 +353,8 @@ function setupCsvExport() {
             headers = ['State', 'Abbreviation', 'Status', 'Top 100 Metros Visited', 'Top 100 Metros Total',
                 'Parks Visited', 'Parks Total', 'High Point', 'High Point Status', 'Capital', 'Capital Status',
                 'Core Progress (%)',
-                'Counties Visited', 'Counties Total', 'County Progress (%)'];
+                'Counties Visited', 'Counties Total', 'County Progress (%)',
+                'Strava Activities', 'Strava Moving Hours'];
             const sorted = sortTableData(buildStateRows(), col, dir, tableType);
             rows = sorted.map(r => [
                 r.name, r.abbr, r.visited ? 'Visited' : 'Not Visited',
@@ -324,7 +363,9 @@ function setupCsvExport() {
                 r.capital ? r.capital.name : '', r.capVisited ? 'Visited' : 'Not Visited',
                 r.progress,
                 visitedCountyFips ? r.countiesVisited : '', r.countiesTotal,
-                r.countyPct == null ? '' : r.countyPct
+                r.countyPct == null ? '' : r.countyPct,
+                r.stravaCount == null ? '' : r.stravaCount,
+                r.strava ? Math.round(r.strava.sec / 360) / 10 : (stravaByState ? 0 : '')
             ]);
             filename = 'states.csv';
         } else if (tableType === 'highpoints') {
@@ -413,9 +454,11 @@ function handleToggle(tableType, item) {
 
     // Show the change at once; undo it if the save fails.
     flip();
+    renderStravaComparison();
     TravelAPI.saveList(type, TRAVEL_LISTS[type], password)
         .catch(err => {
             flip();
+            renderStravaComparison();
             alert('Save failed: ' + err.message);
             if (err.message.includes('Invalid password')) {
                 TravelAdmin.logout();
@@ -580,32 +623,38 @@ function updateTable(tableType) {
     if (tableType === 'states') {
         // [full, phone] labels keep the row on a phone screen, where the
         // Metros and Parks columns (col-detail) are hidden; Core still counts them.
-        tableHeaders = ['State', 'Core', 'Counties', 'Metros', 'Parks', ['High Point', 'HP'], ['Capital', 'Cap'], ['Status', '✓']];
-        sortKeys     = ['name', 'progress', 'countyPct', 'metrosVisited', 'parksVisited', 'hpVisited', 'capVisited', 'visited'];
-        colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status', 'col-status'];
+        tableHeaders = ['State', 'Core', ['Counties', 'Cnty'], ['Strava', 'Acts'], 'Metros', 'Parks', ['High Point', 'HP'], ['Capital', 'Cap'], ['Status', '✓']];
+        sortKeys     = ['name', 'progress', 'countyPct', 'stravaCount', 'metrosVisited', 'parksVisited', 'hpVisited', 'capVisited', 'visited'];
+        colClasses   = ['col-name', 'col-progress', 'col-progress', 'col-strava', 'col-num col-detail', 'col-num col-detail', 'col-status', 'col-status', 'col-status'];
         headerTitles = [null, 'The state, its top-100 metros, national parks, high point and capital',
-            'Counties reached by Strava activities (County Hunter)', 'Top 100 metros'];
+            'Counties reached by Strava activities (County Hunter)',
+            'Strava activities that started here: tap a count for all of them, the longest and the latest', 'Top 100 metros'];
         rawData      = buildStateRows();
     } else if (tableType === 'highpoints') {
-        tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Status'];
-        sortKeys     = ['elevation', 'name', 'state', 'elevation', 'visited'];
-        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
-        rawData      = highPoints;
+        tableHeaders = ['Rank', 'Peak Name', 'State', 'Elevation (ft)', 'Strava', 'Status'];
+        sortKeys     = ['elevation', 'name', 'state', 'elevation', 'stravaDate', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-strava', 'col-status'];
+        headerTitles = [null, null, null, null, STRAVA_COL_TITLE.highpoints];
+        rawData      = withStravaDates('highpoints', highPoints);
     } else if (tableType === 'capitals') {
-        tableHeaders = ['Capital', 'State', 'Status'];
-        sortKeys     = ['name', 'stateName', 'visited'];
-        colClasses   = ['col-name', '', 'col-status'];
-        rawData      = capitals;
+        USStrava.wantRoutes();
+        tableHeaders = ['Capital', 'State', 'Strava', 'Status'];
+        sortKeys     = ['name', 'stateName', 'stravaDate', 'visited'];
+        colClasses   = ['col-name', '', 'col-strava', 'col-status'];
+        headerTitles = [null, null, STRAVA_COL_TITLE.capitals];
+        rawData      = withStravaDates('capitals', capitals);
     } else if (tableType === 'metros') {
-        tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Status'];
-        sortKeys     = ['rank', 'metro_name', 'state', 'population', 'visited'];
-        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-status'];
-        rawData      = metros;
+        tableHeaders = ['Rank', 'Metro Area', 'State', 'Population', 'Strava', 'Status'];
+        sortKeys     = ['rank', 'metro_name', 'state', 'population', 'stravaDate', 'visited'];
+        colClasses   = ['col-rank', 'col-name', '', 'col-num', 'col-strava', 'col-status'];
+        headerTitles = [null, null, null, null, STRAVA_COL_TITLE.metros];
+        rawData      = withStravaDates('metros', metros);
     } else if (tableType === 'parks') {
-        tableHeaders = ['National Park', 'State', 'Status'];
-        sortKeys     = ['name', 'state', 'visited'];
-        colClasses   = ['col-name', '', 'col-status'];
-        rawData      = nationalParks;
+        tableHeaders = ['National Park', 'State', 'Strava', 'Status'];
+        sortKeys     = ['name', 'state', 'stravaDate', 'visited'];
+        colClasses   = ['col-name', '', 'col-strava', 'col-status'];
+        headerTitles = [null, null, STRAVA_COL_TITLE.parks];
+        rawData      = withStravaDates('parks', nationalParks);
     } else if (tableType === 'ecoregions') {
         tableHeaders = ['Ecoregion', 'Progress', ['Level IV', 'L4'], 'Biome', 'First Seen', ['Status', '✓']];
         sortKeys     = ['name', 'progress', 'seenCount', 'biome', 'firstSeen', 'visited'];
@@ -662,7 +711,7 @@ function updateTable(tableType) {
             if (state.col === key) {
                 sortState[tableType].dir = state.dir === 'asc' ? 'desc' : 'asc';
             } else {
-                const defaultDir = (key === 'visited' || key === 'seenCount' || key === 'firstSeen' || key === 'hpVisited' || key === 'capVisited' || key === 'progress' || key === 'countyPct' ||
+                const defaultDir = (key === 'visited' || key === 'seenCount' || key === 'firstSeen' || key === 'hpVisited' || key === 'capVisited' || key === 'progress' || key === 'countyPct' || key === 'stravaCount' || key === 'stravaDate' ||
                     key === 'metrosVisited' || key === 'parksVisited' || key === 'elevation' || key === 'rank' || key === 'population') ? 'desc' : 'asc';
                 sortState[tableType] = { col: key, dir: defaultDir };
             }
@@ -693,6 +742,7 @@ function updateTable(tableType) {
                 <td class="col-name">${withFlag(`us-${item.abbr.toLowerCase()}`, item.name)}</td>
                 <td class="col-progress">${progressBar(item.progress, coreBreakdown(item))}</td>
                 <td class="col-progress">${progressBar(item.countyPct, `${item.countiesVisited} of ${item.countiesTotal} counties (from Strava)`)}</td>
+                <td class="col-strava">${StravaActivities.cell(item.strava, stravaState)}</td>
                 <td class="col-num col-detail">${fraction(item.metrosVisited, item.metrosTotal, item.metros)}</td>
                 <td class="col-num col-detail">${fraction(item.parksVisited, item.parksTotal, item.parks)}</td>
                 <td class="col-status ${hp && editMode ? 'status-toggle' : ''}" data-toggle="hp" title="${hpTitle}">${hp ? (item.hpVisited ? '✅' : '⬜') : '—'}</td>
@@ -705,6 +755,7 @@ function updateTable(tableType) {
                 <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
                 <td class="col-num">${item.elevation.toLocaleString()}</td>
+                <td class="col-strava">${USStrava.cell('highpoints', item)}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'capitals') {
@@ -714,6 +765,7 @@ function updateTable(tableType) {
             row.innerHTML = `
                 <td class="col-name">${item.name}${hint}</td>
                 <td>${withFlag(`us-${item.state.toLowerCase()}`, item.stateName)}</td>
+                <td class="col-strava">${USStrava.cell('capitals', item)}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'metros') {
@@ -722,6 +774,7 @@ function updateTable(tableType) {
                 <td class="col-name">${item.metro_name}</td>
                 <td>${item.state}</td>
                 <td class="col-num">${item.population}</td>
+                <td class="col-strava">${USStrava.cell('metros', item)}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         } else if (tableType === 'ecoregions') {
@@ -740,10 +793,18 @@ function updateTable(tableType) {
             row.innerHTML = `
                 <td class="col-name">${item.name}</td>
                 <td>${item.state}</td>
+                <td class="col-strava">${USStrava.cell('parks', item)}</td>
                 <td class="col-status ${statusClass}">${statusIcon}</td>
             `;
         }
 
+        if (tableType === 'states') {
+            const stravaBtn = row.querySelector('.strava-count');
+            if (stravaBtn) stravaBtn.addEventListener('click', () => StravaActivities.open({
+                name: item.name, titleHtml: withFlag(`us-${item.abbr.toLowerCase()}`, item.name),
+                s: item.strava, countries: [STRAVA_US], regions: [item.name]
+            }));
+        }
         if (editMode && tableType === 'states') {
             // The state, its high point and its capital all toggle right from the row.
             row.querySelector('[data-toggle="state"]').addEventListener('click', () => handleToggle('states', item));
@@ -817,4 +878,162 @@ function updateTable(tableType) {
     }
     wrapper.addEventListener('scroll', checkScroll);
     checkScroll();
+}
+
+// ── Strava columns + Strava vs the lists ────────────────────────────────────
+// Every table has a Strava column: the year of the first activity that reached
+// the item (js/us-strava.js says how each list is matched), linking to it; the
+// States table's is the count of activities started there instead, which
+// opens their pop-up. The section at the bottom of the page lists where Strava
+// and the hand-kept ✅ disagree, like the Metro Hunter comparison on
+// strava.html.
+const STRAVA_COL_TITLE = {
+    highpoints: 'First Strava summit (Mountain Hunter, matched as on the Peaks page)',
+    capitals: 'First Strava route within 10 km of the capital',
+    metros: 'First Strava activity in the metro (Metro Hunter)',
+    parks: 'First Strava activity in the park (Park Hunter)',
+};
+
+// The first activity's date as a non-saved sort key (the lists are saved
+// whole, so no enumerable field may be added to them).
+function withStravaDates(list, items) {
+    items.forEach(item => {
+        const f = USStrava.first(list, item);
+        Object.defineProperty(item, 'stravaDate', { value: f ? (f.date || '0') : null, configurable: true, writable: true });
+    });
+    return items;
+}
+
+// Each list in the comparison: its items, whether each is marked, and the row
+// its Mark visited button toggles.
+function comparisonLists() {
+    const names = Object.fromEntries(Object.entries(STATE_ABBRS).map(([n, a]) => [a, n]));
+    const stateLabel = abbr => names[abbr] || abbr;
+    return [
+        {
+            id: 'states', label: 'States', table: 'states',
+            note: 'Strava: a route through any of its counties, or an activity started there',
+            items: buildStateRows(),
+            marked: r => r.visited,
+            reached: r => USStrava.first('states', r) || (r.strava && r.strava.count ? (r.strava.latest ? { actId: r.strava.latest.i, actName: r.strava.latest.n, date: String(r.strava.latest.d || '').slice(0, 10) } : {}) : null),
+            ready: () => USStrava.status.states === 'ready' || stravaState === 'ready',
+            name: r => r.name,
+        },
+        {
+            id: 'metros', label: 'Top 100 metros', table: 'metros',
+            note: 'Strava: Metro Hunter',
+            items: metros.filter(m => m.rank <= 100),
+            marked: m => m.visited, reached: m => USStrava.first('metros', m),
+            ready: () => USStrava.status.metros === 'ready',
+            name: m => `${m.name}, ${m.state}`,
+        },
+        {
+            id: 'parks', label: 'National parks', table: 'parks',
+            note: 'Strava: Park Hunter',
+            items: nationalParks, marked: p => p.visited, reached: p => USStrava.first('parks', p),
+            ready: () => USStrava.status.parks === 'ready',
+            name: p => `${p.name} (${p.state})`,
+        },
+        {
+            id: 'highpoints', label: 'High points', table: 'highpoints',
+            note: 'Strava: a Mountain Hunter summit',
+            items: highPoints, marked: h => h.visited, reached: h => USStrava.first('highpoints', h),
+            ready: () => USStrava.status.highpoints === 'ready',
+            name: h => `${h.name} (${stateLabel(h.state)})`,
+        },
+        {
+            id: 'capitals', label: 'State capitals', table: 'capitals',
+            note: 'Strava: a route within 10 km',
+            items: capitals, marked: c => c.visited, reached: c => USStrava.first('capitals', c),
+            ready: () => USStrava.status.capitals === 'ready',
+            name: c => `${c.name}, ${c.state}`,
+        },
+    ];
+}
+
+const comparisonOpen = new Set();
+let comparisonShown = false;
+
+// The section loads the capitals' routes the first time it nears the screen.
+function setupStravaComparison(dataReady) {
+    const el = document.getElementById('strava-compare');
+    if (!el) return;
+    dataReady.then(() => {
+        comparisonShown = true;
+        renderStravaComparison();
+        if ('IntersectionObserver' in window) {
+            const io = new IntersectionObserver(entries => {
+                if (entries.some(e => e.isIntersecting)) { io.disconnect(); USStrava.wantRoutes(); }
+            }, { rootMargin: '400px' });
+            io.observe(el);
+        } else {
+            USStrava.wantRoutes();
+        }
+    }).catch(() => { /* the main load failed: TravelUI.showLoadError() says so */ });
+}
+
+function stravaActLink(f) {
+    if (!f || !f.actId) return f && f.date ? shortDate(f.date) : '';
+    return `<a href="https://www.strava.com/activities/${encodeURIComponent(f.actId)}" target="_blank" rel="noopener">${escapeHtml(f.actName || 'Activity')}</a>`
+        + (f.date ? ` <span class="compare-date">${shortDate(f.date)}</span>` : '');
+}
+
+function renderStravaComparison() {
+    const el = document.getElementById('strava-compare-body');
+    if (!el || !comparisonShown) return;
+    const owner = editMode;
+    el.innerHTML = '';
+    comparisonLists().forEach(list => {
+        const details = document.createElement('details');
+        details.className = 'compare-list';
+        details.open = comparisonOpen.has(list.id);
+        details.addEventListener('toggle', () => {
+            if (details.open) comparisonOpen.add(list.id); else comparisonOpen.delete(list.id);
+        });
+        if (!list.ready()) {
+            const failed = USStrava.status[list.id] === 'error';
+            details.innerHTML = `<summary><span class="compare-name">${list.label}</span>
+                <span class="compare-chips"><span class="compare-chip">${failed ? 'Strava unavailable' : 'Loading Strava…'}</span></span></summary>`;
+            el.appendChild(details);
+            return;
+        }
+        const rows = list.items.map(item => ({ item, marked: Boolean(list.marked(item)), first: list.reached(item) }));
+        const both = rows.filter(r => r.marked && r.first);
+        const markedOnly = rows.filter(r => r.marked && !r.first);
+        const stravaOnly = rows.filter(r => !r.marked && r.first);
+        const chip = (n, cls, label, title) => `<span class="compare-chip ${n ? cls : 'compare-zero'}" title="${title}"><b>${n}</b> ${label}</span>`;
+        details.innerHTML = `<summary><span class="compare-name">${list.label}</span>
+            <span class="compare-chips">
+                ${chip(both.length, 'compare-both', 'both', 'Marked visited and reached on Strava')}
+                ${chip(markedOnly.length, 'compare-marked', 'marked only', 'Marked visited, but no Strava activity reached it (before Strava, or no GPS route)')}
+                ${chip(stravaOnly.length, 'compare-strava', 'Strava only', 'A Strava activity reached it, but it isn\'t marked visited')}
+            </span></summary>
+            <p class="compare-note">${list.note}.</p>`;
+        const group = (title, items, withAct) => {
+            if (!items.length) return;
+            const h = document.createElement('h4');
+            h.textContent = `${title} (${items.length})`;
+            details.appendChild(h);
+            const ul = document.createElement('ul');
+            ul.className = 'compare-items';
+            items.sort((a, b) => list.name(a.item).localeCompare(list.name(b.item))).forEach(r => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="compare-item-name">${escapeHtml(list.name(r.item))}</span>`
+                    + (withAct ? `<span class="compare-act">${stravaActLink(r.first)}</span>` : '');
+                if (withAct && owner) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'table-action-btn compare-mark';
+                    btn.textContent = 'Mark visited';
+                    btn.addEventListener('click', () => handleToggle(list.table, r.item));
+                    li.appendChild(btn);
+                }
+                ul.appendChild(li);
+            });
+            details.appendChild(ul);
+        };
+        group('Strava only: reached on Strava, not marked', stravaOnly, true);
+        group('Marked only: no Strava activity reached it', markedOnly, false);
+        el.appendChild(details);
+    });
 }
