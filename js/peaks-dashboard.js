@@ -1,9 +1,9 @@
 // Peaks dashboard. Every list lives in Cloudflare KV (/travel/<type>) and falls
 // back to its static /data copy until it has been seeded; the owner's first
 // edit of an unseeded list seeds it from that copy. Each list is also matched
-// against Mountain Hunter's Strava summits (/summits/peaks) so the page shows
-// where the hand-kept list and Strava disagree, the step before the lists are
-// ticked off from Strava directly.
+// against Mountain Hunter's Strava summits (/summits/peaks): a peak counts as
+// climbed when it is ticked or Strava confirms it, so ticks are only needed for
+// climbs Strava doesn't have (before GPS, not recorded).
 
 // key: the field that identifies an entry (matching, the worker's MCP tools); done: the completion
 // flag (state highpoints are shared with the US dashboard, which uses
@@ -97,8 +97,13 @@ function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Climbed: ticked by hand, or summited on a recorded activity.
 function isDone(type, item) {
-    return Boolean(item[PEAK_LISTS[type].done]);
+    return isTicked(type, item) || Boolean(stravaMatch(type, item));
+}
+
+function isTicked(type, item) {
+    return Boolean(item[PEAK_LISTS[ownerType(type, item)].done]);
 }
 
 function elevationFt(type, item) {
@@ -141,11 +146,27 @@ function stravaLink(visit) {
 
 const matchCache = new Map();  // type → Map(item → { peak, distance })
 
-// Strava matching itself lives in js/peak-match.js (shared with the trip reports).
-function stravaMatches(type) {
+// Strava matching itself lives in js/peak-match.js (shared with the trip
+// reports). Each list's own peaks are matched once; a peak another list takes
+// in (Northeast 115 ← ADK 46ers) keeps the match from its own list, so it is
+// climbed or not the same way everywhere.
+function ownMatches(type) {
     if (!summitedPeaks) return null;
-    if (!matchCache.has(type)) matchCache.set(type, PeakMatch.match(listData(type), summitedPeaks));
+    if (!matchCache.has(type)) matchCache.set(type, PeakMatch.match(lists[type].data, summitedPeaks));
     return matchCache.get(type);
+}
+
+// The Strava summit confirming an entry shown under `type`, or undefined;
+// null while Strava is loading.
+function stravaMatch(type, item) {
+    const matches = ownMatches(ownerType(type, item));
+    return matches ? matches.get(item) : null;
+}
+
+// How many of a list's peaks Strava confirms, or null while loading.
+function stravaCount(type) {
+    if (!summitedPeaks) return null;
+    return listData(type).filter(item => stravaMatch(type, item)).length;
 }
 
 // ── Owner controls ──────────────────────────────────────────────────────────
@@ -172,14 +193,13 @@ function setupCsvExport() {
     document.getElementById('export-csv-btn').addEventListener('click', () => {
         const type = currentType();
         const cfg = PEAK_LISTS[type];
-        const matches = stravaMatches(type);
         const headers = ['Rank', 'Peak Name']
             .concat(cfg.region ? [cfg.regionLabel] : [])
-            .concat(['Elevation (ft)', 'Status', 'Strava First Summit']);
+            .concat(['Elevation (ft)', 'Status', 'Ticked', 'Strava First Summit']);
         const rows = sortedData(type).map((item, i) => [i + 1, item.name]
             .concat(cfg.region ? [regionOf(type, item)] : [])
             .concat([elevationFt(type, item), isDone(type, item) ? 'Summited' : 'Not Summited',
-                matches?.get(item)?.peak.first.date || '']));
+                isTicked(type, item) ? 'Yes' : 'No', stravaMatch(type, item)?.peak.first.date || '']));
         downloadCsv(headers, rows, cfg.csv);
     });
 }
@@ -249,8 +269,8 @@ function displayPeaksSummary() {
         const data = listData(type);
         const done = data.filter(item => isDone(type, item)).length;
         const pct = data.length ? ((done / data.length) * 100).toFixed(0) : 0;
-        const matches = stravaMatches(type);
-        const strava = matches ? `<span class="stat-sub">${matches.size} on Strava</span>` : '';
+        const onStrava = stravaCount(type);
+        const strava = onStrava != null ? `<span class="stat-sub">${onStrava} on Strava</span>` : '';
         return `
             <button type="button" class="summary-stat peaks-card${type === selected ? ' active' : ''}" data-type="${type}">
                 <div class="stat-number-container">
@@ -295,7 +315,7 @@ function sortValue(type, item, col) {
         case 'elevation': return elevationFt(type, item);
         case 'name':      return item.name;
         case 'region':    return regionOf(type, item);
-        case 'strava':    return stravaMatches(type)?.get(item)?.peak.first.date || '';
+        case 'strava':    return stravaMatch(type, item)?.peak.first.date || '';
         case 'done':      return isDone(type, item) ? 1 : 0;
         default:          return 0;
     }
@@ -316,7 +336,7 @@ function updateTable(type) {
     const tableContainer = document.getElementById('travel-table-container');
     tableContainer.innerHTML = '';
 
-    const matches = stravaMatches(type);
+    const loading = !summitedPeaks;
     const showStrava = !stravaError;
 
     const columns = [
@@ -367,15 +387,16 @@ function updateTable(type) {
     const tbody = document.createElement('tbody');
     sortedData(type).forEach((item, index) => {
         const done = isDone(type, item);
+        const ticked = isTicked(type, item);
         const row = document.createElement('tr');
         row.className = done ? 'visited' : 'not-visited';
 
-        const match = matches?.get(item);
+        const match = stravaMatch(type, item);
         let stravaCell = '';
         if (showStrava) {
-            const content = !matches ? '…'
+            const content = loading ? '…'
                 : match ? stravaLink(match.peak.first) : '—';
-            const cls = match && !done ? ' strava-only' : '';
+            const cls = match && !ticked ? ' strava-only' : '';
             const title = match
                 ? ` title="${esc(`${match.peak.name || 'OSM peak'} · ${match.peak.activities} activit${match.peak.activities === 1 ? 'y' : 'ies'} · ${match.distance} m from the list point`)}"`
                 : '';
@@ -390,6 +411,12 @@ function updateTable(type) {
             ${stravaCell}
             <td class="col-status ${editMode ? 'status-toggle' : ''}">${done ? '✅' : '⬜'}</td>
         `;
+        // Climbed from Strava alone: a tick here would only matter if the
+        // activity ever went away, so say where the ✅ comes from.
+        if (done && !ticked) {
+            row.querySelector('.col-status').title = editMode
+                ? 'Summited on Strava — click to tick it by hand as well' : 'Summited on Strava';
+        }
         if (item.note) row.querySelector('.col-name').title = item.note;
 
         if (editMode) {
@@ -415,10 +442,9 @@ function updateTable(type) {
     checkScroll();
 }
 
-// Where the hand-kept list and Strava disagree, like Metro Hunter's
-// comparison on strava.html: marked but never summited on Strava (climbed
-// before Strava, not recorded, or coordinates too far from OSM's) and summited
-// on Strava but not marked yet.
+// Where the climbs come from, like Metro Hunter's comparison on strava.html:
+// ticked but never summited on Strava (climbed before Strava, not recorded, or
+// coordinates too far from OSM's), and counted from Strava alone.
 function renderComparison(type) {
     const el = document.getElementById('strava-comparison');
     const cfg = PEAK_LISTS[type];
@@ -428,33 +454,33 @@ function renderComparison(type) {
             <p class="peaks-compare-note">Couldn’t load Strava summits (${esc(stravaError)}).</p>`;
         return;
     }
-    const matches = stravaMatches(type);
-    if (!matches) {
+    if (!summitedPeaks) {
         el.innerHTML = `<h3>Marked vs. Strava</h3><p class="peaks-compare-note">Loading Strava summits…</p>`;
         return;
     }
 
     const byElevation = (a, b) => elevationFt(type, b) - elevationFt(type, a);
     const data = listData(type);
-    const marked = data.filter(item => isDone(type, item));
-    const confirmed = marked.filter(item => matches.has(item));
-    const markedOnly = marked.filter(item => !matches.has(item)).sort(byElevation);
-    const stravaOnly = data.filter(item => !isDone(type, item) && matches.has(item)).sort(byElevation);
+    const onStrava = item => Boolean(stravaMatch(type, item));
+    const climbed = data.filter(item => isDone(type, item));
+    const ticked = data.filter(item => isTicked(type, item));
+    const confirmed = ticked.filter(onStrava);
+    const tickedOnly = ticked.filter(item => !onStrava(item)).sort(byElevation);
+    const stravaOnly = data.filter(item => !isTicked(type, item) && onStrava(item)).sort(byElevation);
 
     const stat = (n, label, cls = '') =>
         `<div class="peaks-compare-stat ${cls}"><span class="peaks-compare-number">${n}</span><span class="peaks-compare-label">${label}</span></div>`;
 
     el.innerHTML = `
-        <h3>Marked vs. Strava</h3>
-        <p class="peaks-compare-note">Strava summits come from
+        <h3>Ticked vs. Strava</h3>
+        <p class="peaks-compare-note">A peak counts as climbed when it’s ticked or summited on Strava. Strava summits come from
             <a href="strava.html#mountain">Mountain Hunter</a>: a hike, run, walk, ski tour or bike ride that passes
             within 50&nbsp;m of an OpenStreetMap summit (or a hiker summit, where the true one is closed). Activities count
             once Mountain Hunter has processed them on the Strava page.</p>
         <div class="peaks-compare-stats">
-            ${stat(marked.length, 'Marked')}
-            ${stat(matches.size, 'On Strava')}
-            ${stat(confirmed.length, 'Both', 'is-confirmed')}
-            ${stat(markedOnly.length, 'Marked only', 'is-marked-only')}
+            ${stat(climbed.length, 'Climbed')}
+            ${stat(confirmed.length, 'Ticked + Strava', 'is-confirmed')}
+            ${stat(tickedOnly.length, 'Ticked only', 'is-marked-only')}
             ${stat(stravaOnly.length, 'Strava only', 'is-strava-only')}
         </div>`;
 
@@ -465,7 +491,6 @@ function renderComparison(type) {
         h.textContent = title;
         el.appendChild(h);
 
-        const showAction = withStrava && editMode;
         const table = document.createElement('table');
         table.className = 'travel-table travel-table--fit';
         table.innerHTML = `<thead><tr>
@@ -473,19 +498,16 @@ function renderComparison(type) {
             ${cfg.region ? `<th class="col-region">${cfg.regionLabel}</th>` : ''}
             <th class="col-num">Elevation (ft)</th>
             ${withStrava ? '<th class="col-strava">First summit</th><th class="col-num">Activities</th>' : ''}
-            ${showAction ? '<th class="col-status"></th>' : ''}
         </tr></thead>`;
         const tbody = document.createElement('tbody');
         items.forEach(item => {
-            const match = matches.get(item);
+            const match = stravaMatch(type, item);
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="col-name">${esc(item.name)}</td>
                 ${cfg.region ? `<td class="col-region">${esc(regionOf(type, item))}</td>` : ''}
                 <td class="col-num">${elevationFt(type, item).toLocaleString()}</td>
-                ${withStrava ? `<td class="col-strava">${stravaLink(match.peak.first)}</td><td class="col-num">${match.peak.activities}</td>` : ''}
-                ${showAction ? '<td class="col-status"><button type="button" class="table-action-btn">Mark climbed</button></td>' : ''}`;
-            if (showAction) tr.querySelector('button').addEventListener('click', () => handleToggle(type, item));
+                ${withStrava ? `<td class="col-strava">${stravaLink(match.peak.first)}</td><td class="col-num">${match.peak.activities}</td>` : ''}`;
             tbody.appendChild(tr);
         });
         table.appendChild(tbody);
@@ -495,14 +517,14 @@ function renderComparison(type) {
         el.appendChild(wrapper);
     };
 
-    section(`Marked but not on Strava (${markedOnly.length}) — climbed before Strava, or not recorded`,
-        'is-marked-only', markedOnly, false);
-    section(`On Strava but not marked (${stravaOnly.length}) — summited on a recorded activity`,
+    section(`Ticked but not on Strava (${tickedOnly.length}) — climbed before Strava, or not recorded`,
+        'is-marked-only', tickedOnly, false);
+    section(`Counted from Strava (${stravaOnly.length}) — summited on a recorded activity, not ticked`,
         'is-strava-only', stravaOnly, true);
-    if (!markedOnly.length && !stravaOnly.length) {
+    if (!tickedOnly.length && !stravaOnly.length) {
         const p = document.createElement('p');
         p.className = 'peaks-compare-note';
-        p.textContent = 'The list and Strava agree.';
+        p.textContent = 'Every climb is both ticked and on Strava.';
         el.appendChild(p);
     }
 }

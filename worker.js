@@ -2550,7 +2550,7 @@ const MCP_SERVER_INFO = { name: 'j-guyy-adventures', title: 'j-guyy.github.io ad
 const MCP_INSTRUCTIONS = `Data behind Justin Guyette's adventure site, ${SITE_URL}.
 - Activities are his Strava activities that have a GPS start point (indoor and manual entries aren't stored), refreshed nightly. Each has a sport type, date, distance, moving time, elevation gain and the country / state where it started. Strava links: https://www.strava.com/activities/<id>.
 - The "hunters" on ${SITE_URL}/strava.html track what his GPS routes have reached: US counties, national parks and other federal lands, state parks, the 200 largest US metros, EPA ecoregions, Colorado mountain passes, map tiles, and mountain summits. Counties, parks, state parks, metros, ecoregions and map tiles are brought up to date at every Strava sync (nightly); summits and passes update when the site is opened, so they can lag the newest activities by a few days.
-- The peak lists (Colorado 14ers, Adirondack 46ers, Northeast 115, Catskill 3500, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; get_peak_list also says which peaks Strava confirms.
+- The peak lists (Colorado 14ers, Adirondack 46ers, Northeast 115, Catskill 3500, US state high points, …) and travel lists (countries, US states, metros, national parks) are kept by hand on the site; a peak counts as climbed when ticked or summited on Strava, and get_peak_list says which.
 - Distances come in km and mi, elevations in m and ft. Use the units the user uses.
 Start with get_overview for headline numbers.`;
 
@@ -3311,13 +3311,20 @@ async function mcpGetPeakList(args, env) {
     const included = Object.entries(cfg.includes || {});
     const [own, summited, ...others] = await Promise.all([loadPeakList(cfg, env), listSummitedPeaks(env),
         ...included.map(([key]) => loadPeakList(MCP_PEAK_LISTS[key], env))]);
+    // Each list is matched on its own, as the page does, so a peak another list
+    // takes in is confirmed (or not) the same way on both.
+    const matches = new Map(matchPeakList(own, summited));
     const items = own.concat(...others.map((list, i) => {
         const [key, inc] = included[i];
         const keyField = MCP_PEAK_LISTS[key].key;
+        const listMatches = matchPeakList(list, summited);
         return list.filter(item => !inc.only || inc.only.includes(item[keyField]))
-            .map(item => ({ ...inc.fill, ...item }));
+            .map(item => {
+                const copy = { ...inc.fill, ...item };
+                if (listMatches.has(item)) matches.set(copy, listMatches.get(item));
+                return copy;
+            });
     }));
-    const matches = matchPeakList(items, summited);
     const rows = items.map(item => {
         const peak = matches.get(item);
         const ft = cfg.unit === 'm' ? Math.round(item.elevation * FT_PER_M) : item.elevation;
@@ -3327,13 +3334,15 @@ async function mcpGetPeakList(args, env) {
             ...(item.mainland ? { mainland: true } : {}),
             elevation_ft: ft ?? null,
             elevation_m: ft != null ? Math.round(ft / FT_PER_M) : null,
-            climbed: Boolean(item[cfg.done]),
+            // As on the Peaks page: climbed when ticked by hand or summited on Strava.
+            climbed: Boolean(item[cfg.done]) || Boolean(peak),
+            ticked: Boolean(item[cfg.done]),
             strava_first_summit: peak ? firstVisit(peak.first) : null,
         };
     });
     const climbed = rows.filter(r => r.climbed).length;
     const confirmed = rows.filter(r => r.strava_first_summit).length;
-    const disagree = rows.filter(r => r.climbed !== Boolean(r.strava_first_summit)).length;
+    const tickedOnly = rows.filter(r => r.ticked && !r.strava_first_summit).length;
     const shown = rows
         .filter(r => status === 'all' || (status === 'climbed') === r.climbed)
         .sort((a, b) => (b.elevation_ft || 0) - (a.elevation_ft || 0));
@@ -3342,9 +3351,9 @@ async function mcpGetPeakList(args, env) {
         climbed,
         total: rows.length,
         strava_confirmed: confirmed,
-        // Rows where the hand-kept mark and Strava disagree: climbed before
-        // GPS recording, or a summit Strava found that the list misses.
-        disagreements: disagree,
+        // Ticked by hand with no Strava summit: climbed before GPS recording,
+        // not recorded, or the list point is too far from OSM's summit.
+        ticked_not_on_strava: tickedOnly,
         peaks: shown,
     };
 }
@@ -3546,7 +3555,7 @@ const MCP_TOOLS = [
     {
         name: 'get_peak_list',
         title: 'Peak list',
-        description: 'A peak-bagging list from the Peaks page: each peak\'s hand-kept climbed mark and the first Strava summit that confirms it (null when Strava has none — e.g. climbed before GPS recording).',
+        description: 'A peak-bagging list from the Peaks page: each peak counts as climbed when it is ticked by hand (ticked) or summited on Strava (strava_first_summit, null when Strava has none — e.g. climbed before GPS recording).',
         inputSchema: {
             type: 'object',
             properties: {
