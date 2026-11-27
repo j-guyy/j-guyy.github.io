@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0d0b">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/connect/icon-192.png">
+    <title>Italy by Bike: Genoa to Pescara — Trip Report | Justin Guyette</title>
+    <meta name="description" content="A 14-day, 597-mile bike tour across Italy from Genoa to Pescara, through Liguria, Tuscany, Umbria and the Apennines of Abruzzo, linking two family hometowns.">
+    <meta property="og:title" content="Italy by Bike: Genoa to Pescara — Trip Report | Justin Guyette">
+    <meta property="og:description" content="A 14-day, 597-mile bike tour across Italy from Genoa to Pescara, through Liguria, Tuscany, Umbria and the Apennines of Abruzzo, linking two family hometowns.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://j-guyy.github.io/trip-reports/italy-bike-tour.html">
+    <meta property="og:image" content="https://j-guyy.github.io/images/cycling/italy.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Italy by Bike: Genoa to Pescara — Trip Report | Justin Guyette">
+    <meta name="twitter:description" content="A 14-day, 597-mile bike tour across Italy from Genoa to Pescara, through Liguria, Tuscany, Umbria and the Apennines of Abruzzo, linking two family hometowns.">
+    <meta name="twitter:image" content="https://j-guyy.github.io/images/cycling/italy.jpg">
+    <link rel="stylesheet" href="../css/base.css?v=20261110d">
+    <link rel="stylesheet" href="../css/layout.css?v=20261110d">
+    <link rel="stylesheet" href="../css/responsive.css?v=20261110d">
+    <link rel="stylesheet" href="../css/tripreports.css?v=20261110d">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="../css/leaflet.css?v=20261113a"/>
+    <link rel="canonical" href="https://j-guyy.github.io/trip-reports/italy-bike-tour.html">
+    <script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Italy by Bike: Genoa to Pescara — Trip Report", "description": "A 14-day, 597-mile bike tour across Italy from Genoa to Pescara, through Liguria, Tuscany, Umbria and the Apennines of Abruzzo, linking two family hometowns.", "image": "https://j-guyy.github.io/images/cycling/italy.jpg", "url": "https://j-guyy.github.io/trip-reports/italy-bike-tour.html", "mainEntityOfPage": "https://j-guyy.github.io/trip-reports/italy-bike-tour.html", "datePublished": "2026-11-27", "author": {"@type": "Person", "name": "Justin Guyette", "url": "https://j-guyy.github.io/"}}</script>
+    <style>
+        .stage-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .stage-table th, .stage-table td { padding: 0.55rem 0.6rem; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
+        .stage-table th { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+        .stage-table td.num, .stage-table th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .stage-table tr.leg td { padding-top: 1.1rem; font-weight: 600; border-bottom: none; opacity: 0.85; }
+        .stage-table tfoot td { font-weight: 700; border-bottom: none; }
+        .stage-table a { color: inherit; }
+        .stage-wrap { overflow-x: auto; }
+        @media (max-width: 600px) { .stage-table .col-date { display: none; } }
+        .trip-photo { margin: 1.25rem 0; }
+        .trip-photo img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); display: block; }
+        .trip-photo figcaption { font-size: 0.85rem; opacity: 0.7; margin-top: 0.4rem; text-align: center; }
+        .photo-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 15px; }
+        .photo-pair:empty { display: none; }
+        #italy-map { aspect-ratio: 4 / 3; border-radius: 8px; }
+        .italy-legend { background: rgba(20, 20, 20, 0.85); color: #eee; padding: 6px 10px; border-radius: 6px; font-size: 12px; line-height: 1.6; }
+        .italy-legend span { display: inline-block; width: 14px; height: 4px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+    </style>
+</head>
+
+<body class="page tr-background trip-report">
+
+    <nav-bar base-path="../"></nav-bar>
+
+    <div class="content">
+        <div class="hero"
+            style="background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.65)), url('../images/cycling/italy.jpg'); background-size: cover; background-position: center;">
+            <h1>Italy by Bike</h1>
+            <h2>Genoa to Pescara, from one family hometown to another</h2>
+        </div>
+
+        <!-- Status Banner -->
+        <div class="status-banner">
+            <div class="status-icon">🚴‍♂️</div>
+            <div class="status-text">
+                <span class="status-label">Mission Status</span>
+                <span class="status-value">TOUR COMPLETE</span>
+            </div>
+            <div class="status-checkmark">✓</div>
+        </div>
+
+        <!-- Quick Stats (Strava, the 14 "Italy by Bike" rides) -->
+        <div class="section">
+            <div class="climb-data">
+                <div class="stat-item">
+                    <div class="stat-label">Distance</div>
+                    <div class="stat-value">597 miles</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Elevation Gain</div>
+                    <div class="stat-value">40,905 ft</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Riding Days</div>
+                    <div class="stat-value">14</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Regions</div>
+                    <div class="stat-value">4</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Date</div>
+                    <div class="stat-value">Aug – Sep 2026</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trip Report Section -->
+        <div class="section">
+            <h2>The Adventure</h2>
+            <div class="trip-content">
+                <p>I put together a touring route with two non-negotiable stops: Zoagli, the little Ligurian town my
+                    great-grandfather left for the US in 1914, and Torricella Peligna, the Abruzzo mountain town
+                    Monica's great-grandparents left in 1928. Everything in between was up to us: down the Ligurian
+                    coast, through the hills of Tuscany and the valleys of Umbria, over the Apennines, and out to the
+                    Adriatic at Pescara.</p>
+
+                <p>We rode our Trek Checkpoints with rear racks and two 20L panniers each. Water is everywhere in
+                    Italy, so we only carried 2.5L at a time, and fueling was simple with all the delicious food along
+                    the way (plus a lot of baby food). The tour came in four legs: Ligurian Coast, Tuscany Hills,
+                    Umbria Valleys, and Abruzzo &amp; Apennines.</p>
+
+                <p>Getting to the start line was an adventure of its own. Traveling with bikes is hard: we missed our
+                    train out of Milano Centrale by mere seconds and spent the next hour and a half camped out on the
+                    platform with our bike bags.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/prologue-milano.jpg" alt="Milano Centrale, with everything we own" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Milano Centrale, with everything we own</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/prologue-platform.jpg" alt="Waiting out the next train to Genoa" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Waiting out the next train to Genoa</figcaption></figure></div>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/genoa-de-ferrari.jpg" alt="Piazza De Ferrari, bike bags shipped" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Piazza De Ferrari, bike bags shipped</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/start-genoa.jpg" alt="Ready to roll at the Arco della Vittoria in Genoa" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Ready to roll at the Arco della Vittoria in Genoa</figcaption></figure></div>
+
+                <h3>Day 1 — Genoa to Zoagli</h3>
+                <p>We slept in until 8:30, then rose in a shock: the bike bags had to ship before checkout. We
+                    hobbled through Genoa with those jumbo, inconveniently-dimensioned bags, took the metro to Piazza
+                    de Ferrari and struggled our way to Mail Boxes Etc. Our hero, Michael of MBE, called our final
+                    hotel and yelled at them in Italian for a solid five minutes, then promised us they would hold the
+                    bags until we arrived in two weeks. He also said it's Rome, and people don't really do their jobs
+                    there. We'll see how that goes.</p>
+
+                <p>Back at the hotel, the rear rack on my bike was missing a bolt. The first bike shop, supposed to
+                    open at 9am, was closed. The second, supposed to open at 10:30, was also closed. So I moved some
+                    mounted components around to scrappily hold the rack in place, pumped up our tires, and it was
+                    time to begin.</p>
+
+                <p>Within minutes of rolling into Genoa, we watched a moped driver honk at a cyclist, the cyclist
+                    scream back in Italian, and the moped driver spit on him. "Welcome at Genova," he told us as he
+                    wiped his face. Nasty. After a late smoothie-and-salad breakfast we headed south along the coast:
+                    views in Sori, a climb up Ruta di Camogli, a descent behind the world's slowest moped driver (she
+                    yelled at us when we passed), a detour out the peninsula to Portofino, poke bowls in Rapallo,
+                    and finally our first stop, Zoagli. My great-grandfather walked these same streets before he moved to
+                    the US in 1914.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/santa-margherita.jpg" alt="Taking in the Gulf of Tigullio near Santa Margherita Ligure" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Taking in the Gulf of Tigullio near Santa Margherita Ligure</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/zoagli.jpg" alt="Made it to Zoagli, where my great-grandfather was born" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Made it to Zoagli, where my great-grandfather was born</figcaption></figure></div>
+
+                <h3>Day 2 — Zoagli to Levanto</h3>
+                <p>A sunny walk along the coastal path in Zoagli, then straight into a big climb with no warm-up.
+                    At least the high was 82 instead of yesterday's 91. In Chiavari we found The Bicycle Shop &amp;
+                    Service, where nobody spoke English, so I explained the missing rack bolt in hand signals. After
+                    30 minutes of three Italian men yelling at each other and trying things, the rack was back on and
+                    we were smooth sailing.</p>
+
+                <p>Sestri Levante was beautiful, with palm trees and colorful buildings, and lunch at Gusto Sano (a
+                    delicious rice and roasted veggie bowl plus tiny acai bowls) ended up as one of the best meals of
+                    the trip. Then came the big climb over Passo del Bracco. Monica slid off the road on the uphill while
+                    putting a bottle away and scraped up her knee and palms. Medkit out, bandages on, and we kept
+                    going. Near the top the flowering trees and lush lowland greens gave way to pines, with the
+                    transition right around 2,000 ft. We bombed down the windy coastal roads into Levanto, floated in
+                    the waves at Spiaggia Levanto, and had my first pasta of Italy at Da Tapulin, with cuculli bread
+                    and a sunset on the jetty.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/zoagli-morning.jpg" alt="Morning walk along the coast in Zoagli" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Morning walk along the coast in Zoagli</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/sestri-levante.jpg" alt="Palm trees and painted palazzi in Sestri Levante" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Palm trees and painted palazzi in Sestri Levante</figcaption></figure></div>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/bracco-climb.jpg" alt="Grinding up Passo del Bracco" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Grinding up Passo del Bracco</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/passo-bracco.jpg" alt="Passo del Bracco, 615 m" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Passo del Bracco, 615 m</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/bracco-view.jpg" alt="Looking back toward the sea from the climb" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Looking back toward the sea from the climb</figcaption></figure>
+
+                <h3>Day 3 — Cinque Terre, then on to Sarzana</h3>
+                <p>Breakfast at the B&amp;B was a tower of fruit, bread, brownies and eggs. A couple from Firenze
+                    heard we were biking to Pescara and told us we had "bono gambe": strong legs.</p>
+
+                <p>We left the bikes at the B&amp;B and took the train into Cinque Terre, starting at the far end
+                    with Riomaggiore and its hilltop castle. We hiked over to Manarola, which was very sun-exposed and
+                    hot. The heat and humidity were like Florida, but with mountains instead of swamps. Manarola's
+                    viewpoint ended up being my favorite of the five. Corniglia sits up a big staircase, which kept
+                    the crowds small and got us an easy table for salads and pinsa. In Vernazza, the most photographed
+                    of the five, Google Maps led us astray, so I used the Strava global heatmap to find the viewpoint.
+                    Monterosso was a quick stop for the big beach and the Neptune statue. The 35 euro Cinque Terre
+                    pass seemed steep at first, but it covered trails, bathrooms and the train, so it was worth SOME
+                    value.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/manarola.jpg" alt="Manarola, my favorite of the Cinque Terre" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Manarola, my favorite of the Cinque Terre</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/vernazza.jpg" alt="Vernazza from the viewpoint the Strava heatmap found" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Vernazza from the viewpoint the Strava heatmap found</figcaption></figure></div>
+
+                <p>Back in Levanto we changed into bike clothes beside the house and knocked out some of tomorrow's
+                    miles: one big hill of about 1,800 ft with steep grades back to back, then a descent to Pignone,
+                    where an older man yelled something in Italian that ended, pointed at each of us in turn, with
+                    "DIE! DIE!" He must not like cyclists. We rolled through small towns with ever-improving views
+                    of the Apuan Alps, reached Sarzana around sunset, demolished 24 plates at an all-you-can-eat
+                    sushi place, and found our B&amp;B through some dark, semi-sketchy neighborhoods at 9:45pm.</p>
+
+                <h3>Day 4 — Sarzana to Lucca</h3>
+                <p>Croissants, grapefruit and lactose-free yogurt, then a grocery stop for snacks and Liquid IV,
+                    coffee and a Torta Pasqualina at a tiny café, and a look at the Fortezza Firmafede on the way out.
+                    Viale 25 Aprile took us to the coast at a perfect -1% grade with tons of other cyclists. Marinella
+                    beach had unreal views of the Apuan Alps and reminded me of Salobreña.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/apuan-alps.jpg" alt="The pier at Marina di Massa, with the Apuan Alps behind" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The pier at Marina di Massa, with the Apuan Alps behind</figcaption></figure>
+
+                <p>From Marina di Massa we turned inland toward the heart of Tuscany. The only thing open in Camaiore
+                    was a grungy bar full of old dudes who loved staring at Monica, so we ate our croissants fast and
+                    got out of there. We booked a hotel on the descent and dropped into the walled city of Lucca
+                    around 3pm. Salmon spaghetti and a massive salad with suuuper fresh olives at Trattoria Da Rosolo,
+                    then a walk around the city on top of the wall, past the Piazza dell'Anfiteatro and the Basilica
+                    di San Frediano. The only bummer: we couldn't buy gifts yet, since we'd have to carry them the
+                    rest of the way.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/lucca.jpg" alt="Arriving at the walls of Lucca" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Arriving at the walls of Lucca</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/lucca-wall.jpg" alt="Lucca's Renaissance walls" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Lucca's Renaissance walls</figcaption></figure></div>
+
+                <h3>Day 5 — Lucca to San Gimignano</h3>
+                <p>We solved the gift dilemma by the end of the day. Read on.</p>
+
+                <p>At Chronò Bikes the owner found us some pedal straps for hanging laundry and asked whether we
+                    were going north or south. Odd question, until I remembered that Lucca sits on the Via
+                    Francigena, the old pilgrim route, which is split into a northern and a southern way. In
+                    Altopascio, famous for the bread it baked for pilgrims, we bought a loaf bigger than Monica's
+                    head. The bread itself wasn't that good, but it was worth it for the experience, and we snacked on
+                    it all day. Over the Ponte Mediceo into Fucecchio, a coffee stop, and a man who told us the best
+                    part of the Via Francigena is south of Siena. Let's see if he's right.</p>
+
+                <p>Then the rolling hills began: up to San Miniato for big views of Tuscany, and one climb after
+                    another to Castelfiorentino, with drivers loving to ZOOM on the back roads. SR429 to Certaldo was
+                    terrible, with fast trucks and no shoulder. Then we hit our first roadblock of the trip, literally:
+                    a closed road, a private-property detour that didn't work, and a highway workaround. It only added
+                    2–3 miles, but man was that annoying. The final climb through vineyards and olive groves brought
+                    us into San Gimignano.</p>
+
+                <p>That night we bought wine and olive oil and had it shipped straight back to the US. No need to
+                    carry bottles on our bikes. There were two dinners, and we walked out of one restaurant after
+                    being seated when we realized it was the wrong place. Dinner #2 was chicken and gnocchi at
+                    Giardino Bistrot, where Monica declared the local Vernaccia the best wine of her life, hands
+                    down.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/altopascio-bread.jpg" alt="Pilgrim bread in Altopascio, bigger than Monica's head" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Pilgrim bread in Altopascio, bigger than Monica's head</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/san-gimignano.jpg" alt="The towers of San Gimignano, the "Medieval Manhattan"" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The towers of San Gimignano, the "Medieval Manhattan"</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/san-gimignano-view.jpg" alt="The Tuscan countryside from Sant'Agostino" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The Tuscan countryside from Sant'Agostino</figcaption></figure>
+
+                <h3>Day 6 — San Gimignano to Siena</h3>
+                <p>Our first gravel of the trip took us down from San Gimignano to Colle di Val d'Elsa. We stashed
+                    our panniers in the bushes and walked the Sentierelsa trail in bike shoes to see the Elsa river,
+                    which was a bright glacial blue, the kind you'd expect in a Canadian valley and not in central
+                    Tuscany. The Via Francigena climbs to the walled town of Monteriggioni on a gravel road that hits
+                    19.8%, so we walked the bikes up. No reason to burn ourselves out for a side quest.</p>
+
+                <p>We reached Siena early, and Monica was hangry. Actually quite hangry. ("How many more minutes?"
+                    "Are we on the street yet?") Smoothies and plates of pasta at La Fontana della Frutta fixed that.
+                    Then came a lift in the hotel gym and a laundry odyssey: the first laundromat had bad reviews and
+                    the second was closed when it was supposed to be open, but the third had dry, great-smelling
+                    clothes. It was like starting the trip over. In the Piazza del Campo a marching band paraded
+                    seashell flags: Siena is split into 17 contrade, medieval neighborhood factions that are still
+                    rivals today. Pici and salmon at Vivace was the best meal of the trip so far, and over dinner we
+                    booked the last available room in Torricella Peligna for later in the trip. Phew.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/elsa-river.jpg" alt="The glacial-blue Elsa river" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The glacial-blue Elsa river</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/siena-arrival.jpg" alt="A water break on the way into Siena, right before hanger set in" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>A water break on the way into Siena, right before hanger set in</figcaption></figure></div>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/siena-campo.jpg" alt="The Torre del Mangia over the Piazza del Campo" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The Torre del Mangia over the Piazza del Campo</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/siena-parade.jpg" alt="The seashell contrada parading through the Campo" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The seashell contrada parading through the Campo</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/siena-pici.jpg" alt="Pici at Vivace, the best meal of the trip so far" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Pici at Vivace, the best meal of the trip so far</figcaption></figure>
+
+                <h3>Day 7 — Siena to Pienza</h3>
+                <p>Bells rang all over the city at 7:30am. After a great hotel breakfast and a grocery run (Moonvalley
+                    oat and date bars, the perfect fuel, plus more baby food, which is rocket fuel), we dropped out of
+                    Siena onto the first of five planned gravel roads.</p>
+
+                <p>About a mile into Gravel 1, Monica turned to check for a car on an uphill, slid into a bump and
+                    crashed, cutting up the same leg and palm as her first crash. I patched her up under the only
+                    shade tree on the trail, using our last alcohol wipe. Her head hurt a bit, which made me want to
+                    bail, but she insisted on continuing. I made her agree, on video, that if she crashed again the
+                    ride was over and we'd catch a train to Pienza.</p>
+
+                <p>Gravels 2 and 3 were friendly rollers and a long downhill to Buonconvento. Gravel 4 was TOUGH:
+                    punchy climbs at 13% and then 16%, sliding on loose gravel, with my front wheel lifting on the
+                    second. We refueled on pastries at Ticci Bar in Torrenieri, then took a surprise gravel descent to
+                    the Antiche Terme Romane Libere, free Roman thermal pools full of mud, where we dipped our legs in
+                    the water. Gravel 5 was steady with Pienza in sight at the top of the hill. On the final paved climb
+                    I got ahead, waited, and watched an ambulance race down past me. I was convinced something had
+                    happened. Then a bright blue bike with reflective yellow panniers crested the horizon. She was
+                    okay.</p>
+
+                <p>Dinner in Pienza went to plan B (the first restaurant was closed for a private event) and then
+                    plan C. The pici was delicious, my first bruschetta just tasted like toast with olive oil, and
+                    second dinner was smoked salmon avocado toast at a bistro next to our B&amp;B.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/val-dorcia-gravel.jpg" alt="Monica on the gravel south of Siena" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Monica on the gravel south of Siena</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/pienza.jpg" alt="The Val d'Orcia from just below Pienza" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The Val d'Orcia from just below Pienza</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/bagno-vignoni.jpg" alt="The free Roman thermal pools below Bagno Vignoni" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The free Roman thermal pools below Bagno Vignoni</figcaption></figure>
+
+                <h3>Day 8 — Pienza to Orvieto</h3>
+                <p>Our last morning in Tuscany started with breakfast in Montepulciano. Monica's rear derailleur had
+                    been knocked out of line, so we stopped at a bike shop in Ciconia to realign it, then rolled
+                    56 miles and nearly 4,000 ft into Umbria. Orvieto sits on top of a cliff of volcanic rock, so
+                    of course the day ended with a climb. That night we went down into the network of caves and tunnels
+                    carved into the rock beneath the town.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/into-umbria.jpg" alt="Into the green hills of Umbria on the way to Orvieto" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Into the green hills of Umbria on the way to Orvieto</figcaption></figure>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/orvieto.jpg" alt="Made it to Orvieto" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Made it to Orvieto</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/orvieto-underground.jpg" alt="In the caves beneath Orvieto" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>In the caves beneath Orvieto</figcaption></figure></div>
+
+                <h3>Day 9 — Orvieto to Spoleto</h3>
+                <p>The heat was miserable, topping out at 98°F. We stopped in Todi halfway to refuel and cool off,
+                    then ground out the rest of the 53 miles and 3,700 ft to Spoleto.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/spoleto.jpg" alt="Sunset in Spoleto" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Sunset in Spoleto</figcaption></figure>
+
+                <h3>Day 10 — Assisi side quest, then Spoleto to Norcia</h3>
+                <p>With a short ride on the schedule, Monica had a last-minute idea: leave the panniers, zoom to the
+                    Spoleto train station, and spend the morning in Assisi. The bikes felt great without the weight.
+                    Assisi was a really beautiful town and a perfect way to spend the hottest part of the day. Then we
+                    took the train back to Spoleto, loaded up, and rode into the mountains to Norcia.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/assisi.jpg" alt="The Basilica of San Francesco in Assisi" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The Basilica of San Francesco in Assisi</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/assisi-us.jpg" alt="Exploring Assisi in the midday heat" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Exploring Assisi in the midday heat</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/norcia.jpg" alt="Gravel across the valley floor into Norcia" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Gravel across the valley floor into Norcia</figcaption></figure>
+
+                <h3>Day 11 — Norcia to L'Aquila</h3>
+                <p>The longest day of the tour: 61 miles and 4,446 ft over the Apennines, cresting 1,282 m
+                    (4,206 ft), and out of Umbria into Abruzzo. We finished in L'Aquila, the capital of Abruzzo.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/leaving-norcia.jpg" alt="Climbing out of Norcia" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Climbing out of Norcia</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/apennines-us.jpg" alt="Up in the Apennines" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Up in the Apennines</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/apennines.jpg" alt="Big mountains on the way to L'Aquila" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Big mountains on the way to L'Aquila</figcaption></figure>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/laquila.jpg" alt="Evening in L'Aquila, the capital of Abruzzo" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Evening in L'Aquila, the capital of Abruzzo</figcaption></figure>
+
+                <h3>Day 12 — L'Aquila to Sulmona</h3>
+                <p>A gentler 46 miles down to Sulmona: mountains, aqueducts, and chilling with Ovid, the town's most
+                    famous son.</p>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/sulmona-ovid.jpg" alt="Chilling with Ovid" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Chilling with Ovid</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/sulmona.jpg" alt="Sulmona's medieval aqueduct at night" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Sulmona's medieval aqueduct at night</figcaption></figure></div>
+
+                <h3>Day 13 — Sulmona to Torricella Peligna</h3>
+                <p>The hardest day of climbing on the whole trip: 4,995 ft in 39 miles, topping out at 1,393 m
+                    (4,570 ft), with the reward at the end. We made it to Torricella Peligna, the town Monica's
+                    great-grandparents left for the US in 1928. That evening we stopped at the cemetery to visit her
+                    ancestors.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/majella.jpg" alt="Climbing toward Torricella Peligna" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Climbing toward Torricella Peligna</figcaption></figure>
+
+                <div class="photo-pair"><figure class="trip-photo"><img src="../images/cycling/italy/torricella-sign.jpg" alt="Arriving in Torricella Peligna" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Arriving in Torricella Peligna</figcaption></figure><figure class="trip-photo"><img src="../images/cycling/italy/torricella-us.jpg" alt="Above Torricella, with the Majella behind" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>Above Torricella, with the Majella behind</figcaption></figure></div>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/torricella-peligna.jpg" alt="The streets of Torricella Peligna, Monica's family's hometown" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The streets of Torricella Peligna, Monica's family's hometown</figcaption></figure>
+
+                <h3>Day 14 — Il Finale: Torricella Peligna to Pescara</h3>
+                <p>We spent the morning in Torricella, with a farmers market and a mountain viewpoint. Monica cried.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/torricella-morning.jpg" alt="The mountain viewpoint in Torricella on our last morning" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>The mountain viewpoint in Torricella on our last morning</figcaption></figure>
+
+                <p>Then came Il Finale: 47 miles, mostly downhill, out of the mountains to the Adriatic at
+                    Pescara.</p>
+
+                <p>Genoa to Pescara: 597 miles, 14 riding days, and both of our great-grandparents' hometowns.
+                    What a trip.</p>
+
+                <p>The next morning we rode to the station and took the train to Rome with our bikes, then spent
+                    the afternoon riding out to the Roman aqueducts on the edge of the city. And the bike bags?
+                    Thankfully they were waiting for us at our Best Western in downtown Rome. Michael's five minutes
+                    of yelling paid off.</p>
+
+                <figure class="trip-photo"><img src="../images/cycling/italy/rome-aqueducts.jpg" alt="One last ride, out to the aqueducts in Rome" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"><figcaption>One last ride, out to the aqueducts in Rome</figcaption></figure>
+            </div>
+        </div>
+
+        <!-- Route map (data/italy-bike-tour.json, js/italy-bike-tour.js) -->
+        <div class="section">
+            <h2>The Route</h2>
+            <div id="italy-map" class="map-container"></div>
+        </div>
+
+        <!-- Stage by stage (Strava) -->
+        <div class="section">
+            <h2>Stage by Stage</h2>
+            <div class="stage-wrap">
+                <table class="stage-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th class="col-date">Date</th>
+                            <th>Stage</th>
+                            <th class="num">Miles</th>
+                            <th class="num">Climb (ft)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="leg"><td colspan="5">Ligurian Coast</td></tr>
+                        <tr><td>1</td><td class="col-date">Aug 28</td><td><a href="https://www.strava.com/activities/19938916875" target="_blank" rel="noopener">Genoa → Zoagli</a></td><td class="num">33.2</td><td class="num">2,372</td></tr>
+                        <tr><td>2</td><td class="col-date">Aug 29</td><td><a href="https://www.strava.com/activities/19950622971" target="_blank" rel="noopener">Zoagli → Levanto</a></td><td class="num">32.5</td><td class="num">3,222</td></tr>
+                        <tr><td>3</td><td class="col-date">Aug 30</td><td><a href="https://www.strava.com/activities/19968370374" target="_blank" rel="noopener">Levanto → Sarzana</a></td><td class="num">31.2</td><td class="num">2,198</td></tr>
+                        <tr><td>4</td><td class="col-date">Aug 31</td><td><a href="https://www.strava.com/activities/19976133565" target="_blank" rel="noopener">Sarzana → Lucca</a></td><td class="num">44.2</td><td class="num">924</td></tr>
+                        <tr class="leg"><td colspan="5">Tuscany Hills</td></tr>
+                        <tr><td>5</td><td class="col-date">Sep 1</td><td><a href="https://www.strava.com/activities/19990941737" target="_blank" rel="noopener">Lucca → San Gimignano</a></td><td class="num">51.7</td><td class="num">2,473</td></tr>
+                        <tr><td>6</td><td class="col-date">Sep 2</td><td><a href="https://www.strava.com/activities/20004940671" target="_blank" rel="noopener">San Gimignano → Siena</a></td><td class="num">25.6</td><td class="num">1,937</td></tr>
+                        <tr><td>7</td><td class="col-date">Sep 3</td><td><a href="https://www.strava.com/activities/20021135206" target="_blank" rel="noopener">Siena → Pienza</a></td><td class="num">44.0</td><td class="num">4,020</td></tr>
+                        <tr><td>8</td><td class="col-date">Sep 4</td><td><a href="https://www.strava.com/activities/20035143809" target="_blank" rel="noopener">Pienza → Orvieto</a></td><td class="num">56.3</td><td class="num">3,932</td></tr>
+                        <tr class="leg"><td colspan="5">Umbria Valleys</td></tr>
+                        <tr><td>9</td><td class="col-date">Sep 5</td><td><a href="https://www.strava.com/activities/20048043875" target="_blank" rel="noopener">Orvieto → Spoleto</a></td><td class="num">52.8</td><td class="num">3,740</td></tr>
+                        <tr><td>10</td><td class="col-date">Sep 6</td><td><a href="https://www.strava.com/activities/20064344017" target="_blank" rel="noopener">Spoleto → Norcia</a></td><td class="num">31.6</td><td class="num">2,985</td></tr>
+                        <tr class="leg"><td colspan="5">Abruzzo &amp; Apennines</td></tr>
+                        <tr><td>11</td><td class="col-date">Sep 7</td><td><a href="https://www.strava.com/activities/20074684239" target="_blank" rel="noopener">Norcia → L'Aquila</a></td><td class="num">60.9</td><td class="num">4,446</td></tr>
+                        <tr><td>12</td><td class="col-date">Sep 8</td><td><a href="https://www.strava.com/activities/20086389142" target="_blank" rel="noopener">L'Aquila → Sulmona</a></td><td class="num">46.3</td><td class="num">2,080</td></tr>
+                        <tr><td>13</td><td class="col-date">Sep 9</td><td><a href="https://www.strava.com/activities/20103330967" target="_blank" rel="noopener">Sulmona → Torricella Peligna</a></td><td class="num">39.4</td><td class="num">4,995</td></tr>
+                        <tr><td>14</td><td class="col-date">Sep 10</td><td><a href="https://www.strava.com/activities/20115713385" target="_blank" rel="noopener">Torricella Peligna → Pescara</a></td><td class="num">47.3</td><td class="num">1,579</td></tr>
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="2">Total</td><td class="col-date"></td><td class="num">597</td><td class="num">40,905</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Strava Activity -->
+        <div class="section">
+            <h2>Biggest Climbing Day: Sulmona to Torricella Peligna</h2>
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div class="strava-embed-placeholder" data-embed-type="activity" data-embed-id="20103330967"
+                    data-style="standard" data-from-embed="false"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+    <script src="../js/fluid-zoom.js?v=20261025b"></script>
+    <script src="../js/map-fixes.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js" integrity="sha384-TqJpQ0URK8MzCC4s3ekivmwQmVfay3oiXhBt/Vl5nViiMrO7+rdFTc5VKDeUuto8" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.umd.js" integrity="sha384-uLwiPJh3h4K75M6H8v1+b8yp29I4ICC/sIjSdRBDRDvB/WhltdJyklwIImnRlv4F" crossorigin="anonymous"></script>
+    <script src="../js/italy-bike-tour.js?v=20261127a"></script>
+    <script src="../js/navbar-component.js"></script>
+    <script src="https://strava-embeds.com/embed.js"></script>
+    <script src="../data/adventures.js?v=20261127a"></script>
+    <script src="../js/report-nav.js?v=20261110d"></script>
+</body>
+
+</html>

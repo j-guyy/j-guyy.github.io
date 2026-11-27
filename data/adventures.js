@@ -161,6 +161,15 @@ const adventureData = {
 
         cycling: [
             {
+                id: 'italy-bike-tour',
+                title: 'Italy by Bike',
+                image: 'images/cycling/italy.jpg',
+                category: 'Cycling',
+                completed: true,
+                date: '2026',
+                link: 'trip-reports/italy-bike-tour.html'
+            },
+            {
                 id: 'mt-blue-sky',
                 title: 'Mt Blue Sky',
                 image: 'images/cycling/bluesky.jpg',
