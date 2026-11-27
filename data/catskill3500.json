@@ -1,0 +1,313 @@
+[
+    {
+        "name": "Slide Mountain",
+        "elevation": 4185,
+        "coords": [
+            -74.38594,
+            41.9992
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Hunter Mountain",
+        "elevation": 4030,
+        "coords": [
+            -74.23042,
+            42.17787
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Black Dome",
+        "elevation": 3994,
+        "coords": [
+            -74.12255,
+            42.27018
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Thomas Cole Mountain",
+        "elevation": 3953,
+        "coords": [
+            -74.13557,
+            42.27055
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Blackhead Mountain",
+        "elevation": 3940,
+        "coords": [
+            -74.10464,
+            42.26774
+        ],
+        "climbed": false
+    },
+    {
+        "name": "West Kill Mountain",
+        "elevation": 3898,
+        "coords": [
+            -74.28959,
+            42.16787
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Cornell Mountain",
+        "elevation": 3857,
+        "coords": [
+            -74.35618,
+            42.0013
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Plateau Mountain",
+        "elevation": 3835,
+        "coords": [
+            -74.17431,
+            42.13787
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Table Mountain",
+        "elevation": 3825,
+        "coords": [
+            -74.40487,
+            41.95864
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Peekamoose Mountain",
+        "elevation": 3819,
+        "coords": [
+            -74.39821,
+            41.95315
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Sugarloaf Mountain",
+        "elevation": 3783,
+        "coords": [
+            -74.15014,
+            42.1312
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Wittenberg Mountain",
+        "elevation": 3782,
+        "coords": [
+            -74.34737,
+            42.00815
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Southwest Hunter Mountain",
+        "elevation": 3753,
+        "coords": [
+            -74.24363,
+            42.16236
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Balsam Lake Mountain",
+        "elevation": 3729,
+        "coords": [
+            -74.59404,
+            42.04592
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Panther Mountain",
+        "elevation": 3724,
+        "coords": [
+            -74.39459,
+            42.05648
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Lone Mountain",
+        "elevation": 3700,
+        "coords": [
+            -74.39003,
+            41.96918
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Big Indian Mountain",
+        "elevation": 3699,
+        "coords": [
+            -74.49665,
+            42.035
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Friday Mountain",
+        "elevation": 3692,
+        "coords": [
+            -74.36209,
+            41.98759
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Rusk Mountain",
+        "elevation": 3686,
+        "coords": [
+            -74.27746,
+            42.20107
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Kaaterskill High Peak",
+        "elevation": 3652,
+        "coords": [
+            -74.08026,
+            42.16227
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Twin Mountain",
+        "elevation": 3650,
+        "coords": [
+            -74.12903,
+            42.12565
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Fir Mountain",
+        "elevation": 3629,
+        "coords": [
+            -74.46904,
+            42.02759
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Balsam Cap",
+        "elevation": 3608,
+        "coords": [
+            -74.35742,
+            41.97709
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Balsam Mountain",
+        "elevation": 3607,
+        "coords": [
+            -74.48821,
+            42.09092
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Dome",
+        "elevation": 3605,
+        "coords": [
+            -74.34901,
+            42.17373
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Bearpen Mountain",
+        "elevation": 3587,
+        "coords": [
+            -74.47378,
+            42.26522
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Eagle Mountain",
+        "elevation": 3583,
+        "coords": [
+            -74.50932,
+            42.06204
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Indian Head Mountain",
+        "elevation": 3573,
+        "coords": [
+            -74.11458,
+            42.1162
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Sherrill Mountain",
+        "elevation": 3558,
+        "coords": [
+            -74.37293,
+            42.17564
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Vly Mountain",
+        "elevation": 3541,
+        "coords": [
+            -74.44598,
+            42.24536
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Windham High Peak",
+        "elevation": 3525,
+        "coords": [
+            -74.14326,
+            42.3148
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Halcott Mountain",
+        "elevation": 3509,
+        "coords": [
+            -74.43793,
+            42.18009
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    },
+    {
+        "name": "Rocky Mountain",
+        "elevation": 3487,
+        "coords": [
+            -74.37283,
+            41.97266
+        ],
+        "climbed": false,
+        "note": "Trailless (bushwhack)"
+    }
+]

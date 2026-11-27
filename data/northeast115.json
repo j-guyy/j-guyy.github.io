@@ -1,0 +1,739 @@
+[
+    {
+        "name": "Mount Washington",
+        "elevation": 6288,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.303304,
+            44.270495
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Adams",
+        "elevation": 5799,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.291635,
+            44.320578
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Jefferson",
+        "elevation": 5716,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.31675,
+            44.304232
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Monroe",
+        "elevation": 5372,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.321495,
+            44.255058
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Madison",
+        "elevation": 5367,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.276666,
+            44.328795
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Katahdin – Baxter Peak",
+        "elevation": 5268,
+        "state": "ME",
+        "range": "Katahdin",
+        "coords": [
+            -68.921279,
+            45.90436
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Lafayette",
+        "elevation": 5260,
+        "state": "NH",
+        "range": "Franconia Range",
+        "coords": [
+            -71.644375,
+            44.16071
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Lincoln",
+        "elevation": 5089,
+        "state": "NH",
+        "range": "Franconia Range",
+        "coords": [
+            -71.644572,
+            44.148834
+        ],
+        "climbed": false
+    },
+    {
+        "name": "South Twin Mountain",
+        "elevation": 4902,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.554803,
+            44.187565
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Carter Dome",
+        "elevation": 4832,
+        "state": "NH",
+        "range": "Carter Range",
+        "coords": [
+            -71.179121,
+            44.267398
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Moosilauke",
+        "elevation": 4802,
+        "state": "NH",
+        "range": "Moosilauke",
+        "coords": [
+            -71.831435,
+            44.023407
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Twin Mountain",
+        "elevation": 4761,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.557993,
+            44.202546
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Eisenhower",
+        "elevation": 4760,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.350403,
+            44.240688
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Katahdin – Hamlin Peak",
+        "elevation": 4756,
+        "state": "ME",
+        "range": "Katahdin",
+        "coords": [
+            -68.927577,
+            45.924192
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Carrigain",
+        "elevation": 4700,
+        "state": "NH",
+        "range": "Pemigewasset",
+        "coords": [
+            -71.446813,
+            44.093619
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Bond",
+        "elevation": 4698,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.531214,
+            44.152918
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Middle Carter Mountain",
+        "elevation": 4610,
+        "state": "NH",
+        "range": "Carter Range",
+        "coords": [
+            -71.167708,
+            44.303084
+        ],
+        "climbed": false
+    },
+    {
+        "name": "West Bond",
+        "elevation": 4540,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.543629,
+            44.154763
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Garfield",
+        "elevation": 4500,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.610691,
+            44.187237
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Liberty",
+        "elevation": 4459,
+        "state": "NH",
+        "range": "Franconia Range",
+        "coords": [
+            -71.642206,
+            44.115822
+        ],
+        "climbed": false
+    },
+    {
+        "name": "South Carter Mountain",
+        "elevation": 4430,
+        "state": "NH",
+        "range": "Carter Range",
+        "coords": [
+            -71.176425,
+            44.289874
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Wildcat Mountain",
+        "elevation": 4422,
+        "state": "NH",
+        "range": "Wildcat Range",
+        "coords": [
+            -71.20161,
+            44.259202
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Hancock",
+        "elevation": 4420,
+        "state": "NH",
+        "range": "Pemigewasset",
+        "coords": [
+            -71.493202,
+            44.083453
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Mansfield",
+        "elevation": 4393,
+        "state": "VT",
+        "range": "Green Mountains",
+        "coords": [
+            -72.81431,
+            44.543947
+        ],
+        "climbed": false
+    },
+    {
+        "name": "South Kinsman",
+        "elevation": 4358,
+        "state": "NH",
+        "range": "Kinsman Range",
+        "coords": [
+            -71.736632,
+            44.122962
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Field",
+        "elevation": 4340,
+        "state": "NH",
+        "range": "Willey Range",
+        "coords": [
+            -71.433172,
+            44.196191
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Osceola",
+        "elevation": 4340,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.53597,
+            44.00159
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Flume",
+        "elevation": 4328,
+        "state": "NH",
+        "range": "Franconia Range",
+        "coords": [
+            -71.627905,
+            44.108822
+        ],
+        "climbed": false
+    },
+    {
+        "name": "South Hancock",
+        "elevation": 4319,
+        "state": "NH",
+        "range": "Pemigewasset",
+        "coords": [
+            -71.486945,
+            44.073271
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Pierce",
+        "elevation": 4312,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.365715,
+            44.226847
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Kinsman",
+        "elevation": 4293,
+        "state": "NH",
+        "range": "Kinsman Range",
+        "coords": [
+            -71.736815,
+            44.133355
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Willey",
+        "elevation": 4285,
+        "state": "NH",
+        "range": "Willey Range",
+        "coords": [
+            -71.420973,
+            44.183436
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Bondcliff",
+        "elevation": 4265,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.54092,
+            44.140577
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Zealand Mountain",
+        "elevation": 4260,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.521579,
+            44.180021
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Sugarloaf Mountain",
+        "elevation": 4250,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.313101,
+            45.031811
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Killington Peak",
+        "elevation": 4235,
+        "state": "VT",
+        "range": "Green Mountains",
+        "coords": [
+            -72.820149,
+            43.60455
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Crocker Mountain",
+        "elevation": 4228,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.382809,
+            45.047146
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Tripyramid",
+        "elevation": 4180,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.442779,
+            43.973161
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Cabot",
+        "elevation": 4170,
+        "state": "NH",
+        "range": "Pliny & Kilkenny",
+        "coords": [
+            -71.414542,
+            44.506065
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Old Speck Mountain",
+        "elevation": 4170,
+        "state": "ME",
+        "range": "Mahoosuc Range",
+        "coords": [
+            -70.953618,
+            44.570881
+        ],
+        "climbed": false
+    },
+    {
+        "name": "East Osceola",
+        "elevation": 4156,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.52059,
+            44.0061
+        ],
+        "climbed": false
+    },
+    {
+        "name": "North Brother",
+        "elevation": 4151,
+        "state": "ME",
+        "range": "Baxter State Park",
+        "coords": [
+            -68.9854,
+            45.95719
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Bigelow – West Peak",
+        "elevation": 4145,
+        "state": "ME",
+        "range": "Bigelow Range",
+        "coords": [
+            -70.28814,
+            45.14681
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Middle Tripyramid",
+        "elevation": 4140,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.440074,
+            43.96457
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Saddleback Mountain",
+        "elevation": 4120,
+        "state": "ME",
+        "range": "Rangeley",
+        "coords": [
+            -70.504554,
+            44.936456
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Cannon Mountain",
+        "elevation": 4100,
+        "state": "NH",
+        "range": "Kinsman Range",
+        "coords": [
+            -71.698621,
+            44.156692
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Bigelow – Avery Peak",
+        "elevation": 4090,
+        "state": "ME",
+        "range": "Bigelow Range",
+        "coords": [
+            -70.27532,
+            45.14667
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Camel's Hump",
+        "elevation": 4083,
+        "state": "VT",
+        "range": "Green Mountains",
+        "coords": [
+            -72.886317,
+            44.319563
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Ellen",
+        "elevation": 4083,
+        "state": "VT",
+        "range": "Green Mountains",
+        "coords": [
+            -72.92887,
+            44.16013
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Wildcat D",
+        "elevation": 4062,
+        "state": "NH",
+        "range": "Wildcat Range",
+        "coords": [
+            -71.22359,
+            44.249412
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Hale",
+        "elevation": 4054,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.512024,
+            44.221731
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Jackson",
+        "elevation": 4052,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.375459,
+            44.203181
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Tom",
+        "elevation": 4051,
+        "state": "NH",
+        "range": "Willey Range",
+        "coords": [
+            -71.446233,
+            44.210544
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Abraham (ME)",
+        "elevation": 4050,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.32636,
+            44.97283
+        ],
+        "climbed": false
+    },
+    {
+        "name": "South Crocker Mountain",
+        "elevation": 4050,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.376457,
+            45.036167
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Moriah",
+        "elevation": 4049,
+        "state": "NH",
+        "range": "Carter Range",
+        "coords": [
+            -71.131715,
+            44.340525
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Passaconaway",
+        "elevation": 4043,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.380705,
+            43.95477
+        ],
+        "climbed": false
+    },
+    {
+        "name": "The Horn",
+        "elevation": 4041,
+        "state": "ME",
+        "range": "Rangeley",
+        "coords": [
+            -70.487489,
+            44.951074
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Owl's Head",
+        "elevation": 4025,
+        "state": "NH",
+        "range": "Pemigewasset",
+        "coords": [
+            -71.60497,
+            44.14412
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Galehead Mountain",
+        "elevation": 4024,
+        "state": "NH",
+        "range": "Twin Range",
+        "coords": [
+            -71.573434,
+            44.185016
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Whiteface",
+        "elevation": 4020,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.407634,
+            43.936532
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Redington",
+        "elevation": 4010,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.3884,
+            45.02506
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Spaulding Mountain",
+        "elevation": 4010,
+        "state": "ME",
+        "range": "Carrabassett",
+        "coords": [
+            -70.333776,
+            45.002917
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Waumbek",
+        "elevation": 4006,
+        "state": "NH",
+        "range": "Pliny & Kilkenny",
+        "coords": [
+            -71.417513,
+            44.43263
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Abraham (VT)",
+        "elevation": 4006,
+        "state": "VT",
+        "range": "Green Mountains",
+        "coords": [
+            -72.936193,
+            44.120396
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Isolation",
+        "elevation": 4004,
+        "state": "NH",
+        "range": "Presidential Range",
+        "coords": [
+            -71.30926,
+            44.214829
+        ],
+        "climbed": false
+    },
+    {
+        "name": "Mount Tecumseh",
+        "elevation": 4003,
+        "state": "NH",
+        "range": "Sandwich Range",
+        "coords": [
+            -71.556498,
+            43.966699
+        ],
+        "climbed": false
+    }
+]

@@ -83,11 +83,16 @@ const UT_CONTINENTS = [
 ];
 
 // The Peaks dashboard's lists (PEAK_LISTS in js/peaks-dashboard.js); only the
-// reference data is used, never the owner's visited flags.
+// reference data is used, never the owner's visited flags. includes: other
+// lists' peaks this one also holds, as on the Peaks dashboard (only: just
+// those names).
 const UT_PEAK_LISTS = [
     { id: 'highpoints',        label: 'US State High Points',    url: '/data/highPoints.json',             region: p => UT_ABBR_STATE[p.state] || p.state },
     { id: 'colorado14ers',     label: 'Colorado 14ers',          url: '/data/colorado14ers.json' },
     { id: 'adk46ers',          label: 'Adirondack 46ers',        url: '/data/adirondack46ers.json' },
+    { id: 'northeast115',      label: 'Northeast 115',           url: '/data/northeast115.json',           region: p => p.state || 'NY',
+      includes: [{ id: 'adk46ers' }, { id: 'catskill3500', only: ['Slide Mountain', 'Hunter Mountain'] }] },
+    { id: 'catskill3500',      label: 'Catskill 3500',           url: '/data/catskill3500.json' },
     { id: 'britishIsles',      label: 'British Isles High Five', url: '/data/british-isles-high-five.json', region: p => p.country, unit: 'm' },
     { id: 'countryHighpoints', label: 'Country High Points',     url: '/data/country-highpoints.json',     region: p => p.country },
 ];
@@ -123,7 +128,10 @@ function utLoadReference() {
     ]).then(([countries, flags, lists]) => {
         utRef.countries = countries;
         utRef.flags = flags || {};
-        utRef.peakLists = lists.map(l => (Array.isArray(l) ? l : []));
+        const loaded = lists.map(l => (Array.isArray(l) ? l : []));
+        const byId = id => loaded[UT_PEAK_LISTS.findIndex(l => l.id === id)] || [];
+        utRef.peakLists = loaded.map((items, i) => items.concat(...(UT_PEAK_LISTS[i].includes || [])
+            .map(inc => byId(inc.id).filter(p => !inc.only || inc.only.includes(p.name)))));
         renderUserTravel();
     });
     return utRef.loading;
