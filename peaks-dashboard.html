@@ -22,7 +22,12 @@
     <link rel="stylesheet" href="css/layout.css?v=20261110e">
     <link rel="stylesheet" href="css/dashboard.css?v=20261124b">
     <link rel="stylesheet" href="css/responsive.css?v=20261110e">
-    <link rel="stylesheet" href="css/peaks-dashboard.css">
+    <link rel="stylesheet" href="css/leaflet.css?v=20261113a">
+    <link rel="stylesheet" href="css/map-controls.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.css" integrity="sha384-JQaqyMC8J0ygnGFuDB9Vjn9x7TwupGxHjwm2wZt4f06IDWA1lLFj6yejevbbJb7X" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@5.3.3/dist/Control.FullScreen.css" integrity="sha384-qrJv61vcPezIifBVFdXRUo8Jp/zM1oAOuqafSPO/gVFX6bqu6XkcVEPjhrOWUywO" crossorigin="anonymous" />
+    <link rel="stylesheet" href="css/peaks-dashboard.css?v=20261127a">
     <link rel="canonical" href="https://j-guyy.github.io/peaks-dashboard.html">
 </head>
 
@@ -36,6 +41,11 @@
         <div class="hero">
             <h1>Peaks</h1>
         </div>
+
+        <nav class="view-switch" aria-label="Choose view">
+            <a href="#tables" class="view-switch-option" data-view="tables" aria-current="page">Tables</a>
+            <a href="#map" class="view-switch-option" data-view="map">Map</a>
+        </nav>
 
         <div class="section">
             <h2>Progress Report</h2>
@@ -61,14 +71,23 @@
                 <button id="owner-login-btn" class="table-action-btn owner-lock" title="Owner login" aria-label="Owner login">&#x1F512;</button>
             </div>
             <p id="peaks-source" class="peaks-source" hidden></p>
-            <div id="travel-table-container"><p class="dash-loading" role="status">Loading…</p></div>
-            <div id="strava-comparison" class="peaks-compare"></div>
+            <!-- Tables | Map (js/view-switch.js): both follow the list picked above. -->
+            <div id="tables-view">
+                <div id="travel-table-container"><p class="dash-loading" role="status">Loading…</p></div>
+                <div id="strava-comparison" class="peaks-compare"></div>
+            </div>
+            <!-- Leaflet loads the first time the Map view is opened. -->
+            <div id="map-view" hidden>
+                <div id="peaks-map-legend" class="peaks-map-legend" aria-live="polite"></div>
+                <div id="peaks-map" class="peaks-map"></div>
+            </div>
         </div>
     </div>
 
     <script src="js/travel-api.js?v=20261125a"></script>
     <script src="js/peak-match.js"></script>
-    <script src="js/peaks-dashboard.js?v=20261127c"></script>
+    <script src="js/view-switch.js?v=20261110d"></script>
+    <script src="js/peaks-dashboard.js?v=20261127d"></script>
     <script src="js/navbar-component.js?v=20261110c"></script>
 </body>
 

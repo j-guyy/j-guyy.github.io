@@ -115,7 +115,8 @@
             42.16236
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Balsam Lake Mountain",
@@ -143,7 +144,8 @@
             41.96918
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Big Indian Mountain",
@@ -153,7 +155,8 @@
             42.035
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Friday Mountain",
@@ -163,7 +166,8 @@
             41.98759
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Rusk Mountain",
@@ -173,7 +177,8 @@
             42.20107
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Kaaterskill High Peak",
@@ -183,7 +188,8 @@
             42.16227
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Twin Mountain",
@@ -202,7 +208,8 @@
             42.02759
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Balsam Cap",
@@ -212,7 +219,8 @@
             41.97709
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Balsam Mountain",
@@ -231,7 +239,8 @@
             42.17373
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Bearpen Mountain",
@@ -250,7 +259,8 @@
             42.06204
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Indian Head Mountain",
@@ -269,7 +279,8 @@
             42.17564
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Vly Mountain",
@@ -279,7 +290,8 @@
             42.24536
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Windham High Peak",
@@ -298,7 +310,8 @@
             42.18009
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     },
     {
         "name": "Rocky Mountain",
@@ -308,6 +321,7 @@
             41.97266
         ],
         "climbed": false,
-        "note": "Trailless (bushwhack)"
+        "note": "Trailless (bushwhack)",
+        "trailless": true
     }
 ]
